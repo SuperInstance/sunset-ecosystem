@@ -1,0 +1,262 @@
+"""Nerve Fiber — A sensory pathway that perceives, adapts, compiles, and alerts on novelty.
+
+Lifecycle mirrors Soft → Snap → Hard:
+    PERCEIVING (soft) → ADAPTING → COMPILED (hard) → NOVELTY_ALERT → PERCEIVING
+
+Like putting on shoes: feel every edge → dampen → muscle memory → rock in shoe.
+"""
+
+from __future__ import annotations
+
+__all__ = ["NerveFiber", "FiberState", "SensoryTile"]
+
+import hashlib
+import threading
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Optional
+
+
+class FiberState(Enum):
+    """The lifecycle states of a nerve fiber."""
+    PERCEIVING = "perceiving"      # Soft — full attention, raw inference
+    ADAPTING = "adapting"          # Building confidence, learning pattern
+    COMPILED = "compiled"          # Hard — automatic processing, muscle memory
+    NOVELTY_ALERT = "novelty"     # Something changed — back to full attention
+
+
+@dataclass
+class SensoryTile:
+    """A tile produced by a nerve fiber — a perceived signal.
+
+    Attributes:
+        pattern_id: Hash of the input pattern this tile was produced from.
+        features: Extracted features from the raw signal.
+        confidence: How confident the fiber is in this perception (0.0-1.0).
+        source_fiber: ID of the nerve fiber that produced this tile.
+        state: The fiber's state when producing this tile.
+        timestamp: When this tile was produced.
+    """
+    pattern_id: str
+    features: dict[str, Any] = field(default_factory=dict)
+    confidence: float = 0.0
+    source_fiber: str = ""
+    state: FiberState = FiberState.PERCEIVING
+    timestamp: float = field(default_factory=time.time)
+
+    def __repr__(self) -> str:
+        return (
+            f"SensoryTile(pattern={self.pattern_id[:8]}..., "
+            f"conf={self.confidence:.2f}, state={self.state.value})"
+        )
+
+
+class NerveFiber:
+    """A sensory pathway that processes raw signals through a micro-model.
+
+    The fiber adapts over time: new signals get full attention, repeated
+    patterns get compiled into automatic processing, and novel patterns
+    trigger re-examination.
+
+    Args:
+        fiber_id: Unique identifier for this fiber.
+        model_type: Type of micro-model (e.g. "jepa", "mobilenet_v4",
+            "vit_tiny", "fastconformer_tiny", "smolLM2_135m").
+        adapt_threshold: Confidence threshold to transition from ADAPTING
+            to COMPILED (default 0.95 — like the 97.5% compile threshold).
+        novelty_threshold: How different a signal must be to trigger
+            NOVELTY_ALERT when in COMPILED state (default 0.3).
+        epsilon: Confidence increment per repeated observation (default 0.05).
+    """
+
+    def __init__(
+        self,
+        fiber_id: str,
+        model_type: str = "generic",
+        adapt_threshold: float = 0.95,
+        novelty_threshold: float = 0.3,
+        epsilon: float = 0.05,
+    ) -> None:
+        self.fiber_id = fiber_id
+        self.model_type = model_type
+        self.adapt_threshold = adapt_threshold
+        self.novelty_threshold = novelty_threshold
+        self.epsilon = epsilon
+
+        self._state = FiberState.PERCEIVING
+        self._confidence: float = 0.0
+        self._observations: dict[str, int] = {}  # pattern_id → count
+        self._compiled_patterns: dict[str, dict[str, Any]] = {}
+        self._lock = threading.Lock()
+        self._last_signal_hash: Optional[str] = None
+        self._total_signals: int = 0
+        self._compiled_signals: int = 0
+
+    def __repr__(self) -> str:
+        return (
+            f"NerveFiber(id={self.fiber_id!r}, type={self.model_type}, "
+            f"state={self._state.value}, conf={self._confidence:.2f})"
+        )
+
+    @property
+    def state(self) -> FiberState:
+        """Current lifecycle state."""
+        return self._state
+
+    @property
+    def confidence(self) -> float:
+        """Current confidence level."""
+        return self._confidence
+
+    @property
+    def stats(self) -> dict[str, Any]:
+        """Fiber statistics."""
+        return {
+            "fiber_id": self.fiber_id,
+            "model_type": self.model_type,
+            "state": self._state.value,
+            "confidence": self._confidence,
+            "total_signals": self._total_signals,
+            "compiled_signals": self._compiled_signals,
+            "compiled_patterns": len(self._compiled_patterns),
+            "compile_rate": (
+                self._compiled_signals / self._total_signals
+                if self._total_signals > 0
+                else 0.0
+            ),
+        }
+
+    @staticmethod
+    def _hash_signal(signal: Any) -> str:
+        """Deterministic hash of a signal for pattern matching."""
+        raw = str(signal).encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()
+
+    def perceive(self, signal: Any) -> SensoryTile:
+        """Process a raw signal through this nerve fiber.
+
+        The fiber's behavior depends on its lifecycle state:
+        - PERCEIVING: Full attention, extract features, build confidence.
+        - ADAPTING: Pattern matching, increment confidence via epsilon.
+        - COMPILED: Automatic processing, only alert on novelty.
+        - NOVELTY_ALERT: Re-examine with full attention.
+
+        Args:
+            signal: The raw signal to perceive.
+
+        Returns:
+            A SensoryTile with extracted features and confidence.
+        """
+        pattern_id = self._hash_signal(signal)
+
+        with self._lock:
+            self._total_signals += 1
+            self._observations[pattern_id] = (
+                self._observations.get(pattern_id, 0) + 1
+            )
+
+            # Check if we have a compiled path for this pattern
+            if pattern_id in self._compiled_patterns and self._state == FiberState.COMPILED:
+                # Compiled — automatic processing (like not noticing your shoes)
+                self._compiled_signals += 1
+                compiled = self._compiled_patterns[pattern_id]
+
+                # Check for novelty — is the signal different enough?
+                if self._last_signal_hash and pattern_id != self._last_signal_hash:
+                    self._last_signal_hash = pattern_id
+                    # Same compiled path, different signal — mild novelty check
+                    return SensoryTile(
+                        pattern_id=pattern_id,
+                        features=compiled,
+                        confidence=1.0,
+                        source_fiber=self.fiber_id,
+                        state=FiberState.COMPILED,
+                    )
+
+                self._last_signal_hash = pattern_id
+                return SensoryTile(
+                    pattern_id=pattern_id,
+                    features=compiled,
+                    confidence=1.0,
+                    source_fiber=self.fiber_id,
+                    state=FiberState.COMPILED,
+                )
+
+            # Not compiled — process with full attention
+            if self._state == FiberState.COMPILED:
+                # Novelty detected — something changed
+                self._state = FiberState.NOVELTY_ALERT
+                self._confidence = 0.0
+
+            if self._state in (FiberState.PERCEIVING, FiberState.NOVELTY_ALERT):
+                # Full attention — extract features
+                features = self._extract_features(signal)
+                self._confidence = min(self._confidence + self.epsilon, 1.0)
+
+                if self._confidence >= 0.1:
+                    self._state = FiberState.ADAPTING
+
+                tile = SensoryTile(
+                    pattern_id=pattern_id,
+                    features=features,
+                    confidence=self._confidence,
+                    source_fiber=self.fiber_id,
+                    state=self._state,
+                )
+
+            elif self._state == FiberState.ADAPTING:
+                # Increment confidence via epsilon accumulation
+                self._confidence = min(self._confidence + self.epsilon, 1.0)
+                features = self._extract_features(signal)
+
+                if self._confidence >= self.adapt_threshold:
+                    # SNAP — compile this pattern
+                    self._compiled_patterns[pattern_id] = features
+                    self._state = FiberState.COMPILED
+                    self._compiled_signals += 1
+
+                tile = SensoryTile(
+                    pattern_id=pattern_id,
+                    features=features,
+                    confidence=self._confidence,
+                    source_fiber=self.fiber_id,
+                    state=self._state,
+                )
+            else:
+                # Fallback
+                features = self._extract_features(signal)
+                tile = SensoryTile(
+                    pattern_id=pattern_id,
+                    features=features,
+                    confidence=self._confidence,
+                    source_fiber=self.fiber_id,
+                    state=self._state,
+                )
+
+            self._last_signal_hash = pattern_id
+            return tile
+
+    def _extract_features(self, signal: Any) -> dict[str, Any]:
+        """Extract features from a raw signal.
+
+        In production, this would run the actual micro-model.
+        Here we use a lightweight hash-based feature extraction.
+        """
+        signal_str = str(signal)
+        return {
+            "length": len(signal_str),
+            "type": type(signal).__name__,
+            "hash_prefix": self._hash_signal(signal)[:16],
+            "contains_digits": any(c.isdigit() for c in signal_str),
+            "contains_alpha": any(c.isalpha() for c in signal_str),
+        }
+
+    def reset(self) -> None:
+        """Reset the fiber to PERCEIVING state."""
+        with self._lock:
+            self._state = FiberState.PERCEIVING
+            self._confidence = 0.0
+            self._observations.clear()
+            self._compiled_patterns.clear()
+            self._last_signal_hash = None
