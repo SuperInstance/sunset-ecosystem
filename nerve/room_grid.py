@@ -17,17 +17,17 @@ from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
 
-# ── Rust FFI ──────────────────────────────────────────────
+# ── Backend detection ─────────────────────────────────────
 _rust_lib = None
+_BACKEND = "numpy"
 try:
     so = next(Path(__file__).parent.glob("target/release/libjepa_kernel.so"))
     _rust_lib = CDLL(str(so))
-    _rust_lib.jepa_forward_batch.argtypes = [
-        POINTER(c_float)]*7 + [c_size_t, POINTER(c_float)]
+    _rust_lib.jepa_forward_batch.argtypes = [POINTER(c_float)]*7 + [c_size_t, POINTER(c_float)]
     _rust_lib.jepa_forward_batch.restype = None
-    _RUST = True
+    _BACKEND = "rust"
 except (StopIteration, OSError):
-    _RUST = False
+    pass
 
 
 def make_weights(n: int, d: int = 64, h: int = 32, l: int = 16, seed: int = 42):
@@ -124,7 +124,7 @@ class JEPAGrid:
                      "step": np.concatenate([np.zeros(d//2), np.ones(d//2)]).astype(np.float32)}
 
     def _forward(self, x):
-        return forward_rust(self.w, x, self.n) if _RUST else forward_einsum(self.w, x)
+        return forward_rust(self.w, x, self.n) if _BACKEND == "rust" else forward_einsum(self.w, x)
 
     def tick(self, x):
         self.ticks += 1
@@ -175,7 +175,8 @@ class JEPAGrid:
         self.history[dst] = []
 
     def __repr__(self):
-        return f"JEPAGrid(n={self.n}, ticks={self.ticks}, active={int((self.activity>0).sum())}, {'rust' if _RUST else 'numpy'})"
+        backend_str = "rust" if _BACKEND == "rust" else "numpy"
+        return f"JEPAGrid(n={self.n}, ticks={self.ticks}, active={int((self.activity>0).sum())}, {backend_str})"
 
     @property
     def stats(self):
@@ -192,4 +193,5 @@ if __name__ == "__main__":
             g.tick(np.random.randn(64))
         avg = (time.perf_counter() - start) / 10
         print(f"{n:5d} rooms: {avg*1000:.1f}ms/tick ({avg/n*1e9:.0f}ns/room)")
-    print(f"Backend: {'Rust FFI' if _RUST else 'numpy'}")
+    b = "Rust FFI" if _BACKEND == "rust" else "numpy"
+    print(f"Backend: {b}")
