@@ -3,8 +3,10 @@
 Orchestrates the full weekly triage workflow:
   1. Compute repo health score
   2. Fetch + analyze GitHub issues
-  3. Detect duplicates
-  4. Generate triage report + auto-label stale issues
+  3. Detect issue duplicates
+  4. Detect cross-repo duplicates (SPEC-REPO-METRIC §8)
+  5. Run drift detection (SPEC-REPO-METRIC §7)
+  6. Generate triage report + auto-label stale issues
 
 Intended to be invoked by cron or CI weekly.
 """
@@ -20,9 +22,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from triage.duplicate_detect import DuplicateDetector, find_duplicates
+from triage.drift_detect import DriftDetector, DriftReport, detect_drift
+from triage.duplicate_detect import DuplicateDetector, DuplicatePair, find_duplicates
 from triage.github_issues import GitHubIssues, IssueState
-from triage.metrics import RepoHealthMetrics, HealthScore
+from triage.metrics import RepoHealthMetrics, HealthScore, run_health_check
+from triage.repo_duplicate import RepoDuplicateDetector, RepoDuplicatePair, find_repo_duplicates
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,8 @@ class TriageReport:
     duplicate_pairs: List[dict] = field(default_factory=list)
     stale_issues: List[int] = field(default_factory=list)
     unlabeled_issues: List[int] = field(default_factory=list)
+    drift: Optional[DriftReport] = None
+    repo_duplicates: List[dict] = field(default_factory=list)
     actions_taken: List[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -49,6 +55,8 @@ class TriageReport:
             "duplicate_pairs": self.duplicate_pairs,
             "stale_issues": self.stale_issues,
             "unlabeled_issues": self.unlabeled_issues,
+            "drift": self.drift.to_dict() if self.drift else None,
+            "repo_duplicates": self.repo_duplicates,
             "actions_taken": self.actions_taken,
         }
 
@@ -82,6 +90,32 @@ class TriageReport:
                     f"  - #{pair['issue_a']} ≈ #{pair['issue_b']} "
                     f"(sim={pair['similarity']}, shared={pair['shared_terms']})"
                 )
+        if self.repo_duplicates:
+            lines.append("- Cross-Repo Duplicates:")
+            for pair in self.repo_duplicates:
+                lines.append(
+                    f"  - {pair['repo_a']} ≈ {pair['repo_b']} "
+                    f"(sim={pair['similarity']}, identical={len(pair.get('identical_files', []))})"
+                )
+        if self.drift:
+            lines.extend(["", "## Drift Detection"])
+            if self.drift.stale_dependencies:
+                lines.append("- **Stale Dependencies:**")
+                for d in self.drift.stale_dependencies:
+                    lines.append(f"  - {d}")
+            if self.drift.test_regression:
+                lines.append(f"- **Test Regression:** {self.drift.test_regression}")
+            if self.drift.doc_drift:
+                lines.append("- **Documentation Drift:**")
+                for d in self.drift.doc_drift:
+                    lines.append(f"  - {d}")
+            if self.drift.dead_code:
+                lines.append("- **Dead Code:**")
+                for d in self.drift.dead_code:
+                    lines.append(f"  - {d}")
+            if self.drift.branch_divergence:
+                lines.append(f"- **Branch Divergence:** {self.drift.branch_divergence}")
+            lines.append(f"- **Severity:** {self.drift.severity}")
         if self.actions_taken:
             lines.extend(["", "## Actions Taken"] + [f"- {a}" for a in self.actions_taken])
         return "\n".join(lines)
@@ -95,6 +129,7 @@ class WeeklyTriage:
         repo_owner: str,
         repo_name: str,
         repo_root: str,
+        workspace: Optional[str] = None,
         github_token: Optional[str] = None,
         cache_dir: Optional[str] = None,
         auto_label: bool = False,
@@ -102,6 +137,7 @@ class WeeklyTriage:
         self.owner = repo_owner
         self.name = repo_name
         self.root = Path(repo_root)
+        self.workspace = Path(workspace) if workspace else self.root.parent
         self.gh = GitHubIssues(
             owner=repo_owner,
             repo=repo_name,
@@ -141,7 +177,7 @@ class WeeklyTriage:
             if not issue.labels:
                 unlabeled.append(issue.number)
 
-        # 4. Duplicate detection
+        # 4. Issue duplicate detection
         issue_dicts = [
             {"number": i.number, "title": i.title, "body": i.body}
             for i in open_issues
@@ -159,7 +195,25 @@ class WeeklyTriage:
                 except Exception as e:
                     logger.warning("Failed to label duplicates: %s", e)
 
-        # 5. Cache hygiene score for next run
+        # 5. Drift detection
+        drift = None
+        try:
+            drift = detect_drift(self.root)
+            logger.info("Drift severity: %s", drift.severity)
+        except Exception as e:
+            logger.warning("Drift detection failed: %s", e)
+
+        # 6. Cross-repo duplicate detection
+        repo_dupes = []
+        try:
+            if self.workspace.exists():
+                repo_dupe_pairs = find_repo_duplicates(self.workspace)
+                repo_dupes = [dict(d) for d in repo_dupe_pairs]
+                logger.info("Cross-repo duplicates: %d", len(repo_dupes))
+        except Exception as e:
+            logger.warning("Repo duplicate detection failed: %s", e)
+
+        # 7. Cache hygiene score for next run
         issue_hygiene_path = self.cache_dir / "issue_hygiene.json"
         try:
             hygiene = self.gh.hygiene_score()
@@ -178,10 +232,12 @@ class WeeklyTriage:
             duplicate_pairs=duplicate_pairs,
             stale_issues=stale,
             unlabeled_issues=unlabeled,
+            drift=drift,
+            repo_duplicates=repo_dupes,
             actions_taken=actions,
         )
 
-        # 6. Persist report
+        # 8. Persist report
         report_path = self.cache_dir / f"triage-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.json"
         report_path.write_text(report.to_json())
         logger.info("Report saved: %s", report_path)
@@ -193,6 +249,7 @@ def run_triage(
     owner: str,
     repo: str,
     repo_root: str,
+    workspace: Optional[str] = None,
     token: Optional[str] = None,
     auto_label: bool = False,
 ) -> TriageReport:
@@ -201,6 +258,7 @@ def run_triage(
         repo_owner=owner,
         repo_name=repo,
         repo_root=repo_root,
+        workspace=workspace,
         github_token=token,
         auto_label=auto_label,
     ).run()

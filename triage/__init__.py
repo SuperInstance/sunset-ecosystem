@@ -1,16 +1,20 @@
 """Triage — Weekly repo health and issue hygiene automation.
 
 Per SPEC-REPO-METRIC:
-  - metrics:       five-component health score
-  - github_issues:  GitHub REST API wrapper
+  - metrics:          five-component health score
+  - github_issues:    GitHub REST API wrapper
   - duplicate_detect: TF-IDF duplicate issue detection
-  - weekly:         orchestration runner
+  - repo_duplicate:   Cross-repo duplicate detection via file hashing
+  - drift_detect:   Structural drift detection (deps, tests, docs, dead code)
+  - weekly:          orchestration runner
 """
 from __future__ import annotations
 
-from triage.metrics import RepoHealthMetrics, HealthScore, run_health_check
+from triage.drift_detect import DriftDetector, DriftReport, detect_drift
+from triage.duplicate_detect import DuplicateDetector, DuplicatePair, find_duplicates
 from triage.github_issues import GitHubIssues, IssueState
-from triage.duplicate_detect import DuplicateDetector, find_duplicates, DuplicatePair
+from triage.metrics import RepoHealthMetrics, HealthScore, run_health_check
+from triage.repo_duplicate import RepoDuplicateDetector, RepoDuplicatePair, find_repo_duplicates
 from triage.weekly import WeeklyTriage, TriageReport, run_triage
 
 __all__ = [
@@ -23,8 +27,16 @@ __all__ = [
     "IssueState",
     # duplicate_detect
     "DuplicateDetector",
-    "find_duplicates",
     "DuplicatePair",
+    "find_duplicates",
+    # repo_duplicate
+    "RepoDuplicateDetector",
+    "RepoDuplicatePair",
+    "find_repo_duplicates",
+    # drift_detect
+    "DriftDetector",
+    "DriftReport",
+    "detect_drift",
     # weekly
     "WeeklyTriage",
     "TriageReport",

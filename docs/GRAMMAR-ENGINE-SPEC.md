@@ -1,6 +1,6 @@
 # Grammar Engine Specification
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Draft — Awaiting Oracle1 Review  
 **Author:** CCC Audit Remediation (kimi1 subagent)  
 **Date:** 2026-05-21  
@@ -533,6 +533,185 @@ class ValidationError(ValueError):
         message (str): Human-readable description of the violation.
         field (str, optional): The field that failed (e.g., "name", "tagline").
         rule_name (str, optional): The rule name, if known at failure time.
+    """
+```
+
+### 7.5 `score_rule()`
+
+```python
+def score_rule(
+    rule: Rule,
+    metrics: dict[str, float],
+    trinity_weights: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """Evaluate a single rule against a metrics context and compute a Trinity Score.
+
+    Parses the rule's `condition` string into an AST-safe boolean expression,
+    evaluates it against the provided metrics, and derives ethos, pathos, and
+    logos from the match quality and rule provenance.
+
+    Args:
+        rule: A validated Rule object (from `create_rule()`).
+        metrics: Key-value pairs of metric names to numeric values.
+                 Keys referenced in `rule.production.condition` must be present.
+        trinity_weights: Optional override for the Trinity axis weights.
+            Defaults to `{"ethos": 0.33, "pathos": 0.33, "logos": 0.34}`.
+
+    Returns:
+        dict with keys:
+            - `matched` (bool): Whether the condition evaluated to True.
+            - `ethos` (float): [0, 1] — does the rule respect thermal / budget limits?
+            - `pathos` (float): [0, 1] — does the rule solve a human-visible problem?
+            - `logos` (float): [0, 1] — is the condition syntactically sound and precise?
+            - `trinity` (float): `ethos * pathos * logos` (product = zero-kill).
+            - `condition_ast` (ast.Expression): The parsed, whitelisted AST for audit.
+
+    Raises:
+        ValidationError: If the condition references unknown metrics or contains
+                         operators outside the allowed AST whitelist.
+        ValueError: If metrics is empty or contains non-numeric values.
+
+    Example:
+        >>> rule = create_rule(
+        ...     name="spawn_worker",
+        ...     condition="queue_depth > 10 and cpu_idle > 0.3",
+        ... )
+        >>> score_rule(rule, {"queue_depth": 15.0, "cpu_idle": 0.5})
+        {
+            'matched': True,
+            'ethos': 0.95,
+            'pathos': 0.80,
+            'logos': 0.92,
+            'trinity': 0.6992,
+            'condition_ast': <ast.Expression ...>,
+        }
+    """
+```
+
+#### Condition Evaluation Grammar (AST Whitelist)
+
+`score_rule()` compiles the condition string to an AST and walks it with a
+strict node whitelist. Only the following `ast` node types are permitted:
+
+| Node Class | Purpose |
+|------------|---------|
+| `ast.Expression` | Root node |
+| `ast.BoolOp` / `ast.And` / `ast.Or` | Logical conjunctions |
+| `ast.Compare` / `ast.Lt` / `ast.LtE` / `ast.Gt` / `ast.GtE` / `ast.Eq` / `ast.NotEq` | Comparisons |
+| `ast.BinOp` / `ast.Add` / `ast.Sub` / `ast.Mult` / `ast.Div` | Arithmetic |
+| `ast.Name` / `ast.Load` | Metric identifiers |
+| `ast.Constant` | String, int, float, bool literals |
+
+Any other node type (e.g., `ast.Call`, `ast.Attribute`, `ast.Import`) raises
+`ValidationError` immediately.
+
+#### Trinity Derivation
+
+The three axes are derived heuristically from the match context:
+
+- **ethos** = `min(1.0, thermal_headroom / 10)` if the rule requests resources;
+  otherwise `0.9`. Penalizes rules that would breach the thermal budget.
+- **pathos** = `1.0` if `matched` else `0.1`; rules that fire when needed score
+  higher than rules that never apply.
+- **logos** = `1.0 - (syntax_error_count / max(1, len(condition)))`; penalizes
+  overly complex or ambiguous conditions.
+
+These heuristics are intentionally simple. Future versions (see §10.1) will
+replace them with JIT-compiled scoring functions.
+
+### 7.6 `evolve()`
+
+```python
+def evolve(
+    population: list[Rule],
+    scores: list[dict[str, Any]],
+    num_children: int | None = None,
+    mutation_sigma: float = 0.05,
+) -> list[Rule]:
+    """Run one generation of rule evolution: selection → crossover → mutation → validation.
+
+    Composes the Tournament, Breeder, and Grammar Engine into a single
+    high-level call. Every child rule is re-validated through `create_rule()`
+    before it is returned.
+
+    Args:
+        population: Current generation of validated Rules.
+        scores: Output of `score_rule()` for each rule in the population,
+                in the same order. Must contain `trinity` and `matched` keys.
+        num_children: How many children to produce. Defaults to
+                      `len(population) // 2`.
+        mutation_sigma: Gaussian mutation std-dev for numeric thresholds
+                        extracted from conditions. Default 0.05.
+
+    Returns:
+        list[Rule]: The next generation — winners retained + children.
+        Total length = `len(winners) + num_children`.
+
+    Raises:
+        ValidationError: If a child rule fails re-validation after mutation.
+        ValueError: If population and scores lengths mismatch.
+
+    Algorithm:
+        1. Compute Pareto frontier from `scores` (ethos, pathos, logos).
+        2. Select winners = frontier agents.
+        3. Breed children via `swarm.tournament.breed(winners, num_children)`.
+        4. For each child:
+           a. Synthesize a child Rule name: `f"{a.name}_{b.name}_gen{N}"`.
+           b. Merge parent taglines (truncated to 256 chars).
+           c. Crossover numeric thresholds in conditions (e.g., `> 10` + `> 20` → `> 15`).
+           d. Deep-merge parent exec payloads if both are literals.
+           e. Call `create_rule()` on the child — **fail-fast on any violation**.
+        5. Return `winners + validated_children`.
+
+    Example:
+        >>> gen0 = [create_rule(name="r1", condition="x > 10"),
+        ...         create_rule(name="r2", condition="x > 20")]
+        >>> scores = [score_rule(r, {"x": 15.0}) for r in gen0]
+        >>> gen1 = evolve(gen0, scores, num_children=2)
+        >>> len(gen1)
+        4   # 2 winners + 2 children
+    """
+```
+
+#### Evolution Invariants
+
+1. **Validation gate**: No child escapes `create_rule()`. A mutated rule that
+   accidentally re-introduces an attack vector is caught and discarded.
+2. **Provenance injection**: Each child carries an implicit provenance record:
+   ```python
+   {
+       "parents": [parent_a.name, parent_b.name],
+       "generation": N,
+       "mutation": {"type": "threshold_crossover", "sigma": mutation_sigma},
+       "timestamp": datetime.utcnow().isoformat(),
+   }
+   ```
+3. **Thermal respect**: `evolve()` does not interact with the JEPA grid or
+   Thermal Budget directly. It returns `Rule` objects; the caller (Breeder)
+   decides which rooms to rebirth.
+4. **Determinism**: Given the same `population`, `scores`, and `num_children`,
+   `evolve()` produces identical children when `random.seed()` is fixed.
+
+### 7.7 Batch Operations
+
+```python
+def batch_create_rules(rule_dicts: list[dict]) -> tuple[list[Rule], list[ValidationError]]:
+    """Validate a batch of rule dicts, returning successes and failures separately.
+
+    Args:
+        rule_dicts: List of canonical JSON-form dicts (see §3.2).
+
+    Returns:
+        Tuple of (validated_rules, errors). Errors preserve the index of the
+        offending dict for forensic correlation.
+
+    Example:
+        >>> rules, errors = batch_create_rules([
+        ...     {"name": "good", "production": {"tagline": "OK"}},
+        ...     {"name": "../../../bad", "production": {"tagline": "evil"}},
+        ... ])
+        >>> len(rules), len(errors)
+        (1, 1)
     """
 ```
 
