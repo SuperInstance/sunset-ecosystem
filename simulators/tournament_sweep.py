@@ -73,7 +73,7 @@ def diversity_metric(pop):
     std_l = math.sqrt(sum((a.logos - mean_l)**2 for a in pop) / n)
     return std_e + std_p + std_l
 
-def simulate(pop_size=20, generations=100, mutation_rate=0.1, thermal_cap=30, strategy='fixed', seed=42):
+def simulate(pop_size=20, generations=100, mutation_rate=0.1, thermal_cap=30, strategy='dynamic', seed=42):
     random.seed(seed)
     pop = [Agent() for _ in range(pop_size)]
     history = []

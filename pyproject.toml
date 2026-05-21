@@ -22,9 +22,10 @@ classifiers = [
 gpu = ["torch", "numpy"]
 dev = ["pytest>=7.0", "pytest-cov"]
 # ecosystem deps removed - local file:// URLs not allowed on PyPI
+vecsearch = ["turbovec>=0.1.0", "numpy"]
 
 [tool.setuptools.packages.find]
-include = ["ethos*", "pathos*", "logos*", "sunset*"]
+include = ["ethos*", "pathos*", "logos*", "sunset*", "swarm*", "nexus*", "grammar*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
