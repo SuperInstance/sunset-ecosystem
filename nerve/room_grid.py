@@ -31,13 +31,16 @@ except (StopIteration, OSError):
 
 
 def make_weights(n: int, d: int = 64, h: int = 32, l: int = 16, seed: int = 42):
+    """Deep 64→h→l architecture. w3 is near-identity to preserve diversity (not JEPA predictor)."""
     rng = np.random.RandomState(seed)
+    w3 = np.eye(l, dtype=np.float32) * 0.99  # near-identity
+    w3 += rng.randn(l, l).astype(np.float32) * 0.001  # tiny noise
     return {
         "w1": rng.randn(n, d, h).astype(np.float32) * 0.01,
         "b1": np.zeros((1, n, h), dtype=np.float32),
         "w2": rng.randn(n, h, l).astype(np.float32) * 0.01,
         "b2": np.zeros((1, n, l), dtype=np.float32),
-        "w3": rng.randn(n, l, l).astype(np.float32) * 0.01,
+        "w3": np.broadcast_to(w3, (n, l, l)).copy(),
         "b3": np.zeros((1, n, l), dtype=np.float32),
     }
 
