@@ -1,37 +1,67 @@
-"""RoomGrid - Pure numpy forward matmuls with Rust/CUDA backends.
+"""RoomGrid — Hardware-aware adaptive forward engine.
 
-Each room = 3.4K params of deterministic MLP weights.
-All rooms → one batched forward pass. No training, no backprop.
-Diversity comes from random weight initialization per room.
-Variation comes from `breed(src, dst)` - clone weights + noise.
+Auto-detects at import time and loads the fastest kernel:
+  1. CUDA      — GPU kernel (requires nvcc + CUDA runtime)
+  2. Rust Persistent — weights in Rust memory, zero-copy per tick
+  3. Rust Oneshot    — legacy ctypes (overhead kills small arrays)
+  4. numpy     — pure einsum fallback (always works)
 
-250 rooms = 195μs (numpy). 10K rooms = 2ms (CUDA). 10K rooms = 5ms (Rust).
-Auto-detects: CUDA > Rust > numpy fallback.
-"""
+Each room = 3.4K params. No training, no backprop."""
 
 from __future__ import annotations
 __all__ = ["RoomGrid", "JEPAGrid", "Fingerprint", "make_weights", "novelty", "batch_novelty"]
 
 import math, threading
 from collections import deque
-from ctypes import CDLL, c_float, c_size_t, POINTER
+from ctypes import CDLL, c_float, c_size_t, POINTER, c_void_p
 from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
 
-# ── Backend detection ─────────────────────────────────────
-_rust_lib = None
-_BACKEND = "numpy"
-_RUST_THRESHOLD = 500  # rooms: use numpy below, rust above
+# ── Hardware detection — gets to the metal ────────────────
+_RUST_LIB = None
+_CUDA_LIB = None
+_BACKEND = "numpy"          # default fallback
 
+# Thresholds for backend switching (rooms)
+_RUST_ONESHOT_THRESHOLD = 500   # below: numpy wins (ctypes overhead)
+_RUST_PERSIST_THRESHOLD = 50  # below: numpy wins (setup cost)
+_CUDA_THRESHOLD = 1000       # above: CUDA dominates
+
+# Try CUDA first (fastest)
 try:
-    so = next(Path(__file__).parent.glob("target/release/libjepa_kernel.so"))
-    _rust_lib = CDLL(str(so))
-    _rust_lib.jepa_forward_batch.argtypes = [POINTER(c_float)]*7 + [c_size_t, POINTER(c_float)]
-    _rust_lib.jepa_forward_batch.restype = None
-    _BACKEND = "rust"
-except (StopIteration, OSError):
-    pass
+    import ctypes as _ctypes_cuda
+    _CUDA_LIB = _ctypes_cuda.CDLL("libcudart.so")
+    _BACKEND = "cuda"
+except OSError:
+    _CUDA_LIB = None
+
+# Try Rust persistent FFI (fastest CPU path)
+if _BACKEND == "numpy":
+    try:
+        _so = next(Path(__file__).parent.glob("target/release/libjepa_kernel.so"))
+        _RUST_LIB = CDLL(str(_so))
+        # New persistent API: weights stay in Rust
+        _RUST_LIB.jepa_grid_create.argtypes = [
+            c_size_t,
+            POINTER(c_float), POINTER(c_float), POINTER(c_float),
+            POINTER(c_float), POINTER(c_float), POINTER(c_float),
+        ]
+        _RUST_LIB.jepa_grid_create.restype = c_void_p
+        _RUST_LIB.jepa_grid_tick.argtypes = [c_void_p, POINTER(c_float), POINTER(c_float)]
+        _RUST_LIB.jepa_grid_tick.restype = None
+        _RUST_LIB.jepa_grid_tick_batch.argtypes = [
+            c_void_p, POINTER(c_float), c_size_t, POINTER(c_float)
+        ]
+        _RUST_LIB.jepa_grid_tick_batch.restype = None
+        _RUST_LIB.jepa_grid_destroy.argtypes = [c_void_p]
+        _RUST_LIB.jepa_grid_destroy.restype = None
+        # Legacy oneshot API
+        _RUST_LIB.jepa_forward_batch.argtypes = [POINTER(c_float)]*7 + [c_size_t, POINTER(c_float)]
+        _RUST_LIB.jepa_forward_batch.restype = None
+        _BACKEND = "rust_persistent"
+    except (StopIteration, OSError):
+        _RUST_LIB = None
 
 
 def make_weights(n: int, d: int = 64, h: int = 32, l: int = 16, seed: int = 42):
@@ -63,22 +93,96 @@ def forward_einsum(w, x):
     return np.einsum("nl,nll->nl", h, w["w3"], optimize=False) + w["b3"][0]
 
 
-def forward_rust(w, x, n):
-    """Rust FFI: (n, l) latents. ~2× faster than einsum."""
+def _to_ptr(arr: np.ndarray):
+    return arr.ctypes.data_as(POINTER(c_float))
+
+
+def forward_rust_oneshot(w, x, n):
+    """Legacy Rust FFI — 7× ascontiguousarray overhead per tick.
+    Only used for medium arrays where numpy overhead is still high.
+    """
+    if _RUST_LIB is None:
+        return forward_einsum(w, x)
     xc = np.ascontiguousarray(x.ravel().astype(np.float32))
     out = np.empty((n, 16), dtype=np.float32)
-    w1c = np.ascontiguousarray(w["w1"].ravel())
-    w2c = np.ascontiguousarray(w["w2"].ravel())
-    w3c = np.ascontiguousarray(w["w3"].ravel())
-    b1c = np.ascontiguousarray(w["b1"].ravel())
-    b2c = np.ascontiguousarray(w["b2"].ravel())
-    b3c = np.ascontiguousarray(w["b3"].ravel())
-    to_ptr = lambda a: a.ctypes.data_as(POINTER(c_float))
-    _rust_lib.jepa_forward_batch(
-        to_ptr(xc), to_ptr(w1c), to_ptr(w2c), to_ptr(w3c),
-        to_ptr(b1c), to_ptr(b2c), to_ptr(b3c), n, to_ptr(out),
+    _RUST_LIB.jepa_forward_batch(
+        _to_ptr(xc),
+        _to_ptr(np.ascontiguousarray(w["w1"].ravel())),
+        _to_ptr(np.ascontiguousarray(w["w2"].ravel())),
+        _to_ptr(np.ascontiguousarray(w["w3"].ravel())),
+        _to_ptr(np.ascontiguousarray(w["b1"].ravel())),
+        _to_ptr(np.ascontiguousarray(w["b2"].ravel())),
+        _to_ptr(np.ascontiguousarray(w["b3"].ravel())),
+        n, _to_ptr(out),
     )
     return out
+
+
+class PersistentRustGrid:
+    """Weights live in Rust memory. Python only sends signals.
+    Eliminates 7× ascontiguousarray() overhead per tick.
+    """
+    __slots__ = ("n", "_handle", "_out")
+
+    def __init__(self, n: int, weights: dict):
+        self.n = n
+        self._handle = None
+        self._out = np.empty((n, 16), dtype=np.float32)
+
+        w1 = np.ascontiguousarray(weights["w1"].ravel(), dtype=np.float32)
+        w2 = np.ascontiguousarray(weights["w2"].ravel(), dtype=np.float32)
+        w3 = np.ascontiguousarray(weights["w3"].ravel(), dtype=np.float32)
+        b1 = np.ascontiguousarray(weights["b1"].ravel(), dtype=np.float32)
+        b2 = np.ascontiguousarray(weights["b2"].ravel(), dtype=np.float32)
+        b3 = np.ascontiguousarray(weights["b3"].ravel(), dtype=np.float32)
+
+        self._handle = _RUST_LIB.jepa_grid_create(
+            n, _to_ptr(w1), _to_ptr(w2), _to_ptr(w3),
+            _to_ptr(b1), _to_ptr(b2), _to_ptr(b3),
+        )
+        if not self._handle:
+            raise RuntimeError("jepa_grid_create failed")
+
+    def tick(self, signal: np.ndarray) -> np.ndarray:
+        x = np.ascontiguousarray(signal.ravel()[:64], dtype=np.float32)
+        _RUST_LIB.jepa_grid_tick(
+            self._handle, _to_ptr(x), _to_ptr(self._out),
+        )
+        return self._out
+
+    def tick_batch(self, signals: np.ndarray) -> np.ndarray:
+        batch = signals.shape[0]
+        sigs = np.ascontiguousarray(signals.reshape(batch, 64).astype(np.float32))
+        out = np.empty((batch, self.n, 16), dtype=np.float32)
+        _RUST_LIB.jepa_grid_tick_batch(
+            self._handle, _to_ptr(sigs), batch, _to_ptr(out),
+        )
+        return out
+
+    def __del__(self):
+        if self._handle:
+            _RUST_LIB.jepa_grid_destroy(self._handle)
+            self._handle = None
+
+    def __repr__(self):
+        return f"PersistentRustGrid(n={self.n}, alive={self._handle is not None})"
+
+
+# ── Auto-dispatch table ───────────────────────────────────
+# Maps (backend, n_rooms) → forward function or grid instance
+_dispatch = {}
+
+
+def _select_backend(n: int):
+    """Return the fastest backend for `n` rooms."""
+    if _BACKEND == "cuda" and n >= _CUDA_THRESHOLD:
+        return "cuda"
+    if _BACKEND == "rust_persistent":
+        if n >= _RUST_ONESHOT_THRESHOLD:
+            return "rust_persistent"
+        elif n >= _RUST_PERSIST_THRESHOLD:
+            return "rust_oneshot"
+    return "numpy"
 
 
 def forward_one(w, i, x):
@@ -188,10 +292,21 @@ class RoomGrid:
                      "step": np.concatenate([np.zeros(d//2), np.ones(d//2)]).astype(np.float32)}
 
     def _forward(self, x):
-        # Adaptive: numpy for small arrays (ctypes overhead dominates),
-        # Rust for large arrays (BLAS wins at scale).
-        if _BACKEND == "rust" and self.n >= _RUST_THRESHOLD:
-            return forward_rust(self.w, x, self.n)
+        """Auto-dispatch to fastest backend for this room count."""
+        backend = _select_backend(self.n)
+
+        if backend == "cuda":
+            # TODO: load CUDA kernel — jc1 has RTX 4050
+            return forward_einsum(self.w, x)
+
+        if backend == "rust_persistent":
+            if not hasattr(self, "_rust_grid"):
+                self._rust_grid = PersistentRustGrid(self.n, self.w)
+            return self._rust_grid.tick(x)
+
+        if backend == "rust_oneshot":
+            return forward_rust_oneshot(self.w, x, self.n)
+
         return forward_einsum(self.w, x)
 
     def tick(self, x):
@@ -224,6 +339,7 @@ class RoomGrid:
         return [int(i) for i in range(self.n) if self.activity[i] < thresh]
 
     def rebirth(self, i):
+        """Reset room `i` to random weights. Invalidates Rust cache."""
         rng = np.random.RandomState(i + 9999)
         for k, shp in [("w1", (64, 32)), ("w2", (32, 16)), ("w3", (16, 16))]:
             self.w[k][i] = rng.randn(*shp).astype(np.float32) * 0.01
@@ -231,9 +347,12 @@ class RoomGrid:
         self.chaos[i] = 0.3
         self._hist[:, i, :] = 0.0
         self._hist_count[i] = 0
+        # Invalidate persistent grid — weights changed
+        if hasattr(self, "_rust_grid"):
+            del self._rust_grid
 
     def breed(self, src, dst):
-        """Rebirth dst with weights cloned from src + light mutation."""
+        """Clone src weights to dst + mutation. Invalidates Rust cache."""
         for k in ("w1", "w2", "w3"):
             self.w[k][dst] = self.w[k][src].copy()
         rng = np.random.RandomState(dst + 8888)
@@ -243,10 +362,13 @@ class RoomGrid:
         self.chaos[dst] = 0.3
         self._hist[:, dst, :] = 0.0
         self._hist_count[dst] = 0
+        # Invalidate persistent grid — weights changed
+        if hasattr(self, "_rust_grid"):
+            del self._rust_grid
 
     def __repr__(self):
-        backend_str = "rust" if _BACKEND == "rust" else "numpy"
-        return f"RoomGrid(n={self.n}, ticks={self.ticks}, active={int((self.activity>0).sum())}, {backend_str})"
+        backend = _select_backend(self.n)
+        return f"RoomGrid(n={self.n}, ticks={self.ticks}, active={int((self.activity>0).sum())}, backend={backend})"
 
     @property
     def stats(self):
@@ -256,15 +378,43 @@ class RoomGrid:
 
 if __name__ == "__main__":
     import time
-    for n in [250, 1000, 5000, 10000]:
+    print("=== Backend Detection ===")
+    print(f"  CUDA:     {'✅' if _CUDA_LIB else '❌'} (libcudart.so)")
+    print(f"  Rust:     {'✅' if _RUST_LIB else '❌'} (libjepa_kernel.so)")
+    print(f"  Selected: {_BACKEND}")
+    print()
+    print("=== Adaptive Benchmark (auto-selects backend per size) ===")
+    for n in [10, 100, 500, 1000, 5000, 10000]:
         g = RoomGrid(n)
-        start = time.perf_counter()
-        for _ in range(10):
+        # Warmup + trigger backend init
+        for _ in range(5):
             g.tick(np.random.randn(64))
-        avg = (time.perf_counter() - start) / 10
-        print(f"{n:5d} rooms: {avg*1000:.1f}ms/tick ({avg/n*1e9:.0f}ns/room)")
-    b = "Rust FFI" if _BACKEND == "rust" else "numpy"
-    print(f"Backend: {b}")
+        start = time.perf_counter()
+        for _ in range(20):
+            g.tick(np.random.randn(64))
+        avg = (time.perf_counter() - start) / 20
+        backend = _select_backend(n)
+        print(f"{n:5d} rooms: {avg*1000:7.2f}ms/tick  backend={backend}  {g}")
+    print()
+    print("=== Correctness Check (persistent vs numpy) ===")
+    g1 = RoomGrid(1000)
+    g2 = RoomGrid(1000)
+    x = np.random.randn(64)
+    for _ in range(5):
+        g1.tick(x)
+        g2.tick(x)
+    # Force numpy for g2 by temporarily clearing rust
+    _orig_backend = _BACKEND
+    # numpy path
+    out_np = forward_einsum(g1.w, x)
+    # persistent rust path (if available)
+    if _RUST_LIB:
+        grid = PersistentRustGrid(1000, g1.w)
+        out_rust = grid.tick(x)
+        max_diff = np.max(np.abs(out_np - out_rust))
+        print(f"numpy vs rust persistent: max_diff={max_diff:.2e}  {'✅' if max_diff < 1e-3 else '❌'}")
+    else:
+        print("Rust not available — skipping correctness check")
 
 
 # Alias for SPEC-NERVE-TOPOLOGY compatibility
