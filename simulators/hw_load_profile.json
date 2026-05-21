@@ -1,0 +1,390 @@
+{
+  "results": [
+    {
+      "label": "50% Naive",
+      "throughput": 0.515679615196665,
+      "throttle_steps": 270829,
+      "throttle_per_device": {
+        "RTX4050": 67900,
+        "RyzenAI": 67763,
+        "Radeon890M": 67631,
+        "XDNA2": 67535
+      },
+      "migrations": 0,
+      "work_rtx": 9922.977025623963,
+      "work_ryzen": 9811.205413345873,
+      "work_radeon": 9843.241661338257,
+      "work_xdna": 9766.204490969205,
+      "util_rtx": 24.807442564059905,
+      "util_ryzen": 43.60535739264832,
+      "util_radeon": 32.81080553779419,
+      "util_xdna": 16.277007484948676,
+      "avg_thermal": 83.94978626012549
+    },
+    {
+      "label": "50% Thermal",
+      "throughput": 1.0,
+      "throttle_steps": 26498,
+      "throttle_per_device": {
+        "RTX4050": 3560,
+        "RyzenAI": 5168,
+        "Radeon890M": 7991,
+        "XDNA2": 9779
+      },
+      "migrations": 8595,
+      "work_rtx": 2575.2878240619984,
+      "work_ryzen": 2475.166064298927,
+      "work_radeon": 2170.62672527914,
+      "work_xdna": 2208.989697035511,
+      "util_rtx": 6.438219560154996,
+      "util_ryzen": 11.000738063550786,
+      "util_radeon": 7.235422417597133,
+      "util_xdna": 3.6816494950591854,
+      "avg_thermal": 0.0
+    },
+    {
+      "label": "50% Adaptive",
+      "throughput": 1.0,
+      "throttle_steps": 31501,
+      "throttle_per_device": {
+        "RTX4050": 4565,
+        "RyzenAI": 6426,
+        "Radeon890M": 8143,
+        "XDNA2": 12367
+      },
+      "migrations": 8493,
+      "work_rtx": 2840.4479816202875,
+      "work_ryzen": 2544.4471724509012,
+      "work_radeon": 2346.116440527448,
+      "work_xdna": 2408.7367166220156,
+      "util_rtx": 7.101119954050719,
+      "util_ryzen": 11.308654099781783,
+      "util_radeon": 7.820388135091494,
+      "util_xdna": 4.014561194370026,
+      "avg_thermal": 0.0
+    },
+    {
+      "label": "60% Naive",
+      "throughput": 0.4294661794704434,
+      "throttle_steps": 343052,
+      "throttle_per_device": {
+        "RTX4050": 85952,
+        "RyzenAI": 85807,
+        "Radeon890M": 85695,
+        "XDNA2": 85598
+      },
+      "migrations": 0,
+      "work_rtx": 9879.587784291753,
+      "work_ryzen": 9801.132199662365,
+      "work_radeon": 9847.87583212757,
+      "work_xdna": 9789.409512450384,
+      "util_rtx": 24.69896946072938,
+      "util_ryzen": 43.560587554054955,
+      "util_radeon": 32.82625277375857,
+      "util_xdna": 16.31568252075064,
+      "avg_thermal": 83.24514653463171
+    },
+    {
+      "label": "60% Thermal",
+      "throughput": 1.0,
+      "throttle_steps": 31867,
+      "throttle_per_device": {
+        "RTX4050": 4072,
+        "RyzenAI": 7750,
+        "Radeon890M": 7598,
+        "XDNA2": 12447
+      },
+      "migrations": 10527,
+      "work_rtx": 2633.5024533399833,
+      "work_ryzen": 2557.3244864447292,
+      "work_radeon": 2347.9601336393316,
+      "work_xdna": 2187.1949897167983,
+      "util_rtx": 6.583756133349958,
+      "util_ryzen": 11.36588660642102,
+      "util_radeon": 7.826533778797772,
+      "util_xdna": 3.64532498286133,
+      "avg_thermal": 0.0
+    },
+    {
+      "label": "60% Adaptive",
+      "throughput": 1.0,
+      "throttle_steps": 38152,
+      "throttle_per_device": {
+        "RTX4050": 6136,
+        "RyzenAI": 9660,
+        "Radeon890M": 9957,
+        "XDNA2": 12399
+      },
+      "migrations": 10427,
+      "work_rtx": 2830.6448442833535,
+      "work_ryzen": 2773.803708993002,
+      "work_radeon": 2420.801089583382,
+      "work_xdna": 2397.246812809236,
+      "util_rtx": 7.076612110708385,
+      "util_ryzen": 12.328016484413343,
+      "util_radeon": 8.06933696527794,
+      "util_xdna": 3.9954113546820604,
+      "avg_thermal": 0.0
+    },
+    {
+      "label": "70% Naive",
+      "throughput": 0.3682290309480162,
+      "throttle_steps": 415379,
+      "throttle_per_device": {
+        "RTX4050": 104024,
+        "RyzenAI": 103904,
+        "Radeon890M": 103775,
+        "XDNA2": 103676
+      },
+      "migrations": 0,
+      "work_rtx": 9876.436292616183,
+      "work_ryzen": 9823.454562923562,
+      "work_radeon": 9862.118864450698,
+      "work_xdna": 9759.28448949109,
+      "util_rtx": 24.69109073154046,
+      "util_ryzen": 43.65979805743805,
+      "util_radeon": 32.873729548168996,
+      "util_xdna": 16.265474149151817,
+      "avg_thermal": 83.33559076074211
+    },
+    {
+      "label": "70% Thermal",
+      "throughput": 1.0,
+      "throttle_steps": 42095,
+      "throttle_per_device": {
+        "RTX4050": 8640,
+        "RyzenAI": 7508,
+        "Radeon890M": 11704,
+        "XDNA2": 14243
+      },
+      "migrations": 12429,
+      "work_rtx": 2816.757947867771,
+      "work_ryzen": 2586.710523722284,
+      "work_radeon": 2593.7849336278805,
+      "work_xdna": 2272.539211032459,
+      "util_rtx": 7.041894869669426,
+      "util_ryzen": 11.496491216543484,
+      "util_radeon": 8.6459497787596,
+      "util_xdna": 3.7875653517207652,
+      "avg_thermal": 0.0
+    },
+    {
+      "label": "70% Adaptive",
+      "throughput": 1.0,
+      "throttle_steps": 49615,
+      "throttle_per_device": {
+        "RTX4050": 9293,
+        "RyzenAI": 11014,
+        "Radeon890M": 13381,
+        "XDNA2": 15927
+      },
+      "migrations": 12333,
+      "work_rtx": 2839.372447320714,
+      "work_ryzen": 2785.9389633625,
+      "work_radeon": 2638.5469580743274,
+      "work_xdna": 2690.0096244206475,
+      "util_rtx": 7.098431118301784,
+      "util_ryzen": 12.381950948277778,
+      "util_radeon": 8.795156526914424,
+      "util_xdna": 4.483349374034412,
+      "avg_thermal": 0.0
+    },
+    {
+      "label": "80% Naive",
+      "throughput": 0.32256792501616216,
+      "throttle_steps": 495282,
+      "throttle_per_device": {
+        "RTX4050": 123999,
+        "RyzenAI": 123871,
+        "Radeon890M": 123763,
+        "XDNA2": 123649
+      },
+      "migrations": 0,
+      "work_rtx": 9874.212189741438,
+      "work_ryzen": 9840.529700087798,
+      "work_radeon": 9836.860911091855,
+      "work_xdna": 9826.704695387913,
+      "util_rtx": 24.685530474353595,
+      "util_ryzen": 43.735687555945766,
+      "util_radeon": 32.78953637030618,
+      "util_xdna": 16.377841158979855,
+      "avg_thermal": 84.90345614849726
+    },
+    {
+      "label": "80% Thermal",
+      "throughput": 1.0,
+      "throttle_steps": 44576,
+      "throttle_per_device": {
+        "RTX4050": 6700,
+        "RyzenAI": 9487,
+        "Radeon890M": 11266,
+        "XDNA2": 17123
+      },
+      "migrations": 14472,
+      "work_rtx": 2601.473389076494,
+      "work_ryzen": 2568.74503330085,
+      "work_radeon": 2615.287098213762,
+      "work_xdna": 2182.354390941447,
+      "util_rtx": 6.503683472691235,
+      "util_ryzen": 11.416644592448224,
+      "util_radeon": 8.71762366071254,
+      "util_xdna": 3.6372573182357453,
+      "avg_thermal": 0.0
+    },
+    {
+      "label": "80% Adaptive",
+      "throughput": 1.0,
+      "throttle_steps": 52418,
+      "throttle_per_device": {
+        "RTX4050": 9524,
+        "RyzenAI": 11497,
+        "Radeon890M": 14786,
+        "XDNA2": 16611
+      },
+      "migrations": 14393,
+      "work_rtx": 2777.0851296295064,
+      "work_ryzen": 2745.760762169727,
+      "work_radeon": 2636.2509526506074,
+      "work_xdna": 2393.719196835942,
+      "util_rtx": 6.942712824073766,
+      "util_ryzen": 12.203381165198786,
+      "util_radeon": 8.787503175502025,
+      "util_xdna": 3.9895319947265704,
+      "avg_thermal": 0.0
+    },
+    {
+      "label": "90% Naive",
+      "throughput": 0.28728539091743543,
+      "throttle_steps": 576723,
+      "throttle_per_device": {
+        "RTX4050": 144367,
+        "RyzenAI": 144235,
+        "Radeon890M": 144120,
+        "XDNA2": 144001
+      },
+      "migrations": 0,
+      "work_rtx": 9896.30512965721,
+      "work_ryzen": 9827.296143098827,
+      "work_radeon": 9869.699456550881,
+      "work_xdna": 9866.801393284259,
+      "util_rtx": 24.740762824143026,
+      "util_ryzen": 43.6768717471059,
+      "util_radeon": 32.89899818850294,
+      "util_xdna": 16.4446689888071,
+      "avg_thermal": 87.15280837125749
+    },
+    {
+      "label": "90% Thermal",
+      "throughput": 1.0,
+      "throttle_steps": 50554,
+      "throttle_per_device": {
+        "RTX4050": 7764,
+        "RyzenAI": 14906,
+        "Radeon890M": 13510,
+        "XDNA2": 14374
+      },
+      "migrations": 16441,
+      "work_rtx": 2591.6261438756023,
+      "work_ryzen": 2554.780702730418,
+      "work_radeon": 2594.3627227990987,
+      "work_xdna": 2176.620043145442,
+      "util_rtx": 6.479065359689005,
+      "util_ryzen": 11.354580901024079,
+      "util_radeon": 8.647875742663661,
+      "util_xdna": 3.62770007190907,
+      "avg_thermal": 0.0
+    },
+    {
+      "label": "90% Adaptive",
+      "throughput": 1.0,
+      "throttle_steps": 59825,
+      "throttle_per_device": {
+        "RTX4050": 6199,
+        "RyzenAI": 15389,
+        "Radeon890M": 15653,
+        "XDNA2": 22584
+      },
+      "migrations": 16341,
+      "work_rtx": 2835.2706205566087,
+      "work_ryzen": 2803.778651902132,
+      "work_radeon": 2675.783064347348,
+      "work_xdna": 2325.601701268383,
+      "util_rtx": 7.088176551391522,
+      "util_ryzen": 12.461238452898364,
+      "util_radeon": 8.919276881157828,
+      "util_xdna": 3.876002835447305,
+      "avg_thermal": 0.0
+    },
+    {
+      "label": "95% Naive",
+      "throughput": 0.27120413052174397,
+      "throttle_steps": 607381,
+      "throttle_per_device": {
+        "RTX4050": 152037,
+        "RyzenAI": 151895,
+        "Radeon890M": 151765,
+        "XDNA2": 151684
+      },
+      "migrations": 0,
+      "work_rtx": 9884.378017215515,
+      "work_ryzen": 9828.528878939824,
+      "work_radeon": 9835.714414211929,
+      "work_xdna": 9761.26656764069,
+      "util_rtx": 24.710945043038787,
+      "util_ryzen": 43.68235057306588,
+      "util_radeon": 32.78571471403976,
+      "util_xdna": 16.268777612734482,
+      "avg_thermal": 83.02191664521882
+    },
+    {
+      "label": "95% Thermal",
+      "throughput": 1.0,
+      "throttle_steps": 55141,
+      "throttle_per_device": {
+        "RTX4050": 8862,
+        "RyzenAI": 9972,
+        "Radeon890M": 12042,
+        "XDNA2": 24265
+      },
+      "migrations": 17392,
+      "work_rtx": 2610.328927112382,
+      "work_ryzen": 2571.131461766329,
+      "work_radeon": 2696.0577652362063,
+      "work_xdna": 2299.056547873503,
+      "util_rtx": 6.525822317780955,
+      "util_ryzen": 11.427250941183683,
+      "util_radeon": 8.986859217454022,
+      "util_xdna": 3.8317609131225048,
+      "avg_thermal": 0.0
+    },
+    {
+      "label": "95% Adaptive",
+      "throughput": 1.0,
+      "throttle_steps": 67832,
+      "throttle_per_device": {
+        "RTX4050": 10995,
+        "RyzenAI": 15118,
+        "Radeon890M": 23542,
+        "XDNA2": 18177
+      },
+      "migrations": 17277,
+      "work_rtx": 2875.0840554510864,
+      "work_ryzen": 2835.5831691265375,
+      "work_radeon": 2619.9053067187406,
+      "work_xdna": 2690.683290675533,
+      "util_rtx": 7.1877101386277165,
+      "util_ryzen": 12.602591862784612,
+      "util_radeon": 8.733017689062468,
+      "util_xdna": 4.484472151125889,
+      "avg_thermal": 0.0
+    }
+  ],
+  "breakdown_load": null,
+  "params": {
+    "steps": 500,
+    "migration_cost": 8.0,
+    "flight_steps": 2,
+    "thermal_threshold": 0.55
+  },
+  "runtime_seconds": 20.797467470169067
+}
