@@ -17,6 +17,7 @@ from __future__ import annotations
 __all__ = ["AutoBreeder"]
 
 import logging
+import random
 import threading
 import time
 from dataclasses import dataclass, field
@@ -105,6 +106,67 @@ class AutoBreeder:
 
     # ── public API ──────────────────────────────────────────
 
+    def select_parents(
+        self,
+        n_winners: Optional[int] = None,
+        use_vector: bool = True,
+    ) -> list[AgentScore]:
+        """Public API: select parent agents for breeding.
+
+        Runs a tournament on hot rooms and returns the top *n_winners*.
+        When *use_vector* is True and a ``FluxVectorTable`` was provided
+        at construction, the method also returns the vector-selected pairs
+        so callers can inspect diversity-aware choices.
+
+        Args:
+            n_winners: How many winners to select. Defaults to self.n_winners.
+            use_vector: Whether to prefer vector-aware selection when a table
+                is available.
+
+        Returns:
+            List of AgentScore winners (best first).  Empty list when no
+            hot rooms exist.
+        """
+        n_winners = n_winners or self.n_winners
+
+        hot_rooms = self.grid.top(k=max(20, n_winners * 2))
+        if not hot_rooms:
+            return []
+
+        max_activity = max(a for _, a in hot_rooms) or 1.0
+        population = [
+            AgentScore(
+                agent_id=f"room_{rid}",
+                ethos=activity / max_activity,
+                pathos=activity / max_activity,
+                logos=activity / max_activity,
+            )
+            for rid, activity in hot_rooms
+        ]
+
+        tournament = TournamentRound(population)
+        ranked = tournament.run()
+        winners = [r.scores for r in ranked[:n_winners] if r.scores is not None]
+
+        if use_vector and self._vector_table is not None:
+            # Vector-aware path: select parent pairs for diversity.
+            # We return the *primary* parents (parent_a) from each pair.
+            pairs = self._select_parents_vector(winners, n_winners)
+            primary = []
+            for a, b in pairs:
+                if a is not None:
+                    primary.append(a)
+            # Deduplicate while preserving order
+            seen: set[str] = set()
+            deduped: list[AgentScore] = []
+            for w in primary:
+                if w.agent_id not in seen:
+                    seen.add(w.agent_id)
+                    deduped.append(w)
+            return deduped[:n_winners]
+
+        return winners
+
     def auto_breed(
         self,
         n_winners: Optional[int] = None,
@@ -159,10 +221,11 @@ class AutoBreeder:
             return []
 
         # Select parents — vector-aware or random
+        n_children = min(len(cold_rooms), n_winners)
         if self._vector_table is not None:
-            parent_pairs = self._select_parents_vector(winners, len(cold_rooms))
+            parent_pairs = self._select_parents_vector(winners, n_children)
         else:
-            parent_pairs = self._select_parents_random(winners, len(cold_rooms))
+            parent_pairs = self._select_parents_random(winners, n_children)
 
         # Breed children from selected parent pairs
         children = self._breed_from_pairs(parent_pairs)
