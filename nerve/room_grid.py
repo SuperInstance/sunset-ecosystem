@@ -1,9 +1,9 @@
-"""RoomGrid — Pure numpy forward matmuls with Rust/CUDA backends.
+"""RoomGrid - Pure numpy forward matmuls with Rust/CUDA backends.
 
 Each room = 3.4K params of deterministic MLP weights.
 All rooms → one batched forward pass. No training, no backprop.
 Diversity comes from random weight initialization per room.
-Variation comes from `breed(src, dst)` — clone weights + noise.
+Variation comes from `breed(src, dst)` - clone weights + noise.
 
 250 rooms = 195μs (numpy). 10K rooms = 2ms (CUDA). 10K rooms = 5ms (Rust).
 Auto-detects: CUDA > Rust > numpy fallback.
@@ -22,6 +22,8 @@ import numpy as np
 # ── Backend detection ─────────────────────────────────────
 _rust_lib = None
 _BACKEND = "numpy"
+_RUST_THRESHOLD = 500  # rooms: use numpy below, rust above
+
 try:
     so = next(Path(__file__).parent.glob("target/release/libjepa_kernel.so"))
     _rust_lib = CDLL(str(so))
@@ -48,13 +50,17 @@ def make_weights(n: int, d: int = 64, h: int = 32, l: int = 16, seed: int = 42):
 
 
 def forward_einsum(w, x):
-    """Numpy einsum fallback: (n, l) latents."""
+    """Numpy einsum fallback: (n, l) latents.
+
+    PERFORMANCE: optimize=False skips expensive path optimization
+    for small arrays where overhead exceeds computation time.
+    """
     x = x.ravel().astype(np.float32)
-    h = np.einsum("d,ndh->nh", x, w["w1"]) + w["b1"][0]
+    h = np.einsum("d,ndh->nh", x, w["w1"], optimize=False) + w["b1"][0]
     h = np.maximum(h, 0, out=h)
-    h = np.einsum("nh,nhl->nl", h, w["w2"]) + w["b2"][0]
+    h = np.einsum("nh,nhl->nl", h, w["w2"], optimize=False) + w["b2"][0]
     h = np.maximum(h, 0, out=h)
-    return np.einsum("nl,nll->nl", h, w["w3"]) + w["b3"][0]
+    return np.einsum("nl,nll->nl", h, w["w3"], optimize=False) + w["b3"][0]
 
 
 def forward_rust(w, x, n):
@@ -95,12 +101,16 @@ def novelty(z, history):
     return float(1.0 - (zn * rn).sum(axis=-1).mean())
 
 
-def batch_novelty(latents: np.ndarray, history: dict[int, deque]) -> np.ndarray:
-    """Vectorized novelty for all rooms (SPEC-JEPA-GRID-OPTIMIZATION §4).
+def batch_novelty(latents: np.ndarray, hist: np.ndarray, hist_count: np.ndarray,
+                 hist_idx: int, hist_max: int) -> np.ndarray:
+    """Vectorized novelty for all rooms — ring buffer edition.
 
     Args:
         latents: (n, 16) current latents
-        history: room_id -> deque of past latents (up to 20, we use last 3)
+        hist: (maxlen, n, 16) ring buffer of past latents
+        hist_count: (n,) how many entries per room
+        hist_idx: current write pointer
+        hist_max: ring buffer capacity
 
     Returns:
         (n,) novelty scores [0, 1]
@@ -109,14 +119,15 @@ def batch_novelty(latents: np.ndarray, history: dict[int, deque]) -> np.ndarray:
     norms = np.linalg.norm(latents, axis=1, keepdims=True) + 1e-8
     zn = latents / norms  # (n, 16)
 
-    hist_tensor = np.zeros((n, 3, 16), dtype=np.float32)
-    hist_mask = np.zeros((n, 3), dtype=np.float32)
+    # Extract last 3 entries from ring buffer — vectorized
+    offsets = [(hist_idx - 1) % hist_max,
+               (hist_idx - 2) % hist_max,
+               (hist_idx - 3) % hist_max]
+    hist_tensor = hist[offsets].transpose(1, 0, 2)  # (n, 3, 16)
 
-    for i in range(n):
-        h = list(history.get(i, []))[-3:]
-        for j, z in enumerate(h):
-            hist_tensor[i, j] = z
-            hist_mask[i, j] = 1.0
+    hist_mask = np.zeros((n, 3), dtype=np.float32)
+    for j in range(3):
+        hist_mask[:, j] = (hist_count >= j + 1).astype(np.float32)
 
     h_norms = np.linalg.norm(hist_tensor, axis=-1, keepdims=True) + 1e-8
     hn = hist_tensor / h_norms
@@ -163,31 +174,40 @@ class RoomGrid:
         self.w = make_weights(n, d, h, l)
         self.activity = np.zeros(n, dtype=np.int32)
         self.chaos = np.full(n, chaos, dtype=np.float32)
-        self.history = {i: deque(maxlen=20) for i in range(n)}
         self.ticks = 0
         self.l = l
         self._out = np.empty((n, 16), dtype=np.float32)  # pre-allocated output buffer
+        # Ring buffer history: (maxlen, n, l) — vectorized, no per-room deques
+        self._hist_max = 20
+        self._hist = np.zeros((self._hist_max, n, l), dtype=np.float32)
+        self._hist_idx = 0  # write pointer
+        self._hist_count = np.zeros(n, dtype=np.int32)  # how many entries per room
         t = np.linspace(0, 2 * math.pi, d)
         self._ref = {"sine": np.sin(t).astype(np.float32),
                      "noise": np.random.randn(d).astype(np.float32),
                      "step": np.concatenate([np.zeros(d//2), np.ones(d//2)]).astype(np.float32)}
 
     def _forward(self, x):
-        return forward_rust(self.w, x, self.n) if _BACKEND == "rust" else forward_einsum(self.w, x)
+        # Adaptive: numpy for small arrays (ctypes overhead dominates),
+        # Rust for large arrays (BLAS wins at scale).
+        if _BACKEND == "rust" and self.n >= _RUST_THRESHOLD:
+            return forward_rust(self.w, x, self.n)
+        return forward_einsum(self.w, x)
 
     def tick(self, x):
         self.ticks += 1
         latents = self._forward(x)
-        # Vectorized novelty + chaos gating (SPEC-JEPA-GRID-OPTIMIZATION §4)
-        nv = batch_novelty(latents, self.history)
+        # Vectorized ring-buffer append — no Python loop, no per-room .copy()
+        self._hist[self._hist_idx] = latents
+        self._hist_idx = (self._hist_idx + 1) % self._hist_max
+        self._hist_count = np.minimum(self._hist_count + 1, self._hist_max)
+        # Vectorized novelty + chaos gating
+        nv = batch_novelty(latents, self._hist, self._hist_count, self._hist_idx, self._hist_max)
         chaos_fire = np.random.random(self.n) < self.chaos
         fired_mask = (nv > 0.5) | chaos_fire
         fired = np.where(fired_mask)[0].tolist()[:10]
         self.activity[fired_mask] += 1
         self.chaos = np.where(fired_mask, np.maximum(0.01, self.chaos * 0.99), self.chaos)
-        # O(1) history append via deque
-        for i in range(self.n):
-            self.history[i].append(latents[i].copy())
         return {"fired": int(fired_mask.sum()), "ids": fired, "tick": self.ticks}
 
     def fingerprints(self, n=50):
@@ -209,7 +229,8 @@ class RoomGrid:
             self.w[k][i] = rng.randn(*shp).astype(np.float32) * 0.01
         self.activity[i] = 0
         self.chaos[i] = 0.3
-        self.history[i] = deque(maxlen=20)
+        self._hist[:, i, :] = 0.0
+        self._hist_count[i] = 0
 
     def breed(self, src, dst):
         """Rebirth dst with weights cloned from src + light mutation."""
@@ -220,7 +241,8 @@ class RoomGrid:
             self.w[k][dst] += rng.randn(*self.w[k][dst].shape).astype(np.float32) * 0.005
         self.activity[dst] = 0
         self.chaos[dst] = 0.3
-        self.history[dst] = deque(maxlen=20)
+        self._hist[:, dst, :] = 0.0
+        self._hist_count[dst] = 0
 
     def __repr__(self):
         backend_str = "rust" if _BACKEND == "rust" else "numpy"

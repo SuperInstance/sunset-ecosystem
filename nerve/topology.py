@@ -135,33 +135,37 @@ class NerveTopology:
     def _encode_tile(self, tile: SensoryTile) -> np.ndarray:
         """Encode a SensoryTile into a signal vector for the grid.
 
-        PERFORMANCE: Cached by pattern_id — avoids repeated RandomState creation.
-        The old implementation created a RandomState per call (0.5ms each),
-        which dominated tick() latency at 150+ calls per tick.
+        PERFORMANCE:
+        - Cached by pattern_id — avoids repeated encoding.
+        - Fast path: deterministic lookup table (1024 pre-generated vectors)
+          eliminates RandomState creation overhead on cache miss.
         """
-        # Cache key: pattern_id + state (deterministic encoding)
         cache_key = (tile.pattern_id, tile.state.value)
-        if hasattr(self, '_tile_cache') and cache_key in self._tile_cache:
-            signal = self._tile_cache[cache_key].copy()
-        else:
-            if not hasattr(self, '_tile_cache'):
-                self._tile_cache = {}
-            rng = np.random.RandomState(hash(tile.pattern_id) % (2**31))
-            signal = rng.randn(self.signal_dim).astype(np.float32) * 0.1
-            self._tile_cache[cache_key] = signal.copy()
+        if not hasattr(self, '_tile_cache'):
+            self._tile_cache = {}
+
+        cached = self._tile_cache.get(cache_key)
+        if cached is None:
+            # Deterministic encoding via lookup table — no RandomState alloc
+            idx = abs(hash(tile.pattern_id)) % 1024
+            if not hasattr(self, '_encoding_lut'):
+                rng = np.random.RandomState(42)
+                self._encoding_lut = rng.randn(1024, self.signal_dim).astype(np.float32) * 0.1
+            cached = self._encoding_lut[idx].copy()
+            self._tile_cache[cache_key] = cached
 
         # Energy scaling by fiber state
+        scale = 0.5 + tile.confidence * 0.5
         if tile.state == FiberState.COMPILED:
-            signal *= 0.3
+            scale *= 0.3
         elif tile.state == FiberState.NOVELTY_ALERT:
-            signal *= 2.0
+            scale *= 2.0
         elif tile.state == FiberState.PERCEIVING:
-            signal *= 1.0
+            scale *= 1.0
         elif tile.state == FiberState.ADAPTING:
-            signal *= 0.7
+            scale *= 0.7
 
-        signal *= (0.5 + tile.confidence * 0.5)
-        return signal
+        return cached * scale
 
     def tick(self, signals: dict[str, Any] | None = None) -> TickResult:
         """One full topology tick — optimized for speed."""
@@ -172,12 +176,21 @@ class NerveTopology:
         tiles: dict[str, SensoryTile] = {}
         novel_count = 0
 
-        for fid, fiber in self.fibers.items():
-            raw = signals.get(fid, np.random.randn(self.signal_dim)) if signals else None
-            if raw is None:
-                raw = np.random.randn(self.signal_dim).astype(np.float32)
+        # Batch random signal generation — one call instead of n_fibers
+        if signals is None:
+            batch_signals = {}
+        else:
+            batch_signals = signals.copy()
+        
+        # Generate missing signals in one numpy call
+        missing = [fid for fid in self.fibers if fid not in batch_signals]
+        if missing:
+            rng_batch = np.random.randn(len(missing), self.signal_dim).astype(np.float32)
+            for i, fid in enumerate(missing):
+                batch_signals[fid] = rng_batch[i]
 
-            tile = fiber.perceive(raw)
+        for fid, fiber in self.fibers.items():
+            tile = fiber.perceive(batch_signals[fid])
             tiles[fid] = tile
             if tile.state in (FiberState.NOVELTY_ALERT, FiberState.PERCEIVING):
                 novel_count += 1
@@ -185,18 +198,27 @@ class NerveTopology:
         # ── SELECT: Route tiles to rooms (FAST PATH) ──────────
         room_signals: dict[str, list[tuple[str, SensoryTile]]] = {}
         routes_activated = 0
+        fired_pairs: set[tuple[str, str]] = set()
 
         for fid, tile in tiles.items():
-            fired = self.routing.fire_fast(fid)  # ← vectorized
+            fired = self.routing.fire_fast(fid)
             routes_activated += len(fired)
             for rid in fired:
-                room_signals.setdefault(rid, []).append((fid, tile))
+                fired_pairs.add((fid, rid))
+                if rid not in room_signals:
+                    room_signals[rid] = []
+                room_signals[rid].append((fid, tile))
 
         # ── COMPILE: Grid processes combined signal ────────────
+        # PRE-ENCODE: only 4 unique tiles per tick, not 120+ redundant calls
+        encoded_tiles: dict[str, np.ndarray] = {}
+        for fid, tile in tiles.items():
+            encoded_tiles[fid] = self._encode_tile(tile)
+
         combined = np.zeros(self.signal_dim, dtype=np.float32)
         for rid, sources in room_signals.items():
-            for fid, tile in sources:
-                combined += self._encode_tile(tile)
+            for fid, _ in sources:
+                combined += encoded_tiles[fid]
 
         if np.any(combined != 0):
             combined /= max(1, len(room_signals))
@@ -205,32 +227,39 @@ class NerveTopology:
             grid_result = {"fired": 0, "ids": [], "tick": self.tick_count}
 
         # ── FEEDBACK: Batch reinforce routes ──────────────────
-        routes_compiled = 0
-        fired_room_ids = {f"room-{i}" for i in grid_result.get("ids", [])}
+        # Positive: only for grid-fired rooms
+        fired_ids = grid_result.get("ids", [])
+        n_fired = len(fired_ids)
+        n_fibers = len(self.fibers)
+        
+        # Pre-size the feedback list to avoid reallocations
         feedback_batch: list[tuple[str, str, bool]] = []
+        
+        fid_list = list(self.fibers.keys())
+        for fid in fid_list:
+            for idx in fired_ids:
+                feedback_batch.append((fid, f"room-{idx}", True))
 
-        # Collect all feedback into batch
-        for fid in self.fibers:
-            for rid in fired_room_ids:
-                feedback_batch.append((fid, rid, True))
-
-        # Penalize routes to cold rooms (cached)
-        cold_rooms = self.grid.cold()
-        for room_idx in cold_rooms:
-            rid = f"room-{room_idx}"
-            for fid in self.fibers:
-                feedback_batch.append((fid, rid, False))
+        # Negative: vectorized cold room detection
+        cold_mask = self.grid.activity < 1
+        cold_indices = np.where(cold_mask)[0]
+        fired_set = set(fired_ids)
+        for idx in cold_indices:
+            if idx not in fired_set:
+                rid = f"room-{idx}"
+                for fid in fid_list:
+                    feedback_batch.append((fid, rid, False))
 
         # Apply batch feedback
         self.routing.feedback_batch(feedback_batch)
 
-        # Count compiled routes
-        for fid in self.fibers:
-            for rid in fired_room_ids:
-                route_key = self.routing._route_key(fid, rid)
-                route = self.routing._routes.get(route_key)
-                if route and route.strength > 0.9:
-                    routes_compiled += 1
+        # Count compiled routes — from fired_pairs (fast)
+        routes_compiled = 0
+        for fid, rid in fired_pairs:
+            route_key = self.routing._route_key(fid, rid)
+            route = self.routing._routes.get(route_key)
+            if route and route.strength > 0.9:
+                routes_compiled += 1
 
         # ── REGULATE: Adaptive chaos decay ──────────────────────
         compiled_fraction = routes_compiled / max(1, len(self.routing._routes))

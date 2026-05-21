@@ -18,6 +18,7 @@ from __future__ import annotations
 
 __all__ = ["RoutingLayer", "Route", "HebbianChannel"]
 
+import functools
 import math
 import random
 import threading
@@ -232,17 +233,21 @@ class RoutingLayer:
         if n < 2:
             return
         if n <= top_k:
-            # Small enough — do all pairs
-            pairs = [(fired[i], fired[j]) for i in range(n) for j in range(i + 1, n)]
+            # Small enough — do all pairs without building intermediate list
+            for i in range(n):
+                for j in range(i + 1, n):
+                    key = self._channel_key(fired[i], fired[j])
+                    if key in self._channels:
+                        self._channels[key].activate()
         else:
-            # Large — sample top_k random pairs
-            all_pairs = [(fired[i], fired[j]) for i in range(n) for j in range(i + 1, n)]
-            pairs = random.sample(all_pairs, min(top_k, len(all_pairs)))
-
-        for a, b in pairs:
-            key = self._channel_key(a, b)
-            if key in self._channels:
-                self._channels[key].activate()
+            # Large — sample random pairs directly, no list materialization
+            indices = list(range(n))
+            for _ in range(min(top_k, n * (n - 1) // 2)):
+                i, j = random.sample(indices, 2)
+                a, b = fired[i], fired[j]
+                key = self._channel_key(a, b)
+                if key in self._channels:
+                    self._channels[key].activate()
 
     def feedback(self, source: str, destination: str, success: bool) -> None:
         """Provide feedback on a route's outcome."""
