@@ -88,38 +88,60 @@ class AutoBreeder:
 
     # ── public API ──────────────────────────────────────────
 
-    def auto_breed(
+    def select_parents(
         self,
+        vector_table=None,
         n_winners: Optional[int] = None,
-    ) -> list[tuple[int, str]]:
-        """Run one breeding cycle.
+    ) -> list[AgentScore]:
+        """Select parent agents using vector table or tournament fallback.
 
-        1. Find cold rooms (grid.cold(threshold)).
-        2. Score hot rooms as tournament agents (ethos=pathos=logos=normalized activity).
-        3. Run tournament, take top N winners.
-        4. Breed children from winners.
-        5. Rebirth cold rooms using cloned winner weights.
-        6. Respect thermal budget (parent-sacrifice-before-child-spawn).
+        When *vector_table* is provided and contains entries for hot rooms,
+        selects parents by vector magnitude (proxy for embedding diversity).
+        Otherwise falls back to TournamentRound on activity-based scores.
 
         Args:
-            n_winners: Override for how many tournament winners to use.
-                Defaults to self.n_winners.
+            vector_table: Optional FluxVectorTable for similarity-based selection.
+            n_winners: How many parents to select. Defaults to self.n_winners.
 
         Returns:
-            List of (reborn_room_id, parent_agent_id) tuples.
+            List of AgentScore winners (best first).
         """
         n_winners = n_winners or self.n_winners
 
-        cold_rooms = self.grid.cold(thresh=self.cold_threshold)
-        if not cold_rooms:
-            return []
-
-        # Build scores for hot rooms
         hot_rooms = self.grid.top(k=max(20, n_winners * 2))
         if not hot_rooms:
             return []
 
         max_activity = max(a for _, a in hot_rooms) or 1.0
+
+        # ── vector-based path ─────────────────────────────────
+        if vector_table is not None and getattr(vector_table, "vectors", {}):
+            scored: list[tuple[float, str, int]] = []
+            for rid, activity in hot_rooms:
+                agent_id = f"room_{rid}"
+                vec = vector_table.vectors.get(agent_id)
+                if vec is not None:
+                    # Diversity proxy: L2 norm weighted by relative activity
+                    score = float(np.linalg.norm(vec)) * (activity / max_activity)
+                    scored.append((score, agent_id, activity))
+
+            if len(scored) >= n_winners:
+                scored.sort(reverse=True)
+                winners = []
+                for _, agent_id, activity in scored[:n_winners]:
+                    norm = activity / max_activity
+                    winners.append(
+                        AgentScore(
+                            agent_id=agent_id,
+                            ethos=norm,
+                            pathos=norm,
+                            logos=norm,
+                        )
+                    )
+                return winners
+            # Not enough vectored agents — fall through to tournament
+
+        # ── tournament fallback ─────────────────────────────
         population = [
             AgentScore(
                 agent_id=f"room_{rid}",
@@ -130,11 +152,39 @@ class AutoBreeder:
             for rid, activity in hot_rooms
         ]
 
-        # Run tournament
         tournament = TournamentRound(population)
         ranked = tournament.run()
-        winners = [r.scores for r in ranked[:n_winners] if r.scores is not None]
+        return [r.scores for r in ranked[:n_winners] if r.scores is not None]
 
+    def auto_breed(
+        self,
+        n_winners: Optional[int] = None,
+        vector_table=None,
+    ) -> list[tuple[int, str]]:
+        """Run one breeding cycle.
+
+        1. Find cold rooms (grid.cold(threshold)).
+        2. Select parents via vector table or tournament.
+        3. Breed children from winners.
+        4. Rebirth cold rooms using cloned winner weights.
+        5. Respect thermal budget (parent-sacrifice-before-child-spawn).
+
+        Args:
+            n_winners: Override for how many tournament winners to use.
+                Defaults to self.n_winners.
+            vector_table: Optional FluxVectorTable for similarity-based
+                parent selection. When None, uses tournament fallback.
+
+        Returns:
+            List of (reborn_room_id, parent_agent_id) tuples.
+        """
+        n_winners = n_winners or self.n_winners
+
+        cold_rooms = self.grid.cold(thresh=self.cold_threshold)
+        if not cold_rooms:
+            return []
+
+        winners = self.select_parents(vector_table=vector_table, n_winners=n_winners)
         if not winners:
             return []
 
