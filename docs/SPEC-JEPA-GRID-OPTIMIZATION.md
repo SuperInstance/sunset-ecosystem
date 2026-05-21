@@ -1,266 +1,251 @@
 # SPEC-JEPA-GRID-OPTIMIZATION.md — Optimize the JEPA Room Grid
 
+## Status: PARTIALLY SHIPPED
+
+The Rust kernel (`nerve/src/lib.rs`) already ships with multi-threaded batch forward, achieving ~2.35ms for 10K rooms. This spec tracks the remaining work: Python binding, weight packing, and the novelty computation bottleneck.
+
+## What Shipped (nerve/src/lib.rs)
+
+The Rust `jepa-kernel` crate (`nerve/src/Cargo.toml`, `cdylib` target):
+
+- `forward_room()`: 3-layer MLP (64→32→ReLU→16→ReLU→16), row-outer loop with zero-skip
+- `jepa_forward_batch()`: Multi-threaded via `std::thread::scope`, splits rooms across up to 12 cores
+- Weight layout: flat arrays indexed by `ri * dim_product` (room-major, interleaved)
+- Benchmark: 10K rooms × 50 passes, reports ns/room
+- Exports as `extern "C" fn` for ctypes/FFI binding
+
+**Remaining gap:** The Rust kernel only does forward. It doesn't compute novelty, doesn't update activity counters, doesn't manage the history ring buffer. Python still owns those. The binding layer needs to ship.
+
 ## Problem
 
-The JEPAGrid (`sunset-ecosystem/nerve/room_grid.py`) runs 10K rooms in ~5ms via numpy einsum. Analysis of the code shows this is ~95% Python/numpy dispatch overhead, ~5% actual FLOPs.
+The JEPAGrid (`nerve/room_grid.py`) runs 10K rooms in ~5ms via numpy einsum. The Rust kernel brings this to ~2.35ms. But the Python `_batch_forward()` is still the default path — no FFI binding exists yet.
 
-**The math:**
-- 10K rooms × 3 matmuls (64×32, 32×16, 16×16) = 60K matmuls
-- Total FLOPs: 10K × (64×32 + 32×16 + 16×16) × 2 = 10K × 3328 = 33.28M FLOPs
-- At 4GHz × 2 FMA = 133μs theoretical minimum
-- Current: 5ms = 37.6× overhead factor
-
-**Why einsum is slow here:** The three einsum calls (`"d,ndh->nh"`, `"nh,nhl->nl"`, `"nl,nll->nl"`) each invoke numpy's general-purpose contraction, which:
-1. Parses the subscript string every call
-2. Allocates temporaries for each intermediate
-3. Cannot fuse the ReLU into the matmul
-4. Has poor cache behavior because weights are stored as `(n, d, h)` — each room's weights are scattered across cache lines
+**Remaining bottlenecks after Rust forward:**
+1. **Python binding missing** — `_batch_forward()` still uses einsum
+2. **Novelty computation is O(n × history)** — cosine distance against last 3 latents per room, done in a Python loop
+3. **History ring buffer** — `dict[int, list[ndarray]]` with manual `.pop(0)` is O(n) shift
 
 ## Ground-Level Code
 
-### Current hot path (room_grid.py lines 100-112)
+### Shipped: Rust kernel (`nerve/src/lib.rs`)
+
+The Rust kernel already exists and benchmarks at ~2.35ms for 10K rooms.
+
+**Weight layout** (room-major flat arrays):
+```
+w1: [n × 64 × 32]  — room i at offset i*2048
+w2: [n × 32 × 16]  — room i at offset i*512
+w3: [n × 16 × 16]  — room i at offset i*256
+b1: [n × 32]       — room i at offset i*32
+b2: [n × 16]       — room i at offset i*16
+b3: [n × 16]       — room i at offset i*16
+```
+
+This IS the room-major packed layout — each room's weights are contiguous.
+One room: 2048+32+512+16+256+16 = 2880 floats = 11.25 KB. Fits in L1.
+
+**Threading**: `std::thread::scope` with `available_parallelism().min(12)`. Falls back to single-thread for n < 100.
+
+**Zero-skip optimization**: `if xr == 0.0 { continue; }` — skips zero inputs after ReLU kills negatives. For ReLU with ~50% sparsity, this saves ~50% of multiply ops in layers 2-3.
+
+### Remaining: Python ctypes binding
+
+New file: `sunset-ecosystem/nerve/rust_kernel.py`
 
 ```python
-def _batch_forward(self, x: np.ndarray) -> np.ndarray:
-    h = np.einsum("d,ndh->nh", x, self.w["w1"]) + self.w["b1"][0]
-    np.maximum(h, 0, out=h)
-    h = np.einsum("nh,nhl->nl", h, self.w["w2"]) + self.w["b2"][0]
-    np.maximum(h, 0, out=h)
-    return np.einsum("nl,nll->nl", h, self.w["w3"]) + self.w["b3"][0]
-```
+"""Python binding to the Rust jepa-kernel shared library.
 
-### Memory layout problem
-
-Current weight layout: `w1[n, d, h]` = `(10000, 64, 32)` = 81.92 MB for w1 alone.
-All 3 weight tensors = ~150 MB. This exceeds L3 cache on most machines.
-
-**Proposed packed layout** (room-major, cache-line aligned):
-
-```c
-// Each room's weights packed contiguously
-typedef struct {
-    float w1[64*32];    // 2048 floats = 8 KB
-    float b1[32];       // 128 bytes
-    float w2[32*16];    // 512 floats = 2 KB
-    float b2[16];       // 64 bytes
-    float w3[16*16];    // 256 floats = 1 KB
-    float b3[16];       // 64 bytes
-    // Total: ~11.3 KB per room
-    // 10000 rooms = ~110 MB (fits in memory, 1 room = fits in L1)
-} room_weights_t __attribute__((aligned(64)));
-```
-
-One room's weights = 11.3 KB — fits comfortably in L1 cache (32 KB typical). Sequential access means prefetcher can stay ahead.
-
-### Proposed micro-kernel (C/AVX2)
-
-Reference: `warp-room/src/warp-constraints.h` for INT8 saturated constraint patterns.
-
-New file: `sunset-ecosystem/nerve/jepa_kernel.c`
-
-```c
-#include <immintrin.h>
-#include <stdint.h>
-
-// Room weights packed as above
-typedef struct {
-    float w1[2048]; float b1[32];
-    float w2[512];  float b2[16];
-    float w3[256];  float b3[16];
-} room_weights_t __attribute__((aligned(64)));
-
-// Fused matmul+ReLU for one room
-// mat: (out_dim × in_dim) row-major, x: (in_dim,), bias: (out_dim,), out: (out_dim,)
-static inline void fused_matmul_relu(
-    const float *mat, int out_dim, int in_dim,
-    const float *x, const float *bias, float *out
-) {
-    // Process 8 outputs at a time via AVX2
-    for (int i = 0; i < out_dim; i += 8) {
-        __m256 acc = _mm256_loadu_ps(&bias[i]);  // bias into accumulator
-        for (int k = 0; k < in_dim; k++) {
-            __m256 w = _mm256_loadu_ps(&mat[(i)*in_dim + k]); // row i, weight k
-            // Wait — we need to broadcast x[k] and multiply
-            __m256 xk = _mm256_set1_ps(x[k]);
-            acc = _mm256_fmadd_ps(xk, w, acc);
-        }
-        // Fused ReLU: max(acc, 0)
-        __m256 zero = _mm256_setzero_ps();
-        acc = _mm256_max_ps(acc, zero);
-        _mm256_storeu_ps(&out[i], acc);
-    }
-}
-
-// Full 3-layer forward for N rooms, single input
-void jepa_grid_forward(
-    const room_weights_t *weights,  // (n,) packed
-    const float *x,                 // (64,) input
-    float *latents,                 // (n, 16) output
-    int n                           // number of rooms
-) {
-    float h1[32] __attribute__((aligned(32)));
-    float h2[16] __attribute__((aligned(32)));
-
-    for (int i = 0; i < n; i++) {
-        const room_weights_t *w = &weights[i];
-        // Layer 1: (64→32) + ReLU
-        fused_matmul_relu(w->w1, 32, 64, x, w->b1, h1);
-        // Layer 2: (32→16) + ReLU
-        fused_matmul_relu(w->w2, 16, 32, h1, w->b2, h2);
-        // Layer 3: (16→16) linear (no ReLU)
-        for (int j = 0; j < 16; j++) {
-            float acc = w->b3[j];
-            for (int k = 0; k < 16; k++) {
-                acc += w->w3[j * 16 + k] * h2[k];
-            }
-            latents[i * 16 + j] = acc;
-        }
-    }
-}
-```
-
-**Note on the matmul kernel:** The inner loop above processes 8 output rows simultaneously. For 64×32, this is 8 rows × 64 columns = 512 FMA ops. For 32×16, 8 rows × 32 cols = 256 FMA ops. The small dimensions mean loop overhead is minimal.
-
-### Python binding
-
-New file: `sunset-ecosystem/nerve/_jepa_kernel.pyx` (Cython) or use cffi:
-
-```python
-# _jepa_kernel.pyx
+Build: cd nerve/src && cargo build --release
+       → target/release/libjepa_kernel.so
+"""
+import ctypes
 import numpy as np
-cimport numpy as np
+from pathlib import Path
 
-cdef extern from "jepa_kernel.c":
-    void jepa_grid_forward(
-        const room_weights_t *weights,
-        const float *x, float *latents, int n)
+_LIB_PATH = Path(__file__).parent / "src" / "target" / "release" / "libjepa_kernel.so"
+_lib = None
 
-def forward_batch(weights_packed, x_np):
-    cdef float[64] x_buf
-    cdef int n = len(weights_packed)
+def _load():
+    global _lib
+    if _lib is not None:
+        return _lib
+    _lib = ctypes.CDLL(str(_LIB_PATH))
+    _lib.jepa_forward_batch.argtypes = [
+        ctypes.POINTER(ctypes.c_float),  # x_ptr
+        ctypes.POINTER(ctypes.c_float),  # w1
+        ctypes.POINTER(ctypes.c_float),  # w2
+        ctypes.POINTER(ctypes.c_float),  # w3
+        ctypes.POINTER(ctypes.c_float),  # b1
+        ctypes.POINTER(ctypes.c_float),  # b2
+        ctypes.POINTER(ctypes.c_float),  # b3
+        ctypes.c_size_t,                 # n
+        ctypes.POINTER(ctypes.c_float),  # out_ptr
+    ]
+    _lib.jepa_forward_batch.restype = None
+    return _lib
+
+def forward_batch(w: dict, x: np.ndarray, n: int) -> np.ndarray:
+    """Call Rust kernel for all rooms.
+
+    Args:
+        w: weight dict from make_weights (arrays must be contiguous float32)
+        x: (64,) input signal
+        n: number of rooms
+
+    Returns:
+        (n, 16) latent array
+    """
+    lib = _load()
+    x = np.ascontiguousarray(x.ravel(), dtype=np.float32)
     out = np.empty((n, 16), dtype=np.float32)
-    # ... pointer dance ...
-    jepa_grid_forward(<room_weights_t*>weights_ptr, &x_buf[0], out_ptr, n)
+
+    # Flatten weight arrays to match Rust's expected layout
+    w1 = np.ascontiguousarray(w["w1"].reshape(n, -1).ravel(), dtype=np.float32)
+    w2 = np.ascontiguousarray(w["w2"].reshape(n, -1).ravel(), dtype=np.float32)
+    w3 = np.ascontiguousarray(w["w3"].reshape(n, -1).ravel(), dtype=np.float32)
+    b1 = np.ascontiguousarray(w["b1"].reshape(n, -1).ravel(), dtype=np.float32)
+    b2 = np.ascontiguousarray(w["b2"].reshape(n, -1).ravel(), dtype=np.float32)
+    b3 = np.ascontiguousarray(w["b3"].reshape(n, -1).ravel(), dtype=np.float32)
+
+    lib.jepa_forward_batch(
+        x.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+        w1.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+        w2.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+        w3.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+        b1.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+        b2.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+        b3.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+        ctypes.c_size_t(n),
+        out.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+    )
     return out
 ```
 
-### Weight packing utility
+### Remaining: Batch novelty computation
+
+Current `novelty()` in `room_grid.py` is per-room, called in a Python loop. This is the remaining bottleneck after Rust forward.
+
+Replace with vectorized batch novelty:
+
+```python
+def batch_novelty(latents: np.ndarray, history: dict[int, list[np.ndarray]]) -> np.ndarray:
+    """Vectorized novelty for all rooms.
+
+    Args:
+        latents: (n, 16) current latents
+        history: room_id → list of past latents (up to 3)
+
+    Returns:
+        (n,) novelty scores [0, 1]
+    """
+    n = latents.shape[0]
+    norms = np.linalg.norm(latents, axis=1, keepdims=True) + 1e-8
+    zn = latents / norms  # (n, 16) normalized
+
+    # Build padded history tensor: (n, 3, 16)
+    hist_tensor = np.zeros((n, 3, 16), dtype=np.float32)
+    hist_mask = np.zeros((n, 3), dtype=np.float32)
+
+    for i in range(n):
+        h = history.get(i, [])
+        for j, z in enumerate(h[-3:]):
+            hist_tensor[i, j] = z
+            hist_mask[i, j] = 1.0
+
+    # Cosine similarity: (n, 3) = sum(zn[h,i] * hist[n,i], axis=-1)
+    h_norms = np.linalg.norm(hist_tensor, axis=-1, keepdims=True) + 1e-8  # (n, 3, 1)
+    hn = hist_tensor / h_norms  # (n, 3, 16)
+    sims = (zn[:, np.newaxis, :] * hn).sum(axis=-1)  # (n, 3)
+
+    # Masked mean
+    mask_sum = hist_mask.sum(axis=1, keepdims=True) + 1e-8
+    mean_sim = (sims * hist_mask).sum(axis=1, keepdims=True) / mask_sum  # (n, 1)
+    novelty = 1.0 - mean_sim.ravel()  # (n,)
+
+    # Where no history, return 0.5
+    no_hist = hist_mask.sum(axis=1) < 2
+    novelty[no_hist] = 0.5
+
+    return novelty
+```
+
+### Remaining: History ring buffer replacement
+
+Current: `dict[int, list[ndarray]]` with `pop(0)` — O(n) shift per tick.
+Replace with `collections.deque(maxlen=20)` or pre-allocated numpy ring.
+
+```python
+from collections import deque
+
+# In JEPAGrid.__init__:
+self.history: dict[int, deque[np.ndarray]] = {
+    i: deque(maxlen=20) for i in range(n)
+}
+
+# In tick():
+self.history[i].append(z.copy())  # O(1), auto-evicts oldest
+```
+
+### Integration into JEPAGrid
 
 Add to `room_grid.py`:
 
 ```python
-def pack_weights(self) -> np.ndarray:
-    """Pack weights into cache-friendly room-major layout for C kernel."""
-    n = self.n
-    # 2048+32+512+16+256+16 = 2880 floats per room
-    packed = np.empty((n, 2880), dtype=np.float32)
-    for i in range(n):
-        off = 0
-        packed[i, off:off+2048] = self.w["w1"][i].ravel(); off += 2048
-        packed[i, off:off+32] = self.w["b1"][0, i]; off += 32
-        packed[i, off:off+512] = self.w["w2"][i].ravel(); off += 512
-        packed[i, off:off+16] = self.w["b2"][0, i]; off += 16
-        packed[i, off:off+256] = self.w["w3"][i].ravel(); off += 256
-        packed[i, off:off+16] = self.w["b3"][0, i]; off += 16
-    return np.ascontiguousarray(packed)
-```
+class JEPAGrid:
+    def __init__(self, n=250, ..., kernel: str = "auto"):
+        ...
+        self._kernel = kernel
+        self._rust_available = False
+        if kernel in ("auto", "rust"):
+            try:
+                from nerve.rust_kernel import forward_batch as _rust_forward
+                self._rust_forward = _rust_forward
+                self._rust_available = True
+            except (ImportError, OSError):
+                self._rust_available = False
 
-### Alternative: Rust+SIMD
-
-If C/AVX2 is rejected for portability, use Rust with `std::simd` or `packed_simd2`:
-
-Reference: `src/bma.rs` for tight loop patterns over arrays.
-
-```rust
-// jepa_kernel.rs
-use std::arch::x86_64::*;
-
-#[repr(C, align(64))]
-pub struct RoomWeights {
-    w1: [f32; 2048], b1: [f32; 32],
-    w2: [f32; 512],  b2: [f32; 16],
-    w3: [f32; 256],  b3: [f32; 16],
-}
-
-pub unsafe fn jepa_grid_forward(
-    weights: &[RoomWeights],
-    x: &[f32; 64],
-    latents: &mut [f32],
-) {
-    for (i, w) in weights.iter().enumerate() {
-        let mut h1 = [0.0f32; 32];
-        let mut h2 = [0.0f32; 16];
-        // Layer 1: matmul 64→32 + ReLU (same pattern as C version)
-        for j in (0..32).step_by(8) {
-            let mut acc = _mm256_loadu_ps(w.b1.as_ptr().add(j));
-            for k in 0..64 {
-                let xk = _mm256_set1_ps(x[k]);
-                let wj = _mm256_loadu_ps(w.w1.as_ptr().add((j*64) + k*64));
-                acc = _mm256_fmadd_ps(xk, wj, acc);
-            }
-            let zero = _mm256_setzero_ps();
-            acc = _mm256_max_ps(acc, zero);
-            _mm256_storeu_ps(h1.as_mut_ptr().add(j), acc);
-        }
-        // Layer 2: 32→16 + ReLU (similar)
-        // Layer 3: 16→16 linear (similar)
-        // ... copy to latents[i*16..(i+1)*16]
-    }
-}
-```
-
-### Benchmark spec
-
-New file: `sunset-ecosystem/nerve/bench_grid.py`
-
-```python
-"""Benchmark: einsum vs C kernel."""
-import time, numpy as np
-from room_grid import JEPAGrid
-
-def bench_einsum(n=10000, ticks=100):
-    g = JEPAGrid(n)
-    t0 = time.perf_counter()
-    for _ in range(ticks):
-        x = np.random.randn(64).astype(np.float32)
-        g.tick(x)
-    elapsed = time.perf_counter() - t0
-    return elapsed / ticks  # ms per tick
-
-def bench_kernel(n=10000, ticks=100):
-    # After C kernel integration
-    # g = JEPAGrid(n, kernel="c")
-    pass
-
-# Targets:
-# einsum: 5ms/tick (current)
-# C/AVX2: < 1ms/tick
-# Theoretical: 133μs/tick
+    def _batch_forward(self, x):
+        if self._rust_available:
+            return self._rust_forward(self.w, x, self.n)
+        # Fallback: numpy einsum
+        h = np.einsum("d,ndh->nh", x, self.w["w1"]) + self.w["b1"][0]
+        np.maximum(h, 0, out=h)
+        h = np.einsum("nh,nhl->nl", h, self.w["w2"]) + self.w["b2"][0]
+        np.maximum(h, 0, out=h)
+        return np.einsum("nl,nll->nl", h, self.w["w3"]) + self.w["b3"][0]
 ```
 
 ## Decision
 
-**Use C/AVX2 with Python ctypes binding.** Not Rust — the kernel is 80 lines of C and the build complexity of adding Rust to a Python project isn't worth it. The C file compiles in 2 seconds and loads via `ctypes.CDLL`.
+**Rust kernel IS the forward path.** It already shipped at `nerve/src/lib.rs`. The remaining work is:
 
-The packed weight layout is the key optimization. Each room's ~11 KB fits in L1. Sequential room iteration lets the hardware prefetcher work perfectly.
+1. Python ctypes binding (`nerve/rust_kernel.py`)
+2. Wire into `JEPAGrid._batch_forward()` with auto-detection + einsum fallback
+3. Vectorize the novelty computation (currently Python-loop bottleneck)
+4. Replace `list.pop(0)` with `deque(maxlen=20)` for O(1) history
+5. Pre-allocate the output buffer to avoid per-tick allocation
+
+No C/AVX2 alternative needed — the Rust kernel already does row-outer loops with zero-skip and multi-threading. Adding explicit SIMD intrinsics is future work after the binding ships.
 
 ## Implementation Order
 
-1. Write `jepa_kernel.c` with AVX2 fused matmul+ReLU
-2. Add `Makefile` target: `gcc -O3 -mavx2 -mfma -shared -fPIC -o jepa_kernel.so jepa_kernel.c`
-3. Write `bench_grid.py` — baseline einsum numbers
-4. Add `pack_weights()` to `JEPAGrid` class
-5. Add `_forward_c()` method that calls the shared library via ctypes
-6. Benchmark: confirm < 1ms for 10K rooms
-7. Make `_forward_c` the default, keep `_batch_forward` as fallback
-8. Update `novelty()` computation to batch with the kernel output
+1. `cd nerve/src && cargo build --release` — verify .so builds
+2. Write `nerve/rust_kernel.py` — ctypes binding
+3. Add `kernel="auto"` param to `JEPAGrid.__init__`, wire `_rust_forward`
+4. Write `nerve/bench_grid.py` — compare einsum vs Rust
+5. Replace `history[i].pop(0)` with `deque(maxlen=20)` — O(1) fix
+6. Write vectorized `batch_novelty()` — eliminate Python loop
+7. Pre-allocate output buffer in `JEPAGrid.__init__` — zero allocation in tick
+8. Benchmark end-to-end tick: target < 3ms for 10K rooms (forward + novelty + history)
 
 ## Success Criteria
 
-- [ ] 10K rooms forward pass < 1ms (down from 5ms)
-- [ ] Weight packing produces contiguous 11.3 KB per room
-- [ ] ReLU fused into matmul (no separate max operation)
-- [ ] Falls back to einsum if AVX2 unavailable
-- [ ] `bench_grid.py` shows comparative numbers
-- [ ] No numpy allocation in the hot path (pre-allocated output buffer)
-- [ ] Thread-safe (same `threading.Lock` pattern as current `_lock`)
+- [ ] `cargo build --release` produces `libjepa_kernel.so`
+- [ ] `rust_kernel.py` loads and calls the Rust kernel via ctypes
+- [ ] `JEPAGrid(kernel="auto")` uses Rust when available, einsum otherwise
+- [ ] 10K rooms forward pass < 2.5ms (Rust kernel, matching current bench)
+- [ ] Full tick (forward + novelty + history) < 3ms for 10K rooms
+- [ ] History ring buffer is O(1) append (deque, no list.pop(0))
+- [ ] No numpy allocation in the hot path after warmup
+- [ ] `bench_grid.py` prints comparative einsum vs Rust timings
+- [ ] Falls back gracefully if .so not found (no crash, just slower)

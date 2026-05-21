@@ -1,104 +1,143 @@
-# SPEC-FLUX-RESOLUTION.md — Resolve the FLUX Compiler Split
+# SPEC-FLUX-RESOLUTION.md
+**Author:** CCC (Systems Architect)  
+**Date:** 2026-05-21  
+**Status:** DECISION — v3 is the forward path
 
-## Problem
+---
 
-FLUX exists as two independent codebases that share a name but not an ISA:
+## 1. Situation
 
-1. **flux-compiler** (`/flux-compiler/`) — initial commit only, empty repo (just `.git/`). The "v2" that was supposed to be a constraint compiler but never materialized.
-2. **flux-vm-v3** (`/flux-vm-v3/`) — active Rust crate with 60 opcodes, stack machine VM, JIT (x86), proof certificates, provenance logging, streaming, vector unit, parallel execution, and benchmarks.
+The FLUX ecosystem has a compiler/VM split that needs resolving:
 
-There are also **6 copies** of flux-compiler scattered across subprojects:
-- `flux-research/flux-compiler/` — empty
-- `.local-plato/twin/flux-compiler/` — 2 files (stub)
-- `quality-gate-stream/flux-compiler/` — empty
-- `fleet-health-monitor/flux-compiler/` — empty
-- `fleet-murmur/flux-compiler/` — empty
-- `forgemaster/flux-compiler/` — 2 files (stub)
+| Component | Location | State |
+|-----------|----------|-------|
+| `flux-compiler` | `/flux-compiler/` | **Empty shell** — only README + CONTRIBUTING, no source code |
+| `flux-vm` (v2) | `/flux-vm/` | ISA definitions only (mini, edge, std, thor) — no Rust runtime |
+| `flux-vm-v3` | `/flux-vm-v3/` | **2673 lines of working Rust** — full VM, SIMD, JIT, proof, parallel |
+| `forgemaster/flux-compiler` | `/forgemaster/flux-compiler/` | Forgemaster's copy (likely mirrors `flux-compiler` — needs verification) |
 
-The v3 codebase is production-quality (see `flux-vm-v3/src/`):
-- `opcode.rs`: 60 opcodes (stack, arithmetic, register, constraint, vector, control flow, provenance)
-- `vm.rs`: Stack machine with bounded memory, cycle limit (4096), checkpoints
-- `jit.rs` / `jit_x86.rs`: JIT compilation layer
-- `proof.rs`: Proof certificates for constraint verification
-- `provenance.rs`: Full provenance chain
-- `effects.rs`: Effect handler system
-- `streaming.rs`: Stream state management
-- `vector.rs`: SIMD vector unit
-- `parallel.rs`: Parallel constraint evaluation
-- `memory.rs`: Bounded memory with STACK_LIMIT
-- `check.rs`: Constraint types with aviation preset
-- `bench.rs`: Criterion benchmarks
+## 2. Decision: v3 is Forward
 
-## Ground-Level Code
+**flux-vm-v3 is the canonical runtime.** Rationale:
 
-### Files to move/rename/delete
+1. **It has source code.** 2,673 lines across 15 modules. The others are empty or ISA-only.
+2. **It has the full feature set:** stack machine, 50+ opcodes, vector/SIMD unit, proof certificates, provenance logging, streaming constraints, parallel batch, JIT stubs (x86), checkpoint/rollback, bounded memory.
+3. **It has real deps:** `sha2` for proof hashing, `rayon` for parallelism, `criterion` for benchmarking.
+4. **It has the constraint-check domain right:** `check.rs` includes aviation and temperature presets — this is a *certifiable constraint checker*, not a general-purpose VM.
+
+The `flux-compiler` repo was the original commit (GUARD DSL → FLUX-C compilation via `guard2mask`), but the actual compiler source was never pushed. The README describes what it should do; v3 implements the VM that receives the compiler's output.
+
+## 3. Architecture: Compiler + VM Split
 
 ```
-# DELETE — empty flux-compiler copies
-flux-research/flux-compiler/          → DELETE (empty repo)
-.local-plato/twin/flux-compiler/      → DELETE (2-file stub)
-quality-gate-stream/flux-compiler/    → DELETE (empty)
-fleet-health-monitor/flux-compiler/   → DELETE (empty)
-fleet-murmur/flux-compiler/           → DELETE (empty)
-forgemaster/flux-compiler/            → DELETE (2-file stub)
-
-# RENAME — flux-compiler becomes flux-vm-v2-archive
-flux-compiler/                        → mv flux-compiler flux-vm-v2-archive
-                                        (preserves git history, marks as dead)
-
-# CANONICAL — flux-vm-v3 IS the FLUX compiler going forward
-flux-vm-v3/                           → RENAME to flux-compiler/
-                                        (it earns the name)
+GUARD DSL source
+    │
+    ▼
+flux-compiler (TO BE BUILT)
+    │  PEG grammar (pest) → AST → FLUX bytecode
+    ▼
+flux-vm-v3 (EXISTS)
+    │  Executes bytecode, checks constraints, produces proof certificates
+    ▼
+Verified output + ProofCertificate
 ```
 
-### Compat layer (new file)
+The compiler is **not built yet**. The VM is. Ship order: stabilize v3 → build compiler against v3's opcode set.
 
-Create `flux-vm-v3/src/compat.rs`:
+## 4. Repository Actions
 
-```rust
-//! Compatibility shim for any v2-era tooling that expected
-//! the old flux-compiler Python interface.
-//!
-//! v2 never shipped code, so this is purely documentation.
-//! Any external references to "flux-compiler" should resolve
-//! to flux-vm-v3 (now renamed flux-compiler).
+### Phase 1: Consolidate (immediate)
 
-/// v2 never defined an ISA. v3's ISA starts here.
-/// If you need to port a v2 concept, map it to:
-///   - Constraint checks → OpCode::RangeCheck, BatchCheck
-///   - Safety proofs → proof::ProofCertificate
-///   - Memory bounds → memory::BoundedMemory
-pub const V2_COMPAT_NOTE: &str = "v2 had no ISA. Use v3 opcodes directly.";
+```bash
+# 1. flux-compiler is empty — mark as archived/pending
+cd /home/phoenix/.openclaw/workspace/flux-compiler
+echo "Source pending. VM runtime is at flux-vm-v3/. See SPEC-FLUX-RESOLUTION." > STATUS.md
+git add STATUS.md && git commit -m "archive: mark as pending compiler, v3 is VM runtime"
+
+# 2. flux-vm (v2) is ISA-only — merge ISAs into v3
+# v2 has: flux-isa, flux-isa-mini, flux-isa-edge, flux-isa-std, flux-isa-thor, flux-ast
+# These are opcode DEFINITIONS, not implementations.
+# ACTION: Copy ISA specs into flux-vm-v3/isa/ as reference docs
+mkdir -p /home/phoenix/.openclaw/workspace/flux-vm-v3/isa/
+cp -r /home/phoenix/.openclaw/workspace/flux-vm/flux-isa* /home/phoenix/.openclaw/workspace/flux-vm-v3/isa/
+cp -r /home/phoenix/.openclaw/workspace/flux-vm/flux-ast /home/phoenix/.openclaw/workspace/flux-vm-v3/isa/
+
+# 3. Tag v3 as canonical
+cd /home/phoenix/.openclaw/workspace/flux-vm-v3
+git tag v3-canonical
 ```
 
-## Decision
+### Phase 2: Clean up duplicates
 
-**v3 is the forward path. v2 is legacy maintenance (but really just archival).**
+The FLUX ecosystem has massive duplication across fleet-*, forgemaster/*, quality-gate-stream/*, etc. Each contains copies of flux-compiler, flux-vm, flux-docs, flux-hardware. These are subtree clones from the Forgemaster era.
 
-Rationale:
-- v2 (`flux-compiler`) never shipped a single source file. It's an empty git repo.
-- v3 (`flux-vm-v3`) has 15 source files, JIT compilation, proof certificates, benchmarks.
-- 6 scattered copies of v2 are debris from cross-repo cloning, not meaningful forks.
-- There is no compat burden because v2 has no consumers.
+```bash
+# These repos contain duplicate flux-* dirs that should be replaced with 
+# symlinks or git submodules pointing to flux-vm-v3:
+# - fleet-health-monitor/flux-{compiler,docs,hardware,vm}
+# - fleet-murmur/flux-{compiler,docs,hardware,vm}
+# - quality-gate-stream/flux-{compiler,docs,hardware,vm}
+# - forgemaster/flux-* (20+ copies)
 
-**Action**: Rename `flux-vm-v3/` → `flux-compiler/`. Archive the old empty `flux-compiler/` as `flux-vm-v2-archive/`. Delete all 6 stub copies.
+# ACTION: For each, delete the duplicate dir and add a submodule:
+# cd <repo> && rm -rf flux-vm && git submodule add <flux-vm-v3-url> flux-vm
+# This requires flux-vm-v3 to be pushed to GitHub first.
+```
 
-## Implementation Order
+### Phase 3: Build the compiler
 
-1. `mv flux-compiler flux-vm-v2-archive` — preserve old empty repo
-2. `mv flux-vm-v3 flux-compiler` — v3 takes the canonical name
-3. Update `Cargo.toml` name from `flux-vm-v3` to `flux-compiler`
-4. Delete 6 stub copies in subprojects
-5. Create `src/compat.rs` with documentation shim
-6. Update any imports referencing `flux_vm_v3` → `flux_compiler`
-7. `cargo test` in the renamed directory
-8. Update STRUCTURAL-SURVEY.md to reflect single FLUX codebase
+When the compiler is built, it targets v3's opcode set. The opcode enum in `src/opcode.rs` (149 lines) defines the instruction set. The compiler must emit these opcodes.
 
-## Success Criteria
+## 5. Compat Shim
 
-- [ ] `flux-compiler/` contains the v3 Rust crate (15+ source files)
-- [ ] `flux-vm-v2-archive/` exists with old empty repo
-- [ ] No duplicate flux-compiler directories in any subproject
-- [ ] `cargo test` passes in renamed `flux-compiler/`
-- [ ] `cargo bench` benchmarks still run
-- [ ] STRUCTURAL-SURVEY.md updated to show single FLUX codebase
+If any code imports from `flux-vm` (v2), it needs a redirect:
+
+```python
+# flux_vm_compat.py — temporary shim
+"""
+Redirect old flux_vm imports to flux_vm_v3.
+Only needed if external consumers reference the old path.
+"""
+import sys
+import importlib
+
+def _redirect(old_name, new_name):
+    """Make old module name an alias for new."""
+    mod = importlib.import_module(new_name)
+    sys.modules[old_name] = mod
+
+# Rust FFI: no compat needed — v3 has the same C ABI entry points
+# Python: if flux-sdk-python references old paths, update import paths
+```
+
+In practice, since v2 has no source code, there's nothing to be compatible *with*. The shim is insurance for the SDK layer (`flux-sdk-python`).
+
+## 6. Opcode Audit (v3 → compiler contract)
+
+From `opcode.rs`, v3 has these opcode groups:
+
+| Group | Opcodes | Count |
+|-------|---------|-------|
+| Stack | Push, Pop, Dup, Swap, Over, Drop, LoadConst, Nop | 8 |
+| Arithmetic | Add, Sub, Mul, Div, Saturate, Min, Max, Abs | 8 |
+| Register | LoadReg, StoreReg, LoadRegVec, StoreRegVec | 4 |
+| Constraint | RangeCheck, BatchCheck, AccumulateMask, ClassifySeverity, Prove, QueryBackward, Simplify, Validate, HashCommit, Seal | 10 |
+| Vector/SIMD | VecLoad, VecStore, VecRangeCheck, VecMaskMerge, VecReduce, VecGather | 6 |
+| Control | FwdJump, CondJump, CallBounded, Ret, Halt, Checkpoint | 6 |
+| Effects | SetHandler, EmitEvent, Rollback, GetResult | 4 |
+| Parallel | ParDispatch, ParMerge, ParBarrier, ParReduce | 4 |
+| Provenance | SnapRecord, SnapQuery, SnapHash, SnapVerify | 4 |
+| Streaming | StreamOpen, StreamCheck, StreamBatch, StreamClose | 4 |
+
+**Total: 58 opcodes.** The compiler must emit a subset of these. The `Simplify` opcode is currently identity — this is where constraint-specific simplification logic should plug in.
+
+## 7. Summary
+
+| What | Decision |
+|------|----------|
+| Forward VM | `flux-vm-v3` (2673 LOC, 15 modules, working) |
+| Old `flux-vm` | ISA specs → merge into v3 as reference docs |
+| `flux-compiler` | Empty — archive, build later targeting v3 opcodes |
+| Duplicate flux-* dirs | Replace with git submodules to v3 |
+| Compat shim | Minimal — v2 has no consumers (no source) |
+| Next step | Push v3 to GitHub, then build compiler |
