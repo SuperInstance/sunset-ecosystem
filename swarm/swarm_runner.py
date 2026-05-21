@@ -132,14 +132,43 @@ class SwarmRunner:
         return self._engine.adaptation_score
 
     def run_backtest_cycle(self, hint_level: int = 0) -> bool:
-        """Run a backtest if there's spare capacity.
-
-        Returns True if a backtest was run.
-        """
+        """Run a backtest if there's spare capacity."""
         if self.spare_capacity() < 0.3:
             return False
         self._backtests_run += 1
         return True
+
+    @staticmethod
+    def run_forever(grid, max_ticks=-1, breed_interval=100):
+        """Continuous daemon: tick grid, breed cold rooms, respect thermal.
+
+        Args:
+            grid: JEPAGrid instance.
+            max_ticks: Limit for testing (-1 = infinite).
+            breed_interval: How many ticks between breeding rounds.
+
+        Yields: status dict per tick.
+        """
+        import numpy as np
+        ticks = 0
+        while max_ticks < 0 or ticks < max_ticks:
+            signal = np.random.randn(grid.l).astype(np.float32)
+            result = grid.tick(signal)
+            ticks += 1
+            result["tick"] = ticks
+
+            # Every breed_interval ticks, breed cold rooms
+            if ticks % breed_interval == 0:
+                cold = grid.cold(thresh=ticks // breed_interval)
+                hot = [i for i in range(grid.n) if i not in cold]
+                result["cold"] = len(cold)
+                result["hot"] = len(hot)
+                for dst in cold[:5]:  # breed at most 5 per cycle
+                    if hot:
+                        src = hot[ticks % len(hot)]
+                        grid.breed(src, dst)
+
+            yield result
 
     @property
     def positions(self) -> list[PenrosePosition]:

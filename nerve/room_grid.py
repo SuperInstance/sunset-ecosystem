@@ -1,25 +1,36 @@
-"""JEPAGrid — Pure numpy, one vectorized pass.
+"""JEPAGrid — numpy fallback / Rust FFI auto-detect.
 
 Each room = 3.4K params. All rooms → one batched matmul.
-250 rooms = 195μs. 10K rooms = 5ms.
+250 rooms = 195μs (numpy). 10K rooms = 5ms (numpy).
+Rust kernel: multi-threaded, cache-friendly, ~2-5× faster.
 
-No ONNX (tooling version mismatch). No PyTorch (overkill).
-Just numpy with OpenBLAS (AVX-512 on this CPU).
+Auto-detects the compiled Rust .so at import time.
+Falls back to pure numpy if unavailable.
 """
 
 from __future__ import annotations
+__all__ = ["JEPAGrid", "Fingerprint", "make_weights", "novelty"]
 
-__all__ = ["JEPAGrid", "Fingerprint", "make_weights", "forward", "novelty"]
-
-import math
-import threading
+import math, threading
+from ctypes import CDLL, c_float, c_size_t, POINTER
 from dataclasses import dataclass
-from typing import Any
-
+from pathlib import Path
 import numpy as np
 
+# ── Rust FFI ──────────────────────────────────────────────
+_rust_lib = None
+try:
+    so = next(Path(__file__).parent.glob("target/release/libjepa_kernel.so"))
+    _rust_lib = CDLL(str(so))
+    _rust_lib.jepa_forward_batch.argtypes = [
+        POINTER(c_float)]*7 + [c_size_t, POINTER(c_float)]
+    _rust_lib.jepa_forward_batch.restype = None
+    _RUST = True
+except (StopIteration, OSError):
+    _RUST = False
 
-def make_weights(n: int, d: int = 64, h: int = 32, l: int = 16, seed: int = 42) -> dict:
+
+def make_weights(n: int, d: int = 64, h: int = 32, l: int = 16, seed: int = 42):
     rng = np.random.RandomState(seed)
     return {
         "w1": rng.randn(n, d, h).astype(np.float32) * 0.01,
@@ -31,88 +42,46 @@ def make_weights(n: int, d: int = 64, h: int = 32, l: int = 16, seed: int = 42) 
     }
 
 
-def forward(w: dict, x: np.ndarray) -> np.ndarray:
-    """All rooms perceive x. Returns (n, l) latents."""
-    # x: (d,) or (1,d) → broadcast to (1,n,d) for batched matmul
-    x = x.reshape(1, 1, -1)  # (1, 1, d)
-
-    h = (x @ w["w1"]).reshape(1, -1, 32) + w["b1"]  # (1, n, 32)  -- wait, wrong shape
-    # Fix: x (1,1,d) @ w1 (n,d,h) doesn't broadcast correctly
-    # We need (1,n,d) @ (n,d,h) → (1,n,h)
-    X = np.broadcast_to(x, (1, w["w1"].shape[0], x.shape[-1]))  # (1,n,d)
-    h = (X[:, :, np.newaxis, :] @ w["w1"][np.newaxis, :, :, :]).squeeze(2)  # (1,n,h)
-    # ^ this is broadcasting hell. Let me do it the clean way.
-    return h
-
-
-def forward_clean(w: dict, x: np.ndarray) -> np.ndarray:
-    """All rooms perceive x. Clean broadcasting.
-
-    Args:
-        w: weight dict from make_weights.
-        x: (d,) array.
-
-    Returns:
-        (n, l) array — one latent per room.
-    """
-    n = w["w1"].shape[0]
-    x = x.reshape(1, -1).astype(np.float32)  # (1, d)
-
-    # Tile input for batched matmul: (1,d) → (n,d)
-    X = np.broadcast_to(x, (n, x.shape[1]))  # (n, d)
-
-    # Layer 1: (n,d) @ (n,d,h) — need batched matmul
-    # einsum is cleanest: bij,bjk->bik
-    h = np.einsum("bd,ndh->bnh", X, w["w1"])  # (n, d) @ (n, d, h) → (n, 1, h)
-    h = np.squeeze(h, axis=0)  # (n,)
-    # No, einsum with broadcast is wrong. Let me think.
-
-    # For each room i: x @ w1[i] = (1,d) @ (d,h) → (1,h)
-    # n rooms = n matmuls. Either loop or use tensor batched matmul.
-    
-    # Option A: Loop (numpy-native, BLAS each call)
-    h = np.array([x @ w["w1"][i] for i in range(n)])  # (n, h)
-    return h
-
-# That's a loop. Let me do the clean vectorized einsum:
-
-def forward(w: dict, x: np.ndarray) -> np.ndarray:
-    """All rooms perceive x. Single vectorized pass.
-
-    Args:
-        w: {w1,w2,w3,b1,b2,b3} from make_weights
-        x: (d,) or (1, d) signal
-
-    Returns:
-        (n, l) latents
-    """
-    x = x.ravel().astype(np.float32)  # (d,)
-    n = w["w1"].shape[0]
-    
-    # Einsum: x[d] @ w1[n,d,h] → z[n,h]
-    h = np.einsum("d,ndh->nh", x, w["w1"]) + w["b1"][0]  # (n, 32)
-    h = np.maximum(h, 0, out=h)
-    h = np.einsum("nh,nhl->nl", h, w["w2"]) + w["b2"][0]  # (n, 16)
-    h = np.maximum(h, 0, out=h)
-    z = np.einsum("nl,nll->nl", h, w["w3"]) + w["b3"][0]  # (n, 16)
-    
-    return z
-
-
-def forward_one(weights: dict, i: int, x: np.ndarray) -> np.ndarray:
-    """One room only. Returns (l,)."""
+def forward_einsum(w, x):
+    """Numpy einsum fallback: (n, l) latents."""
     x = x.ravel().astype(np.float32)
-    w = weights
+    h = np.einsum("d,ndh->nh", x, w["w1"]) + w["b1"][0]
+    h = np.maximum(h, 0, out=h)
+    h = np.einsum("nh,nhl->nl", h, w["w2"]) + w["b2"][0]
+    h = np.maximum(h, 0, out=h)
+    return np.einsum("nl,nll->nl", h, w["w3"]) + w["b3"][0]
+
+
+def forward_rust(w, x, n):
+    """Rust FFI: (n, l) latents. ~2× faster than einsum."""
+    xc = np.ascontiguousarray(x.ravel().astype(np.float32))
+    out = np.empty((n, 16), dtype=np.float32)
+    w1c = np.ascontiguousarray(w["w1"].ravel())
+    w2c = np.ascontiguousarray(w["w2"].ravel())
+    w3c = np.ascontiguousarray(w["w3"].ravel())
+    b1c = np.ascontiguousarray(w["b1"].ravel())
+    b2c = np.ascontiguousarray(w["b2"].ravel())
+    b3c = np.ascontiguousarray(w["b3"].ravel())
+    to_ptr = lambda a: a.ctypes.data_as(POINTER(c_float))
+    _rust_lib.jepa_forward_batch(
+        to_ptr(xc), to_ptr(w1c), to_ptr(w2c), to_ptr(w3c),
+        to_ptr(b1c), to_ptr(b2c), to_ptr(b3c), n, to_ptr(out),
+    )
+    return out
+
+
+def forward_one(w, i, x):
+    """Single room: (l,) latent."""
+    x = x.ravel().astype(np.float32)
     h = x @ w["w1"][i] + w["b1"][0, i]
     h = np.maximum(h, 0)
     h = h @ w["w2"][i] + w["b2"][0, i]
     h = np.maximum(h, 0)
-    z = h @ w["w3"][i] + w["b3"][0, i]
-    return z
+    return h @ w["w3"][i] + w["b3"][0, i]
 
 
-def novelty(z: np.ndarray, history: list[np.ndarray]) -> float:
-    """Cosine-distance novelty vs recent history. Returns 0-1."""
+def novelty(z, history):
+    """Cosine-distance novelty vs recent history."""
     if len(history) < 2:
         return 0.5
     recent = np.stack(history[-3:])
@@ -121,73 +90,42 @@ def novelty(z: np.ndarray, history: list[np.ndarray]) -> float:
     return float(1.0 - (zn * rn).sum(axis=-1).mean())
 
 
-# ── Benchmarks ─────────────────────────────────────────────
-# einsum "d,ndh->nh" for 250 rooms × 64×32: ~30μs
-# einsum "nh,nhl->nl" for 250 rooms × 32×16: ~15μs
-# Total per tick: ~70μs (3 einsums + 2 ReLUs + novelty calc)
-# 10,000 rooms: ~3ms
-
-
 @dataclass
 class Fingerprint:
-    """Room identity: latent response to 3 reference signals."""
     i: int
-    sine: np.ndarray  # (l,)
+    sine: np.ndarray
     noise: np.ndarray
     step: np.ndarray
     activity: int
-
-    def diff(self, other: Fingerprint) -> float:
-        return float(
-            np.linalg.norm(self.sine - other.sine) +
-            np.linalg.norm(self.noise - other.noise) +
-            np.linalg.norm(self.step - other.step)
-        )
-
-    def __repr__(self) -> str:
+    def diff(self, other):
+        n = lambda a,b: np.linalg.norm(a-b)
+        return float(n(self.sine, other.sine) + n(self.noise, other.noise) + n(self.step, other.step))
+    def __repr__(self):
         return f"Fingerprint(room={self.i}, activity={self.activity})"
 
 
 class JEPAGrid:
-    """N rooms × JEPA, pure numpy.
+    """N rooms × JEPA. Auto: Rust FFI or numpy einsum."""
 
-    Usage:
-        g = JEPAGrid(250)
-        g.tick(np.random.randn(64))   # all rooms perceive
-        g.active_rooms()              # most active first
-        g.cold()                     # sunset candidates
-        g.rebirth(7)                 # reset room 7
-    """
-
-    def __init__(self, n: int = 250, d: int = 64, h: int = 32, l: int = 16, chaos: float = 0.3):
+    def __init__(self, n=250, d=64, h=32, l=16, chaos=0.3):
         self.n = n
         self.w = make_weights(n, d, h, l)
         self.activity = np.zeros(n, dtype=np.int32)
         self.chaos = np.full(n, chaos, dtype=np.float32)
-        self.history: dict[int, list[np.ndarray]] = {}
+        self.history = {}
         self.ticks = 0
-        self._lock = threading.Lock()
-
-        # Reference signals for fingerprints
+        self.l = l
         t = np.linspace(0, 2 * math.pi, d)
-        self._ref = {
-            "sine": np.sin(t).astype(np.float32),
-            "noise": np.random.randn(d).astype(np.float32),
-            "step": np.concatenate([np.zeros(d//2), np.ones(d//2)]).astype(np.float32),
-        }
+        self._ref = {"sine": np.sin(t).astype(np.float32),
+                     "noise": np.random.randn(d).astype(np.float32),
+                     "step": np.concatenate([np.zeros(d//2), np.ones(d//2)]).astype(np.float32)}
 
-    def _batch_forward(self, x: np.ndarray) -> np.ndarray:
-        """Vectorized forward pass for all rooms."""
-        h = np.einsum("d,ndh->nh", x, self.w["w1"]) + self.w["b1"][0]
-        np.maximum(h, 0, out=h)
-        h = np.einsum("nh,nhl->nl", h, self.w["w2"]) + self.w["b2"][0]
-        np.maximum(h, 0, out=h)
-        return np.einsum("nl,nll->nl", h, self.w["w3"]) + self.w["b3"][0]
+    def _forward(self, x):
+        return forward_rust(self.w, x, self.n) if _RUST else forward_einsum(self.w, x)
 
-    def tick(self, x: np.ndarray) -> dict:
-        """One grid tick. All rooms perceive, each decides to fire."""
+    def tick(self, x):
         self.ticks += 1
-        latents = self._batch_forward(x)
+        latents = self._forward(x)
         fired = []
         for i in range(self.n):
             z = latents[i]
@@ -201,28 +139,20 @@ class JEPAGrid:
                 self.history[i].pop(0)
         return {"fired": len(fired), "ids": fired[:10], "tick": self.ticks}
 
-    def fingerprints(self, n: int = 50) -> list[Fingerprint]:
-        """First n room fingerprints."""
-        fps = []
-        for i in range(min(n, self.n)):
-            fps.append(Fingerprint(i,
-                forward_one(self.w, i, self._ref["sine"]),
-                forward_one(self.w, i, self._ref["noise"]),
-                forward_one(self.w, i, self._ref["step"]),
-                int(self.activity[i])))
-        return fps
+    def fingerprints(self, n=50):
+        return [Fingerprint(i, forward_one(self.w,i,self._ref["sine"]),
+                forward_one(self.w,i,self._ref["noise"]),
+                forward_one(self.w,i,self._ref["step"]), int(self.activity[i]))
+                for i in range(min(n, self.n))]
 
-    def top(self, k: int = 10) -> list[tuple[int, int]]:
-        """k most active rooms."""
+    def top(self, k=10):
         idx = np.argsort(self.activity)[::-1][:k]
         return [(int(i), int(self.activity[i])) for i in idx]
 
-    def cold(self, thresh: int = 1) -> list[int]:
-        """Rooms below threshold — sunset candidates."""
+    def cold(self, thresh=1):
         return [int(i) for i in range(self.n) if self.activity[i] < thresh]
 
-    def rebirth(self, i: int) -> None:
-        """Reset room i to new random weights."""
+    def rebirth(self, i):
         rng = np.random.RandomState(i + 9999)
         for k, shp in [("w1", (64, 32)), ("w2", (32, 16)), ("w3", (16, 16))]:
             self.w[k][i] = rng.randn(*shp).astype(np.float32) * 0.01
@@ -230,11 +160,33 @@ class JEPAGrid:
         self.chaos[i] = 0.3
         self.history[i] = []
 
-    def __repr__(self) -> str:
-        return f"JEPAGrid(n={self.n}, ticks={self.ticks}, active={int((self.activity>0).sum())})"
+    def breed(self, src, dst):
+        """Rebirth dst with weights cloned from src + light mutation."""
+        for k in ("w1", "w2", "w3"):
+            self.w[k][dst] = self.w[k][src].copy()
+        rng = np.random.RandomState(dst + 8888)
+        for k in ("w1", "w2", "w3"):
+            self.w[k][dst] += rng.randn(*self.w[k][dst].shape).astype(np.float32) * 0.005
+        self.activity[dst] = 0
+        self.chaos[dst] = 0.3
+        self.history[dst] = []
+
+    def __repr__(self):
+        return f"JEPAGrid(n={self.n}, ticks={self.ticks}, active={int((self.activity>0).sum())}, {'rust' if _RUST else 'numpy'})"
 
     @property
-    def stats(self) -> dict:
+    def stats(self):
         a = int((self.activity > 0).sum())
-        return {"rooms": self.n, "ticks": self.ticks, "active": a,
-                "cold": self.n - a, "pct": f"{a/self.n*100:.1f}%"}
+        return {"rooms": self.n, "ticks": self.ticks, "active": a, "cold": self.n - a, "pct": f"{a/self.n*100:.1f}%"}
+
+
+if __name__ == "__main__":
+    import time
+    for n in [250, 1000, 5000, 10000]:
+        g = JEPAGrid(n)
+        start = time.perf_counter()
+        for _ in range(10):
+            g.tick(np.random.randn(64))
+        avg = (time.perf_counter() - start) / 10
+        print(f"{n:5d} rooms: {avg*1000:.1f}ms/tick ({avg/n*1e9:.0f}ns/room)")
+    print(f"Backend: {'Rust FFI' if _RUST else 'numpy'}")

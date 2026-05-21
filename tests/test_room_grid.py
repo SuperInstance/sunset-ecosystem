@@ -1,7 +1,7 @@
 """Pure-numpy JEPA grid tests — 250 rooms, 195μs."""
 
 import numpy as np
-from nerve.room_grid import JEPAGrid, Fingerprint, make_weights, forward, forward_one, novelty
+from nerve.room_grid import JEPAGrid, Fingerprint, make_weights, forward_einsum, forward_one, novelty
 
 
 class TestWeights:
@@ -12,7 +12,7 @@ class TestWeights:
 
     def test_broadcast(self):
         w = make_weights(50)
-        z = forward(w, np.ones(64))
+        z = forward_einsum(w, np.ones(64))
         assert z.shape == (50, 16)
         assert not np.allclose(z[0], z[1])
 
@@ -25,14 +25,14 @@ class TestForward:
 
     def test_all(self):
         w = make_weights(10, l=32)
-        z = forward(w, np.ones(64))
+        z = forward_einsum(w, np.ones(64))
         assert z.shape == (10, 32)
 
     def test_diversity(self):
         w1 = make_weights(1, seed=42)
         w2 = make_weights(1, seed=99)
-        z1 = forward(w1, np.ones(64))
-        z2 = forward(w2, np.ones(64))
+        z1 = forward_einsum(w1, np.ones(64))
+        z2 = forward_einsum(w2, np.ones(64))
         assert not np.allclose(z1, z2, atol=1e-10)
 
 

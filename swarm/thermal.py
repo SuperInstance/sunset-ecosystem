@@ -224,16 +224,16 @@ class ThermalBudget:
             return False
 
     def thermal_headroom(self) -> float:
-        """Total utilization across all devices (0 = empty, 1 = full).
-
-        Returns:
-            Float in [0, 1] representing total utilization.
-        """
+        """Total utilization across all devices (0 = empty, 1 = full)."""
         with self._lock:
             max_total = self.total_max
             if max_total == 0:
                 return 0.0
             return self.total_current / max_total
+
+    def can_breed(self, threshold: float = 0.8) -> bool:
+        """Whether there's enough headroom to breed."""
+        return self.thermal_headroom() < threshold
 
     def reset(self) -> None:
         """Release all agents and reset all device budgets."""
