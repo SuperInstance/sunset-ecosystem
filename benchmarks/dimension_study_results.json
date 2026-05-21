@@ -1,0 +1,38 @@
+[
+  {
+    "dim": 128,
+    "build_time": 0.06416231766343117,
+    "avg_latency_ms": 16.338578672148287,
+    "p99_latency_ms": 26.255993931554258,
+    "naive_memory_mb": 4.8828125,
+    "simulated_turbovec_mb": 0.9918212890625,
+    "compression_ratio": 4.923076923076923
+  },
+  {
+    "dim": 256,
+    "build_time": 0.151187167968601,
+    "avg_latency_ms": 31.553810411132872,
+    "p99_latency_ms": 48.78291960805656,
+    "naive_memory_mb": 9.765625,
+    "simulated_turbovec_mb": 1.6021728515625,
+    "compression_ratio": 6.095238095238095
+  },
+  {
+    "dim": 384,
+    "build_time": 0.22426676377654076,
+    "avg_latency_ms": 48.13304289244115,
+    "p99_latency_ms": 81.82248549070212,
+    "naive_memory_mb": 14.6484375,
+    "simulated_turbovec_mb": 2.2125244140625,
+    "compression_ratio": 6.620689655172414
+  },
+  {
+    "dim": 512,
+    "build_time": 0.2497991700656712,
+    "avg_latency_ms": 71.53377985581756,
+    "p99_latency_ms": 169.50713550671952,
+    "naive_memory_mb": 19.53125,
+    "simulated_turbovec_mb": 2.8228759765625,
+    "compression_ratio": 6.918918918918919
+  }
+]
