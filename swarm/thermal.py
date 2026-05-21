@@ -241,3 +241,45 @@ class ThermalBudget:
             for db in self._devices.values():
                 db.current_agents = 0
             self._allocations.clear()
+
+    def spawn_with_thermal_check(
+        self,
+        agent_id: str,
+        preferred_device: DeviceType,
+        fallback_devices: list[DeviceType] | None = None,
+    ) -> tuple[bool, DeviceType | None]:
+        """Allocate a slot, falling back to other devices if preferred is full.
+
+        Per SPEC-BREEDER §4: try preferred device first, then fallbacks,
+        then reject if all full.
+
+        Args:
+            agent_id: Unique agent identifier.
+            preferred_device: First choice device.
+            fallback_devices: Ordered list of fallback devices (defaults to
+                [GPU, CPU, IGPU, NPU] with preferred_device removed).
+
+        Returns:
+            (success, allocated_device) — allocated_device is None if no slot.
+        """
+        # Build ordered candidate list
+        all_devices = list(DeviceType)
+        candidates = [preferred_device]
+        fallbacks = fallback_devices or [d for d in all_devices if d != preferred_device]
+        for d in fallbacks:
+            if d not in candidates:
+                candidates.append(d)
+
+        with self._lock:
+            # Already allocated?
+            if agent_id in self._allocations:
+                return (False, self._allocations[agent_id])
+
+            for device in candidates:
+                db = self._devices.get(device)
+                if db and db.current_agents < db.max_agents:
+                    db.current_agents += 1
+                    self._allocations[agent_id] = device
+                    return (True, device)
+
+            return (False, None)

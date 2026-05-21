@@ -1,181 +1,302 @@
-"""BreedingDaemon — orchestrates AutoBreeder with compaction and sunset archiving.
+"""Breeder — Connects tournament breeding to JEPAGrid room management.
 
-Wires together:
-    - AutoBreeder (tournament + breed + rebirth, optional vector table)
-    - CompactionManager (archive sunset agents, periodic compaction)
-    - sunset_candidates (identifies dominated agents for archiving)
-
-This module is additive — it does not replace AutoBreeder but wraps it
-with fleet-level lifecycle management.
+Implements the breeding pipeline per SPEC-BREEDER:
+  Tournament Round → Pareto frontier / sunset candidates → breed → rebirth
 """
-
 from __future__ import annotations
 
-__all__ = ["BreedingDaemon"]
+__all__ = ["Breeder", "AgentLifecycle", "spawn_from_template"]
 
 import logging
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 
 from nerve.room_grid import RoomGrid
-from swarm.breeder_daemon import AutoBreeder
-from swarm.compaction import CompactionManager
-from swarm.thermal import DeviceType, ThermalBudget
-from swarm.tournament import AgentScore, sunset_candidates
+from nerve.templates import AgentTemplate
+from swarm.thermal import ThermalBudget
+from swarm.tournament import AgentScore, TournamentRound, breed, sunset_candidates
 
 logger = logging.getLogger(__name__)
 
 
-class BreedingDaemon:
-    """Orchestrates the breeding loop with optional vector tables and compaction.
+class AgentLifecycle:
+    """Finite-state machine for a single agent room.
 
-    Wraps AutoBreeder and adds:
-    - Pre-breeding sunset archiving via CompactionManager
-    - Periodic compaction calls every N cycles
-    - Public ``select_parents()`` passthrough for introspection
+    States per SPEC-BREEDER §5:
+        SPAWNED → ACTIVE → ADAPTING → COMPILED → SUNSET → (rebirth) → SPAWNED
+    """
+
+    SPAWNED = "spawned"
+    ACTIVE = "active"
+    ADAPTING = "adapting"
+    COMPILED = "compiled"
+    SUNSET = "sunset"
+
+
+@dataclass
+class LifecycleRecord:
+    """Immutable snapshot of an agent's lifecycle state."""
+
+    room_id: int
+    state: str = AgentLifecycle.SPAWNED
+    generation: int = 0
+    chaos: float = 0.3
+    activity: int = 0
+    hint_level: int = 10
+    consecutive_wins: int = 0
+    tick_entered: int = 0
+
+    def can_advance(self) -> bool:
+        """Determine if the agent should transition to the next state."""
+        if self.state == AgentLifecycle.SPAWNED:
+            return self.activity > 0  # first tick fires → ACTIVE
+        if self.state == AgentLifecycle.ACTIVE:
+            return self.chaos < 0.05
+        if self.state == AgentLifecycle.ADAPTING:
+            return self.consecutive_wins >= 3
+        if self.state == AgentLifecycle.COMPILED:
+            return False  # must be externally sunset
+        return False
+
+
+def spawn_from_template(
+    grid: RoomGrid,
+    template: AgentTemplate,
+    room_idx: int,
+    seed: Optional[int] = None,
+) -> None:
+    """Spawn an agent from a template into a specific room.
+
+    1. Reset the room via rebirth().
+    2. Override chaos to template.chaos_initial.
+    3. Bias weights toward the template's trinity signature.
 
     Args:
-        grid: RoomGrid instance.
-        thermal: ThermalBudget instance.
-        vector_table: Optional FluxVectorTable for embedding-driven parent
-            selection (passed directly to AutoBreeder).
-        compaction: Optional CompactionManager for archiving sunset agents.
-        interval: Daemon tick interval in seconds.
-        cold_threshold: Activity threshold for cold rooms.
-        n_winners: Tournament winners to use as parent pool.
-        device: Default device type for thermal allocation.
-        compaction_interval: Run compaction every N cycles.
+        grid: The JEPAGrid / RoomGrid instance.
+        template: AgentTemplate to imprint on the room.
+        room_idx: Which room index to spawn into.
+        seed: Optional RNG seed override (defaults to hash(template.name)).
+    """
+    grid.rebirth(room_idx)
+    grid.chaos[room_idx] = template.chaos_initial
+
+    bias_scale = template.mean_bias
+    rng_seed = seed if seed is not None else (hash(template.name) % (2 ** 31))
+    rng = np.random.RandomState(rng_seed)
+
+    # Apply template signature as a small weight bias per SPEC-BREEDER §2
+    for key, shape in [("w1", (64, 32)), ("w2", (32, 16)), ("w3", (16, 16))]:
+        base = grid.w[key][room_idx]
+        # Slightly amplify or attenuate based on template mean bias
+        grid.w[key][room_idx] = base * (0.8 + 0.4 * bias_scale)
+
+    # Light noise injection so identical templates still diverge
+    for key in ("w1", "w2", "w3"):
+        noise = rng.randn(*grid.w[key][room_idx].shape).astype(np.float32) * 0.001
+        grid.w[key][room_idx] += noise
+
+    logger.info(
+        "Spawned template %r into room %d (bias=%.2f)",
+        template.name,
+        room_idx,
+        bias_scale,
+    )
+
+
+class Breeder:
+    """Connects tournament breeding to RoomGrid room management.
+
+    Wires together:
+      - RoomGrid (room activity / rebirth)
+      - TournamentRound (selection)
+      - breed() (crossover)
+      - ThermalBudget (slot management)
+      - AgentTemplate (spawn presets)
     """
 
     def __init__(
         self,
         grid: RoomGrid,
+        templates: Dict[str, AgentTemplate],
         thermal: ThermalBudget,
-        vector_table=None,
-        compaction: Optional[CompactionManager] = None,
-        interval: int = 10,
-        cold_threshold: int = 3,
-        n_winners: int = 3,
-        device: DeviceType = DeviceType.GPU,
-        compaction_interval: int = 5,
     ) -> None:
-        self.auto_breeder = AutoBreeder(
-            grid=grid,
-            thermal=thermal,
-            interval=interval,
-            cold_threshold=cold_threshold,
-            n_winners=n_winners,
-            device=device,
-            vector_table=vector_table,
-        )
-        self.compaction = compaction
-        self.compaction_interval = compaction_interval
-        self._cycle_count = 0
+        self.grid = grid
+        self.templates = templates
+        self.thermal = thermal
+        self.generation = 0
+        self._lifecycle: Dict[int, LifecycleRecord] = {}
 
-    # ── public API ──────────────────────────────────────────
+    # ── Lifecycle State Machine ───────────────────────────────────
 
-    def cycle(self, n_winners: Optional[int] = None) -> list[tuple[int, str]]:
-        """Run one breeding cycle with archiving and periodic compaction.
+    def lifecycle_state(self, room_idx: int) -> str:
+        """Return the current lifecycle state of a room."""
+        return self._lifecycle.get(room_idx, LifecycleRecord(room_idx=room_idx)).state
 
-        Steps:
-            1. Identify dominated agents as sunset candidates and archive them.
-            2. Run AutoBreeder.auto_breed() (vector-aware if table provided).
-            3. Trigger compaction every *compaction_interval* cycles.
-
-        Returns:
-            List of (reborn_room_id, parent_agent_id) tuples.
-        """
-        self._cycle_count += 1
-
-        # Step 1: Archive sunset candidates (dominated agents)
-        if self.compaction is not None:
-            self._archive_sunset_candidates()
-
-        # Step 2: Run breeding (vector table handled internally by AutoBreeder)
-        results = self.auto_breeder.auto_breed(n_winners=n_winners)
-
-        # Step 3: Periodic compaction
-        if (
-            self.compaction is not None
-            and self._cycle_count % self.compaction_interval == 0
-        ):
-            summary = self.compaction.compact()
-            if summary is not None:
-                logger.info(
-                    "Compaction cycle %d: archived %d agents",
-                    self._cycle_count,
-                    summary.archived_count,
+    def _advance_lifecycle(self, room_idx: int) -> None:
+        """Evaluate and possibly advance the lifecycle state of a room."""
+        record = self._lifecycle.get(room_idx, LifecycleRecord(room_idx=room_idx))
+        if record.can_advance():
+            transitions = {
+                AgentLifecycle.SPAWNED: AgentLifecycle.ACTIVE,
+                AgentLifecycle.ACTIVE: AgentLifecycle.ADAPTING,
+                AgentLifecycle.ADAPTING: AgentLifecycle.COMPILED,
+            }
+            new_state = transitions.get(record.state)
+            if new_state:
+                self._lifecycle[room_idx] = LifecycleRecord(
+                    room_id=room_idx,
+                    state=new_state,
+                    generation=record.generation,
+                    chaos=self.grid.chaos[room_idx],
+                    activity=int(self.grid.activity[room_idx]),
+                    hint_level=record.hint_level,
+                    consecutive_wins=record.consecutive_wins,
+                    tick_entered=self.grid.ticks,
+                )
+                logger.debug(
+                    "Room %d advanced %s → %s", room_idx, record.state, new_state
                 )
 
-        return results
+    # ── Evolution ─────────────────────────────────────────────────
 
-    def select_parents(
-        self,
-        n_winners: Optional[int] = None,
-        use_vector: bool = True,
-    ) -> list[AgentScore]:
-        """Passthrough to AutoBreeder.select_parents().
+    def evolve(self, scores: List[AgentScore]) -> List[dict]:
+        """One evolution step: tournament → breed → rebirth.
 
-        Returns tournament winners (or vector-selected parents when a table
-        is configured and *use_vector* is True).
+        Args:
+            scores: AgentScore list representing the current population.
+
+        Returns:
+            List of placement dicts: {**child, "room": int, "generation": int}.
         """
-        return self.auto_breeder.select_parents(
-            n_winners=n_winners, use_vector=use_vector
+        self.generation += 1
+
+        # 1. Run tournament
+        tournament = TournamentRound(scores)
+        ranked = tournament.run()
+        winners = tournament.pareto_frontier
+
+        if not winners:
+            logger.warning("Evolve: no Pareto winners, skipping generation %d", self.generation)
+            return []
+
+        # 2. Identify sunset candidates (dominated agents)
+        dominated = sunset_candidates(scores)
+        num_children = min(len(dominated), self.grid.n - len(winners))
+
+        if num_children <= 0:
+            logger.info("Evolve: no room for children (dominated=%d, grid.n=%d)",
+                        len(dominated), self.grid.n)
+            return []
+
+        # 3. Breed from winners
+        children = breed(winners, num_children)
+
+        # 4. Place children into coldest rooms
+        cold_rooms = self._pick_cold_rooms(num_children)
+        placed: List[dict] = []
+
+        for i, child in enumerate(children):
+            if i >= len(cold_rooms):
+                break  # thermal budget exhausted
+
+            room_idx = cold_rooms[i]
+            self.grid.rebirth(room_idx)
+            self.grid.chaos[room_idx] = 0.3  # fresh exploration
+
+            # Update lifecycle
+            self._lifecycle[room_idx] = LifecycleRecord(
+                room_id=room_idx,
+                state=AgentLifecycle.SPAWNED,
+                generation=self.generation,
+                chaos=0.3,
+                activity=0,
+                hint_level=10,
+                consecutive_wins=0,
+                tick_entered=self.grid.ticks,
+            )
+
+            placed.append({
+                **child,
+                "room": room_idx,
+                "generation": self.generation,
+            })
+            logger.info(
+                "Evolve: placed child %s in room %d (gen %d)",
+                child.get("id", "?"),
+                room_idx,
+                self.generation,
+            )
+
+        return placed
+
+    def spawn_template(self, template_name: str) -> Optional[int]:
+        """Spawn a specific template into the coldest available room.
+
+        Args:
+            template_name: Key in self.templates.
+
+        Returns:
+            The room index used, or None if no room available.
+        """
+        template = self.templates.get(template_name)
+        if template is None:
+            raise KeyError(f"Unknown template: {template_name!r}")
+
+        cold = self.grid.cold(thresh=1)
+        if not cold:
+            # No completely inactive rooms — try the least active
+            activity_copy = self.grid.activity.copy()
+            room_idx = int(np.argmin(activity_copy))
+        else:
+            room_idx = cold[0]
+
+        spawn_from_template(self.grid, template, room_idx)
+        self._lifecycle[room_idx] = LifecycleRecord(
+            room_id=room_idx,
+            state=AgentLifecycle.SPAWNED,
+            generation=self.generation,
+            chaos=template.chaos_initial,
+            activity=0,
+            hint_level=template.hint_level,
+            consecutive_wins=0,
+            tick_entered=self.grid.ticks,
         )
+        return room_idx
 
-    def start(self) -> None:
-        """Delegate to AutoBreeder daemon thread."""
-        self.auto_breeder.start()
+    def _pick_cold_rooms(self, k: int) -> List[int]:
+        """Return the k coldest room indices, sorted by activity ascending."""
+        idx = np.argsort(self.grid.activity)
+        return [int(i) for i in idx[:k]]
 
-    def stop(self) -> None:
-        """Delegate to AutoBreeder daemon thread."""
-        self.auto_breeder.stop()
+    def tick_all(self) -> None:
+        """Advance lifecycle for every active room after a grid tick."""
+        active_mask = self.grid.activity > 0
+        for i in np.where(active_mask)[0]:
+            self._advance_lifecycle(int(i))
+
+    def sunset_room(self, room_idx: int) -> None:
+        """Manually sunset a room, clearing its lifecycle record."""
+        self.grid.rebirth(room_idx)
+        self._lifecycle.pop(room_idx, None)
+        logger.info("Sunset room %d", room_idx)
 
     @property
-    def running(self) -> bool:
-        return self.auto_breeder.running
-
-    @property
-    def log(self) -> list:
-        return self.auto_breeder.log
-
-    # ── internals ───────────────────────────────────────────
-
-    def _archive_sunset_candidates(self) -> None:
-        """Find dominated agents and archive them via CompactionManager."""
-        grid = self.auto_breeder.grid
-        max_activity = max(1, int(grid.activity.max()))
-
-        all_scores = [
-            AgentScore(
-                agent_id=f"room_{rid}",
-                ethos=float(grid.activity[rid]) / max_activity,
-                pathos=float(grid.activity[rid]) / max_activity,
-                logos=float(grid.activity[rid]) / max_activity,
-            )
-            for rid in range(grid.n)
-        ]
-
-        to_sunset = sunset_candidates(all_scores)
-        for candidate in to_sunset:
-            numeric_id = self._agent_id_to_numeric(candidate.agent_id)
-            self.compaction.archive_sunset(numeric_id)
-            logger.debug(
-                "Archived sunset agent %s (numeric=%d)",
-                candidate.agent_id,
-                numeric_id,
-            )
-
-    @staticmethod
-    def _agent_id_to_numeric(agent_id: str) -> int:
-        """Convert 'room_N' to numeric ID for CompactionManager.
-
-        Uses the same convention as AutoBreeder._agent_id_to_numeric.
-        """
-        if agent_id.startswith("room_"):
-            return int(agent_id.split("_")[1])
-        try:
-            return int(agent_id, 16)
-        except ValueError:
-            import hashlib
-            digest = hashlib.blake2b(agent_id.encode(), digest_size=8).digest()
-            return int.from_bytes(digest, "big") % (2 ** 64)
+    def stats(self) -> dict:
+        """Summary counts per lifecycle state."""
+        counts = {s: 0 for s in (
+            AgentLifecycle.SPAWNED,
+            AgentLifecycle.ACTIVE,
+            AgentLifecycle.ADAPTING,
+            AgentLifecycle.COMPILED,
+            AgentLifecycle.SUNSET,
+        )}
+        for rec in self._lifecycle.values():
+            counts[rec.state] = counts.get(rec.state, 0) + 1
+        return {
+            "generation": self.generation,
+            "rooms": self.grid.n,
+            "lifecycle": counts,
+            "thermal_headroom": self.thermal.thermal_headroom(),
+        }

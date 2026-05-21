@@ -12,6 +12,7 @@ from .tournament import (
     sunset_candidates,
 )
 from .thermal import DeviceBudget, DeviceType, ThermalBudget
+from .breeder import Breeder, AgentLifecycle, spawn_from_template
 
 __all__ = [
     "PenrosePosition",
@@ -30,4 +31,7 @@ __all__ = [
     "DeviceBudget",
     "DeviceType",
     "ThermalBudget",
+    "Breeder",
+    "AgentLifecycle",
+    "spawn_from_template",
 ]

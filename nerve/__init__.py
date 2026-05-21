@@ -8,6 +8,7 @@ between raw signals and reasoning agents.
 from .fiber import NerveFiber, FiberState, SensoryTile
 from .routing import RoutingLayer, Route, HebbianChannel
 from .adaptation import AdaptationEngine, ShoeTracker
+from .templates import AgentTemplate, TemplateRegistry, BUILTIN_TEMPLATES
 
 __all__ = [
     "NerveFiber",
@@ -18,4 +19,7 @@ __all__ = [
     "HebbianChannel",
     "AdaptationEngine",
     "ShoeTracker",
+    "AgentTemplate",
+    "TemplateRegistry",
+    "BUILTIN_TEMPLATES",
 ]

@@ -1,0 +1,52 @@
+name: Triage Report
+about: File a weekly triage finding (health score, duplicate issue, stale issue)
+title: "[TRIAGE] "
+labels: ["triage", "automation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template is used by the weekly triage automation (`triage/weekly.py`).
+        Humans may also use it to flag hygiene concerns manually.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Triage Category
+      options:
+        - Health Score Drop
+        - Duplicate Issue
+        - Stale Issue (>60 days)
+        - Unlabeled Issue
+        - Dependency Alert
+        - Documentation Gap
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: health_score
+    attributes:
+      label: Current Health Score (if known)
+      placeholder: "e.g. 72.5"
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What did the triage runner find? Paste relevant issue numbers or log excerpts.
+      placeholder: |
+        - Issue #42 and #47 flagged as duplicates (sim=0.81)
+        - Issue #12 stale since 2024-01-15
+        - Test coverage dropped from 68% to 52%
+
+  - type: checkboxes
+    id: actions
+    attributes:
+      label: Suggested Actions
+      options:
+        - label: Auto-label stale issues
+        - label: Close duplicate issues with reference link
+        - label: Update README / docs
+        - label: Add missing tests
+        - label: Run dependency audit
