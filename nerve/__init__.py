@@ -9,6 +9,7 @@ from .fiber import NerveFiber, FiberState, SensoryTile
 from .routing import RoutingLayer, Route, HebbianChannel
 from .adaptation import AdaptationEngine, ShoeTracker
 from .templates import AgentTemplate, TemplateRegistry, BUILTIN_TEMPLATES
+from .topology import NerveTopology, TickResult
 
 __all__ = [
     "NerveFiber",
@@ -22,4 +23,6 @@ __all__ = [
     "AgentTemplate",
     "TemplateRegistry",
     "BUILTIN_TEMPLATES",
+    "NerveTopology",
+    "TickResult",
 ]

@@ -10,7 +10,7 @@ Auto-detects: CUDA > Rust > numpy fallback.
 """
 
 from __future__ import annotations
-__all__ = ["RoomGrid", "Fingerprint", "make_weights", "novelty"]
+__all__ = ["RoomGrid", "JEPAGrid", "Fingerprint", "make_weights", "novelty"]
 
 import math, threading
 from ctypes import CDLL, c_float, c_size_t, POINTER
@@ -206,3 +206,7 @@ if __name__ == "__main__":
         print(f"{n:5d} rooms: {avg*1000:.1f}ms/tick ({avg/n*1e9:.0f}ns/room)")
     b = "Rust FFI" if _BACKEND == "rust" else "numpy"
     print(f"Backend: {b}")
+
+
+# Alias for SPEC-NERVE-TOPOLOGY compatibility
+JEPAGrid = RoomGrid
