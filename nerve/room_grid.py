@@ -10,9 +10,10 @@ Auto-detects: CUDA > Rust > numpy fallback.
 """
 
 from __future__ import annotations
-__all__ = ["RoomGrid", "JEPAGrid", "Fingerprint", "make_weights", "novelty"]
+__all__ = ["RoomGrid", "JEPAGrid", "Fingerprint", "make_weights", "novelty", "batch_novelty"]
 
 import math, threading
+from collections import deque
 from ctypes import CDLL, c_float, c_size_t, POINTER
 from dataclasses import dataclass
 from pathlib import Path
@@ -94,6 +95,42 @@ def novelty(z, history):
     return float(1.0 - (zn * rn).sum(axis=-1).mean())
 
 
+def batch_novelty(latents: np.ndarray, history: dict[int, deque]) -> np.ndarray:
+    """Vectorized novelty for all rooms (SPEC-JEPA-GRID-OPTIMIZATION §4).
+
+    Args:
+        latents: (n, 16) current latents
+        history: room_id -> deque of past latents (up to 20, we use last 3)
+
+    Returns:
+        (n,) novelty scores [0, 1]
+    """
+    n = latents.shape[0]
+    norms = np.linalg.norm(latents, axis=1, keepdims=True) + 1e-8
+    zn = latents / norms  # (n, 16)
+
+    hist_tensor = np.zeros((n, 3, 16), dtype=np.float32)
+    hist_mask = np.zeros((n, 3), dtype=np.float32)
+
+    for i in range(n):
+        h = list(history.get(i, []))[-3:]
+        for j, z in enumerate(h):
+            hist_tensor[i, j] = z
+            hist_mask[i, j] = 1.0
+
+    h_norms = np.linalg.norm(hist_tensor, axis=-1, keepdims=True) + 1e-8
+    hn = hist_tensor / h_norms
+    sims = (zn[:, np.newaxis, :] * hn).sum(axis=-1)  # (n, 3)
+
+    mask_sum = hist_mask.sum(axis=1, keepdims=True) + 1e-8
+    mean_sim = (sims * hist_mask).sum(axis=1, keepdims=True) / mask_sum
+    novelty = 1.0 - mean_sim.ravel()
+
+    no_hist = hist_mask.sum(axis=1) < 2
+    novelty[no_hist] = 0.5
+    return novelty
+
+
 @dataclass
 class Fingerprint:
     i: int
@@ -126,9 +163,10 @@ class RoomGrid:
         self.w = make_weights(n, d, h, l)
         self.activity = np.zeros(n, dtype=np.int32)
         self.chaos = np.full(n, chaos, dtype=np.float32)
-        self.history = {}
+        self.history = {i: deque(maxlen=20) for i in range(n)}
         self.ticks = 0
         self.l = l
+        self._out = np.empty((n, 16), dtype=np.float32)  # pre-allocated output buffer
         t = np.linspace(0, 2 * math.pi, d)
         self._ref = {"sine": np.sin(t).astype(np.float32),
                      "noise": np.random.randn(d).astype(np.float32),
@@ -140,18 +178,17 @@ class RoomGrid:
     def tick(self, x):
         self.ticks += 1
         latents = self._forward(x)
-        fired = []
+        # Vectorized novelty + chaos gating (SPEC-JEPA-GRID-OPTIMIZATION §4)
+        nv = batch_novelty(latents, self.history)
+        chaos_fire = np.random.random(self.n) < self.chaos
+        fired_mask = (nv > 0.5) | chaos_fire
+        fired = np.where(fired_mask)[0].tolist()[:10]
+        self.activity[fired_mask] += 1
+        self.chaos = np.where(fired_mask, np.maximum(0.01, self.chaos * 0.99), self.chaos)
+        # O(1) history append via deque
         for i in range(self.n):
-            z = latents[i]
-            nv = novelty(z, self.history.get(i, []))
-            if nv > 0.5 or np.random.random() < self.chaos[i]:
-                self.activity[i] += 1
-                fired.append(i)
-                self.chaos[i] = max(0.01, self.chaos[i] * 0.99)
-            self.history.setdefault(i, []).append(z.copy())
-            if len(self.history[i]) > 20:
-                self.history[i].pop(0)
-        return {"fired": len(fired), "ids": fired[:10], "tick": self.ticks}
+            self.history[i].append(latents[i].copy())
+        return {"fired": int(fired_mask.sum()), "ids": fired, "tick": self.ticks}
 
     def fingerprints(self, n=50):
         return [Fingerprint(i, forward_one(self.w,i,self._ref["sine"]),
@@ -172,7 +209,7 @@ class RoomGrid:
             self.w[k][i] = rng.randn(*shp).astype(np.float32) * 0.01
         self.activity[i] = 0
         self.chaos[i] = 0.3
-        self.history[i] = []
+        self.history[i] = deque(maxlen=20)
 
     def breed(self, src, dst):
         """Rebirth dst with weights cloned from src + light mutation."""
@@ -183,7 +220,7 @@ class RoomGrid:
             self.w[k][dst] += rng.randn(*self.w[k][dst].shape).astype(np.float32) * 0.005
         self.activity[dst] = 0
         self.chaos[dst] = 0.3
-        self.history[dst] = []
+        self.history[dst] = deque(maxlen=20)
 
     def __repr__(self):
         backend_str = "rust" if _BACKEND == "rust" else "numpy"
