@@ -1,7 +1,7 @@
 """Pure-numpy JEPA grid tests — 250 rooms, 195μs."""
 
 import numpy as np
-from nerve.room_grid import JEPAGrid, Fingerprint, make_weights, forward_einsum, forward_one, novelty
+from nerve.room_grid import RoomGrid, Fingerprint, make_weights, forward_einsum, forward_one, novelty
 
 
 class TestWeights:
@@ -48,45 +48,45 @@ class TestNovelty:
         assert n > 0.3
 
 
-class TestJEPAGrid:
+class TestRoomGrid:
     def test_make(self):
-        g = JEPAGrid(10)
+        g = RoomGrid(10)
         assert g.n == 10
         assert repr(g)
 
     def test_tick(self):
-        g = JEPAGrid(10)
+        g = RoomGrid(10)
         r = g.tick(np.random.randn(64))
         assert "fired" in r
 
     def test_multitick(self):
-        g = JEPAGrid(10)
+        g = RoomGrid(10)
         for _ in range(20):
             g.tick(np.random.randn(64))
         assert g.ticks == 20
         assert int((g.activity > 0).sum()) > 0
 
     def test_top(self):
-        g = JEPAGrid(10)
+        g = RoomGrid(10)
         for _ in range(20):
             g.tick(np.random.randn(64))
         t = g.top(3)
         assert len(t) <= 3
 
     def test_cold(self):
-        g = JEPAGrid(10)
+        g = RoomGrid(10)
         g.activity[:3] = 10
         c = g.cold(5)
         assert all(g.activity[i] < 5 for i in c)
 
     def test_rebirth(self):
-        g = JEPAGrid(10)
+        g = RoomGrid(10)
         w_before = g.w["w1"][5].copy()
         g.rebirth(5)
         assert np.linalg.norm(w_before - g.w["w1"][5]) > 0.001
 
     def test_fingerprints(self):
-        g = JEPAGrid(50)
+        g = RoomGrid(50)
         for _ in range(5):
             g.tick(np.random.randn(64))
         fps = g.fingerprints()
@@ -94,7 +94,7 @@ class TestJEPAGrid:
         assert all(isinstance(f, Fingerprint) for f in fps)
 
     def test_stats(self):
-        g = JEPAGrid(10)
+        g = RoomGrid(10)
         for _ in range(5):
             g.tick(np.random.randn(64))
         s = g.stats
@@ -103,7 +103,7 @@ class TestJEPAGrid:
         assert s["active"] > 0
 
     def test_diverse_fingerprints(self):
-        g = JEPAGrid(10)
+        g = RoomGrid(10)
         fps = g.fingerprints(10)
         # All rooms should have different fingerprints
         diffs = []

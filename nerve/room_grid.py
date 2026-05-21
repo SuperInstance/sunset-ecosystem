@@ -1,15 +1,16 @@
-"""JEPAGrid — numpy fallback / Rust FFI auto-detect.
+"""RoomGrid — Pure numpy forward matmuls with Rust/CUDA backends.
 
-Each room = 3.4K params. All rooms → one batched matmul.
-250 rooms = 195μs (numpy). 10K rooms = 5ms (numpy).
-Rust kernel: multi-threaded, cache-friendly, ~2-5× faster.
+Each room = 3.4K params of deterministic MLP weights.
+All rooms → one batched forward pass. No training, no backprop.
+Diversity comes from random weight initialization per room.
+Variation comes from `breed(src, dst)` — clone weights + noise.
 
-Auto-detects the compiled Rust .so at import time.
-Falls back to pure numpy if unavailable.
+250 rooms = 195μs (numpy). 10K rooms = 2ms (CUDA). 10K rooms = 5ms (Rust).
+Auto-detects: CUDA > Rust > numpy fallback.
 """
 
 from __future__ import annotations
-__all__ = ["JEPAGrid", "Fingerprint", "make_weights", "novelty"]
+__all__ = ["RoomGrid", "Fingerprint", "make_weights", "novelty"]
 
 import math, threading
 from ctypes import CDLL, c_float, c_size_t, POINTER
@@ -31,7 +32,7 @@ except (StopIteration, OSError):
 
 
 def make_weights(n: int, d: int = 64, h: int = 32, l: int = 16, seed: int = 42):
-    """Deep 64→h→l architecture. w3 is near-identity to preserve diversity (not JEPA predictor)."""
+    """Deep 64→h→l MLP weights. Near-identity w3 preserves room diversity."""
     rng = np.random.RandomState(seed)
     w3 = np.eye(l, dtype=np.float32) * 0.99  # near-identity
     w3 += rng.randn(l, l).astype(np.float32) * 0.001  # tiny noise
@@ -107,8 +108,18 @@ class Fingerprint:
         return f"Fingerprint(room={self.i}, activity={self.activity})"
 
 
-class JEPAGrid:
-    """N rooms × JEPA. Auto: Rust FFI or numpy einsum."""
+class RoomGrid:
+    """N rooms × MLP. Forward only. No training.
+
+    Each room has unique random weights. Diversity comes from
+    initialization + breed(). No training, no backprop ever needed.
+
+    Usage:
+        g = RoomGrid(250)
+        g.tick(np.random.randn(64))   # all rooms signal
+        g.cold()                     # sunset candidates
+        g.breed(5, 100)              # clone room 5's weights to 100
+    """
 
     def __init__(self, n=250, d=64, h=32, l=16, chaos=0.3):
         self.n = n
@@ -176,7 +187,7 @@ class JEPAGrid:
 
     def __repr__(self):
         backend_str = "rust" if _BACKEND == "rust" else "numpy"
-        return f"JEPAGrid(n={self.n}, ticks={self.ticks}, active={int((self.activity>0).sum())}, {backend_str})"
+        return f"RoomGrid(n={self.n}, ticks={self.ticks}, active={int((self.activity>0).sum())}, {backend_str})"
 
     @property
     def stats(self):
@@ -187,7 +198,7 @@ class JEPAGrid:
 if __name__ == "__main__":
     import time
     for n in [250, 1000, 5000, 10000]:
-        g = JEPAGrid(n)
+        g = RoomGrid(n)
         start = time.perf_counter()
         for _ in range(10):
             g.tick(np.random.randn(64))

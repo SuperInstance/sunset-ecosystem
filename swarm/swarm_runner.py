@@ -143,7 +143,7 @@ class SwarmRunner:
         """Continuous daemon: tick grid, breed cold rooms, respect thermal.
 
         Args:
-            grid: JEPAGrid instance.
+            grid: RoomGrid instance.
             max_ticks: Limit for testing (-1 = infinite).
             breed_interval: How many ticks between breeding rounds.
 

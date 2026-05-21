@@ -8,7 +8,7 @@ import time
 import numpy as np
 import pytest
 
-from nerve.room_grid import JEPAGrid
+from nerve.room_grid import RoomGrid
 from swarm.breeder_daemon import AutoBreeder, RebirthRecord
 from swarm.thermal import DeviceType, ThermalBudget
 
@@ -17,8 +17,8 @@ from swarm.thermal import DeviceType, ThermalBudget
 
 @pytest.fixture
 def grid():
-    """JEPAGrid with some hot and cold rooms."""
-    g = JEPAGrid(n=20)
+    """RoomGrid with some hot and cold rooms."""
+    g = RoomGrid(n=20)
     # Make rooms 0-9 hot
     for _ in range(20):
         for i in range(10):
@@ -43,7 +43,7 @@ class TestAutoBreed:
 
     def test_returns_empty_when_no_cold_rooms(self, thermal):
         """All rooms active → nothing to rebirth."""
-        g = JEPAGrid(n=5)
+        g = RoomGrid(n=5)
         for i in range(5):
             g.activity[i] = 100
         b = AutoBreeder(g, thermal, cold_threshold=3)
@@ -58,7 +58,7 @@ class TestAutoBreed:
         are identical. This test verifies no crash occurs and the
         result is a list.
         """
-        g = JEPAGrid(n=5)
+        g = RoomGrid(n=5)
         b = AutoBreeder(g, thermal, cold_threshold=3)
         result = b.auto_breed()
         # With all-zero activity, top() returns rooms with activity 0.

@@ -17,7 +17,7 @@ from typing import Optional
 
 import numpy as np
 
-from nerve.room_grid import JEPAGrid
+from nerve.room_grid import RoomGrid
 from swarm.thermal import DeviceType, ThermalBudget
 from swarm.tournament import AgentScore, TournamentRound, breed
 
@@ -48,14 +48,14 @@ class AutoBreeder:
     """Automatically breeds agents from hot rooms into cold rooms.
 
     Wires together:
-        - JEPAGrid (room activity / rebirth)
+        - RoomGrid (room activity / rebirth)
         - TournamentRound (selection)
         - breed() (crossover)
         - ThermalBudget (slot management)
 
     Usage::
 
-        grid = JEPAGrid(250)
+        grid = RoomGrid(250)
         thermal = ThermalBudget()
         breeder = AutoBreeder(grid, thermal, interval=10)
         results = breeder.auto_breed()
@@ -66,7 +66,7 @@ class AutoBreeder:
 
     def __init__(
         self,
-        grid: JEPAGrid,
+        grid: RoomGrid,
         thermal: ThermalBudget,
         interval: int = 10,
         cold_threshold: int = 3,
