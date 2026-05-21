@@ -93,7 +93,88 @@ class JitBackend:
         raise NotImplementedError
 
 
-# ── Numba JIT Backend ───────────────────────────────────────
+# ── Hardware Detection (shared with nerve/room_grid.py) ─────
+
+def detect_hardware():
+    """Detect available compute backends."""
+    hw = {"numpy": True, "numba": False, "rust_persistent": False,
+          "rust_oneshot": False, "cuda": False}
+    
+    # Numba
+    try:
+        import numba
+        hw["numba"] = True
+    except ImportError:
+        pass
+    
+    # Rust persistent (libjepa_kernel.so)
+    try:
+        from pathlib import Path
+        so = next(Path(__file__).parent.parent.glob("nerve/target/release/libjepa_kernel.so"))
+        from ctypes import CDLL
+        CDLL(str(so))
+        hw["rust_persistent"] = True
+        hw["rust_oneshot"] = True
+    except (StopIteration, OSError):
+        pass
+    
+    # CUDA
+    try:
+        from ctypes import CDLL
+        CDLL("libcudart.so")
+        hw["cuda"] = True
+    except OSError:
+        pass
+    
+    return hw
+
+
+HARDWARE = detect_hardware()
+
+
+# ── Grid-Aware Backend Selector ───────────────────────────
+
+class GridBackendSelector:
+    """Selects the optimal backend for NerveTopology grid forward passes.
+    
+    Matches room_grid.py logic:
+      - n < 50:    numpy (ctypes overhead dominates)
+      - 50-500:    rust_oneshot (medium arrays)
+      - 500+:      rust_persistent (zero-copy, weights in Rust)
+      - 1000+ + GPU: cuda (if available)
+    """
+    
+    THRESHOLDS = {
+        "numpy": 0,
+        "rust_oneshot": 50,
+        "rust_persistent": 500,
+        "cuda": 1000,
+    }
+    
+    @classmethod
+    def select(cls, n_rooms: int) -> str:
+        """Return best backend name for `n_rooms`."""
+        candidates = []
+        if HARDWARE["cuda"] and n_rooms >= cls.THRESHOLDS["cuda"]:
+            candidates.append("cuda")
+        if HARDWARE["rust_persistent"] and n_rooms >= cls.THRESHOLDS["rust_persistent"]:
+            candidates.append("rust_persistent")
+        elif HARDWARE["rust_oneshot"] and n_rooms >= cls.THRESHOLDS["rust_oneshot"]:
+            candidates.append("rust_oneshot")
+        if not candidates:
+            candidates.append("numpy")
+        return candidates[0]  # first = highest priority
+    
+    @classmethod
+    def report(cls) -> str:
+        lines = ["=== Hardware Detection ==="]
+        for name, available in HARDWARE.items():
+            lines.append(f"  {name:<18} {'✅' if available else '❌'}")
+        lines.append("")
+        lines.append("=== Backend Thresholds ===")
+        for backend, thresh in cls.THRESHOLDS.items():
+            lines.append(f"  {backend:<18} n >= {thresh}")
+        return "\n".join(lines)
 
 class NumbaBackend(JitBackend):
     """Numba LLVM JIT backend for numpy-heavy Python functions."""
@@ -435,8 +516,10 @@ class Compiler:
         return t_orig / max(t_comp, 0.001)
 
     def report(self) -> str:
-        """Full compiler status report."""
+        """Full compiler status report including hardware detection."""
         lines = [self.profiler.report(), ""]
+        lines.append(GridBackendSelector.report())
+        lines.append("")
         lines.append("=== Compiled Functions ===")
         if not self.compiled:
             lines.append("None yet.")
