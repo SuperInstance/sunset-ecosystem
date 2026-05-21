@@ -1,0 +1,805 @@
+{
+  "sweep": [
+    {
+      "cap": 20,
+      "dynamic": false,
+      "champion_hit": 33,
+      "final_mean": 0.945632,
+      "final_diversity": 0.060933,
+      "generations": [
+        {
+          "gen": 1000,
+          "champion": 1.0,
+          "mean": 0.950324,
+          "diversity": 0.068752,
+          "cap": 20
+        },
+        {
+          "gen": 2000,
+          "champion": 1.0,
+          "mean": 0.947702,
+          "diversity": 0.058849,
+          "cap": 20
+        },
+        {
+          "gen": 3000,
+          "champion": 1.0,
+          "mean": 0.927918,
+          "diversity": 0.077598,
+          "cap": 20
+        },
+        {
+          "gen": 4000,
+          "champion": 1.0,
+          "mean": 0.895535,
+          "diversity": 0.097251,
+          "cap": 20
+        },
+        {
+          "gen": 5000,
+          "champion": 1.0,
+          "mean": 0.938965,
+          "diversity": 0.066457,
+          "cap": 20
+        },
+        {
+          "gen": 6000,
+          "champion": 1.0,
+          "mean": 0.973395,
+          "diversity": 0.036391,
+          "cap": 20
+        },
+        {
+          "gen": 7000,
+          "champion": 1.0,
+          "mean": 0.945708,
+          "diversity": 0.06128,
+          "cap": 20
+        },
+        {
+          "gen": 8000,
+          "champion": 1.0,
+          "mean": 0.943495,
+          "diversity": 0.058769,
+          "cap": 20
+        },
+        {
+          "gen": 9000,
+          "champion": 1.0,
+          "mean": 0.958647,
+          "diversity": 0.051319,
+          "cap": 20
+        },
+        {
+          "gen": 10000,
+          "champion": 1.0,
+          "mean": 0.945632,
+          "diversity": 0.060933,
+          "cap": 20
+        }
+      ],
+      "time_sec": 4.9
+    },
+    {
+      "cap": 30,
+      "dynamic": false,
+      "champion_hit": 26,
+      "final_mean": 0.950638,
+      "final_diversity": 0.055773,
+      "generations": [
+        {
+          "gen": 1000,
+          "champion": 1.0,
+          "mean": 0.929824,
+          "diversity": 0.064863,
+          "cap": 30
+        },
+        {
+          "gen": 2000,
+          "champion": 1.0,
+          "mean": 0.964343,
+          "diversity": 0.048559,
+          "cap": 30
+        },
+        {
+          "gen": 3000,
+          "champion": 1.0,
+          "mean": 0.953226,
+          "diversity": 0.055517,
+          "cap": 30
+        },
+        {
+          "gen": 4000,
+          "champion": 1.0,
+          "mean": 0.937835,
+          "diversity": 0.071183,
+          "cap": 30
+        },
+        {
+          "gen": 5000,
+          "champion": 1.0,
+          "mean": 0.95689,
+          "diversity": 0.054072,
+          "cap": 30
+        },
+        {
+          "gen": 6000,
+          "champion": 1.0,
+          "mean": 0.953277,
+          "diversity": 0.056538,
+          "cap": 30
+        },
+        {
+          "gen": 7000,
+          "champion": 1.0,
+          "mean": 0.940034,
+          "diversity": 0.060727,
+          "cap": 30
+        },
+        {
+          "gen": 8000,
+          "champion": 1.0,
+          "mean": 0.973205,
+          "diversity": 0.038937,
+          "cap": 30
+        },
+        {
+          "gen": 9000,
+          "champion": 1.0,
+          "mean": 0.967849,
+          "diversity": 0.041016,
+          "cap": 30
+        },
+        {
+          "gen": 10000,
+          "champion": 1.0,
+          "mean": 0.950638,
+          "diversity": 0.055773,
+          "cap": 30
+        }
+      ],
+      "time_sec": 9.0
+    },
+    {
+      "cap": 50,
+      "dynamic": false,
+      "champion_hit": 23,
+      "final_mean": 0.94575,
+      "final_diversity": 0.058863,
+      "generations": [
+        {
+          "gen": 1000,
+          "champion": 1.0,
+          "mean": 0.961152,
+          "diversity": 0.047234,
+          "cap": 50
+        },
+        {
+          "gen": 2000,
+          "champion": 1.0,
+          "mean": 0.953322,
+          "diversity": 0.055676,
+          "cap": 50
+        },
+        {
+          "gen": 3000,
+          "champion": 1.0,
+          "mean": 0.940583,
+          "diversity": 0.065261,
+          "cap": 50
+        },
+        {
+          "gen": 4000,
+          "champion": 1.0,
+          "mean": 0.941415,
+          "diversity": 0.065434,
+          "cap": 50
+        },
+        {
+          "gen": 5000,
+          "champion": 1.0,
+          "mean": 0.96186,
+          "diversity": 0.047727,
+          "cap": 50
+        },
+        {
+          "gen": 6000,
+          "champion": 1.0,
+          "mean": 0.931862,
+          "diversity": 0.068365,
+          "cap": 50
+        },
+        {
+          "gen": 7000,
+          "champion": 1.0,
+          "mean": 0.937283,
+          "diversity": 0.065248,
+          "cap": 50
+        },
+        {
+          "gen": 8000,
+          "champion": 1.0,
+          "mean": 0.959059,
+          "diversity": 0.047014,
+          "cap": 50
+        },
+        {
+          "gen": 9000,
+          "champion": 1.0,
+          "mean": 0.96086,
+          "diversity": 0.046746,
+          "cap": 50
+        },
+        {
+          "gen": 10000,
+          "champion": 1.0,
+          "mean": 0.94575,
+          "diversity": 0.058863,
+          "cap": 50
+        }
+      ],
+      "time_sec": 28.6
+    },
+    {
+      "cap": 100,
+      "dynamic": false,
+      "champion_hit": 18,
+      "final_mean": 0.94179,
+      "final_diversity": 0.063373,
+      "generations": [
+        {
+          "gen": 1000,
+          "champion": 1.0,
+          "mean": 0.952103,
+          "diversity": 0.060129,
+          "cap": 100
+        },
+        {
+          "gen": 2000,
+          "champion": 1.0,
+          "mean": 0.946472,
+          "diversity": 0.062575,
+          "cap": 100
+        },
+        {
+          "gen": 3000,
+          "champion": 1.0,
+          "mean": 0.951704,
+          "diversity": 0.056837,
+          "cap": 100
+        },
+        {
+          "gen": 4000,
+          "champion": 1.0,
+          "mean": 0.937767,
+          "diversity": 0.067999,
+          "cap": 100
+        },
+        {
+          "gen": 5000,
+          "champion": 1.0,
+          "mean": 0.945724,
+          "diversity": 0.065554,
+          "cap": 100
+        },
+        {
+          "gen": 6000,
+          "champion": 1.0,
+          "mean": 0.945344,
+          "diversity": 0.059453,
+          "cap": 100
+        },
+        {
+          "gen": 7000,
+          "champion": 1.0,
+          "mean": 0.957829,
+          "diversity": 0.051756,
+          "cap": 100
+        },
+        {
+          "gen": 8000,
+          "champion": 1.0,
+          "mean": 0.938209,
+          "diversity": 0.071518,
+          "cap": 100
+        },
+        {
+          "gen": 9000,
+          "champion": 1.0,
+          "mean": 0.952557,
+          "diversity": 0.052356,
+          "cap": 100
+        },
+        {
+          "gen": 10000,
+          "champion": 1.0,
+          "mean": 0.94179,
+          "diversity": 0.063373,
+          "cap": 100
+        }
+      ],
+      "time_sec": 105.4
+    },
+    {
+      "cap": 200,
+      "dynamic": false,
+      "champion_hit": 16,
+      "final_mean": 0.946287,
+      "final_diversity": 0.062475,
+      "generations": [
+        {
+          "gen": 1000,
+          "champion": 1.0,
+          "mean": 0.94467,
+          "diversity": 0.063771,
+          "cap": 200
+        },
+        {
+          "gen": 2000,
+          "champion": 1.0,
+          "mean": 0.947094,
+          "diversity": 0.062135,
+          "cap": 200
+        },
+        {
+          "gen": 3000,
+          "champion": 1.0,
+          "mean": 0.94243,
+          "diversity": 0.066419,
+          "cap": 200
+        },
+        {
+          "gen": 4000,
+          "champion": 1.0,
+          "mean": 0.946802,
+          "diversity": 0.062385,
+          "cap": 200
+        },
+        {
+          "gen": 5000,
+          "champion": 1.0,
+          "mean": 0.948804,
+          "diversity": 0.058598,
+          "cap": 200
+        },
+        {
+          "gen": 6000,
+          "champion": 1.0,
+          "mean": 0.945992,
+          "diversity": 0.059073,
+          "cap": 200
+        },
+        {
+          "gen": 7000,
+          "champion": 1.0,
+          "mean": 0.94529,
+          "diversity": 0.061951,
+          "cap": 200
+        },
+        {
+          "gen": 8000,
+          "champion": 1.0,
+          "mean": 0.94363,
+          "diversity": 0.062775,
+          "cap": 200
+        },
+        {
+          "gen": 9000,
+          "champion": 1.0,
+          "mean": 0.944998,
+          "diversity": 0.061772,
+          "cap": 200
+        },
+        {
+          "gen": 10000,
+          "champion": 1.0,
+          "mean": 0.946287,
+          "diversity": 0.062475,
+          "cap": 200
+        }
+      ],
+      "time_sec": 408.5
+    },
+    {
+      "cap": 20,
+      "dynamic": true,
+      "champion_hit": 16,
+      "final_mean": 0.93469,
+      "final_diversity": 0.061824,
+      "generations": [
+        {
+          "gen": 1000,
+          "champion": 1.0,
+          "mean": 0.960957,
+          "diversity": 0.04846,
+          "cap": 30
+        },
+        {
+          "gen": 2000,
+          "champion": 1.0,
+          "mean": 0.923528,
+          "diversity": 0.081097,
+          "cap": 30
+        },
+        {
+          "gen": 3000,
+          "champion": 1.0,
+          "mean": 0.971391,
+          "diversity": 0.038983,
+          "cap": 30
+        },
+        {
+          "gen": 4000,
+          "champion": 1.0,
+          "mean": 0.963087,
+          "diversity": 0.046333,
+          "cap": 30
+        },
+        {
+          "gen": 5000,
+          "champion": 1.0,
+          "mean": 0.943783,
+          "diversity": 0.062832,
+          "cap": 30
+        },
+        {
+          "gen": 6000,
+          "champion": 1.0,
+          "mean": 0.944524,
+          "diversity": 0.056037,
+          "cap": 30
+        },
+        {
+          "gen": 7000,
+          "champion": 1.0,
+          "mean": 0.920905,
+          "diversity": 0.075895,
+          "cap": 30
+        },
+        {
+          "gen": 8000,
+          "champion": 1.0,
+          "mean": 0.930145,
+          "diversity": 0.073273,
+          "cap": 30
+        },
+        {
+          "gen": 9000,
+          "champion": 1.0,
+          "mean": 0.942362,
+          "diversity": 0.064196,
+          "cap": 30
+        },
+        {
+          "gen": 10000,
+          "champion": 1.0,
+          "mean": 0.93469,
+          "diversity": 0.061824,
+          "cap": 30
+        }
+      ],
+      "time_sec": 16.0
+    },
+    {
+      "cap": 30,
+      "dynamic": true,
+      "champion_hit": 25,
+      "final_mean": 0.944259,
+      "final_diversity": 0.061817,
+      "generations": [
+        {
+          "gen": 1000,
+          "champion": 1.0,
+          "mean": 0.944341,
+          "diversity": 0.063359,
+          "cap": 45
+        },
+        {
+          "gen": 2000,
+          "champion": 1.0,
+          "mean": 0.946244,
+          "diversity": 0.066162,
+          "cap": 45
+        },
+        {
+          "gen": 3000,
+          "champion": 1.0,
+          "mean": 0.922087,
+          "diversity": 0.080324,
+          "cap": 45
+        },
+        {
+          "gen": 4000,
+          "champion": 1.0,
+          "mean": 0.950762,
+          "diversity": 0.054428,
+          "cap": 45
+        },
+        {
+          "gen": 5000,
+          "champion": 1.0,
+          "mean": 0.950878,
+          "diversity": 0.055396,
+          "cap": 45
+        },
+        {
+          "gen": 6000,
+          "champion": 1.0,
+          "mean": 0.93501,
+          "diversity": 0.072237,
+          "cap": 45
+        },
+        {
+          "gen": 7000,
+          "champion": 1.0,
+          "mean": 0.933629,
+          "diversity": 0.069536,
+          "cap": 45
+        },
+        {
+          "gen": 8000,
+          "champion": 1.0,
+          "mean": 0.932711,
+          "diversity": 0.071716,
+          "cap": 45
+        },
+        {
+          "gen": 9000,
+          "champion": 1.0,
+          "mean": 0.957473,
+          "diversity": 0.048786,
+          "cap": 45
+        },
+        {
+          "gen": 10000,
+          "champion": 1.0,
+          "mean": 0.944259,
+          "diversity": 0.061817,
+          "cap": 45
+        }
+      ],
+      "time_sec": 30.4
+    },
+    {
+      "cap": 50,
+      "dynamic": true,
+      "champion_hit": 23,
+      "final_mean": 0.944418,
+      "final_diversity": 0.064733,
+      "generations": [
+        {
+          "gen": 1000,
+          "champion": 1.0,
+          "mean": 0.941348,
+          "diversity": 0.06634,
+          "cap": 75
+        },
+        {
+          "gen": 2000,
+          "champion": 1.0,
+          "mean": 0.952638,
+          "diversity": 0.054219,
+          "cap": 75
+        },
+        {
+          "gen": 3000,
+          "champion": 1.0,
+          "mean": 0.939112,
+          "diversity": 0.069488,
+          "cap": 75
+        },
+        {
+          "gen": 4000,
+          "champion": 1.0,
+          "mean": 0.948449,
+          "diversity": 0.059228,
+          "cap": 75
+        },
+        {
+          "gen": 5000,
+          "champion": 1.0,
+          "mean": 0.953557,
+          "diversity": 0.051602,
+          "cap": 75
+        },
+        {
+          "gen": 6000,
+          "champion": 1.0,
+          "mean": 0.945498,
+          "diversity": 0.062667,
+          "cap": 75
+        },
+        {
+          "gen": 7000,
+          "champion": 1.0,
+          "mean": 0.94165,
+          "diversity": 0.065052,
+          "cap": 75
+        },
+        {
+          "gen": 8000,
+          "champion": 1.0,
+          "mean": 0.954253,
+          "diversity": 0.056541,
+          "cap": 75
+        },
+        {
+          "gen": 9000,
+          "champion": 1.0,
+          "mean": 0.941176,
+          "diversity": 0.068543,
+          "cap": 75
+        },
+        {
+          "gen": 10000,
+          "champion": 1.0,
+          "mean": 0.944418,
+          "diversity": 0.064733,
+          "cap": 75
+        }
+      ],
+      "time_sec": 66.7
+    },
+    {
+      "cap": 100,
+      "dynamic": true,
+      "champion_hit": 16,
+      "final_mean": 0.950394,
+      "final_diversity": 0.057799,
+      "generations": [
+        {
+          "gen": 1000,
+          "champion": 1.0,
+          "mean": 0.953536,
+          "diversity": 0.05347,
+          "cap": 150
+        },
+        {
+          "gen": 2000,
+          "champion": 1.0,
+          "mean": 0.940364,
+          "diversity": 0.064722,
+          "cap": 150
+        },
+        {
+          "gen": 3000,
+          "champion": 1.0,
+          "mean": 0.95248,
+          "diversity": 0.055913,
+          "cap": 150
+        },
+        {
+          "gen": 4000,
+          "champion": 1.0,
+          "mean": 0.95718,
+          "diversity": 0.052363,
+          "cap": 150
+        },
+        {
+          "gen": 5000,
+          "champion": 1.0,
+          "mean": 0.945826,
+          "diversity": 0.060738,
+          "cap": 150
+        },
+        {
+          "gen": 6000,
+          "champion": 1.0,
+          "mean": 0.945211,
+          "diversity": 0.063834,
+          "cap": 150
+        },
+        {
+          "gen": 7000,
+          "champion": 1.0,
+          "mean": 0.942331,
+          "diversity": 0.066783,
+          "cap": 150
+        },
+        {
+          "gen": 8000,
+          "champion": 1.0,
+          "mean": 0.948436,
+          "diversity": 0.060234,
+          "cap": 150
+        },
+        {
+          "gen": 9000,
+          "champion": 1.0,
+          "mean": 0.942096,
+          "diversity": 0.064575,
+          "cap": 150
+        },
+        {
+          "gen": 10000,
+          "champion": 1.0,
+          "mean": 0.950394,
+          "diversity": 0.057799,
+          "cap": 150
+        }
+      ],
+      "time_sec": 247.0
+    },
+    {
+      "cap": 200,
+      "dynamic": true,
+      "champion_hit": 27,
+      "final_mean": 0.949769,
+      "final_diversity": 0.057415,
+      "generations": [
+        {
+          "gen": 1000,
+          "champion": 1.0,
+          "mean": 0.94686,
+          "diversity": 0.059323,
+          "cap": 300
+        },
+        {
+          "gen": 2000,
+          "champion": 1.0,
+          "mean": 0.946217,
+          "diversity": 0.059955,
+          "cap": 300
+        },
+        {
+          "gen": 3000,
+          "champion": 1.0,
+          "mean": 0.948364,
+          "diversity": 0.059902,
+          "cap": 300
+        },
+        {
+          "gen": 4000,
+          "champion": 1.0,
+          "mean": 0.951782,
+          "diversity": 0.054961,
+          "cap": 300
+        },
+        {
+          "gen": 5000,
+          "champion": 1.0,
+          "mean": 0.947031,
+          "diversity": 0.060798,
+          "cap": 300
+        },
+        {
+          "gen": 6000,
+          "champion": 1.0,
+          "mean": 0.944744,
+          "diversity": 0.061996,
+          "cap": 300
+        },
+        {
+          "gen": 7000,
+          "champion": 1.0,
+          "mean": 0.950816,
+          "diversity": 0.057913,
+          "cap": 300
+        },
+        {
+          "gen": 8000,
+          "champion": 1.0,
+          "mean": 0.936968,
+          "diversity": 0.070166,
+          "cap": 300
+        },
+        {
+          "gen": 9000,
+          "champion": 1.0,
+          "mean": 0.948096,
+          "diversity": 0.058588,
+          "cap": 300
+        },
+        {
+          "gen": 10000,
+          "champion": 1.0,
+          "mean": 0.949769,
+          "diversity": 0.057415,
+          "cap": 300
+        }
+      ],
+      "time_sec": 439.7
+    }
+  ],
+  "end_time": "2026-05-21T19:04:12.348119"
+}
