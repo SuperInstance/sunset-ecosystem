@@ -133,11 +133,22 @@ class NerveTopology:
         }
 
     def _encode_tile(self, tile: SensoryTile) -> np.ndarray:
-        """Encode a SensoryTile into a signal vector for the grid."""
-        rng = np.random.RandomState(
-            hash(tile.pattern_id) % (2**31)
-        )
-        signal = rng.randn(self.signal_dim).astype(np.float32) * 0.1
+        """Encode a SensoryTile into a signal vector for the grid.
+
+        PERFORMANCE: Cached by pattern_id — avoids repeated RandomState creation.
+        The old implementation created a RandomState per call (0.5ms each),
+        which dominated tick() latency at 150+ calls per tick.
+        """
+        # Cache key: pattern_id + state (deterministic encoding)
+        cache_key = (tile.pattern_id, tile.state.value)
+        if hasattr(self, '_tile_cache') and cache_key in self._tile_cache:
+            signal = self._tile_cache[cache_key].copy()
+        else:
+            if not hasattr(self, '_tile_cache'):
+                self._tile_cache = {}
+            rng = np.random.RandomState(hash(tile.pattern_id) % (2**31))
+            signal = rng.randn(self.signal_dim).astype(np.float32) * 0.1
+            self._tile_cache[cache_key] = signal.copy()
 
         # Energy scaling by fiber state
         if tile.state == FiberState.COMPILED:
@@ -153,7 +164,7 @@ class NerveTopology:
         return signal
 
     def tick(self, signals: dict[str, Any] | None = None) -> TickResult:
-        """One full topology tick."""
+        """One full topology tick — optimized for speed."""
         t0 = time.perf_counter()
         self.tick_count += 1
 
@@ -171,12 +182,12 @@ class NerveTopology:
             if tile.state in (FiberState.NOVELTY_ALERT, FiberState.PERCEIVING):
                 novel_count += 1
 
-        # ── SELECT: Route tiles to rooms ──────────────────────
+        # ── SELECT: Route tiles to rooms (FAST PATH) ──────────
         room_signals: dict[str, list[tuple[str, SensoryTile]]] = {}
         routes_activated = 0
 
         for fid, tile in tiles.items():
-            fired = self.routing.fire(fid)
+            fired = self.routing.fire_fast(fid)  # ← vectorized
             routes_activated += len(fired)
             for rid in fired:
                 room_signals.setdefault(rid, []).append((fid, tile))
@@ -193,24 +204,33 @@ class NerveTopology:
         else:
             grid_result = {"fired": 0, "ids": [], "tick": self.tick_count}
 
-        # ── FEEDBACK: Reinforce routes based on grid response ─
+        # ── FEEDBACK: Batch reinforce routes ──────────────────
         routes_compiled = 0
         fired_room_ids = {f"room-{i}" for i in grid_result.get("ids", [])}
+        feedback_batch: list[tuple[str, str, bool]] = []
 
+        # Collect all feedback into batch
+        for fid in self.fibers:
+            for rid in fired_room_ids:
+                feedback_batch.append((fid, rid, True))
+
+        # Penalize routes to cold rooms (cached)
+        cold_rooms = self.grid.cold()
+        for room_idx in cold_rooms:
+            rid = f"room-{room_idx}"
+            for fid in self.fibers:
+                feedback_batch.append((fid, rid, False))
+
+        # Apply batch feedback
+        self.routing.feedback_batch(feedback_batch)
+
+        # Count compiled routes
         for fid in self.fibers:
             for rid in fired_room_ids:
                 route_key = self.routing._route_key(fid, rid)
                 route = self.routing._routes.get(route_key)
-                if route:
-                    self.routing.feedback(fid, rid, success=True)
-                    if route.strength > 0.9:
-                        routes_compiled += 1
-
-            # Penalize routes to cold rooms
-            cold_rooms = self.grid.cold()
-            for room_idx in cold_rooms:
-                rid = f"room-{room_idx}"
-                self.routing.feedback(fid, rid, success=False)
+                if route and route.strength > 0.9:
+                    routes_compiled += 1
 
         # ── REGULATE: Adaptive chaos decay ──────────────────────
         compiled_fraction = routes_compiled / max(1, len(self.routing._routes))
