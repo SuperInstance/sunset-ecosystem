@@ -1,0 +1,45 @@
+# Distillation Hyperparameters — CIFAR-10
+# Adjust for your hardware. Full training: 50-100 epochs.
+
+dataset:
+  name: CIFAR10
+  root: ./data
+  num_workers: 4
+  batch_size: 128
+
+models:
+  teacher: resnet50          # torchvision.models
+  student: resnet18            # torchvision.models
+  pretrained_teacher: false    # train from scratch or load checkpoint
+
+distillation:
+  temperature: 4.0             # soft-target temperature
+  alpha_hard: 0.5              # weight for hard-target CE loss
+  alpha_soft: 0.4              # weight for soft-target KL loss
+  alpha_feat: 0.1              # weight for feature MSE loss
+  feat_layers:                 # which layer pairs to match (teacher, student)
+    - [layer2, layer2]
+    - [layer3, layer3]
+
+training:
+  epochs: 10                   # smoke test / quick run
+  epochs_full: 50              # recommended for real results
+  lr: 0.001
+  weight_decay: 1.0e-4
+  momentum: 0.9
+  scheduler: cosine
+  warmup_epochs: 1
+
+checkpointing:
+  save_dir: ./checkpoints
+  save_every: 5                # epochs between intermediate saves
+  keep_best_only: true
+
+logging:
+  log_dir: ./logs
+  log_file: distillation.csv
+  print_every: 100             # batches between progress prints
+
+hardware:
+  device: auto                 # auto | cpu | cuda
+  mixed_precision: true          # torch.cuda.amp when available
