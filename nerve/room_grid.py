@@ -130,7 +130,7 @@ class JEPAGrid:
         for i in range(self.n):
             z = latents[i]
             nv = novelty(z, self.history.get(i, []))
-            if nv > 0.3 or np.random.random() < self.chaos[i]:
+            if nv > 0.5 or np.random.random() < self.chaos[i]:
                 self.activity[i] += 1
                 fired.append(i)
                 self.chaos[i] = max(0.01, self.chaos[i] * 0.99)
