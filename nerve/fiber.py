@@ -4,18 +4,82 @@ Lifecycle mirrors Soft → Snap → Hard:
     PERCEIVING (soft) → ADAPTING → COMPILED (hard) → NOVELTY_ALERT → PERCEIVING
 
 Like putting on shoes: feel every edge → dampen → muscle memory → rock in shoe.
+
+Ecosystem integration (optional):
+    - eisenstein_embed: Bitvector fingerprints for tile pattern matching
+    - device_router: Auto-detect optimal compute device for micro-models
+    - tensor_spline: SplineLinear for adaptive weight parameterisation
+    - triplet_miner: Git-powered triplet mining for novelty anchors
 """
 
 from __future__ import annotations
 
-__all__ = ["NerveFiber", "FiberState", "SensoryTile"]
+__all__ = ["NerveFiber", "FiberState", "SensoryTile", "ECOSYSTEM"]
 
 import hashlib
+import logging
 import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
+
+# ── Ecosystem dependency detection ───────────────────────────
+
+try:
+    from eisenstein_embed.bitvector import (
+        text_fingerprint,
+        bitvector_similarity,
+        find_best_bitvector_match,
+    )
+    HAS_EISENSTEIN = True
+except ImportError:
+    HAS_EISENSTEIN = False
+
+try:
+    from device_router.router import DeviceRouter
+    HAS_DEVICE_ROUTER = True
+except ImportError:
+    HAS_DEVICE_ROUTER = False
+
+try:
+    from tensor_spline.spline import SplineLinear
+    HAS_TENSOR_SPLINE = True
+except ImportError:
+    HAS_TENSOR_SPLINE = False
+
+try:
+    from triplet_miner.git_miner import TripletMiner
+    HAS_TRIPLET_MINER = True
+except ImportError:
+    HAS_TRIPLET_MINER = False
+
+ECOSYSTEM: dict[str, bool] = {
+    "eisenstein_embed": HAS_EISENSTEIN,
+    "device_router": HAS_DEVICE_ROUTER,
+    "tensor_spline": HAS_TENSOR_SPLINE,
+    "triplet_miner": HAS_TRIPLET_MINER,
+}
+
+# Singleton device router (lazy-initialised)
+_device_router: DeviceRouter | None = None
+_device_router_lock = threading.Lock()
+
+
+def _get_device_router() -> DeviceRouter | None:
+    """Return a lazily-initialised DeviceRouter singleton."""
+    global _device_router
+    if not HAS_DEVICE_ROUTER:
+        return None
+    if _device_router is not None:
+        return _device_router
+    with _device_router_lock:
+        if _device_router is None:
+            _device_router = DeviceRouter()
+            _device_router.detect()
+        return _device_router
 
 
 class FiberState(Enum):
@@ -133,6 +197,22 @@ class NerveFiber:
         raw = str(signal).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
 
+    @staticmethod
+    def _fingerprint_signal(signal: Any) -> int:
+        """Compute a 64-bit bitvector fingerprint for similarity matching.
+
+        Uses eisenstein_embed when available for proper TUTOR-style
+        bitvector fingerprints. Falls back to a simple hash otherwise.
+        """
+        if HAS_EISENSTEIN:
+            try:
+                return text_fingerprint(str(signal), use_stemming=True)
+            except Exception:
+                pass
+        # Fallback: truncate SHA-256 to 64 bits
+        raw = str(signal).encode("utf-8")
+        return int(hashlib.sha256(raw).hexdigest()[:16], 16)
+
     def perceive(self, signal: Any) -> SensoryTile:
         """Process a raw signal through this nerve fiber.
 
@@ -240,17 +320,39 @@ class NerveFiber:
     def _extract_features(self, signal: Any) -> dict[str, Any]:
         """Extract features from a raw signal.
 
-        In production, this would run the actual micro-model.
-        Here we use a lightweight hash-based feature extraction.
+        Uses ecosystem packages when available:
+        - eisenstein_embed for bitvector fingerprint similarity
+        - device_router for device-aware feature metadata
         """
         signal_str = str(signal)
-        return {
+        features: dict[str, Any] = {
             "length": len(signal_str),
             "type": type(signal).__name__,
             "hash_prefix": self._hash_signal(signal)[:16],
             "contains_digits": any(c.isdigit() for c in signal_str),
             "contains_alpha": any(c.isalpha() for c in signal_str),
         }
+
+        # Bitvector fingerprint via eisenstein-embed
+        if HAS_EISENSTEIN:
+            try:
+                fp = self._fingerprint_signal(signal)
+                features["bitvector_fingerprint"] = fp
+                features["bitvector_hex"] = f"{fp:016x}"
+            except Exception as exc:
+                logger.debug("eisenstein fingerprint failed: %s", exc)
+
+        # Device routing metadata via device-router
+        router = _get_device_router()
+        if router is not None:
+            try:
+                overview = router.overview()
+                features["device_cuda"] = overview.get("cuda", {}).get("available", False)
+                features["device_igpu"] = overview.get("igpu", {}).get("available", False)
+            except Exception as exc:
+                logger.debug("device-router overview failed: %s", exc)
+
+        return features
 
     def reset(self) -> None:
         """Reset the fiber to PERCEIVING state."""

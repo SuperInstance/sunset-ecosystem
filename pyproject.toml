@@ -21,6 +21,12 @@ classifiers = [
 [project.optional-dependencies]
 gpu = ["torch", "numpy"]
 dev = ["pytest>=7.0", "pytest-cov"]
+ecosystem = [
+    "eisenstein-embed @ file:///home/phoenix/.openclaw/workspace/eisenstein-embed",
+    "device-router @ file:///home/phoenix/.openclaw/workspace/device-router",
+    "tensor-spline @ file:///home/phoenix/.openclaw/workspace/tensor-spline",
+    "triplet-miner @ file:///home/phoenix/.openclaw/workspace/triplet-miner",
+]
 
 [tool.setuptools.packages.find]
 include = ["ethos*", "pathos*", "logos*", "sunset*"]

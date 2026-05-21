@@ -2,9 +2,115 @@
 
 import pytest
 
-from nerve.fiber import NerveFiber, FiberState, SensoryTile
+from nerve.fiber import NerveFiber, FiberState, SensoryTile, ECOSYSTEM
 from nerve.routing import RoutingLayer, Route, HebbianChannel
 from nerve.adaptation import AdaptationEngine, ShoeTracker, ShoeState
+
+
+# ── Ecosystem Integration Tests ─────────────────────────────
+
+
+class TestEcosystemDetection:
+    """Tests for optional ecosystem package detection."""
+
+    def test_ecosystem_dict_exists(self):
+        assert isinstance(ECOSYSTEM, dict)
+        assert "eisenstein_embed" in ECOSYSTEM
+        assert "device_router" in ECOSYSTEM
+        assert "tensor_spline" in ECOSYSTEM
+        assert "triplet_miner" in ECOSYSTEM
+
+    def test_ecosystem_values_are_bool(self):
+        for key, val in ECOSYSTEM.items():
+            assert isinstance(val, bool), f"{key} should be bool, got {type(val)}"
+
+
+@pytest.mark.skipif(
+    not ECOSYSTEM.get("eisenstein_embed"),
+    reason="eisenstein-embed not installed",
+)
+class TestEisensteinIntegration:
+    """Tests using real eisenstein-embed bitvectors."""
+
+    def test_fingerprint_signal_returns_int(self):
+        f = NerveFiber("eis-1")
+        fp = NerveFiber._fingerprint_signal("hello world")
+        assert isinstance(fp, int)
+        assert fp > 0
+
+    def test_fingerprint_deterministic(self):
+        fp1 = NerveFiber._fingerprint_signal("test signal")
+        fp2 = NerveFiber._fingerprint_signal("test signal")
+        assert fp1 == fp2
+
+    def test_fingerprint_different_signals_differ(self):
+        fp1 = NerveFiber._fingerprint_signal("signal alpha")
+        fp2 = NerveFiber._fingerprint_signal("signal beta")
+        assert fp1 != fp2
+
+    def test_features_include_bitvector(self):
+        f = NerveFiber("eis-2")
+        tile = f.perceive("test bitvector")
+        assert "bitvector_fingerprint" in tile.features
+        assert "bitvector_hex" in tile.features
+        assert isinstance(tile.features["bitvector_fingerprint"], int)
+
+    def test_stem_similarity(self):
+        """Related forms (deploy/deployment) should have similar fingerprints."""
+        from eisenstein_embed.bitvector import (
+            text_fingerprint,
+            bitvector_similarity,
+        )
+        fp1 = text_fingerprint("deploy", use_stemming=True)
+        fp2 = text_fingerprint("deployment", use_stemming=True)
+        sim = bitvector_similarity(fp1, fp2)
+        assert sim > 0.5, f"Expected high similarity, got {sim}"
+
+
+@pytest.mark.skipif(
+    not ECOSYSTEM.get("device_router"),
+    reason="device-router not installed",
+)
+class TestDeviceRouterIntegration:
+    """Tests using real device-router."""
+
+    def test_device_detection_in_features(self):
+        f = NerveFiber("dr-1")
+        tile = f.perceive("test signal")
+        assert "device_cuda" in tile.features
+        assert "device_igpu" in tile.features
+
+    def test_router_singleton(self):
+        from nerve.fiber import _get_device_router
+        r1 = _get_device_router()
+        r2 = _get_device_router()
+        assert r1 is r2
+
+
+@pytest.mark.skipif(
+    not ECOSYSTEM.get("triplet_miner"),
+    reason="triplet-miner not installed",
+)
+class TestTripletMinerIntegration:
+    """Tests using real triplet-miner."""
+
+    def test_triplet_miner_import(self):
+        from triplet_miner.git_miner import TripletMiner
+        miner = TripletMiner()
+        assert "TripletMiner" in repr(miner)
+
+
+@pytest.mark.skipif(
+    not ECOSYSTEM.get("tensor_spline"),
+    reason="tensor-spline not installed",
+)
+class TestTensorSplineIntegration:
+    """Tests using real tensor-spline."""
+
+    def test_spline_linear_import(self):
+        from tensor_spline.spline import SplineLinear
+        # Just verify the import works
+        assert SplineLinear is not None
 
 
 # ── Fiber Tests ──────────────────────────────────────────────
