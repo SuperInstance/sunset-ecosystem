@@ -6,7 +6,13 @@ edition = "2021"
 [workspace]
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "jepa-cli"
+path = "src/main.rs"
 
 [dependencies]
 rand = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
