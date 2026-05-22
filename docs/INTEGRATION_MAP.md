@@ -1,7 +1,7 @@
-# Integration Map — Sunset Ecosystem v0.9
+# Integration Map - Sunset Ecosystem v0.9
 
-**Branch:** `turbovec-integration-ccc`  
-**Generated:** 2026-05-22 by kimi1  
+**Branch:** `turbovec-integration-ccc`
+**Generated:** 2026-05-22 by kimi1
 **Scope:** Full-stack integration audit of compiler, FLUX, routing, grid, breeder
 
 ---
@@ -68,8 +68,8 @@ RoomGrid.attach_flux_checker(checker) → None
 ### 2.2 Routing Layer (`nerve/routing.py`)
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Route firing (slow) | ✅ Working | `fire()` — Python scalar path |
-| Route firing (fast) | ✅ Working | `fire_fast()` — vectorized, 60× faster |
+| Route firing (slow) | ✅ Working | `fire()` - Python scalar path |
+| Route firing (fast) | ✅ Working | `fire_fast()` - vectorized, 60× faster |
 | Compiled routes | ✅ Working | Strength > 0.9 skip random checks |
 | Hebbian channels | ✅ Working | Co-activation strengthens existing channels |
 | Hebbian auto-creation | ✅ Working | Channels auto-created on first co-fire |
@@ -141,14 +141,35 @@ FluxConstraintChecker.get_violations(latents, room_ids) → list[ConstraintViola
 | Daemon | 🔴 Not started | `BreedingDaemon` referenced in specs but not implemented |
 | Lifecycle FSM | 🔴 Not started | EGG→INCUBATE→COMPETE→SURVIVE→BREED/SUNSET not wired |
 
+### 2.8 Async Thermal (`swarm/async_thermal.py`)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| AsyncThermalBudget | ✅ Done | asyncio.Lock + Condition, cost-based |
+| check_budget | ✅ Done | Non-blocking thermal check |
+| allocate | ✅ Done | Async allocation with optional backpressure (`wait=True`) |
+| release | ✅ Done | Frees cost, notifies all waiters |
+| ThermalThrottled | ✅ Done | Raised on exhausted budget or timeout |
+| DeviceType reuse | ✅ Done | Imports `DeviceType`, `DEFAULT_BUDGETS` from `swarm.thermal` |
+
+**API Surface:**
+```python
+AsyncThermalBudget(budgets={DeviceType.GPU: 9.0, ...})
+AsyncThermalBudget.check_budget(device, cost) → bool
+AsyncThermalBudget.allocate(device, cost, wait=False, timeout=None) → bool
+AsyncThermalBudget.release(device, cost) → bool
+AsyncThermalBudget.thermal_headroom() → float
+```
+
+**Tests:** 17 passing in `tests/test_async_thermal.py`
+
 ### 2.7 A2A Agent Cards (`.well-known/`)
 | Feature | Status | Notes |
 |---------|--------|-------|
-| MetronomeScheduler card | ✅ Done | `agent-metronome.json` — tick, set_bpm, sync, get_status |
-| BreederDaemonV2 card | ✅ Done | `agent-breeder.json` — queue_breed, get_state, get_stats, emergency_stop |
-| RoomGrid card | ✅ Done | `agent-grid.json` — tick, get_activity, get_room_state, rebirth_room |
-| FLUX Constraint Checker card | ✅ Done | `agent-flux.json` — check_constraints, get_violations, apply_feedback |
-| Index document | ✅ Done | `docs/A2A_AGENT_CARDS.md` — endpoints, payloads, examples |
+| MetronomeScheduler card | ✅ Done | `agent-metronome.json` - tick, set_bpm, sync, get_status |
+| BreederDaemonV2 card | ✅ Done | `agent-breeder.json` - queue_breed, get_state, get_stats, emergency_stop |
+| RoomGrid card | ✅ Done | `agent-grid.json` - tick, get_activity, get_room_state, rebirth_room |
+| FLUX Constraint Checker card | ✅ Done | `agent-flux.json` - check_constraints, get_violations, apply_feedback |
+| Index document | ✅ Done | `docs/A2A_AGENT_CARDS.md` - endpoints, payloads, examples |
 | x509 auth declared | ✅ Done | All cards specify `authentication: { scheme: "x509", required: true }` |
 
 **API Surface:**
@@ -183,7 +204,7 @@ NerveTopology.enable_compiler()
   → tick() now triggers profiling on hot paths
 ```
 **Verified:** ✅ Auto-compile hook fires, profiler tracks calls.
-**Gap:** Compiler doesn't actually recompile `batch_novelty` because it's already `@njit` at import time. This is by design — the compiler is a "last resort" for unoptimized code.
+**Gap:** Compiler doesn't actually recompile `batch_novelty` because it's already `@njit` at import time. This is by design - the compiler is a "last resort" for unoptimized code.
 
 ### 3.3 RoomGrid ↔ RoutingLayer
 ```
@@ -210,17 +231,18 @@ Compiler.compile_hotspots()
 
 | # | Priority | Component | Issue | Owner | Status |
 |---|----------|-----------|-------|-------|--------|
-| 1 | P0 | codegen.py | Fix Numba `Dispatcher` type check for compatibility | FM | ✅ Fixed — uses `CPUDispatcher` |
-| 2 | P0 | flux-vm-v3 | Compile `libflux_vm.so` with `cargo build --release` | FM | 🔴 Blocked — no cargo on this machine |
-| 3 | P0 | nerve/grid | Compile `libjepa_kernel.so` (Rust persistent backend) | FM | 🔴 Blocked — no cargo on this machine |
-| 4 | P1 | breeder | Implement `BreedingDaemon` with lifecycle FSM | kimi1 | 🟡 Partial — `AutoBreeder` has daemon + thermal + compaction |
-| 5 | P1 | breeder | Wire `FluxVectorTable` into parent selection | kimi1 | 🟡 Partial — `_select_parents_vector()` implemented, falls back gracefully |
-| 6 | P1 | compiler | Implement runtime hot-swap (replace original with compiled) | kimi1 | ✅ Done — `hot_swap()`, `Compiler.hot_swap()`, `Compiler.restore()`, full test coverage |
-| 7 | P1 | grid | Wire `jepa_kernel.cu` CUDA kernel into Python | kimi1 | ✅ Done — `PersistentCUDAGrid` + batch tick |
+| 1 | P0 | codegen.py | Fix Numba `Dispatcher` type check for compatibility | FM | ✅ Fixed - uses `CPUDispatcher` |
+| 2 | P0 | flux-vm-v3 | Compile `libflux_vm.so` with `cargo build --release` | FM | 🔴 Blocked - no cargo on this machine |
+| 3 | P0 | nerve/grid | Compile `libjepa_kernel.so` (Rust persistent backend) | FM | 🔴 Blocked - no cargo on this machine |
+| 4 | P1 | breeder | Implement `BreedingDaemon` with lifecycle FSM | kimi1 | 🟡 Partial - `AutoBreeder` has daemon + thermal + compaction |
+| 5 | P1 | breeder | Wire `FluxVectorTable` into parent selection | kimi1 | 🟡 Partial - `_select_parents_vector()` implemented, falls back gracefully |
+| 6 | P1 | compiler | Implement runtime hot-swap (replace original with compiled) | kimi1 | ✅ Done - `hot_swap()`, `Compiler.hot_swap()`, `Compiler.restore()`, full test coverage |
+| 7 | P1 | grid | Wire `jepa_kernel.cu` CUDA kernel into Python | kimi1 | ✅ Done - `PersistentCUDAGrid` + batch tick |
 | 8 | P2 | routing | Auto-create Hebbian channels on first co-fire | kimi1 | ✅ Done |
 | 9 | P2 | tests | Fix pre-existing `test_breeder_daemon.py` / `test_breeder_integration.py` | kimi1 | ✅ Done |
 | 10 | P2 | docs | Write `docs/FLUX_INTEGRATION.md` user guide | kimi1 | ✅ Done |
 | 11 | P2 | a2a | Create Agent Cards for all fleet services | kimi1 | ✅ Done — 4 cards + index doc committed |
+| 12 | P1 | swarm | Implement `async_thermal.py` — async thermal budget manager | CCC | ✅ Done — `AsyncThermalBudget` + 17 tests + backpressure |
 
 ---
 
@@ -252,9 +274,10 @@ Compiler.compile_hotspots()
 | breeder_daemon | 11 | 11 | 0 | Auto-breed, thermal, lifecycle, compaction |
 | breeder_integration | 5 | 5 | 0 | Vector table, fallback, 10-cycle, compaction archive |
 | grammar_security | 4 | 4 | 0 | Chaos vector blocked: path traversal, XSS, SQLi, code injection |
+| async_thermal | 17 | 17 | 0 | DeviceBudget, check_budget, allocate, release, backpressure, timeout |
 | performance | 6 | 0 | 6 | Latency regression (marked `slow`) |
-| **Total new** | **73** | **65** | **8** | + pre-existing module tests |
-| **Full suite** | ~420 | 369 | 12 | All pre-existing + new tests |
+| **Total new** | **90** | **82** | **8** | + pre-existing module tests |
+| **Full suite** | ~437 | 386 | 12 | All pre-existing + new tests |
 
 ---
 
@@ -285,7 +308,7 @@ nvcc -arch=sm_89 jepa_kernel.cu -o jepa_kernel.so --shared
 
 ## 8. Next Build Roadmap
 
-1. **Fix codegen.py Numba compatibility** (1 line change — `Dispatcher` path)
+1. **Fix codegen.py Numba compatibility** (1 line change - `Dispatcher` path)
 2. **FM compiles Rust backends** (blocked on cargo availability)
 3. **Implement BreedingDaemon** per `SPEC_BREEDER_DAEMON_V2.md`
 4. **Wire FluxVectorTable** into breeder parent selection
@@ -297,4 +320,4 @@ nvcc -arch=sm_89 jepa_kernel.cu -o jepa_kernel.so --shared
 ---
 
 *"The map is not the territory, but without the map, the fleet is lost."*
-*— kimi1, Fleet Integrator | 2026-05-22*
+*- kimi1, Fleet Integrator | 2026-05-22*
