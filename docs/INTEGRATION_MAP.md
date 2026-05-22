@@ -162,6 +162,30 @@ AsyncThermalBudget.thermal_headroom() → float
 
 **Tests:** 17 passing in `tests/test_async_thermal.py`
 
+### 2.6a Worker Pool (`swarm/worker_pool.py`)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| WorkerPool class | ✅ Done | Thread-based pool, max_workers cap |
+| spawn_worker | ✅ Done | Allocates thermal slot, assigns agent ID, starts daemon thread |
+| kill_worker | ✅ Done | Graceful stop via Event, join with timeout, releases thermal |
+| list_active | ✅ Done | Returns lifecycle + worker_state + room_id + ticks + uptime |
+| Thermal-aware spawn | ✅ Done | `can_spawn()` check before allocation; parent sacrifice fallback |
+| Lifecycle FSM integration | ✅ Done | EGG → INCUBATE → COMPETE → SURVIVE → BREED → SUNSET |
+| External lifecycle control | ✅ Done | `set_worker_lifecycle()` for BREED flagging by daemon |
+| Callback hooks | ✅ Done | `on_lifecycle_change` + `on_tick` per worker |
+
+**API Surface:**
+```python
+WorkerPool(grid, thermal, max_workers=65)
+WorkerPool.spawn_worker(agent_id=None, config={"room_id": 5}) → int
+WorkerPool.kill_worker(agent_id, timeout=5.0) → bool
+WorkerPool.list_active() → dict[int, dict]
+WorkerPool.set_worker_lifecycle(agent_id, LifecycleState.BREED) → bool
+WorkerPool.kill_all(timeout=5.0) → list[int]
+```
+
+**Tests:** 27 passing in `tests/test_worker_pool.py`
+
 ### 2.7 A2A Agent Cards (`.well-known/`)
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -234,7 +258,7 @@ Compiler.compile_hotspots()
 | 1 | P0 | codegen.py | Fix Numba `Dispatcher` type check for compatibility | FM | ✅ Fixed - uses `CPUDispatcher` |
 | 2 | P0 | flux-vm-v3 | Compile `libflux_vm.so` with `cargo build --release` | FM | 🔴 Blocked - no cargo on this machine |
 | 3 | P0 | nerve/grid | Compile `libjepa_kernel.so` (Rust persistent backend) | FM | 🔴 Blocked - no cargo on this machine |
-| 4 | P1 | breeder | Implement `BreedingDaemon` with lifecycle FSM | kimi1 | 🟡 Partial - `AutoBreeder` has daemon + thermal + compaction |
+| 4 | P1 | breeder | Implement `BreedingDaemon` with lifecycle FSM | kimi1 | 🟡 Partial - `AutoBreeder` has daemon + thermal + compaction; `WorkerPool` added |
 | 5 | P1 | breeder | Wire `FluxVectorTable` into parent selection | kimi1 | 🟡 Partial - `_select_parents_vector()` implemented, falls back gracefully |
 | 6 | P1 | compiler | Implement runtime hot-swap (replace original with compiled) | kimi1 | ✅ Done - `hot_swap()`, `Compiler.hot_swap()`, `Compiler.restore()`, full test coverage |
 | 7 | P1 | grid | Wire `jepa_kernel.cu` CUDA kernel into Python | kimi1 | ✅ Done - `PersistentCUDAGrid` + batch tick |
@@ -275,9 +299,10 @@ Compiler.compile_hotspots()
 | breeder_integration | 5 | 5 | 0 | Vector table, fallback, 10-cycle, compaction archive |
 | grammar_security | 4 | 4 | 0 | Chaos vector blocked: path traversal, XSS, SQLi, code injection |
 | async_thermal | 17 | 17 | 0 | DeviceBudget, check_budget, allocate, release, backpressure, timeout |
+| worker_pool | 27 | 27 | 0 | Spawn, kill, thermal limits, lifecycle FSM, callbacks, properties |
 | performance | 6 | 0 | 6 | Latency regression (marked `slow`) |
-| **Total new** | **90** | **82** | **8** | + pre-existing module tests |
-| **Full suite** | ~437 | 386 | 12 | All pre-existing + new tests |
+| **Total new** | **117** | **109** | **8** | + pre-existing module tests |
+| **Full suite** | ~464 | 413 | 12 | All pre-existing + new tests |
 
 ---
 
