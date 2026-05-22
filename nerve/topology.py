@@ -129,6 +129,7 @@ class NerveTopology:
             from sunset.compiler import Compiler
             self._compiler = Compiler()
             self._compiler.install("nerve")
+            self._compiler.install("nerve.room_grid")  # batch_novelty lives here
             self._compiler_auto_compile_interval = auto_compile_interval
             log.info(
                 "Agentic compiler enabled (interval=%d ticks)",
@@ -162,22 +163,6 @@ class NerveTopology:
         except Exception as exc:
             log.warning("Auto-compile failed: %s", exc)
             return []
-        compiled_fibers = sum(
-            1 for f in self.fibers.values()
-            if f.state == FiberState.COMPILED
-        )
-        return {
-            "tick": self.tick_count,
-            "fibers": self.n_fibers,
-            "rooms": self.n_rooms,
-            "rooms_active": int((self.grid.activity > 0).sum()),
-            "rooms_cold": len(self.grid.cold()),
-            "fibers_compiled": compiled_fibers,
-            "fibers_perceiving": self.n_fibers - compiled_fibers,
-            "routes": len(self.routing._routes),
-            "channels": len(self.routing._channels),
-            "chaos": self.routing.chaos,
-        }
 
     def _encode_tile(self, tile: SensoryTile) -> np.ndarray:
         """Encode a SensoryTile into a signal vector for the grid.

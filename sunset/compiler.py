@@ -23,6 +23,7 @@ from __future__ import annotations
 
 __all__ = ["Compiler", "Profiler", "JitBackend", "CompilationResult", "GridBackendSelector"]
 
+import logging
 import functools
 import inspect
 import os
@@ -36,6 +37,8 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 import numpy as np
 
 from .codegen import CodeGenerator, GeneratedKernel, PythonAnalyzer
+
+log = logging.getLogger(__name__)
 
 
 # ── Configuration ───────────────────────────────────────────
@@ -377,6 +380,7 @@ class Compiler:
         ]
         self.compiled: Dict[str, CompilationResult] = {}
         self._installed = False
+        self._installed_modules: Set[str] = set()
         self._originals: Dict[str, Callable] = {}  # for rollback
 
     def install(self, module_name: Optional[str] = None) -> None:
@@ -386,7 +390,9 @@ class Compiler:
             module_name: If provided, only profile functions in this module.
                         If None, profile all callable attributes in sys.modules.
         """
-        if self._installed:
+        if self._installed and not module_name:
+            return
+        if module_name and module_name in self._installed_modules:
             return
         self._installed = True
 
@@ -400,6 +406,7 @@ class Compiler:
                 if name.startswith("sunset") or name.startswith("nerve"):
                     targets.append((name, mod))
 
+        patched = 0
         for mod_name, mod in targets:
             for attr_name in dir(mod):
                 if attr_name.startswith("_"):
@@ -411,6 +418,9 @@ class Compiler:
                         setattr(mod, attr_name, wrapped)
                         key = f"{mod_name}.{attr_name}"
                         self._originals[key] = obj
+                        patched += 1
+            self._installed_modules.add(mod_name)
+        log.info("Agentic compiler installed: %d functions patched", patched)
 
     def uninstall(self) -> None:
         """Restore original functions."""
