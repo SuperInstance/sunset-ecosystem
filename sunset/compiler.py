@@ -4,6 +4,10 @@ Watches function calls, identifies hot paths, and generates optimized
 implementations using Numba, Rust, or CUDA. The system learns which
 paths matter most and accelerates them without human intervention.
 
+Architecture:
+    Profiler  →  Analyzer  →  CodeGenerator  →  Validator  →  Deployer
+    (watch)      (rank)       (compile)        (A/B test)    (hot-swap)
+
 Usage:
     from sunset.compiler import Compiler
     compiler = Compiler()
@@ -12,16 +16,12 @@ Usage:
     # Run your code...
     # The compiler profiles and recompiles automatically.
 
-Architecture:
-    Profiler  →  Analyzer  →  Generator  →  Validator  →  Deployer
-    (watch)      (rank)      (compile)     (A/B test)    (hot-swap)
-
 See docs/AGENTIC-COMPILER-RESEARCH.md for full research.
 """
 
 from __future__ import annotations
 
-__all__ = ["Compiler", "Profiler", "JitBackend", "CompilationResult"]
+__all__ = ["Compiler", "Profiler", "JitBackend", "CompilationResult", "GridBackendSelector"]
 
 import functools
 import inspect
@@ -34,6 +34,8 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import numpy as np
+
+from .codegen import CodeGenerator, GeneratedKernel, PythonAnalyzer
 
 
 # ── Configuration ───────────────────────────────────────────
@@ -177,93 +179,106 @@ class GridBackendSelector:
         return "\n".join(lines)
 
 class NumbaBackend(JitBackend):
-    """Numba LLVM JIT backend for numpy-heavy Python functions."""
+    """Numba LLVM JIT backend — delegates to CodeGenerator."""
     name = "numba"
 
     def __init__(self) -> None:
-        self._has_numba = False
-        try:
-            import numba
-            self._has_numba = True
-            self._njit = numba.njit
-        except ImportError:
-            pass
+        self._generator = CodeGenerator().numba
+        self._available = self._generator._available
 
     def can_compile(self, func: Callable, stats: FunctionStats) -> bool:
-        if not self._has_numba:
+        if not self._available:
             return False
-        # Numba works best on functions with numpy array operations
-        source = inspect.getsource(func) if hasattr(func, '__code__') else ""
+        analyzer = PythonAnalyzer().analyze(func)
         return (
             stats.calls > COMPILE_THRESHOLD
             and stats.avg_time_ms > 0.1
-            and ("np." in source or "numpy" in source)
+            and self._generator.can_generate(func, analyzer)
         )
 
     def compile(self, func: Callable, stats: FunctionStats) -> CompilationResult:
-        import numba
-        t0 = time.perf_counter()
-        try:
-            # Try njit with cache
-            compiled = numba.njit(func, cache=True, fastmath=True)
-            # Warmup — first call compiles
-            if stats.input_shapes:
-                # Try to generate representative args
-                pass
-            compile_time = (time.perf_counter() - t0) * 1000
-            return CompilationResult(
-                original=func,
-                compiled=compiled,
-                backend="numba",
-                compile_time_ms=compile_time,
-                speedup=3.0,  # estimated
-                validated=False,
-            )
-        except Exception as e:
-            return CompilationResult(
-                original=func,
-                compiled=func,
-                backend="numba",
-                compile_time_ms=(time.perf_counter() - t0) * 1000,
-                speedup=1.0,
-                validated=False,
-                error=str(e),
-            )
+        analyzer = PythonAnalyzer().analyze(func)
+        test_args = self._generate_test_args(func)
+        kernel = self._generator.generate(func, analyzer, test_args)
+        return CompilationResult(
+            original=func,
+            compiled=kernel.compiled,
+            backend="numba",
+            compile_time_ms=kernel.compile_time_ms,
+            speedup=1.0,
+            validated=False,
+            error=kernel.error,
+        )
+
+    def _generate_test_args(self, func: Callable) -> Tuple:
+        """Generate synthetic arguments for warmup/validation."""
+        sig = inspect.signature(func)
+        args = []
+        for param in sig.parameters.values():
+            if param.default is not inspect.Parameter.empty:
+                args.append(param.default)
+            else:
+                name = param.name.lower()
+                if any(x in name for x in ("array", "x", "signal", "latent")):
+                    args.append(np.random.randn(64).astype(np.float32))
+                elif "n" in name or "count" in name:
+                    args.append(100)
+                elif "w" in name and "weight" in name:
+                    args.append({"w1": np.random.randn(100, 64, 32).astype(np.float32)})
+                else:
+                    args.append(0.5)
+        return tuple(args)
 
 
-# ── Rust FFI Backend (stub — requires procedural generation) ──
+# ── Rust FFI Backend ────────────────────────────────────────
 
 class RustBackend(JitBackend):
-    """Rust FFI backend for complex logic and dict-heavy code."""
+    """Rust FFI backend — delegates to CodeGenerator."""
     name = "rust"
 
     def __init__(self) -> None:
-        self._has_rust = False
-        # Check if rustc available
-        if os.system("which rustc > /dev/null 2>&1") == 0:
-            self._has_rust = True
+        self._generator = CodeGenerator().rust
+        self._available = self._generator._available
 
     def can_compile(self, func: Callable, stats: FunctionStats) -> bool:
-        if not self._has_rust:
+        if not self._available:
             return False
-        # Rust works best on functions with loops, dicts, string ops
+        analyzer = PythonAnalyzer().analyze(func)
         return (
             stats.calls > COMPILE_THRESHOLD * 2
             and stats.avg_time_ms > 1.0
+            and self._generator.can_generate(func, analyzer)
         )
 
     def compile(self, func: Callable, stats: FunctionStats) -> CompilationResult:
-        """Stub: procedural Rust generation is complex. For now, log intent."""
+        analyzer = PythonAnalyzer().analyze(func)
+        test_args = self._generate_test_args(func)
+        kernel = self._generator.generate(func, analyzer, test_args)
         return CompilationResult(
             original=func,
-            compiled=func,
+            compiled=kernel.compiled,
             backend="rust",
-            compile_time_ms=0.0,
+            compile_time_ms=kernel.compile_time_ms,
             speedup=1.0,
             validated=False,
-            error="Procedural Rust generation not yet implemented. "
-                  "Use manual Rust kernels (see nerve/src/lib.rs)",
+            error=kernel.error,
         )
+
+    def _generate_test_args(self, func: Callable) -> Tuple:
+        sig = inspect.signature(func)
+        args = []
+        for param in sig.parameters.values():
+            if param.default is not inspect.Parameter.empty:
+                args.append(param.default)
+            else:
+                name = param.name.lower()
+                if "dict" in name or "map" in name:
+                    args.append({"key": "value"})
+                elif "str" in name or "text" in name:
+                    args.append("test string")
+                else:
+                    args.append(0.5)
+        return tuple(args)
 
 
 # ── Profiler ────────────────────────────────────────────────
@@ -407,31 +422,24 @@ class Compiler:
         self._installed = False
 
     def compile_hotspots(self, top_n: int = 5) -> List[CompilationResult]:
-        """Compile the top-N hot functions.
+        """Compile the top-N hot functions using CodeGenerator.
 
-        Returns a list of compilation results.
+        Pipeline:
+          1. Find best backend via CodeGenerator.analyze()
+          2. Compile with warmup + validation
+          3. A/B test for correctness
+          4. Measure actual speedup
+          5. Hot-swap if validated + speedup > threshold
         """
         results = []
         hotspots = self.profiler.get_hotspots(top_n)
+        generator = CodeGenerator()
+
         for stat in hotspots:
             key = stat.name
             if key in self.compiled:
-                continue  # already compiled
-
-            # Find best backend
-            best_backend = None
-            best_score = 0.0
-            for backend in self.backends:
-                if backend.can_compile(None, stat):
-                    score = stat.optimization_potential
-                    if score > best_score:
-                        best_score = score
-                        best_backend = backend
-
-            if best_backend is None:
                 continue
 
-            # Get original function
             mod_name, func_name = key.rsplit(".", 1)
             mod = sys.modules.get(mod_name)
             if not mod:
@@ -440,23 +448,94 @@ class Compiler:
             if not func:
                 continue
 
-            # Compile
-            result = best_backend.compile(func, stat)
+            # Analyze + compile
+            analyzer = generator.analyze(func)
+            test_args = self._generate_test_args(func)
+            kernel = generator.compile(func, test_args)
+
+            result = CompilationResult(
+                original=func,
+                compiled=kernel.compiled,
+                backend=kernel.backend,
+                compile_time_ms=kernel.compile_time_ms,
+                speedup=1.0,
+                validated=False,
+                error=kernel.error,
+            )
             self.compiled[key] = result
             results.append(result)
 
-            # Validate (simple A/B)
-            if result.error is None and not result.validated:
-                validated = self._validate(func, result.compiled)
-                result.validated = validated
-                if validated:
-                    # Hot-swap
-                    setattr(mod, func_name, result.compiled)
-                    result.speedup = self._measure_speedup(func, result.compiled)
-                    stat.compiled_version = result.compiled
-                    stat.speedup = result.speedup
+            if not kernel.ready:
+                continue
+
+            # Validate
+            validated = generator.validate(kernel, func, test_args)
+            result.validated = validated
+
+            if validated and kernel.source_language != "python":
+                # Measure speedup
+                speedup = generator.measure_speedup(kernel, func, test_args)
+                result.speedup = speedup
+                stat.speedup = speedup
+
+                if speedup >= SPEEDUP_THRESHOLD:
+                    # Hot-swap!
+                    deployed = generator.deploy(kernel, mod, func_name)
+                    if deployed:
+                        stat.compiled_version = kernel.compiled
+                        result.compiled = kernel.compiled
+                        print(f"[Compiler] 🔥 Hot-swapped {key} — {speedup:.1f}× speedup ({kernel.backend})")
+                else:
+                    print(f"[Compiler] ⚠️  {key} compiled but speedup {speedup:.1f}× < {SPEEDUP_THRESHOLD}× threshold")
 
         return results
+
+    def compile_function(
+        self,
+        func: Callable,
+        module: Optional[types.ModuleType] = None,
+        attr_name: Optional[str] = None,
+    ) -> CompilationResult:
+        """Manually compile a single function (for testing/development).
+
+        Args:
+            func: Function to compile
+            module: Module to hot-swap into (optional)
+            attr_name: Attribute name in module (optional)
+
+        Returns:
+            CompilationResult with status
+        """
+        generator = CodeGenerator()
+        test_args = self._generate_test_args(func)
+        kernel = generator.compile(func, test_args)
+
+        result = CompilationResult(
+            original=func,
+            compiled=kernel.compiled,
+            backend=kernel.backend,
+            compile_time_ms=kernel.compile_time_ms,
+            speedup=1.0,
+            validated=False,
+            error=kernel.error,
+        )
+
+        if not kernel.ready:
+            return result
+
+        validated = generator.validate(kernel, func, test_args)
+        result.validated = validated
+
+        if validated and kernel.source_language != "python":
+            speedup = generator.measure_speedup(kernel, func, test_args)
+            result.speedup = speedup
+
+            if module and attr_name and speedup >= SPEEDUP_THRESHOLD:
+                generator.deploy(kernel, module, attr_name)
+                result.compiled = kernel.compiled
+                print(f"[Compiler] 🔥 Hot-swapped {attr_name} — {speedup:.1f}× speedup")
+
+        return result
 
     def _validate(self, original: Callable, compiled: Callable, trials: int = 5) -> bool:
         """A/B test: verify compiled function produces same output."""
