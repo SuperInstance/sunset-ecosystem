@@ -10,7 +10,8 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any
+from logos.intent_protocol import FleetState, IntentConfirmationProtocol
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +94,37 @@ class FleetConductor:
     def register_local_scheduler(self, scheduler: Any) -> None:
         """Link this conductor to a local ``MetronomeScheduler``."""
         self._scheduler = scheduler
+
+    def submit_human_command(
+        self,
+        raw_command: str,
+        fleet_state: Optional[FleetState] = None,
+    ) -> dict:
+        """Process a human command through IntentConfirmationProtocol.
+
+        Returns a dict with keys:
+        - 'intent': the parsed Intent
+        - 'requires_confirmation': bool
+        - 'confirmation_prompt': str (only if requires_confirmation)
+        - 'can_execute': bool (True if no confirmation needed)
+        """
+        # Derive fleet state from peer beats if not provided
+        if fleet_state is None:
+            total = len(self._peer_beats) + 1
+            active = total  # assume all active for quick estimate
+            fleet_state = FleetState(total_agents=total, active_agents=active)
+
+        protocol = IntentConfirmationProtocol(fleet_state=fleet_state)
+        intent = protocol.parse_intent(raw_command)
+        requires = protocol.require_confirmation(intent)
+        result: dict = {
+            "intent": intent,
+            "requires_confirmation": requires,
+            "can_execute": not requires,
+        }
+        if requires:
+            result["confirmation_prompt"] = protocol.generate_confirmation(intent)
+        return result
 
     # ── local state helpers ───────────────────────────────────
 

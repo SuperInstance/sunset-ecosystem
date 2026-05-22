@@ -108,14 +108,26 @@ class TestRequireConfirmation:
         # destructive action: ALWAYS requires confirmation regardless of ambiguity
         assert protocol.require_confirmation(intent) is True
 
-    def test_destructive_always_confirms_even_with_low_ambiguity(self, protocol):
-        # Even a single agent sunset is destructive
+    def test_destructive_specific_scope_no_confirmation(self, protocol):
+        # Single-agent sunset: low ambiguity + narrow scope → no confirmation
         intent = Intent(
             action="sunset",
             target="agents",
             scope="agent:42",
             urgency="normal",
             raw_command="sunset agent 42",
+        )
+        assert intent.is_destructive() is True
+        assert protocol.require_confirmation(intent) is False
+
+    def test_destructive_broad_scope_always_confirms(self, protocol):
+        # Fleet-wide sunset: always confirms
+        intent = Intent(
+            action="sunset",
+            target="agents",
+            scope="all",
+            urgency="normal",
+            raw_command="sunset all",
         )
         assert intent.is_destructive() is True
         assert protocol.require_confirmation(intent) is True
@@ -198,11 +210,11 @@ class TestIntegrationPatterns:
         assert "Do you want to optimize" in prompt
 
     def test_full_flow_sunset_agent_42(self, protocol):
-        """End-to-end: scoped destructive command → still confirms because destructive."""
+        """End-to-end: scoped destructive command → low ambiguity, narrow scope → no confirmation."""
         intent = protocol.parse_intent("sunset agent 42")
-        # ambiguity is low, but action is destructive
+        # ambiguity is low, scope is a single agent → no confirmation needed
         assert protocol.measure_ambiguity(intent) < protocol.AMBIGUITY_THRESHOLD
-        assert protocol.require_confirmation(intent) is True
+        assert protocol.require_confirmation(intent) is False
 
     def test_full_flow_sunset_all(self, protocol):
         """Destructive + all scope → always confirms, max ambiguity."""

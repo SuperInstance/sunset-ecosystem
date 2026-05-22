@@ -360,6 +360,38 @@ class MetronomeScheduler:
             )
         return result
 
+    # ── intent confirmation integration ──────────────────
+
+    def submit_human_command(
+        self,
+        raw_command: str,
+        fleet_state: Optional[FleetState] = None,
+    ) -> dict:
+        """Process a human command through IntentConfirmationProtocol.
+
+        Returns a dict with keys:
+        - 'intent': the parsed Intent
+        - 'requires_confirmation': bool
+        - 'confirmation_prompt': str (only if requires_confirmation)
+        - 'can_execute': bool (True if no confirmation needed)
+        """
+        state = fleet_state or FleetState(
+            total_agents=getattr(self.grid, "n_rooms", 0),
+            active_agents=getattr(self.grid, "active_count", 0),
+            rooms=list(getattr(self.grid, "room_names", [])),
+        )
+        protocol = IntentConfirmationProtocol(fleet_state=state)
+        intent = protocol.parse_intent(raw_command)
+        requires = protocol.require_confirmation(intent)
+        result: dict = {
+            "intent": intent,
+            "requires_confirmation": requires,
+            "can_execute": not requires,
+        }
+        if requires:
+            result["confirmation_prompt"] = protocol.generate_confirmation(intent)
+        return result
+
     # ── internal phases ──────────────────────────────────
 
     def _on_beat(self) -> dict:

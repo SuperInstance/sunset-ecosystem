@@ -199,9 +199,11 @@ class IntentConfirmationProtocol:
         score = 0.0
 
         if intent.scope == "unspecified":
-            score += 0.5
+            score += 0.75
         elif intent.scope == "all":
             score += 0.3
+        elif intent.scope.startswith("top:") or intent.scope.startswith("fitness"):
+            score += 0.35
 
         if intent.target == "system":
             score += 0.2
@@ -270,11 +272,12 @@ class IntentConfirmationProtocol:
     # ── confirmation requirement ────────────────────────────
 
     def require_confirmation(self, intent: Intent) -> bool:
-        """True if ambiguity > threshold OR action is destructive."""
+        """True if ambiguity >= threshold OR action is destructive and broadly scoped."""
         ambiguity = self.measure_ambiguity(intent)
         if ambiguity >= self.AMBIGUITY_THRESHOLD:
             return True
-        if intent.is_destructive():
+        # Destructive actions require confirmation only when broadly scoped
+        if intent.is_destructive() and intent.scope in ("all", "unspecified"):
             return True
         return False
 
