@@ -10,6 +10,7 @@ from .routing import RoutingLayer, Route, HebbianChannel
 from .adaptation import AdaptationEngine, ShoeTracker
 from .templates import AgentTemplate, TemplateRegistry, BUILTIN_TEMPLATES
 from .topology import NerveTopology, TickResult
+from .metronome_bridge import MetronomeBridge
 from .metronome import LocalMetronome, MetronomeScheduler, RandomSignalSource, SignalSource
 
 __all__ = [
@@ -30,4 +31,5 @@ __all__ = [
     "SignalSource",
     "NerveTopology",
     "TickResult",
+    "MetronomeBridge",
 ]

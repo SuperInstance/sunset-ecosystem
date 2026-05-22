@@ -27,6 +27,8 @@ from typing import Optional, Protocol
 import numpy as np
 
 from logos.intent_protocol import FleetState, IntentConfirmationProtocol
+from nerve.metronome_bridge import MetronomeBridge
+from nerve.room_grid import RoomGrid
 from nerve.routing import RoutingLayer
 from swarm.breeder_daemon import AutoBreeder
 
@@ -291,6 +293,12 @@ class MetronomeScheduler:
         if self.task_mode:
             self._tick_as_task = TickAsTask(self)
 
+        # ── MetronomeBridge integration ──────────────────
+        self._bridge: Optional[MetronomeBridge] = None
+        if isinstance(grid, RoomGrid):
+            self._bridge = MetronomeBridge(grid=grid, scheduler=self)
+            log.info("MetronomeBridge wired to RoomGrid(n=%d)", grid.n)
+
         self._beat_number = 0
         self._beat_times: deque[float] = deque(maxlen=10)
         self._thread: Optional[threading.Thread] = None
@@ -420,9 +428,26 @@ class MetronomeScheduler:
         return self._last_tick_result or {}
 
     def _compute_phase(self, beat_number: int) -> None:
-        """Fetch signal and run grid forward pass."""
-        signal = self.signal_source.next_signal(beat_number)
-        self._last_tick_result = self.grid.tick(signal)
+        """Fetch signal and run grid forward pass.
+
+        If a MetronomeBridge is attached, delegates to the bridge's
+        beat-aware selective dispatch. Otherwise falls back to a
+        full-grid tick every beat.
+        """
+        if self._bridge is not None:
+            tempo_ms = self.beat_duration * 1000
+            self._bridge.on_metronome_beat(beat_number, tempo_ms)
+            # Bridge updates latents directly; reconstruct a minimal
+            # result dict so downstream phases see consistent state.
+            dispatched = self._bridge._dispatched_rooms
+            self._last_tick_result = {
+                "fired": len(dispatched),
+                "ids": dispatched[:10],
+                "tick": beat_number,
+            }
+        else:
+            signal = self.signal_source.next_signal(beat_number)
+            self._last_tick_result = self.grid.tick(signal)
 
     def _gate_phase(self, beat_number: int) -> None:
         """Novelty/chaos gating.
