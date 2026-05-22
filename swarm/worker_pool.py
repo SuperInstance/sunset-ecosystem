@@ -1,7 +1,7 @@
 """WorkerPool — manages breeding worker threads with lifecycle FSM integration.
 
 Each worker represents an agent going through the BreederDaemonV2 lifecycle:
-    EGG → INCUBATE → COMPETE → SURVIVE → BREED → SUNSET
+    EGG → COMPETE → SURVIVE → BREED → SUNSET → ARCHIVE
 
 The pool is thermal-aware: it refuses to spawn workers when the thermal
 budget is exhausted. Workers run in daemon threads and can be gracefully
@@ -141,8 +141,8 @@ class BreedingWorker:
         """Main worker loop."""
         logger.debug("Worker %d starting in room %d", self.agent_id, self.config.room_id)
 
-        # EGG → INCUBATE: signal we have a room
-        self.lifecycle = LifecycleState.INCUBATE
+        # EGG → COMPETE: signal we have a room
+        self.lifecycle = LifecycleState.EGG
 
         # Small random offset to desynchronize workers
         time.sleep(random.random() * self.config.tick_interval)
@@ -152,7 +152,7 @@ class BreedingWorker:
             self._tick_count += 1
 
             # Lifecycle transitions based on tick count / activity
-            if self._lifecycle == LifecycleState.INCUBATE and self._tick_count >= 3:
+            if self._lifecycle == LifecycleState.EGG and self._tick_count >= 3:
                 self.lifecycle = LifecycleState.COMPETE
 
             if self._lifecycle == LifecycleState.COMPETE:

@@ -480,7 +480,6 @@ class TestBreederDaemonV2Integration:
         # Log a sequence: spawn -> incubate -> compete -> sunset
         ops = [
             (LifecycleState.EGG, "spawn"),
-            (LifecycleState.INCUBATE, "spawn"),  # promote
             (LifecycleState.COMPETE, "mutate"),
             (LifecycleState.SUNSET, "sunset"),
         ]

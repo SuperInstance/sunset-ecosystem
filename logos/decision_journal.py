@@ -192,7 +192,7 @@ def log_spawn(
         "parents": list(filter(None, parents or ())),  # type: ignore[arg-type]
         "reason": reason or "fleet spawn",
         "why": f"spawn agent {agent_id}",
-        "what": "EGG → INCUBATE",
+        "what": "EGG → COMPETE",
         "expected": "active agent",
         "actual": "",
         "confidence": 1.0,

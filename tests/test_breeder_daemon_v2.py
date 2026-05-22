@@ -253,7 +253,7 @@ class TestLifecycleTransitions:
                 assert tr.from_state == LifecycleState.EGG
                 assert tr.parent_a == 1
                 assert tr.parent_b == 2
-        assert found, "Expected EGG→INCUBATE transition"
+        assert found, "Expected EGG→COMPETE transition"
 
     def test_incubate_has_generation(self, grid, thermal, wal_path, vector_table):
         daemon = make_daemon(grid, thermal, wal_path, vector_table)

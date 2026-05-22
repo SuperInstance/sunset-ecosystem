@@ -1,7 +1,7 @@
 """Demo: Full breeding cycle across 20 generations on a 50-room grid.
 
 Shows lifecycle state transitions in real-time:
-    EGG → INCUBATE → COMPETE → SURVIVE → BREED → SUNSET
+    EGG → COMPETE → SURVIVE → BREED → SUNSET → ARCHIVE
 
 Prints thermal pressure, population count, and diversity score.
 Ends with a summary of breeding outcomes.
@@ -187,7 +187,7 @@ def run_demo():
             transitions = daemon.step()
 
             for tr in transitions:
-                if tr.to_state == LifecycleState.INCUBATE:
+                if tr.to_state == LifecycleState.EGG:
                     total_bred += 1
                     bred_this_gen += 1
                     child_id = tr.agent_id

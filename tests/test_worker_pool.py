@@ -159,10 +159,10 @@ class TestSpawnWorker:
             pool.spawn_worker(config={})
 
     def test_spawn_records_lifecycle_early(self, pool):
-        """Fresh worker starts at EGG or transitions to INCUBATE immediately."""
+        """Fresh worker starts at EGG."""
         agent_id = pool.spawn_worker(config={"room_id": 0})
         state = pool.get_worker_lifecycle(agent_id)
-        assert state in (LifecycleState.EGG, LifecycleState.INCUBATE)
+        assert state == LifecycleState.EGG
         pool.kill_worker(agent_id)
 
     def test_spawn_allocates_thermal(self, pool, thermal):
@@ -291,17 +291,17 @@ class TestLifecycleStateTracking:
     """Workers transition through BreederDaemonV2 lifecycle states."""
 
     def test_worker_auto_transitions(self, pool):
-        """Worker transitions EGG → INCUBATE → COMPETE automatically."""
+        """Worker transitions EGG → COMPETE automatically."""
         agent_id = pool.spawn_worker(
             config={"room_id": 0, "tick_interval": 0.05, "max_ticks": 20}
         )
-        # Starts at EGG (may race to INCUBATE immediately upon thread start)
-        assert pool.get_worker_lifecycle(agent_id) in (LifecycleState.EGG, LifecycleState.INCUBATE)
+        # Starts at EGG
+        assert pool.get_worker_lifecycle(agent_id) == LifecycleState.EGG
 
-        # After a few ticks it should reach INCUBATE or COMPETE
+        # After a few ticks it should reach COMPETE
         time.sleep(0.25)
         state = pool.get_worker_lifecycle(agent_id)
-        assert state in (LifecycleState.INCUBATE, LifecycleState.COMPETE)
+        assert state == LifecycleState.COMPETE
 
         # After enough ticks it should reach COMPETE or SURVIVE
         time.sleep(0.6)
@@ -364,8 +364,8 @@ class TestLifecycleStateTracking:
         time.sleep(0.3)
         pool.kill_worker(agent_id)
 
-        # Should have seen at least EGG→INCUBATE
-        assert any(old == "EGG" and new == "INCUBATE" for _, old, new in transitions)
+        # Should have seen at least EGG→COMPETE
+        assert any(old == "EGG" and new == "COMPETE" for _, old, new in transitions)
 
 
 class TestBreedingWorkerInternals:

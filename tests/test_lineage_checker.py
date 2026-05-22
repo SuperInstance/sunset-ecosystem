@@ -283,11 +283,11 @@ class TestIntegrationWithBreederDaemonV2:
         transitions = daemon.step()
         daemon.stop()
 
-        # At least one agent should have reached INCUBATE
-        incubated = [
-            t for t in transitions if t.to_state == LifecycleState.INCUBATE
+        # At least one agent should have reached EGG
+        spawned = [
+            t for t in transitions if t.to_state == LifecycleState.EGG
         ]
-        assert len(incubated) > 0
+        assert len(spawned) > 0
 
     def test_orphan_population_scan(self):
         """Batch orphan detection on a mixed population."""

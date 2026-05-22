@@ -1,35 +1,32 @@
-"""RoomGridCompiler — Auto-compiles RoomGrid hot paths and hot-swaps at runtime.
+"""RoomGridCompiler — auto-compiles RoomGrid hot paths and hot-swaps at runtime.
 
-Profiles ``grid.tick()`` to identify the slowest component, compiles it to
-Numba, A/B tests for correctness + speedup, and hot-swaps the faster version
-into the running process.  All originals are preserved for rollback.
+Methods
+-------
+compile_einsum()
+    Profile ``grid.tick()`` for *ticks* iterations, identify the forward-
+    pass hot path, compile it to Numba/CUDA, A/B test *ab_trials*
+    iterations, and hot-swap if faster **and** correct.
 
-Usage::
+compile_novelty_scoring()
+    Same pipeline for the novelty-scoring path (``batch_novelty``).
 
-    from nerve.room_grid import RoomGrid
-    from sunset.compiler_integration import RoomGridCompiler
+compile_routing()
+    Same pipeline for the routing / chaos-fire path inside ``tick()``.
 
-    grid = RoomGrid(1000)
-    compiler = RoomGridCompiler(grid)
-    compiler.compile_einsum()      # compile forward pass
-    compiler.compile_novelty_scoring()  # compile novelty kernel
-    compiler.compile_routing()     # compile chaos/fire logic
+restore_original()
+    Roll back every hot-swap performed by this compiler instance.
 
-    # Or auto-detect + compile the single hottest path:
-    compiler.auto_compile(ticks=100, ab_trials=50)
+Integration
+-----------
+``RoomGrid.__init__()`` accepts an optional *compiler* argument:
 
-    # Rollback everything:
-    compiler.restore_original()
-
-Integration in ``RoomGrid.__init__`` (optional ``compiler`` param)::
-
-    grid = RoomGrid(1000, compiler="auto")
-    # profiling + compilation happens transparently
+    RoomGrid(n, compiler="auto")   # auto-compile on init
+    RoomGrid(n, compiler=inst)    # attach existing compiler
 
 """
 from __future__ import annotations
 
-__all__ = ["RoomGridCompiler"]
+__all__ = ["RoomGridCompiler", "CompileResult"]
 
 import logging
 import sys
@@ -69,9 +66,10 @@ if _HAS_NUMBA:
         b3: np.ndarray,
         n: int,
     ) -> np.ndarray:
-        """Numba MLP forward: x(64) → (n, 16).
+        """Serial MLP forward: x(64) → (n, 16).
 
-        Weights are 3-D: (n, in, out).  Biases are 2-D: (n, out).
+        Serial (non-parallel) — for small grids numpy einsum overhead
+        dominates, and the numba serial kernel wins.
         """
         out = np.empty((n, 16), dtype=np.float32)
         for i in range(n):
@@ -113,11 +111,7 @@ if _HAS_NUMBA:
         h3: np.ndarray,
         hist_count: np.ndarray,
     ) -> np.ndarray:
-        """Standalone Numba novelty kernel.
-
-        Matches the semantics of ``nerve.room_grid._batch_novelty_numba_inner``
-        but lives here so the compiler can hot-swap it independently.
-        """
+        """Standalone Numba novelty kernel."""
         n = latents.shape[0]
         l = latents.shape[1]
 
@@ -168,11 +162,11 @@ if _HAS_NUMBA:
 
     @njit(cache=True, fastmath=True)  # type: ignore[misc]
     def _routing_numba_core(
-        latents: np.ndarray,
+        nv: np.ndarray,
         chaos: np.ndarray,
         n: int,
     ) -> Tuple[np.ndarray, np.ndarray, int]:
-        """Numba chaos/fire decision kernel.
+        """Numba chaos/fire decision kernel including novelty gating.
 
         Returns ``(fired_mask, new_chaos, fired_count)``.
         """
@@ -180,11 +174,8 @@ if _HAS_NUMBA:
         new_chaos = np.empty(n, dtype=np.float32)
         fired_count = 0
         for i in range(n):
-            # Compute a cheap per-room novelty proxy (cosine self-sim)
-            # For a full novelty we call the novelty kernel separately.
-            # Here we only do the chaos/fire branch.
             chaos_fire = np.random.random() < chaos[i]
-            fire = chaos_fire
+            fire = (nv[i] > 0.5) or chaos_fire
             fired_mask[i] = fire
             if fire:
                 new_chaos[i] = max(0.01, chaos[i] * 0.99)
@@ -244,13 +235,7 @@ class RoomGridCompiler:
 
     def profile_tick(self, ticks: int = 100, signal: Optional[np.ndarray] = None
                      ) -> Dict[str, float]:
-        """Profile ``grid.tick()`` and return per-phase timings.
-
-        Phases measured:
-            * ``forward``   — ``_forward(x)``
-            * ``novelty``   — ``batch_novelty(...)``
-            * ``routing``   — chaos mask + activity update
-        """
+        """Profile ``grid.tick()`` and return per-phase timings."""
         if signal is None:
             np.random.seed(42)
             signal = np.random.randn(64).astype(np.float32)
@@ -260,17 +245,14 @@ class RoomGridCompiler:
         routing_ms = 0.0
 
         for _ in range(ticks):
-            # -- forward --
             t0 = time.perf_counter()
             latents = self.grid._forward(signal)
             forward_ms += (time.perf_counter() - t0) * 1000
 
-            # -- novelty --
             t0 = time.perf_counter()
             nv = self._call_novelty(latents)
             novelty_ms += (time.perf_counter() - t0) * 1000
 
-            # -- routing (chaos + fire + activity) --
             t0 = time.perf_counter()
             self._call_routing(latents, nv)
             routing_ms += (time.perf_counter() - t0) * 1000
@@ -284,7 +266,7 @@ class RoomGridCompiler:
         return totals
 
     def _call_novelty(self, latents: np.ndarray) -> np.ndarray:
-        """Invoke the grid's novelty function (may be vectorised or numba)."""
+        """Invoke the grid's novelty function."""
         from nerve.room_grid import batch_novelty
         return batch_novelty(
             latents,
@@ -297,10 +279,7 @@ class RoomGridCompiler:
     def _call_routing(self, latents: np.ndarray, nv: np.ndarray) -> None:
         """Run the chaos/fire/activity logic *without* side-effects on grid."""
         chaos_fire = np.random.random(self.grid.n) < self.grid.chaos
-        fired_mask = (nv > 0.5) | chaos_fire
-        _ = np.where(fired_mask)[0].tolist()[:10]
-        # We intentionally do NOT mutate self.grid.activity / self.grid.chaos
-        # so repeated profiling is non-destructive.
+        _ = (nv > 0.5) | chaos_fire
 
     # ── Compilation helpers ─────────────────────────────────
 
@@ -317,9 +296,10 @@ class RoomGridCompiler:
 
         Returns ``(validated, speedup)``.
         """
-        # 1. Correctness — 5 quick trials
+        # 1. Correctness — 5 quick trials with different random seeds
         validated = True
-        for _ in range(5):
+        for seed in range(5):
+            np.random.seed(seed)
             args = args_gen()
             try:
                 expected = original(*args)
@@ -336,12 +316,15 @@ class RoomGridCompiler:
             return False, 1.0
 
         # 2. Speedup — ``trials`` iterations
+        np.random.seed(42)
         args = args_gen()
         t0 = time.perf_counter()
         for _ in range(trials):
             original(*args)
         t_orig = (time.perf_counter() - t0) * 1000
 
+        np.random.seed(42)
+        args = args_gen()
         t0 = time.perf_counter()
         for _ in range(trials):
             compiled(*args)
@@ -379,7 +362,6 @@ class RoomGridCompiler:
         if original is None:
             return False
 
-        # Preserve metadata
         if hasattr(original, "__qualname__"):
             replacement.__qualname__ = original.__qualname__
         if hasattr(original, "__name__"):
@@ -406,12 +388,7 @@ class RoomGridCompiler:
     # ── Individual compilations ───────────────────────────
 
     def compile_einsum(self, ab_trials: int = 50) -> CompileResult:
-        """Compile ``nerve.room_grid.forward_einsum`` to Numba.
-
-        The original takes a dict of weights; the Numba core takes
-        individual flat arrays.  A thin Python wrapper unpacks the dict
-        and forwards to the compiled kernel.
-        """
+        """Compile ``nerve.room_grid.forward_einsum`` to Numba."""
         if not self._has_numba or _forward_einsum_numba_core is None:
             return CompileResult(
                 target="einsum",
@@ -425,11 +402,9 @@ class RoomGridCompiler:
 
         from nerve.room_grid import forward_einsum
 
-        # Build a wrapper that has the same signature as forward_einsum
         def _compiled_forward(w, x):
             xflat = x.ravel().astype(np.float32)
             n = w["w1"].shape[0]
-            # Ensure contiguous, 2-D bias views for numba
             b1 = w["b1"][0] if w["b1"].ndim == 3 else w["b1"]
             b2 = w["b2"][0] if w["b2"].ndim == 3 else w["b2"]
             b3 = w["b3"][0] if w["b3"].ndim == 3 else w["b3"]
@@ -441,7 +416,6 @@ class RoomGridCompiler:
                 n,
             )
 
-        # A/B test
         def _gen_args():
             np.random.seed(42)
             x = np.random.randn(64).astype(np.float32)
@@ -474,12 +448,7 @@ class RoomGridCompiler:
         return result
 
     def compile_novelty_scoring(self, ab_trials: int = 50) -> CompileResult:
-        """Compile ``nerve.room_grid.batch_novelty`` to Numba.
-
-        Replaces the numpy fallback with a dedicated numba kernel that
-        is equivalent to ``_batch_novelty_numba_inner`` but lives in this
-        module so the compiler controls its lifecycle.
-        """
+        """Compile ``nerve.room_grid.batch_novelty`` to Numba."""
         if not self._has_numba or _batch_novelty_numba_core is None:
             return CompileResult(
                 target="novelty",
@@ -493,14 +462,12 @@ class RoomGridCompiler:
 
         from nerve.room_grid import batch_novelty, _batch_novelty_numpy
 
-        # Build a wrapper with the same signature as batch_novelty
         def _compiled_batch_novelty(latents, hist, hist_count, hist_idx, hist_max):
             h1 = hist[(hist_idx - 1) % hist_max]
             h2 = hist[(hist_idx - 2) % hist_max]
             h3 = hist[(hist_idx - 3) % hist_max]
             return _batch_novelty_numba_core(latents, h1, h2, h3, hist_count)
 
-        # A/B against the numpy fallback (deterministic baseline)
         def _gen_args():
             np.random.seed(42)
             n = self.grid.n
@@ -524,7 +491,6 @@ class RoomGridCompiler:
         )
 
         if validated and speedup > 1.0:
-            # We swap the *public* batch_novelty so RoomGrid.tick() picks it up
             swapped = self._hot_swap(
                 "nerve.room_grid", "batch_novelty",
                 _compiled_batch_novelty, "nerve.room_grid.batch_novelty",
@@ -537,15 +503,7 @@ class RoomGridCompiler:
         return result
 
     def compile_routing(self, ab_trials: int = 50) -> CompileResult:
-        """Compile the chaos / fire / activity routing kernel to Numba.
-
-        The kernel replaces the vectorised numpy block inside ``tick()``
-        with a Numba loop.  Because ``tick()`` is a method, we can't
-        monkey-patch it directly; instead we compile a *standalone*
-        ``_tick_routing`` function and hot-swap that.  ``RoomGrid.tick``
-        (after the integration patch) checks for a compiled routing
-        helper and calls it when present.
-        """
+        """Compile the chaos / fire / activity routing kernel to Numba."""
         if not self._has_numba or _routing_numba_core is None:
             return CompileResult(
                 target="routing",
@@ -560,29 +518,9 @@ class RoomGridCompiler:
         from nerve.room_grid import batch_novelty
 
         def _compiled_routing(latents, chaos, n, hist, hist_count, hist_idx, hist_max):
-            # Compute novelty via whatever batch_novelty is currently active
             nv = batch_novelty(latents, hist, hist_count, hist_idx, hist_max)
-            fired_mask, new_chaos, fired_count = _routing_numba_core(
-                latents, chaos, n,
-            )
-            # Apply the same chaos decay logic as the original tick()
-            for i in range(n):
-                if fired_mask[i]:
-                    new_chaos[i] = max(0.01, chaos[i] * 0.99)
-                else:
-                    new_chaos[i] = chaos[i]
-            return fired_mask, new_chaos, fired_count
+            return _routing_numba_core(nv, chaos, n)
 
-        def _gen_args():
-            np.random.seed(42)
-            n = self.grid.n
-            latents = np.random.randn(n, 16).astype(np.float32)
-            chaos = np.full(n, 0.3, dtype=np.float32)
-            hist = np.zeros((self.grid._hist_max, n, 16), dtype=np.float32)
-            hist_count = np.full(n, 5, dtype=np.int32)
-            return (latents, chaos, n, hist, hist_count, self.grid._hist_idx, self.grid._hist_max)
-
-        # Baseline: pure numpy routing block
         def _original_routing(latents, chaos, n, hist, hist_count, hist_idx, hist_max):
             nv = batch_novelty(latents, hist, hist_count, hist_idx, hist_max)
             chaos_fire = np.random.random(n) < chaos
@@ -594,6 +532,15 @@ class RoomGridCompiler:
             )
             fired_count = int(fired_mask.sum())
             return fired_mask, new_chaos, fired_count
+
+        def _gen_args():
+            np.random.seed(42)
+            n = self.grid.n
+            latents = np.random.randn(n, 16).astype(np.float32)
+            chaos = np.full(n, 0.3, dtype=np.float32)
+            hist = np.zeros((self.grid._hist_max, n, 16), dtype=np.float32)
+            hist_count = np.full(n, 5, dtype=np.int32)
+            return (latents, chaos, n, hist, hist_count, self.grid._hist_idx, self.grid._hist_max)
 
         validated, speedup = self._ab_test(
             _original_routing, _compiled_routing, _gen_args,
@@ -626,21 +573,41 @@ class RoomGridCompiler:
     def auto_compile(self, ticks: int = 100, ab_trials: int = 50) -> CompileResult:
         """Profile, identify the hottest path, compile it, A/B test, hot-swap.
 
-        Returns the ``CompileResult`` of the path that was compiled.
+        If the hottest path doesn't achieve speedup > 1.0, falls back to
+        the next-warmest path.
         """
         profile = self.profile_tick(ticks=ticks)
-        hottest = max(profile, key=profile.get)  # type: ignore[arg-type]
-        log.info("Hottest path: %s (%.3f ms/tick)", hottest, profile[hottest])
+        ranked = sorted(profile.items(), key=lambda kv: kv[1], reverse=True)
+        log.info("Profile (ms/tick): %s", profile)
 
         dispatch = {
             "forward": self.compile_einsum,
             "novelty": self.compile_novelty_scoring,
             "routing": self.compile_routing,
         }
-        compiler_fn = dispatch.get(hottest, self.compile_einsum)
-        result = compiler_fn(ab_trials=ab_trials)
-        result.profile_ms = profile
-        return result
+
+        best_result: Optional[CompileResult] = None
+        for phase, _ in ranked:
+            compiler_fn = dispatch.get(phase)
+            if compiler_fn is None:
+                continue
+            result = compiler_fn(ab_trials=ab_trials)
+            if result.validated and result.speedup > 1.0:
+                result.profile_ms = profile
+                return result
+            if best_result is None or (result.validated and result.speedup > best_result.speedup):
+                best_result = result
+
+        if best_result is not None:
+            best_result.profile_ms = profile
+            return best_result
+
+        return CompileResult(
+            target="none", original=self._noop, compiled=self._noop,
+            speedup=1.0, validated=False, hot_swapped=False,
+            error="No path achieved speedup > 1.0",
+            profile_ms=profile,
+        )
 
     # ── Restore ───────────────────────────────────────────
 

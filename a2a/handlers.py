@@ -163,8 +163,8 @@ def handle_breeder_task(payload):
         if inp.get("phase"):
             agents = [a for a in agents if a["phase"] == inp["phase"]]
         phase_counts = {
-            "EGG": 0, "INCUBATE": 1, "COMPETE": 0,
-            "SURVIVE": 1, "BREED": 0, "SUNSET": 0,
+            "EGG": 0, "COMPETE": 1,
+            "SURVIVE": 1, "BREED": 0, "SUNSET": 0, "ARCHIVE": 0,
         }
         return {
             "status": "ok",

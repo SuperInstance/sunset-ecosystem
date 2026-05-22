@@ -1,7 +1,7 @@
 """End-to-end breeding cycle integration test.
 
 Tests the full lifecycle using WorkerPool + BreederDaemonV2 + RoomGrid together:
-    EGG → INCUBATE → COMPETE → SURVIVE → BREED → SUNSET
+    EGG → COMPETE → SURVIVE → BREED → SUNSET → ARCHIVE
 
 Fast execution: small grid (n=20), short tick_interval (0.05s).
 """
@@ -160,11 +160,11 @@ def make_daemon(grid, thermal, wal_path, vector_table=None):
 
 # ── E2E lifecycle tests ───────────────────────────────────
 
-class TestEggToIncubate:
-    """WorkerPool spawns → EGG → INCUBATE within 2 ticks."""
+class TestEggToCompete:
+    """WorkerPool spawns → EGG → COMPETE after 3 ticks."""
 
-    def test_egg_to_incubate(self, grid, thermal, pool, wal_path):
-        """Spawn worker, verify EGG→INCUBATE immediately."""
+    def test_egg_to_compete(self, grid, thermal, pool, wal_path):
+        """Spawn worker, verify starts at EGG and transitions to COMPETE."""
         agent_id = pool.spawn_worker(
             config={
                 "room_id": 0,
@@ -173,26 +173,26 @@ class TestEggToIncubate:
             }
         )
 
-        # Check immediately — should be EGG or transitioning to INCUBATE
+        # Check immediately — should be EGG
         state = pool.get_worker_lifecycle(agent_id)
-        assert state in (LifecycleState.EGG, LifecycleState.INCUBATE), (
-            f"Expected EGG or INCUBATE immediately after spawn, got {state}"
+        assert state == LifecycleState.EGG, (
+            f"Expected EGG immediately after spawn, got {state}"
         )
 
-        # Wait a tick — should definitely be INCUBATE
-        time.sleep(0.08)
+        # Wait 3 ticks — should be COMPETE
+        time.sleep(0.2)
         state = pool.get_worker_lifecycle(agent_id)
-        assert state == LifecycleState.INCUBATE, (
-            f"Expected INCUBATE after first tick, got {state}"
+        assert state == LifecycleState.COMPETE, (
+            f"Expected COMPETE after 3 ticks, got {state}"
         )
 
         pool.kill_worker(agent_id)
 
 
-class TestIncubateToCompete:
-    """INCUBATE → COMPETE after activity threshold (3 ticks)."""
+class TestEggToCompeteTransition:
+    """EGG → COMPETE after activity threshold (3 ticks)."""
 
-    def test_incubate_to_compete(self, grid, thermal, pool, wal_path):
+    def test_egg_to_compete_transition(self, grid, thermal, pool, wal_path):
         """Worker transitions to COMPETE after 3+ ticks."""
         agent_id = pool.spawn_worker(
             config={
@@ -202,7 +202,7 @@ class TestIncubateToCompete:
             }
         )
 
-        # Wait for 5 ticks (3 needed for INCUBATE→COMPETE)
+        # Wait for 5 ticks (3 needed for EGG→COMPETE)
         time.sleep(0.3)
 
         state = pool.get_worker_lifecycle(agent_id)
@@ -318,17 +318,17 @@ class TestBreedToSunset:
         daemon.queue_breed(parent_a=parent_a, parent_b=parent_b, priority=10)
         transitions = daemon.step()
 
-        # Should see EGG → INCUBATE for child
-        incubated = [
+        # Should see EGG → COMPETE for child
+        spawned = [
             tr.agent_id for tr in transitions
-            if tr.to_state == LifecycleState.INCUBATE
+            if tr.to_state == LifecycleState.EGG
         ]
-        assert len(incubated) == 1, f"Expected 1 child, transitions: {[(t.agent_id, t.from_state.name, t.to_state.name) for t in transitions]}"
-        child_id = incubated[0]
+        assert len(spawned) == 1, f"Expected 1 child, transitions: {[(t.agent_id, t.from_state.name, t.to_state.name) for t in transitions]}"
+        child_id = spawned[0]
 
         # Child should be in daemon state
         assert child_id in daemon.state
-        assert daemon.state[child_id] == LifecycleState.INCUBATE
+        assert daemon.state[child_id] == LifecycleState.EGG
 
         daemon.stop()
 
@@ -421,7 +421,7 @@ class TestFullCycle10Generations:
 
                 # Count what happened
                 for tr in transitions:
-                    if tr.to_state == LifecycleState.INCUBATE:
+                    if tr.to_state == LifecycleState.EGG:
                         total_bred += 1
                         child_id = tr.agent_id
                         # Find child's room from daemon allocation
@@ -518,9 +518,9 @@ class TestDaemonPoolIntegration:
 
         time.sleep(0.3)
 
-        # Should have captured EGG→INCUBATE and INCUBATE→COMPETE
+        # Should have captured EGG→COMPETE transition
         assert len(transitions_captured) >= 1
-        assert transitions_captured[0] == (agent_id, LifecycleState.EGG, LifecycleState.INCUBATE)
+        assert transitions_captured[0] == (agent_id, LifecycleState.EGG, LifecycleState.COMPETE)
 
         daemon.stop()
         pool.kill_worker(agent_id)
@@ -573,13 +573,13 @@ class TestDaemonPoolIntegration:
         daemon.queue_breed(parent_a=agent_id, parent_b=None, priority=10)
         transitions = daemon.step()
 
-        incubated = [
+        spawned = [
             tr.agent_id for tr in transitions
-            if tr.to_state == LifecycleState.INCUBATE
+            if tr.to_state == LifecycleState.EGG
         ]
 
-        if incubated:
-            child_id = incubated[0]
+        if spawned:
+            child_id = spawned[0]
             child_room = None
             for rid, aid in daemon._room_allocations.items():
                 if aid == child_id:
