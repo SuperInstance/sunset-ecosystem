@@ -51,6 +51,7 @@ FLUST_COMPILER_PATH = os.environ.get("FLUX_COMPILER_PATH", "../flux-compiler-v0.
 class ConstraintViolation:
     """A single constraint violation in a room."""
     room_idx: int
+    room_id: str
     constraint_name: str
     severity: float  # 0.0-1.0
     details: str

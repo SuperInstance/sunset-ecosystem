@@ -378,12 +378,12 @@ class RoomGrid:
 
     def attach_flux_checker(self, checker) -> None:
         """Attach a FLUX constraint checker for self-correcting behavior."""
-        from sunset.flux_integration import FluxConstraintChecker
-        if isinstance(checker, FluxConstraintChecker):
+        # Duck-type check — avoids import path issues in tests
+        if hasattr(checker, "check_batch") and hasattr(checker, "get_violations"):
             self._flux_checker = checker
             log.info("FLUX constraint checker attached to RoomGrid(n=%d)", self.n)
         else:
-            raise TypeError("Expected FluxConstraintChecker instance")
+            raise TypeError("Expected FluxConstraintChecker-like object (needs check_batch, get_violations)")
 
     def _forward(self, x):
         """Auto-dispatch to fastest backend for this room count."""

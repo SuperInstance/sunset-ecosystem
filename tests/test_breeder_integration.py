@@ -81,7 +81,7 @@ sys.modules["turbovec"] = _mock_turbovec
 
 # Now safe to import swarm modules that depend on turbovec
 from nerve.room_grid import RoomGrid
-from swarm.breeder import BreedingDaemon
+from swarm.breeder import Breeder as BreedingDaemon
 from swarm.compaction import CompactionManager, CompactionPolicy
 from swarm.thermal import DeviceType, ThermalBudget
 from swarm.vector_table import AgentVector, FluxVectorTable

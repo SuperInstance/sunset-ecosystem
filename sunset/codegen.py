@@ -330,6 +330,21 @@ class CodeGenerator:
         test_args: Optional[Tuple] = None,
     ) -> GeneratedKernel:
         """Compile a function to the best available backend."""
+        # Detect already-compiled Numba functions and pass through
+        try:
+            import numba
+            if isinstance(func, numba.core.registry.Dispatcher):
+                return GeneratedKernel(
+                    name=getattr(func, "__qualname__", "unknown"),
+                    source_language="numba",
+                    source_code="",
+                    compiled=func,
+                    compile_time_ms=0.0,
+                    backend="numba",
+                )
+        except ImportError:
+            pass
+
         analyzer = self.analyze(func)
 
         # Try Numba first (fastest turnaround)
