@@ -24,9 +24,12 @@ import random
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from swarm.npu_router import NPURouterOffload
 
 
 @dataclass
@@ -123,6 +126,7 @@ class RoutingLayer:
         self._channels: dict[str, HebbianChannel] = {}
         self._lock = threading.Lock()
         self._compile_threshold = 0.9  # routes above this skip random checks
+        self._npu_router: Optional["NPURouterOffload"] = None
 
     def __repr__(self) -> str:
         return (
@@ -186,6 +190,62 @@ class RoutingLayer:
                     self._channels[key].activate()
         return fired
 
+    # ── NPU fast-path integration ────────────────────────────────────
+
+    def set_npu_router(self, npu_router: "NPURouterOffload") -> None:
+        """Attach an :class:`NPURouterOffload` for hardware-accelerated dispatch."""
+        self._npu_router = npu_router
+
+    def _encode_signal(self, candidates: list[Route]) -> np.ndarray:
+        """Build a fixed-length signal vector from candidate route strengths.
+
+        Zero-pads if fewer routes than input_dim; truncates if more.
+        """
+        if self._npu_router is None:
+            return np.array([], dtype=np.float32)
+        dim = self._npu_router.input_dim
+        strengths = np.zeros(dim, dtype=np.float32)
+        n = min(len(candidates), dim)
+        for i in range(n):
+            strengths[i] = candidates[i].strength
+        return strengths
+
+    def _npu_select_destinations(
+        self,
+        candidates: list[Route],
+        signal: np.ndarray,
+    ) -> list[str] | None:
+        """Run NPU inference and map probabilities back to destinations.
+
+        Returns ``None`` on failure so the caller falls back to the CPU path.
+        """
+        if self._npu_router is None:
+            return None
+        try:
+            import time
+            t0 = time.perf_counter()
+            probs = self._npu_router.predict(signal)
+            t1 = time.perf_counter()
+            latency_us = (t1 - t0) * 1e6
+            if latency_us > self._npu_router.LATENCY_THRESHOLD_US:
+                # Too slow — let the CPU path take over
+                return None
+        except Exception:
+            return None
+
+        # probs shape: (batch=1, output_dim)
+        flat = probs[0]
+        odim = len(flat)
+        # Map each probability slot to a candidate destination.
+        # If we have fewer candidates than output_dim we only consider the
+        # top ``len(candidates)`` entries; if more, we pick the top ``odim``.
+        n = min(len(candidates), odim)
+        # argsort descending
+        top_idx = np.argpartition(flat, -n)[-n:]
+        top_idx = top_idx[np.argsort(-flat[top_idx])]
+        fired = [candidates[i].destination for i in top_idx[:n]]
+        return fired
+
     # ── FAST PATH (vectorized) ───────────────────────────────────────
 
     @property
@@ -198,13 +258,26 @@ class RoutingLayer:
         """Public read-only access to registered channels."""
         return self._channels
 
-    def fire_fast(self, source: str, destinations: Optional[list[str]] = None, chaos: Optional[float] = None) -> list[str]:
+    def fire_fast(
+        self,
+        source: str,
+        destinations: Optional[list[str]] = None,
+        chaos: Optional[float] = None,
+        use_npu: bool = True,
+    ) -> list[str]:
         """Vectorized route firing — 60× faster than fire().
 
         Algorithm:
-        1. Compiled routes (strength > 0.9) fire deterministically
-        2. Exploratory routes: vectorized random check via numpy
-        3. Hebbian activation: limited to top-k pairs, not O(n²)
+        1. NPU fast-path (optional): ONNX MLP over route-strength signal
+        2. Compiled routes (strength > 0.9) fire deterministically
+        3. Exploratory routes: vectorized random check via numpy
+        4. Hebbian activation: limited to top-k pairs, not O(n²)
+
+        Args:
+            source: Originating node / fiber.
+            destinations: Optional whitelist of destinations.
+            chaos: Override global chaos for this call.
+            use_npu: Whether to attempt the NPU offload path.
         """
         with self._lock:
             candidates = self._routes_by_source.get(source, [])
@@ -215,6 +288,23 @@ class RoutingLayer:
         if not candidates:
             return []
 
+        # ── NPU fast-path ─────────────────────────────────────────────
+        if use_npu and self._npu_router is not None:
+            signal = self._encode_signal(candidates)
+            npu_fired = self._npu_select_destinations(candidates, signal)
+            if npu_fired is not None:
+                self._activate_channels_limited(npu_fired, top_k=20)
+                # Update fire stats for routes chosen by the NPU
+                for dest in npu_fired:
+                    for r in candidates:
+                        if r.destination == dest:
+                            r.fires += 1
+                            r.last_fired = time.time()
+                            break
+                return npu_fired
+            # If NPU failed or was too slow we silently fall through to CPU
+
+        # ── CPU vectorised path (original) ────────────────────────────
         effective_chaos = chaos if chaos is not None else self.chaos
         n = len(candidates)
         # Vectorized: extract strengths and destinations as arrays

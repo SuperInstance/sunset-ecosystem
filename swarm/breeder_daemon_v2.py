@@ -47,6 +47,7 @@ from swarm.inheritance_tax import InheritanceTax
 from swarm.crdt_merge import CRDTMergeEngine, Agent as CRDTAgent
 from swarm.lineage_checker import LineageSanityChecker, Agent as LineageAgent
 from swarm.trajectory_monitor import TrajectoryMonitor, SecurityEvent
+from logos.signed_wal import SignedWAL, WALEntry
 
 logger = logging.getLogger(__name__)
 
@@ -365,6 +366,8 @@ class BreederDaemonV2:
         diversity: DiversityConfig = DiversityConfig(),
         thermal_cfg: ThermalConfig = ThermalConfig(),
         wal_path: str = "breeder.wal.sqlite",
+        signed_wal_path: str | None = None,
+        signed_wal_algorithm: str = "ed25519",
         mesh: Any = None,
         tick_interval: float = 1.0,
         trajectory_monitor: TrajectoryMonitor | None = None,
@@ -380,6 +383,11 @@ class BreederDaemonV2:
         self._tick_interval = tick_interval
         self._trajectory_monitor = trajectory_monitor or TrajectoryMonitor()
         self._inheritance_tax = inheritance_tax
+
+        self._signed_wal_path = signed_wal_path
+        self._signed_wal_algorithm = signed_wal_algorithm
+        self._signed_wal: SignedWAL | None = None
+        self._safe_mode: bool = False
 
         self._wal = _WALSchema(wal_path)
         self._state: dict[int, LifecycleState] = {}
@@ -415,6 +423,26 @@ class BreederDaemonV2:
             len(self._state),
             self._wal.count_pending(),
         )
+
+        # ── Signed WAL initialization and integrity check ──────
+        if self._signed_wal_path:
+            self._signed_wal = SignedWAL(
+                algorithm=self._signed_wal_algorithm,
+                log_path=self._signed_wal_path,
+            )
+            ok, first_bad = self._signed_wal.verify_chain()
+            if not ok:
+                logger.error(
+                    "Signed WAL tampering detected at index %d! Entering safe mode.",
+                    first_bad,
+                )
+                self._safe_mode = True
+            else:
+                logger.info(
+                    "Signed WAL verified: %d entries, all valid",
+                    len(self._signed_wal),
+                )
+                self._safe_mode = False
 
         self._stop_event.clear()
         self._thread = threading.Thread(
