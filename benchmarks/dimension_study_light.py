@@ -1,16 +1,3 @@
-#!/usr/bin/env python3
-"""Turbovec DNA Dimension Study — REAL SIMD benchmark.
-
-Tests compression ratio, search latency, and recall at different
-dimensionalities using actual turbovec (Google TurboQuant) with
-AVX-512/AVX2 SIMD on x86_64.
-
-Run with LD_PRELOAD if openblas linking is broken::
-
-    LD_PRELOAD=/usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblas.so.0 \
-        python3 benchmarks/dimension_study.py
-"""
-
 from __future__ import annotations
 
 import json
@@ -27,7 +14,6 @@ try:
 except ImportError:
     os.environ["LD_PRELOAD"] = "/usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblas.so.0"
     print("⚠️  Setting LD_PRELOAD for openblas — turbovec wheel linking issue")
-    # Re-exec with LD_PRELOAD
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 sys.path.insert(0, "/tmp/sunset-ecosystem")
@@ -35,9 +21,10 @@ sys.path.insert(0, "/tmp/sunset-ecosystem")
 from swarm.vector_table import FluxVectorTable, AgentVector
 
 DIMENSIONS = [128, 256, 384, 512]
-POPULATION = 50_000
+POPULATION = 10_000
 K = 5
-WARMUP = 100
+WARMUP = 50
+QUERIES = 100
 
 
 def benchmark_dim(dim: int) -> dict:
@@ -74,7 +61,7 @@ def benchmark_dim(dim: int) -> dict:
 
     # Latency benchmark
     latencies: list[float] = []
-    for _ in range(500):
+    for _ in range(QUERIES):
         q = rng.standard_normal(dim).astype(np.float32)
         q /= np.linalg.norm(q) + 1e-8
         t0 = time.perf_counter()
@@ -107,7 +94,7 @@ def benchmark_dim(dim: int) -> dict:
 
 def main() -> None:
     print("=" * 60)
-    print("Turbovec DNA Dimension Study — REAL SIMD")
+    print("Turbovec DNA Dimension Study — REAL SIMD (Light)")
     print(f"Population: {POPULATION:,} agents")
     print(f"Quantization: 4-bit per dimension")
     print(f"Backend: turbovec {IdMapIndex}")
