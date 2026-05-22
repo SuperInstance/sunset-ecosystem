@@ -140,8 +140,10 @@ class TestStateCleanup:
         bridge = FSMBridgedDaemon(base_daemon, event_bus=bus)
         bridge.start()
 
-        # Manually add an agent and transition it to SUNSET
-        bridge._daemon._fsm[999] = BreederFSMV2(agent_id="999", initial_state=LifecycleState.EGG)
+        # Manually add an agent at COMPETE and transition to SUNSET
+        bridge._daemon._fsm[999] = BreederFSMV2(
+            agent_id="999", initial_state=LifecycleState.COMPETE
+        )
         bridge._daemon._fsm[999].transition_to(LifecycleState.SUNSET)
 
         # Simulate step noticing the sunset

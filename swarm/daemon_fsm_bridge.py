@@ -109,10 +109,24 @@ class FSMBridgedDaemon:
                     auto_transition=True,
                 )
                 self._daemon._fsm[tr.agent_id] = fsm
+            elif not hasattr(fsm, "transition_to"):
+                # Upgrade legacy AgentLifecycleFSM to strict BreederFSMV2
+                current = (
+                    fsm.get_state()
+                    if hasattr(fsm, "get_state")
+                    else LifecycleState.EGG
+                )
+                fsm = BreederFSMV2(
+                    agent_id=str(tr.agent_id),
+                    initial_state=current,
+                    auto_transition=True,
+                )
+                self._daemon._fsm[tr.agent_id] = fsm
 
             # Validate and perform transition via FSM
-            ok = fsm.transition_to(tr.to_state, reason=tr.to_state.name.lower())
-            if not ok:
+            try:
+                fsm.transition_to(tr.to_state, reason=tr.to_state.name.lower())
+            except Exception:
                 logger.warning(
                     "FSM blocked transition: agent %d %s → %s",
                     tr.agent_id,
