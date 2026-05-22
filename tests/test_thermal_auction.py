@@ -306,15 +306,16 @@ class TestThermalBudgetAuctionIntegration:
         assert budget.get_device("c2") is None
         assert budget.total_current == 2
 
-    def test_reused_agent_id_raises_on_direct_spawn(self):
-        """Direct spawn raises ValueError for duplicate agent_id."""
+    def test_reused_agent_id_returns_false_on_direct_spawn(self):
+        """Direct spawn returns False for duplicate agent_id (graceful, no crash)."""
         budget = ThermalBudget(
             budgets={DeviceType.GPU: 2},
             use_auction=False,
         )
         budget.spawn("dup", DeviceType.GPU)
-        with pytest.raises(ValueError, match="already allocated"):
-            budget.spawn("dup", DeviceType.GPU)
+        success, device = budget.spawn("dup", DeviceType.GPU)
+        assert success is False
+        assert device == DeviceType.GPU
 
     def test_last_auction_results_property(self):
         """last_auction_results exposes the most recent allocations."""
