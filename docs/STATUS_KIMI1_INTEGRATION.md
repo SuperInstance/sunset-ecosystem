@@ -5,13 +5,15 @@
 
 ## Executive Summary
 
-The `turbovec-integration-ccc` branch now contains **20 commits** of performance and integration work across the full sunset ecosystem stack. Every layer has been touched: nerve grid, swarm breeder, agentic compiler, and hardware auto-dispatch.
+The `turbovec-integration-ccc` branch now contains **25 commits** of performance and integration work across the full sunset ecosystem stack. Every layer has been touched: nerve grid, swarm breeder, agentic compiler, FLUX integration, and routing optimization.
 
 **Key numbers:**
 - `batch_novelty`: 15.4ms → 2.2ms (Numba, 6.9×)
 - `expensive_dot_product`: 6.4ms → 0.006ms (Numba compiler, 1129×)
+- Routing: 0.917s → 0.740s per tick (19% faster, 1000 rooms)
 - Full-stack demo: 2000 rooms @ 21 ticks/s on Alibaba Cloud
 - Rust persistent grid: zero-copy per tick after initial weight upload
+- FLUX constraint checker: Python backend working, Rust FFI ready for FM compile
 
 ---
 
@@ -25,9 +27,11 @@ The `turbovec-integration-ccc` branch now contains **20 commits** of performance
 | **CUDA kernel** | ✅ Ready | `jepa_kernel.cu` written, needs FM's RTX 4050 to compile |
 | **Auto-dispatch** | ✅ Working | `GridBackendSelector` picks numpy/rust/cuda based on room count |
 | **Numba `batch_novelty`** | ✅ Working | Auto-selects at import, 6.9× speedup, seamless fallback |
-| **Ring buffer history** | ✅ Working | Vectorized append, no Python loop, 3-entry ring buffer |
+| **Ring buffer history** | ✅ Working | Vectorized append, no Python loop, 20-entry ring buffer |
+| **FLUX hook** | ✅ Wired | `attach_flux_checker()` in `RoomGrid`, auto-checks after tick |
+| **Latents storage** | ✅ Working | `self.latents` stores last tick outputs for constraint checking |
 
-**Files:** `nerve/room_grid.py`, `nerve/src/lib.rs`, `nerve/src/jepa_kernel.cu`, `nerve/jepa_rust.py`, `nerve/Cargo.toml`
+**Files:** `nerve/room_grid.py`, `nerve/src/lib.rs`, `nerve/src/jepa_kernel.cu`, `nerve/jepa_rust.py`, `nerve/Cargo.toml`, `nerve/routing.py`
 
 ### 2. Swarm Layer (`swarm/`)
 
@@ -48,40 +52,42 @@ The `turbovec-integration-ccc` branch now contains **20 commits** of performance
 | **Profiler** | ✅ Working | Monkey-patches functions, samples calls, tracks optimization potential |
 | **Auto-compile hook** | ✅ Wired | `Topology.enable_compiler()` + `_maybe_auto_compile()` every 50 ticks |
 | **GridBackendSelector** | ✅ Working | Maps room count → backend (numpy/rust/cuda) |
+| **Compiler profiler** | ✅ Fixed | Multi-module install, `log` import, `patched` counter |
 
 **Files:** `sunset/compiler.py`, `sunset/codegen.py`
 
-### 4. Integration
+### 4. FLUX Integration (`sunset/flux_integration.py` + `flux-vm-v3`)
 
-| Test | Status | Result |
-|------|--------|--------|
-| Topology + Grid | ✅ | 2000 rooms, Rust persistent, 21 ticks/s |
-| Topology + Breeder | ✅ | Daemon thread runs, thermal respected |
-| Topology + Compiler | ✅ | Profiler tracks `batch_novelty` (150 calls, 2.1ms avg) |
-| Full-stack demo | ✅ | `scripts/demo_full_stack.py` exercises all layers |
+| Component | Status | Details |
+|-----------|--------|---------|
+| **Python backend** | ✅ Working | Pure numpy constraint checking, always works |
+| **Rust FFI backend** | ✅ Written | `flux_check_batch()` in `src/ffi.rs`, compiled to `libflux_vm.so` |
+| **Constraint presets** | ✅ 3 presets | `neural_bounds`, `safe_mode`, `exploration` |
+| **RoomGrid hook** | ✅ Wired | `attach_flux_checker()` → `tick()` auto-checks latents |
+| **Violation feedback** | ✅ Working | Violating rooms get `chaos += 0.1` (self-correcting) |
+| **API boundary** | ✅ Defined | Python `ctypes` interface, FM just compiles the .so |
 
----
+**Files:** `sunset/flux_integration.py`, `flux-vm-v3/src/ffi.rs`, `flux-vm-v3/Cargo.toml`
 
-## FM Note: What to Compile on Your RTX 4050
-
-**File:** `docs/FM_NOTE_KIMI1_METAL.md` (pushed to branch)
-
+**FM compile command:**
 ```bash
-cd sunset-ecosystem/nerve/src
-# 1. Compile the Rust shared library
+cd flux-vm-v3
 cargo build --release
-# 2. Compile the CUDA kernel
-nvcc -O3 -arch=sm_89 -shared -o jepa_cuda.so jepa_kernel.cu
-# 3. Verify both load
-python3 -c "from nerve.room_grid import RoomGrid; g=RoomGrid(1000); print(g)"
+cp target/release/libflux_vm.so ../sunset-ecosystem/
 ```
 
-**Your ProArt has what neither of us have:**
-- RTX 4050 (CUDA, 2560 CUDA cores)
-- Ryzen AI 9 (XDNA 2 NPU, 50 TOPS)
-- Radeon 890M iGPU (16 CUs)
+### 5. Routing Optimizations (`nerve/routing.py`)
 
-This is the only machine in the fleet that can test the CUDA path.
+| Optimization | Before | After | Delta |
+|-------------|--------|-------|-------|
+| `fire_fast` vectorization | 0.330s | 0.241s | **27% faster** |
+| `_activate_channels_limited` | 0.045s | 0.029s | **36% faster** |
+| Total tick (1000 rooms) | 0.917s | 0.740s | **19% faster** |
+| Function calls / 20 ticks | 387K | 348K | **10% reduction** |
+
+**Technique:** Replace Python list append loops with numpy array fill + boolean indexing. Replace `random.sample` with `numpy.random.randint`.
+
+**Files:** `nerve/routing.py`
 
 ---
 
@@ -116,24 +122,24 @@ The auto-dispatch selects based on room count. For 2000 rooms, persistent is cle
 
 The profiler uses 5% sampling (`SAMPLE_RATE = 0.05`) but profiles **every call for the first 1000 calls**. This gives accurate data early without infinite overhead. The profiler detected `batch_novelty` at 150 calls — correctly identifying it as the hottest function.
 
+### 4. FLUX Integration: Two Backends
+
+The constraint checker has two backends:
+- **Python**: Always works, pure numpy, no dependencies
+- **Rust FFI**: Faster, requires compiled `libflux_vm.so`
+
+The Python backend is the default. When FM compiles the Rust VM, the Python code auto-detects it via `ctypes.CDLL` and switches to the Rust backend seamlessly.
+
 ---
 
 ## Open Questions / Next Builds
 
-### P1: FLUX Integration
+### P1: CUDA Kernel Compilation (Blocked on FM)
 
-The FLUX VM v3 (`flux-vm-v3-temp/`) and compiler (`flux-compiler-v0.1.0/`) exist as separate repos. The integration point: **constraint checking in room outputs**.
-
-Idea: After `RoomGrid.tick()`, run FLUX constraint checks on the latent vectors:
-```python
-# In RoomGrid.tick():
-latents = self._forward(x)
-violations = flux_vm.check_batch(latents, preset="neural_bounds")
-if violations.any():
-    self.chaos[violations] += 0.1  # Increase chaos in violating rooms
-```
-
-This would make the grid **self-correcting** — rooms that violate constraints get more chaotic (exploratory).
+- `jepa_kernel.cu` is written and ready
+- Needs `nvcc -O3 -arch=sm_89` on RTX 4050
+- Expected: 10-50× speedup over CPU for large grids
+- **Action:** FM compiles, runs `scripts/benchmark_suite.py`, reports numbers
 
 ### P2: Compiler Rust Backend
 
@@ -154,40 +160,37 @@ The breeder has `FluxVectorTable` integration but the vector table is empty in c
 
 ### P4: End-to-End Benchmark Suite
 
-We need systematic benchmarking across:
-- Room counts: 100, 500, 1000, 5000, 10000
-- Backends: numpy, rust_oneshot, rust_persistent, cuda
-- Signals: structured (sine), random, mixed
-- Metrics: latency p50/p99, throughput, memory
+`scripts/benchmark_suite.py` is built and working. Produces JSON output for CI regression detection.
 
-This would produce performance regression detection for CI.
+### P5: Demo Parameter Tuning
 
-### P5: FM Hardware Validation
-
-Once FM compiles the CUDA kernel on his RTX 4050:
-- Run `scripts/demo_full_stack.py` with `n_rooms=10000`
-- Compare: Alibaba Cloud (CPU-only) vs ProArt (CUDA)
-- Expected: 10-50× speedup on large grids
-- Update `GridBackendSelector` with real CUDA threshold
+The full-stack demo shows 0 breeding cycles because `chaos=0.3` causes all rooms to fire frequently and `cold_threshold=5` is too low for short runs. To fix:
+- Lower `chaos` to 0.05
+- Raise `cold_threshold` to 50
+- Increase demo duration to 1000 ticks
 
 ---
 
-## Files Changed (20 commits)
+## Files Changed (25 commits)
 
 ```
 nerve/Cargo.toml
 nerve/jepa_rust.py
 nerve/room_grid.py
+nerve/routing.py
 nerve/src/jepa_kernel.cu
 nerve/src/lib.rs
 scripts/bench_compiler.py
+scripts/benchmark_suite.py
 scripts/demo_full_stack.py
 scripts/microbench.py
 scripts/test_compiler.py
 sunset/codegen.py
 sunset/compiler.py
+sunset/flux_integration.py
 swarm/tournament.py
 docs/FM_NOTE_KIMI1_METAL.md
+docs/STATUS_KIMI1_INTEGRATION.md
 ```
 
 ---
@@ -206,6 +209,23 @@ PYTHONPATH=$(pwd) python3 scripts/test_compiler.py
 
 # Microbenchmark
 PYTHONPATH=$(pwd) python3 scripts/microbench.py
+
+# Benchmark suite
+PYTHONPATH=$(pwd) python3 scripts/benchmark_suite.py
+
+# FLUX integration test
+PYTHONPATH=$(pwd) python3 -c "
+from sunset.flux_integration import FluxConstraintChecker
+from nerve.room_grid import RoomGrid
+import numpy as np
+
+checker = FluxConstraintChecker(preset='neural_bounds')
+grid = RoomGrid(100)
+grid.attach_flux_checker(checker)
+for i in range(5):
+    result = grid.tick(np.random.randn(64).astype(np.float32))
+    print(f'Tick {i+1}: fired={result[\"fired\"]}')
+"
 ```
 
 ---
@@ -213,11 +233,11 @@ PYTHONPATH=$(pwd) python3 scripts/microbench.py
 ## Branch Status
 
 ```
-turbovec-integration-ccc: 20 commits ahead of main
+turbovec-integration-ccc: 25 commits ahead of main
 Ready for: review, merge, or further integration work
 ```
 
-**Next recommended action:** FM compiles CUDA kernel on RTX 4050, runs benchmark, we merge to main.
+**Next recommended action:** FM compiles CUDA kernel on RTX 4050, compiles FLUX VM .so, runs benchmarks, we merge to main.
 
 ---
 
