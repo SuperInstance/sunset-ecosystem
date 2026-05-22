@@ -112,6 +112,7 @@ class FluxVectorTable:
 
         self._index = IdMapIndex(dim=dim, bit_width=bit_width)
         self._meta: dict[int, AgentMeta] = {}
+        self._vectors: dict[int, np.ndarray] = {}  # raw float32 vectors for diversity ops
 
     # ── public API ──────────────────────────────────────────
 
@@ -139,6 +140,7 @@ class FluxVectorTable:
             capability_mask=av.capability_mask,
             thermal_pressure=av.thermal_pressure,
         )
+        self._vectors[av.agent_id] = vec_arr[0].copy()
         logger.debug("Added agent %d to vector table", av.agent_id)
 
     def search(
@@ -197,6 +199,7 @@ class FluxVectorTable:
         ok = self._index.remove(agent_id)
         if ok:
             del self._meta[agent_id]
+            self._vectors.pop(agent_id, None)
             logger.debug("Removed agent %d from vector table", agent_id)
         return ok
 
@@ -219,6 +222,7 @@ class FluxVectorTable:
                 "capability_mask": m.capability_mask,
                 "thermal_pressure": m.thermal_pressure,
                 "extra": m.extra,
+                "vector": self._vectors.get(aid, []).tolist(),
             }
             for aid, m in self._meta.items()
         }
@@ -249,6 +253,10 @@ class FluxVectorTable:
                     thermal_pressure=m["thermal_pressure"],
                     extra=m.get("extra", {}),
                 )
+                if "vector" in m and m["vector"]:
+                    instance._vectors[int(aid_str)] = np.array(
+                        m["vector"], dtype=np.float32
+                    )
         logger.info("Loaded vector table from %s (%d agents)", path, len(instance._meta))
         return instance
 
@@ -293,13 +301,7 @@ class FluxVectorTable:
 
     def _get_vector(self, agent_id: int) -> np.ndarray | None:
         """Retrieve the raw float32 vector for an agent."""
-        if agent_id not in self._meta:
-            return None
-        if hasattr(self._index, "_vectors"):
-            vec = self._index._vectors.get(agent_id)
-            if vec is not None:
-                return np.array(vec, dtype=np.float32)
-        return None
+        return self._vectors.get(agent_id)
 
     def compute_diversity_matrix(self) -> tuple[np.ndarray, list[int]]:
         """Compute pairwise diversity (cosine distance) for all agents.

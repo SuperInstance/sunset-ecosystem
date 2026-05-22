@@ -13,9 +13,12 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import time
+import types
 
+import numpy as np
 import pytest
 
 from logos.signed_wal import (
@@ -25,6 +28,56 @@ from logos.signed_wal import (
     TamperReport,
     WALSecurityError,
 )
+
+# ── Mock turbovec before any swarm.vector_table import ──
+_mock_turbovec = types.ModuleType("turbovec")
+
+
+class _MockIdMapIndex:
+    """Minimal stand-in for turbovec.IdMapIndex."""
+
+    def __init__(self, dim: int, bit_width: int = 4) -> None:
+        self.dim = dim
+        self.bit_width = bit_width
+        self._vectors: dict[int, np.ndarray] = {}
+
+    def add_with_ids(self, vectors: np.ndarray, ids: np.ndarray) -> None:
+        for vec, aid in zip(vectors, ids):
+            self._vectors[int(aid)] = vec.copy()
+
+    def search(
+        self,
+        query: np.ndarray,
+        k: int = 10,
+        allowlist: np.ndarray | None = None,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        if not self._vectors:
+            return (
+                np.zeros((1, k), dtype=np.float32),
+                np.zeros((1, k), dtype=np.uint64),
+            )
+        q = query[0]
+        candidates = list(self._vectors.items())
+        if allowlist is not None:
+            allowed = set(int(a) for a in allowlist)
+            candidates = [(aid, v) for aid, v in candidates if aid in allowed]
+
+        candidates.sort(key=lambda x: np.linalg.norm(x[1] - q))
+        top = candidates[:k]
+        if len(top) < k:
+            pad = k - len(top)
+            top += [(0, np.zeros(self.dim, dtype=np.float32))] * pad
+        ids_out = np.array([[aid for aid, _ in top]], dtype=np.uint64)
+        dists = np.array([[np.linalg.norm(v - q) for _, v in top]], dtype=np.float32)
+        return dists, ids_out
+
+    def remove_ids(self, ids: np.ndarray) -> None:
+        for aid in ids:
+            self._vectors.pop(int(aid), None)
+
+
+_mock_turbovec.IdMapIndex = _MockIdMapIndex
+sys.modules["turbovec"] = _mock_turbovec
 
 
 # ── Fixtures ──────────────────────────────────────────────────────
@@ -352,8 +405,8 @@ class TestBreederDaemonV2Integration:
         from swarm.thermal import ThermalBudget, DeviceType
         from nerve.room_grid import RoomGrid
 
-        grid = RoomGrid(n_rooms=8)
-        thermal = ThermalBudget(gpu_max=4)
+        grid = RoomGrid(n=8)
+        thermal = ThermalBudget(budgets={DeviceType.GPU: 4, DeviceType.CPU: 20})
         wal_path = tmp_path / "breeder.wal.sqlite"
         signed_path = tmp_path / "signed.wal.jsonl"
 
@@ -414,6 +467,7 @@ class TestBreederDaemonV2Integration:
 
         # Verify signed WAL is intact
         assert daemon._signed_wal is not None
+        print("DEBUG signed_wal id:", id(daemon._signed_wal), "len:", len(daemon._signed_wal), "entries:", daemon._signed_wal._entries)
         assert len(daemon._signed_wal) == 2
         ok, first_bad = daemon._signed_wal.verify_chain()
         assert ok is True
@@ -425,8 +479,8 @@ class TestBreederDaemonV2Integration:
         from swarm.thermal import ThermalBudget
         from nerve.room_grid import RoomGrid
 
-        grid = RoomGrid(n_rooms=8)
-        thermal = ThermalBudget(gpu_max=4)
+        grid = RoomGrid(n=8)
+        thermal = ThermalBudget(budgets={DeviceType.GPU: 4, DeviceType.CPU: 20})
         wal_path = tmp_path / "breeder.wal.sqlite"
         signed_path = tmp_path / "signed.wal.jsonl"
 
@@ -463,8 +517,8 @@ class TestBreederDaemonV2Integration:
         from swarm.thermal import ThermalBudget
         from nerve.room_grid import RoomGrid
 
-        grid = RoomGrid(n_rooms=8)
-        thermal = ThermalBudget(gpu_max=4)
+        grid = RoomGrid(n=8)
+        thermal = ThermalBudget(budgets={DeviceType.GPU: 4, DeviceType.CPU: 20})
         wal_path = tmp_path / "breeder.wal.sqlite"
         signed_path = tmp_path / "signed.wal.jsonl"
 
