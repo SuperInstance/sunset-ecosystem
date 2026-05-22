@@ -111,8 +111,6 @@ def main():
         grid = PersistentCUDAGrid(n, weights)
     except RuntimeError as exc:
         print(f"❌ CUDA backend not available: {exc}")
-        print("Compile with:")
-        print("  nvcc -O3 -shared -Xcompiler -fPIC -o nerve/libjepa_cuda.so nerve/src/jepa_kernel.cu")
         sys.exit(1)
 
     print(f"🚀 Profiling CUDA kernel: {n} rooms")

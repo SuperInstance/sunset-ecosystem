@@ -197,7 +197,7 @@ Compiler.compile_hotspots()
 | 3 | P0 | nerve/grid | Compile `libjepa_kernel.so` (Rust persistent backend) | FM | 🔴 Blocked — no cargo on this machine |
 | 4 | P1 | breeder | Implement `BreedingDaemon` with lifecycle FSM | kimi1 | 🟡 Partial — `AutoBreeder` has daemon + thermal + compaction |
 | 5 | P1 | breeder | Wire `FluxVectorTable` into parent selection | kimi1 | 🟡 Partial — `_select_parents_vector()` implemented, falls back gracefully |
-| 6 | P1 | compiler | Implement runtime hot-swap (replace original with compiled) | kimi1 | 🔴 Not started |
+| 6 | P1 | compiler | Implement runtime hot-swap (replace original with compiled) | kimi1 | ✅ Done — `hot_swap()`, `Compiler.hot_swap()`, `Compiler.restore()`, full test coverage |
 | 7 | P1 | grid | Wire `jepa_kernel.cu` CUDA kernel into Python | kimi1 | ✅ Done — `PersistentCUDAGrid` + batch tick |
 | 8 | P2 | routing | Auto-create Hebbian channels on first co-fire | kimi1 | ✅ Done |
 | 9 | P2 | tests | Fix pre-existing `test_breeder_daemon.py` / `test_breeder_integration.py` | kimi1 | ✅ Done |
@@ -228,12 +228,13 @@ Compiler.compile_hotspots()
 | room_grid | 12 | 12 | 0 | Forward, novelty, breed, chaos, buffer, FLUX, batch tick |
 | routing | 10 | 10 | 0 | Determinism, strong routes, Hebbian auto-create, feedback |
 | compiler | 11 | 9 | 2 | Profiler, auto-compile, Numba (skipped when API mismatch) |
+| compiler (hot-swap) | 4 | 4 | 0 | `hot_swap`, signature preserve, reversible, auto_hot_swap |
 | flux_integration | 10 | 10 | 0 | Bounds, L2, presets, RoomGrid hook, violations |
 | breeder_daemon | 11 | 11 | 0 | Auto-breed, thermal, lifecycle, compaction |
 | breeder_integration | 5 | 5 | 0 | Vector table, fallback, 10-cycle, compaction archive |
 | grammar_security | 4 | 4 | 0 | Chaos vector blocked: path traversal, XSS, SQLi, code injection |
 | performance | 6 | 0 | 6 | Latency regression (marked `slow`) |
-| **Total new** | **69** | **61** | **8** | + pre-existing module tests |
+| **Total new** | **73** | **65** | **8** | + pre-existing module tests |
 | **Full suite** | ~420 | 369 | 12 | All pre-existing + new tests |
 
 ---

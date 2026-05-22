@@ -65,7 +65,7 @@ if _lib_path is not None:
         _CUDA_LIB.jepa_cuda_tick_batch.restype = None
 
         log.info("CUDA bridge loaded from %s", _lib_path)
-    except OSError as exc:
+    except (OSError, AttributeError) as exc:
         log.warning("CUDA bridge failed to load %s: %s", _lib_path, exc)
         _CUDA_LIB = None
 else:
@@ -87,7 +87,8 @@ class PersistentCUDAGrid:
     def __init__(self, n: int, weights: dict) -> None:
         if _CUDA_LIB is None:
             raise RuntimeError(
-                "libjepa_cuda.so not found. Compile with:\n"
+                "libjepa_cuda.so not found or failed to load. "
+                "Compile with:\n"
                 "  nvcc -O3 -shared -Xcompiler -fPIC "
                 "-o nerve/libjepa_cuda.so nerve/src/jepa_kernel.cu"
             )

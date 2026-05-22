@@ -21,7 +21,8 @@ See docs/AGENTIC-COMPILER-RESEARCH.md for full research.
 
 from __future__ import annotations
 
-__all__ = ["Compiler", "Profiler", "JitBackend", "CompilationResult", "GridBackendSelector"]
+__all__ = ["Compiler", "Profiler", "JitBackend", "CompilationResult",
+           "GridBackendSelector", "hot_swap", "hot_swap_restore"]
 
 import logging
 import functools
@@ -604,20 +605,240 @@ class Compiler:
         t_comp = (time.perf_counter() - t0) * 1000
         return t_orig / max(t_comp, 0.001)
 
-    def report(self) -> str:
-        """Full compiler status report including hardware detection."""
-        lines = [self.profiler.report(), ""]
-        lines.append(GridBackendSelector.report())
-        lines.append("")
-        lines.append("=== Compiled Functions ===")
-        if not self.compiled:
-            lines.append("None yet.")
-        else:
-            lines.append(f"{'Function':<40} {'Backend':<10} {'Speedup':>8} {'Validated':>10}")
-            for key, result in self.compiled.items():
-                v = "✅" if result.validated else "❌"
-                lines.append(
-                    f"{key:<40} {result.backend:<10} "
-                    f"{result.speedup:>7.1f}× {v:>10}"
-                )
         return "\n".join(lines)
+
+    # ── Hot-Swap API ──────────────────────────────────────────
+
+    def hot_swap(
+        self,
+        func: Callable,
+        module: Optional[types.ModuleType] = None,
+        attr_name: Optional[str] = None,
+        backend: Optional[str] = None,
+    ) -> CompilationResult:
+        """Compile a function and replace it at runtime in one call.
+
+        This is the **auto hot-swap** entry point: compile → validate →
+        measure speedup → swap.  The original is preserved on the
+        replacement as ``_sunset_original`` and in
+        ``self._originals`` for rollback.
+
+        Args:
+            func: The function to compile and swap.
+            module: Module to install the replacement into.
+                    Defaults to ``sys.modules[func.__module__]``.
+            attr_name: Attribute name in *module*.
+                       Defaults to ``func.__name__``.
+            backend: Force a backend ("numba", "rust", "python").
+                     ``None`` lets the generator pick.
+
+        Returns:
+            ``CompilationResult`` with ``speedup`` and ``validated``.
+        """
+        # Resolve module / name
+        if module is None and hasattr(func, "__module__"):
+            module = sys.modules.get(func.__module__)
+        if attr_name is None and hasattr(func, "__name__"):
+            attr_name = func.__name__
+
+        if module is None or attr_name is None:
+            return CompilationResult(
+                original=func,
+                compiled=func,
+                backend="python",
+                compile_time_ms=0.0,
+                speedup=1.0,
+                validated=False,
+                error="Cannot determine module/attr_name for hot_swap",
+            )
+
+        key = f"{module.__name__}.{attr_name}"
+
+        # 1. Compile
+        generator = CodeGenerator()
+        test_args = self._generate_test_args(func)
+        kernel = generator.compile(func, test_args)
+
+        result = CompilationResult(
+            original=func,
+            compiled=kernel.compiled,
+            backend=kernel.backend,
+            compile_time_ms=kernel.compile_time_ms,
+            speedup=1.0,
+            validated=False,
+            error=kernel.error,
+        )
+        self.compiled[key] = result
+
+        if not kernel.ready:
+            return result
+
+        # 2. Validate
+        validated = generator.validate(kernel, func, test_args)
+        result.validated = validated
+
+        if not validated:
+            result.error = "Validation failed"
+            return result
+
+        if kernel.source_language == "python":
+            result.speedup = 1.0
+            return result
+
+        # 3. Measure
+        speedup = generator.measure_speedup(kernel, func, test_args)
+        result.speedup = speedup
+
+        # 4. Swap (even if speedup < threshold — caller asked for it)
+        swap_result = hot_swap(
+            module.__name__, attr_name, kernel.compiled, original=func
+        )
+        if swap_result["success"]:
+            self._originals[key] = swap_result["original"]
+            result.compiled = kernel.compiled
+            print(
+                f"[Compiler] 🔥 Hot-swapped {key} — "
+                f"{speedup:.1f}× speedup ({kernel.backend})"
+            )
+        else:
+            result.error = swap_result.get("error", "hot_swap failed")
+
+        return result
+
+    def restore(self, key: Optional[str] = None) -> bool:
+        """Restore the original function for a hot-swapped entry.
+
+        Args:
+            key: ``"module.function"`` string.  If ``None``, restores
+                 the most recently hot-swapped function.
+
+        Returns:
+            ``True`` if a restoration happened.
+        """
+        if key is None:
+            if not self._originals:
+                return False
+            key = list(self._originals.keys())[-1]
+
+        if key not in self._originals:
+            return False
+
+        mod_name, func_name = key.rsplit(".", 1)
+        original = self._originals.pop(key)
+        result = hot_swap_restore(mod_name, func_name, original=original)
+        if result["success"]:
+            print(f"[Compiler] ↩️  Restored {key} to original")
+        return result["success"]
+
+
+# ── Standalone hot-swap utilities ───────────────────────────
+
+def hot_swap(
+    module_name: str,
+    function_name: str,
+    compiled_bytecode: Any,
+    original: Optional[Callable] = None,
+) -> Dict[str, Any]:
+    """Replace a module function with a compiled version at runtime.
+
+    Uses ``types.FunctionType`` when given a code object, or direct
+    ``setattr`` replacement when given an already-compiled callable.
+    The original function is captured in ``_sunset_original`` on the
+    replacement for rollback support.
+
+    Args:
+        module_name: Dotted module path (e.g. ``"nerve.room_grid"``).
+        function_name: Attribute name of the function to replace.
+        compiled_bytecode: Either a ``types.CodeType`` (bytecode)
+            or a compiled ``Callable`` (e.g. a Numba dispatcher).
+        original: Optional original function to store for rollback.
+            If omitted, the current attribute value is used.
+
+    Returns:
+        Dict with ``success``, ``original`` (the backed-up function),
+        and ``replaced`` (the new function object).
+
+    Example::
+
+        import types, sys
+        mod = sys.modules["mymod"]
+        code = compile("def f(x): return x*2", "<hot_swap>", "exec")
+        func_code = code.co_consts[0]  # types.CodeType
+        result = hot_swap("mymod", "slow_func", func_code)
+        assert result["success"] is True
+    """
+    mod = sys.modules.get(module_name)
+    if mod is None:
+        try:
+            mod = __import__(module_name, fromlist=["_"])
+        except ImportError:
+            return {"success": False, "error": f"Module {module_name} not found"}
+
+    orig = original if original is not None else getattr(mod, function_name, None)
+    if orig is None:
+        return {"success": False, "error": f"Function {function_name} not found in {module_name}"}
+
+    # Preserve signature metadata on the replacement
+    if isinstance(compiled_bytecode, types.CodeType):
+        replacement = types.FunctionType(
+            compiled_bytecode,
+            orig.__globals__,
+            name=function_name,
+            argdefs=getattr(orig, "__defaults__", None),
+            closure=getattr(orig, "__closure__", None),
+        )
+        # Copy annotations / docstring
+        replacement.__annotations__ = getattr(orig, "__annotations__", {}).copy()
+        replacement.__doc__ = getattr(orig, "__doc__", None)
+        replacement.__module__ = module_name
+    elif callable(compiled_bytecode):
+        replacement = compiled_bytecode
+    else:
+        return {
+            "success": False,
+            "error": (
+                f"compiled_bytecode must be CodeType or Callable, "
+                f"got {type(compiled_bytecode).__name__}"
+            ),
+        }
+
+    # Attach rollback handle
+    replacement._sunset_original = orig  # type: ignore[attr-defined]
+    replacement._sunset_module = module_name  # type: ignore[attr-defined]
+    replacement._sunset_name = function_name  # type: ignore[attr-defined]
+
+    setattr(mod, function_name, replacement)
+    return {"success": True, "original": orig, "replaced": replacement}
+
+
+def hot_swap_restore(
+    module_name: str,
+    function_name: str,
+    original: Optional[Callable] = None,
+) -> Dict[str, Any]:
+    """Restore the original function after a hot_swap.
+
+    Looks up ``_sunset_original`` on the current attribute, or uses the
+    passed ``original`` reference, and puts it back in the module.
+
+    Returns:
+        Dict with ``success`` and ``restored`` (the original function).
+    """
+    mod = sys.modules.get(module_name)
+    if mod is None:
+        return {"success": False, "error": f"Module {module_name} not found"}
+
+    current = getattr(mod, function_name, None)
+    if current is None:
+        return {"success": False, "error": f"Function {function_name} not found"}
+
+    orig = original
+    if orig is None and hasattr(current, "_sunset_original"):
+        orig = current._sunset_original  # type: ignore[attr-defined]
+
+    if orig is None:
+        return {"success": False, "error": "No original function available for restore"}
+
+    setattr(mod, function_name, orig)
+    return {"success": True, "restored": orig}
+
