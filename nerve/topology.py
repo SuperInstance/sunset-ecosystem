@@ -40,6 +40,7 @@ class TickResult:
     routes_compiled: int
     novel_signals: int
     latency_ms: float
+    compiled_funcs: list[str] = field(default_factory=list)
 
 
 class NerveTopology:
@@ -107,14 +108,60 @@ class NerveTopology:
         # Adaptive chaos: decays with compilation progress
         self._base_chaos = chaos
 
+        # Agentic compiler: auto-optimizes hot functions at runtime
+        self._compiler = None
+        self._compiler_auto_compile_interval = 50
+        self._compiler_last_compile_tick = 0
+
     def __repr__(self) -> str:
         return (
             f"NerveTopology(fibers={self.n_fibers}, rooms={self.n_rooms}, "
             f"tick={self.tick_count})"
         )
 
-    @property
-    def stats(self) -> dict[str, Any]:
+    def enable_compiler(self, auto_compile_interval: int = 50) -> None:
+        """Enable the agentic compiler for runtime auto-optimization.
+
+        The compiler profiles hot functions and auto-compiles them to
+        Numba/Rust/CUDA after they've been called enough times.
+        """
+        try:
+            from sunset.compiler import Compiler
+            self._compiler = Compiler()
+            self._compiler.install("nerve")
+            self._compiler_auto_compile_interval = auto_compile_interval
+            log.info(
+                "Agentic compiler enabled (interval=%d ticks)",
+                auto_compile_interval,
+            )
+        except Exception as exc:
+            log.warning("Could not enable compiler: %s", exc)
+
+    def _maybe_auto_compile(self) -> list[str]:
+        """Check profiler and compile hot functions if needed."""
+        if self._compiler is None:
+            return []
+        if self.tick_count - self._compiler_last_compile_tick < self._compiler_auto_compile_interval:
+            return []
+        if self.tick_count < 100:
+            return []  # Need warmup data
+
+        self._compiler_last_compile_tick = self.tick_count
+        try:
+            results = self._compiler.compile_hotspots(top_n=3)
+            compiled = []
+            for r in results:
+                if r.validated and r.speedup >= 2.0:
+                    name = getattr(r.original, "__qualname__", "unknown")
+                    compiled.append(f"{name} ({r.backend}, {r.speedup:.1f}x)")
+                    log.info(
+                        "Auto-compiled %s -> %s (%.1fx speedup)",
+                        name, r.backend, r.speedup,
+                    )
+            return compiled
+        except Exception as exc:
+            log.warning("Auto-compile failed: %s", exc)
+            return []
         compiled_fibers = sum(
             1 for f in self.fibers.values()
             if f.state == FiberState.COMPILED
@@ -272,6 +319,9 @@ class NerveTopology:
         if self.tick_count % 100 == 0:
             self.routing.decay_all(factor=0.999)
 
+        # ── Periodic: Auto-compile hot functions ─────────────
+        compiled_funcs = self._maybe_auto_compile()
+
         latency = (time.perf_counter() - t0) * 1000
 
         result = TickResult(
@@ -282,6 +332,7 @@ class NerveTopology:
             routes_compiled=routes_compiled,
             novel_signals=novel_count,
             latency_ms=latency,
+            compiled_funcs=compiled_funcs,
         )
         self._results.append(result)
         return result
