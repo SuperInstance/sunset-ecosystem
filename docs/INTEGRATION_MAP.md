@@ -141,6 +141,24 @@ FluxConstraintChecker.get_violations(latents, room_ids) → list[ConstraintViola
 | Daemon | 🔴 Not started | `BreedingDaemon` referenced in specs but not implemented |
 | Lifecycle FSM | 🔴 Not started | EGG→INCUBATE→COMPETE→SURVIVE→BREED/SUNSET not wired |
 
+### 2.7 A2A Agent Cards (`.well-known/`)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| MetronomeScheduler card | ✅ Done | `agent-metronome.json` — tick, set_bpm, sync, get_status |
+| BreederDaemonV2 card | ✅ Done | `agent-breeder.json` — queue_breed, get_state, get_stats, emergency_stop |
+| RoomGrid card | ✅ Done | `agent-grid.json` — tick, get_activity, get_room_state, rebirth_room |
+| FLUX Constraint Checker card | ✅ Done | `agent-flux.json` — check_constraints, get_violations, apply_feedback |
+| Index document | ✅ Done | `docs/A2A_AGENT_CARDS.md` — endpoints, payloads, examples |
+| x509 auth declared | ✅ Done | All cards specify `authentication: { scheme: "x509", required: true }` |
+
+**API Surface:**
+```
+/.well-known/agent-metronome.json  → MetronomeScheduler capabilities
+/.well-known/agent-breeder.json    → BreederDaemonV2 capabilities
+/.well-known/agent-grid.json       → RoomGrid capabilities
+/.well-known/agent-flux.json       → FLUX Constraint Checker capabilities
+```
+
 ---
 
 ## 3. Integration Points
@@ -202,6 +220,7 @@ Compiler.compile_hotspots()
 | 8 | P2 | routing | Auto-create Hebbian channels on first co-fire | kimi1 | ✅ Done |
 | 9 | P2 | tests | Fix pre-existing `test_breeder_daemon.py` / `test_breeder_integration.py` | kimi1 | ✅ Done |
 | 10 | P2 | docs | Write `docs/FLUX_INTEGRATION.md` user guide | kimi1 | ✅ Done |
+| 11 | P2 | a2a | Create Agent Cards for all fleet services | kimi1 | ✅ Done — 4 cards + index doc committed |
 
 ---
 
@@ -273,6 +292,7 @@ nvcc -arch=sm_89 jepa_kernel.cu -o jepa_kernel.so --shared
 5. **Write CUDA kernel** for JC1 RTX 4050
 6. **Runtime hot-swap** for compiled functions
 7. **Integration test for full breeding cycle** (currently 0 cycles in demo)
+8. **Wire A2A task endpoints** into actual HTTP handlers (Agent Cards ✅ done, handlers pending)
 
 ---
 
