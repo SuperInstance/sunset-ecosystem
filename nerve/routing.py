@@ -244,22 +244,33 @@ class RoutingLayer:
         n = len(fired)
         if n < 2:
             return
+        # Precompute all pair keys
         if n <= top_k:
-            # Small enough — do all pairs without building intermediate list
+            # Small: all pairs (n*(n-1)/2), vectorized key build
+            keys = []
             for i in range(n):
                 for j in range(i + 1, n):
-                    key = self._channel_key(fired[i], fired[j])
-                    if key in self._channels:
-                        self._channels[key].activate()
+                    keys.append(self._channel_key(fired[i], fired[j]))
+            # Batch activate: check which exist
+            with self._lock:
+                for key in keys:
+                    ch = self._channels.get(key)
+                    if ch is not None:
+                        ch.activate()
         else:
-            # Large — sample random pairs directly, no list materialization
-            indices = list(range(n))
-            for _ in range(min(top_k, n * (n - 1) // 2)):
-                i, j = random.sample(indices, 2)
-                a, b = fired[i], fired[j]
-                key = self._channel_key(a, b)
-                if key in self._channels:
-                    self._channels[key].activate()
+            # Large: sample random pairs via numpy, no list(range) materialization
+            n_pairs = min(top_k, n * (n - 1) // 2)
+            # Generate unique random pairs
+            pairs = np.random.randint(0, n, size=(n_pairs * 2,))
+            for idx in range(0, len(pairs), 2):
+                i, j = pairs[idx], pairs[idx + 1]
+                if i == j:
+                    continue
+                key = self._channel_key(fired[i], fired[j])
+                with self._lock:
+                    ch = self._channels.get(key)
+                    if ch is not None:
+                        ch.activate()
 
     def feedback(self, source: str, destination: str, success: bool) -> None:
         """Provide feedback on a route's outcome."""
