@@ -1,4 +1,4 @@
-"""Tests for CRDTMergeEngine.
+"""Tests for CRDTMergeEngine — divergent population merge after network partition.
 
 Mocks turbovec so tests run without the native extension.
 """
@@ -6,9 +6,7 @@ Mocks turbovec so tests run without the native extension.
 from __future__ import annotations
 
 import sys
-import time
 import types
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -76,193 +74,383 @@ class _MockIdMapIndex:
 _mock_turbovec.IdMapIndex = _MockIdMapIndex  # type: ignore[attr-defined]
 sys.modules["turbovec"] = _mock_turbovec
 
-from swarm.crdt_merge import Agent, CRDTMergeEngine, DivergenceReport, LineageSanityError
-from swarm.vector_table import FluxVectorTable
-
-DIM = 8
-
-
-@pytest.fixture
-def empty_vt():
-    return FluxVectorTable(dim=DIM, bit_width=2)
-
-
-@pytest.fixture
-def engine(empty_vt):
-    return CRDTMergeEngine(vector_table=empty_vt)
+# Now safe to import swarm modules
+from swarm.crdt_merge import (
+    Agent,
+    CRDTMergeEngine,
+    DivergenceReport,
+    LineageSanityError,
+)
+from swarm.vector_table import AgentVector, FluxVectorTable
 
 
-# ── Test 1: simple merge (no overlap) → union ─────────
+# ── helpers ─────────────────────────────────────────────────
 
-def test_simple_merge_union(engine):
-    """When populations have no overlap, the merge is a simple union."""
-    local = [
-        Agent(agent_id=1, fitness=0.5, generation=0, vector=[0.1] * DIM),
-        Agent(agent_id=2, fitness=0.6, generation=0, vector=[0.2] * DIM),
-    ]
-    remote = [
-        Agent(agent_id=3, fitness=0.7, generation=0, vector=[0.3] * DIM),
-        Agent(agent_id=4, fitness=0.8, generation=0, vector=[0.4] * DIM),
-    ]
-
-    merged = engine.merge_populations(local, remote)
-    merged_ids = {a.agent_id for a in merged}
-
-    assert merged_ids == {1, 2, 3, 4}
-    assert len(merged) == 4
+def _make_table(dim: int = 64) -> FluxVectorTable:
+    return FluxVectorTable(dim=dim, bit_width=4)
 
 
-# ── Test 2: overlapping higher-fitness wins ──────────────
-
-def test_overlapping_higher_fitness_wins(engine):
-    """When the same agent exists in both populations, the fitter copy survives."""
-    local = [
-        Agent(agent_id=10, fitness=0.5, generation=1, vector=[0.1] * DIM),
-    ]
-    remote = [
-        Agent(agent_id=10, fitness=0.9, generation=1, vector=[0.9] * DIM),
-    ]
-
-    merged = engine.merge_populations(local, remote)
-    assert len(merged) == 1
-    assert merged[0].agent_id == 10
-    assert merged[0].fitness == 0.9
-
-
-# ── Test 3: lineage conflict → merged lineage with both parents noted ──
-
-def test_lineage_conflict_merged_lineage(engine):
-    """When both copies have different valid parents, both are preserved."""
-    local = [
-        Agent(agent_id=20, fitness=0.6, generation=2, parent_a=1, parent_b=2, vector=[0.1] * DIM),
-    ]
-    remote = [
-        Agent(agent_id=20, fitness=0.6, generation=2, parent_a=3, parent_b=4, vector=[0.2] * DIM),
-    ]
-
-    merged = engine.merge_populations(local, remote)
-    assert len(merged) == 1
-    agent = merged[0]
-    assert agent.agent_id == 20
-    # Both parent sets should be merged (local first, then remote, no dups)
-    assert agent.parent_a == 1
-    assert agent.parent_b == 2
-    # The remaining parents should be tracked — but parent_b only holds one.
-    # The merged lineage is stored as [parent_a, parent_b] with dedup.
-    # Our implementation merges into parent_a/parent_b, keeping up to 2.
-    # Since 1,2,3,4 are all distinct, the implementation keeps first two: 1,2.
-    # However, resolve_conflict constructs a new Agent with merged_parents list.
-    # Let's verify the exact behavior.
-
-    # Re-check: _merge_lineages returns [1, 2, 3, 4] but Agent only has parent_a/parent_b.
-    # The resolve_conflict uses merged_parents[0] and merged_parents[1] if len > 1.
-    assert agent.parent_a in (1, 3)
-    assert agent.parent_b in (2, 4)
-
-
-# ── Test 4: vector table sync → LWW merge on timestamps ──
-
-def test_vector_table_sync_lww():
-    """Merging two vector tables keeps the most-recently-updated copy per agent."""
-    local_vt = FluxVectorTable(dim=DIM, bit_width=2)
-    remote_vt = FluxVectorTable(dim=DIM, bit_width=2)
-
-    # Agent 100 in local, updated at t=10
-    from swarm.vector_table import AgentVector
-    av_local = AgentVector(
-        agent_id=100,
-        vector=[0.1] * DIM,
-        fitness=0.5,
-        generation=0,
+def _agent(
+    agent_id: int,
+    fitness: float = 0.5,
+    generation: int = 0,
+    parent_a: int | None = None,
+    parent_b: int | None = None,
+    vector: list[float] | None = None,
+    last_updated: float | None = None,
+) -> Agent:
+    import time
+    vec = vector if vector is not None else [0.1] * 64
+    ts = last_updated if last_updated is not None else time.time()
+    return Agent(
+        agent_id=agent_id,
+        fitness=fitness,
+        generation=generation,
+        parent_a=parent_a,
+        parent_b=parent_b,
+        vector=vec,
+        last_updated=ts,
         capability_mask=0xFFFF,
-        thermal_pressure=0.0,
     )
-    local_vt.add(av_local)
-    local_vt._meta[100].extra["last_updated"] = 10.0
-
-    # Agent 100 in remote, updated at t=20 (wins)
-    av_remote = AgentVector(
-        agent_id=100,
-        vector=[0.2] * DIM,
-        fitness=0.7,
-        generation=0,
-        capability_mask=0xFFFF,
-        thermal_pressure=0.0,
-    )
-    remote_vt.add(av_remote)
-    remote_vt._meta[100].extra["last_updated"] = 20.0
-
-    # Agent 200 only in remote
-    av_remote2 = AgentVector(
-        agent_id=200,
-        vector=[0.3] * DIM,
-        fitness=0.8,
-        generation=0,
-        capability_mask=0xFFFF,
-        thermal_pressure=0.0,
-    )
-    remote_vt.add(av_remote2)
-    remote_vt._meta[200].extra["last_updated"] = 15.0
-
-    engine = CRDTMergeEngine(vector_table=local_vt)
-    merged_vt = engine.sync_vector_table(local_vt, remote_vt)
-
-    assert len(merged_vt) == 2
-    # Agent 100 should have remote's vector because remote timestamp is higher
-    meta_100 = merged_vt._meta[100]
-    assert meta_100.fitness == 0.7
-    vec_100 = merged_vt._index._vectors[100]
-    assert pytest.approx(vec_100[0], 0.001) == 0.2
-
-    # Agent 200 should be present
-    assert 200 in merged_vt._meta
-    assert merged_vt._meta[200].fitness == 0.8
 
 
-# ── Test 5: impossible jump in remote agent → rejected ───
+# ── tests ───────────────────────────────────────────────────
 
-def test_impossible_jump_rejected(engine):
-    """A remote agent with an impossible generation jump is rejected."""
-    local = [
-        Agent(agent_id=50, fitness=0.5, generation=1, parent_a=40, vector=[0.1] * DIM),
-    ]
-    # Remote claims agent 60 descends from 50 but with generation 99
-    remote = [
-        Agent(agent_id=60, fitness=0.6, generation=99, parent_a=50, vector=[0.2] * DIM),
-    ]
+class TestSimpleMerge:
+    """Union of two disjoint populations."""
 
-    merged = engine.merge_populations(local, remote)
-    merged_ids = {a.agent_id for a in merged}
+    def test_disjoint_populations_union(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
 
-    assert 50 in merged_ids
-    assert 60 not in merged_ids  # rejected as impossible
+        local = [_agent(1, fitness=0.5), _agent(2, fitness=0.6)]
+        remote = [_agent(3, fitness=0.7), _agent(4, fitness=0.8)]
+
+        merged = engine.merge_populations(local, remote)
+        merged_ids = {a.agent_id for a in merged}
+
+        assert merged_ids == {1, 2, 3, 4}
+        assert len(merged) == 4
+
+    def test_empty_remote(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [_agent(1), _agent(2)]
+        merged = engine.merge_populations(local, [])
+
+        assert len(merged) == 2
+        assert {a.agent_id for a in merged} == {1, 2}
+
+    def test_empty_local(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        remote = [_agent(1), _agent(2)]
+        merged = engine.merge_populations([], remote)
+
+        assert len(merged) == 2
+        assert {a.agent_id for a in merged} == {1, 2}
 
 
-# ── Extra: detect_divergence smoke test ────────────────
+class TestHigherFitnessWins:
+    """When agent exists on both sides, keep higher-fitness copy."""
 
-def test_detect_divergence(engine):
-    local = [
-        Agent(agent_id=1, fitness=0.5, generation=0, vector=[0.1] * DIM),
-        Agent(agent_id=2, fitness=0.6, generation=0, vector=[0.2] * DIM),
-    ]
-    remote = [
-        Agent(agent_id=2, fitness=0.7, generation=1, vector=[0.3] * DIM),
-        Agent(agent_id=3, fitness=0.8, generation=0, vector=[0.4] * DIM),
-    ]
+    def test_local_higher_fitness_kept(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
 
-    report = engine.detect_divergence(local, remote)
-    assert report.local_only == [1]
-    assert report.remote_only == [3]
-    assert report.common_diverged == [2]
-    assert report.fitness_delta == pytest.approx(0.1)
+        local = [_agent(1, fitness=0.9)]
+        remote = [_agent(1, fitness=0.3)]
+
+        merged = engine.merge_populations(local, remote)
+        winner = next(a for a in merged if a.agent_id == 1)
+
+        assert winner.fitness == 0.9
+
+    def test_remote_higher_fitness_wins(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [_agent(1, fitness=0.3)]
+        remote = [_agent(1, fitness=0.9)]
+
+        merged = engine.merge_populations(local, remote)
+        winner = next(a for a in merged if a.agent_id == 1)
+
+        assert winner.fitness == 0.9
+
+    def test_tie_breaks_on_last_updated(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [_agent(1, fitness=0.5, last_updated=100.0)]
+        remote = [_agent(1, fitness=0.5, last_updated=200.0)]
+
+        merged = engine.merge_populations(local, remote)
+        winner = next(a for a in merged if a.agent_id == 1)
+
+        assert winner.last_updated == 200.0
+
+    def test_equal_fitness_local_wins_when_same_timestamp(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [_agent(1, fitness=0.5, last_updated=100.0)]
+        remote = [_agent(1, fitness=0.5, last_updated=100.0)]
+
+        merged = engine.merge_populations(local, remote)
+        winner = next(a for a in merged if a.agent_id == 1)
+
+        # When fitness and timestamp are equal, local wins (LWW tie-break)
+        # Implementation picks local when local_agent.last_updated >= remote_agent.last_updated
+        assert winner.last_updated == 100.0
 
 
-# ── Extra: resolve_conflict tie-break on timestamp ───────
+class TestLineageConflictMerge:
+    """When both copies have valid but different lineages, merge them."""
 
-def test_resolve_conflict_tiebreak_timestamp(engine):
-    local = Agent(agent_id=5, fitness=0.6, generation=1, last_updated=100.0, vector=[0.1] * DIM)
-    remote = Agent(agent_id=5, fitness=0.6, generation=1, last_updated=200.0, vector=[0.2] * DIM)
+    def test_different_parents_merged(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
 
-    winner = engine.resolve_conflict(local, remote)
-    assert winner.last_updated == 200.0
-    assert winner.vector == [0.2] * DIM
+        # Child 10: local says parents (1, 2); remote says parents (3, 4)
+        # All parents exist in the combined population so both lineages are "valid"
+        local = [
+            _agent(1, generation=0),
+            _agent(2, generation=0),
+            _agent(10, generation=1, parent_a=1, parent_b=2),
+        ]
+        remote = [
+            _agent(3, generation=0),
+            _agent(4, generation=0),
+            _agent(10, generation=1, parent_a=3, parent_b=4),
+        ]
+
+        merged = engine.merge_populations(local, remote)
+        child = next(a for a in merged if a.agent_id == 10)
+
+        # Merged lineage should include all unique parents
+        parents = {child.parent_a, child.parent_b}
+        assert 1 in parents or 2 in parents
+        assert 3 in parents or 4 in parents
+
+    def test_same_parents_no_conflict(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [_agent(1, generation=1, parent_a=10, parent_b=11)]
+        remote = [_agent(1, generation=1, parent_a=10, parent_b=11)]
+
+        merged = engine.merge_populations(local, remote)
+        winner = next(a for a in merged if a.agent_id == 1)
+
+        assert winner.parent_a == 10
+        assert winner.parent_b == 11
+
+    def test_one_side_no_parents(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [_agent(1, generation=0, parent_a=None, parent_b=None)]
+        remote = [_agent(1, generation=1, parent_a=10, parent_b=11)]
+
+        merged = engine.merge_populations(local, remote)
+        winner = next(a for a in merged if a.agent_id == 1)
+
+        # The side with parents should win (higher gen → higher fitness logic not applicable,
+        # but they have same fitness 0.5; tie-break on timestamp. Since timestamps are equal,
+        # local wins. However lineage conflict only triggers when BOTH have parents.
+        # Here local has no parents, so no conflict — winner is local (fitness tie + same ts)
+        assert winner.parent_a is None
+        assert winner.parent_b is None
+
+
+class TestVectorTableLWWSync:
+    """sync_vector_table merges two FluxVectorTables with last-write-wins."""
+
+    def test_local_wins_when_newer(self):
+        local_vt = _make_table()
+        remote_vt = _make_table()
+
+        vec = [0.1] * 64
+        local_vt.add(AgentVector(agent_id=1, vector=vec, fitness=0.9))
+        local_vt._meta[1].extra["last_updated"] = 200.0
+
+        remote_vt.add(AgentVector(agent_id=1, vector=vec, fitness=0.3))
+        remote_vt._meta[1].extra["last_updated"] = 100.0
+
+        engine = CRDTMergeEngine(local_vt)
+        merged_vt = engine.sync_vector_table(local_vt, remote_vt)
+
+        assert merged_vt._meta[1].fitness == 0.9
+
+    def test_remote_wins_when_newer(self):
+        local_vt = _make_table()
+        remote_vt = _make_table()
+
+        vec = [0.1] * 64
+        local_vt.add(AgentVector(agent_id=1, vector=vec, fitness=0.3))
+        local_vt._meta[1].extra["last_updated"] = 100.0
+
+        remote_vt.add(AgentVector(agent_id=1, vector=vec, fitness=0.9))
+        remote_vt._meta[1].extra["last_updated"] = 200.0
+
+        engine = CRDTMergeEngine(local_vt)
+        merged_vt = engine.sync_vector_table(local_vt, remote_vt)
+
+        assert merged_vt._meta[1].fitness == 0.9
+
+    def test_union_of_distinct_ids(self):
+        local_vt = _make_table()
+        remote_vt = _make_table()
+
+        local_vt.add(AgentVector(agent_id=1, vector=[0.1] * 64, fitness=0.5))
+        remote_vt.add(AgentVector(agent_id=2, vector=[0.2] * 64, fitness=0.6))
+
+        engine = CRDTMergeEngine(local_vt)
+        merged_vt = engine.sync_vector_table(local_vt, remote_vt)
+
+        assert 1 in merged_vt._meta
+        assert 2 in merged_vt._meta
+        assert len(merged_vt._meta) == 2
+
+    def test_preserves_timestamps(self):
+        local_vt = _make_table()
+        remote_vt = _make_table()
+
+        local_vt.add(AgentVector(agent_id=1, vector=[0.1] * 64, fitness=0.5))
+        local_vt._meta[1].extra["last_updated"] = 42.0
+
+        engine = CRDTMergeEngine(local_vt)
+        merged_vt = engine.sync_vector_table(local_vt, remote_vt)
+
+        assert merged_vt._meta[1].extra.get("last_updated") == 42.0
+
+
+class TestImpossibleJumpRejection:
+    """Remote agents with impossible lineage jumps are rejected."""
+
+    def test_generation_too_far_from_parents_rejected(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [
+            _agent(1, generation=0),
+            _agent(2, generation=0),
+        ]
+        # Child claims parents (1,2) with gen=0, but child gen=10 (impossible jump)
+        remote = [_agent(3, generation=10, parent_a=1, parent_b=2)]
+
+        merged = engine.merge_populations(local, remote)
+        merged_ids = {a.agent_id for a in merged}
+
+        assert 3 not in merged_ids
+        assert {1, 2} == merged_ids
+
+    def test_orphan_rejected(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [_agent(1, generation=0)]
+        # Claims parent 99 which doesn't exist in either population
+        remote = [_agent(2, generation=1, parent_a=99)]
+
+        merged = engine.merge_populations(local, remote)
+        merged_ids = {a.agent_id for a in merged}
+
+        assert 2 not in merged_ids
+        assert 1 in merged_ids
+
+    def test_seed_with_nonzero_generation_rejected(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        # Root agent (no parents) must have generation == 0
+        remote = [_agent(7, generation=5, parent_a=None, parent_b=None)]
+
+        merged = engine.merge_populations([], remote)
+        merged_ids = {a.agent_id for a in merged}
+
+        assert 7 not in merged_ids
+
+    def test_valid_agent_accepted(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [
+            _agent(1, generation=0),
+            _agent(2, generation=0),
+        ]
+        remote = [_agent(3, generation=1, parent_a=1, parent_b=2)]
+
+        merged = engine.merge_populations(local, remote)
+        merged_ids = {a.agent_id for a in merged}
+
+        assert 3 in merged_ids
+        assert {1, 2, 3} == merged_ids
+
+
+class TestDetectDivergence:
+    """detect_divergence produces accurate DivergenceReport."""
+
+    def test_fully_disjoint(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [_agent(1), _agent(2)]
+        remote = [_agent(3), _agent(4)]
+
+        report = engine.detect_divergence(local, remote)
+
+        assert report.local_only == [1, 2]
+        assert report.remote_only == [3, 4]
+        assert report.common_diverged == []
+        assert report.lineage_conflicts == []
+        assert report.fitness_delta == 0.0
+
+    def test_common_diverged(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [_agent(1, fitness=0.5, generation=1)]
+        remote = [_agent(1, fitness=0.7, generation=2)]
+
+        report = engine.detect_divergence(local, remote)
+
+        assert report.local_only == []
+        assert report.remote_only == []
+        assert report.common_diverged == [1]
+        assert report.fitness_delta == pytest.approx(0.2)
+
+    def test_lineage_conflict_detected(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [_agent(1, parent_a=10, parent_b=11)]
+        remote = [_agent(1, parent_a=12, parent_b=13)]
+
+        report = engine.detect_divergence(local, remote)
+
+        assert report.lineage_conflicts == [1]
+
+    def test_mixed_scenario(self):
+        vt = _make_table()
+        engine = CRDTMergeEngine(vt)
+
+        local = [
+            _agent(1, fitness=0.5),
+            _agent(2, fitness=0.6, parent_a=10, parent_b=11),
+        ]
+        remote = [
+            _agent(2, fitness=0.6, parent_a=12, parent_b=13),
+            _agent(3, fitness=0.7),
+        ]
+
+        report = engine.detect_divergence(local, remote)
+
+        assert report.local_only == [1]
+        assert report.remote_only == [3]
+        assert report.common_diverged == []
+        assert report.lineage_conflicts == [2]
+        assert report.fitness_delta == 0.0

@@ -43,6 +43,8 @@ import numpy as np
 from nerve.room_grid import RoomGrid
 from swarm.thermal import DeviceType, ThermalBudget
 from swarm.tournament import AgentScore, TournamentRound, breed
+from swarm.inheritance_tax import InheritanceTax
+from swarm.lineage_checker import LineageSanityChecker, Agent as LineageAgent
 from swarm.trajectory_monitor import TrajectoryMonitor, SecurityEvent
 
 logger = logging.getLogger(__name__)
@@ -365,6 +367,7 @@ class BreederDaemonV2:
         mesh: Any = None,
         tick_interval: float = 1.0,
         trajectory_monitor: TrajectoryMonitor | None = None,
+        inheritance_tax: InheritanceTax | None = None,
     ) -> None:
         self.grid = grid
         self.thermal = thermal
@@ -375,6 +378,7 @@ class BreederDaemonV2:
         self._mesh = mesh
         self._tick_interval = tick_interval
         self._trajectory_monitor = trajectory_monitor or TrajectoryMonitor()
+        self._inheritance_tax = inheritance_tax
 
         self._wal = _WALSchema(wal_path)
         self._state: dict[int, LifecycleState] = {}
@@ -635,6 +639,59 @@ class BreederDaemonV2:
             # Record trajectory for security monitoring
             self._trajectory_monitor.record(child_id, vec)
 
+            # ── LineageSanityChecker integration ────────────────────
+            lineage_checker = LineageSanityChecker(max_depth=5)
+            population_agents = self._build_lineage_population()
+            child_agent = LineageAgent(
+                id=child_id,
+                vector=vec.tolist(),
+                generation=generation,
+                parent_a=parent_a,
+                parent_b=parent_b,
+            )
+            is_valid, reason = lineage_checker.verify_lineage(
+                child_id, population_agents + [child_agent]
+            )
+            if not is_valid:
+                logger.warning(
+                    "LineageSanityChecker failed for agent %d: %s",
+                    child_id, reason,
+                )
+                # Log security event
+                event = SecurityEvent(
+                    agent_id=child_id,
+                    z_score=0.0,
+                    threshold=0.0,
+                    generation_count=generation,
+                    message=(
+                        f"Lineage tamper detected for agent {child_id}: {reason}"
+                    ),
+                )
+                self._trajectory_monitor._events.append(event)
+                # Sunset the child immediately
+                sunset_tr = LifecycleTransition(
+                    agent_id=child_id,
+                    from_state=LifecycleState.INCUBATE,
+                    to_state=LifecycleState.SUNSET,
+                    timestamp=time.time(),
+                    generation=generation,
+                    parent_a=parent_a,
+                    parent_b=parent_b,
+                    origin_node="local" if not remote else "remote",
+                )
+                self._wal.transition(sunset_tr)
+                self._state[child_id] = LifecycleState.SUNSET
+                transitions.append(sunset_tr)
+                # Release resources
+                self.thermal.release(child_agent_str)
+                del self._room_allocations[room_id]
+                if self._vector_table is not None:
+                    try:
+                        self._vector_table.remove(child_id)
+                    except Exception:
+                        pass
+                return transitions
+
         logger.info(
             "Step %d: spawned agent %d in room %d (parents=%s, gen=%d)",
             tick,
@@ -645,6 +702,60 @@ class BreederDaemonV2:
         )
 
         return transitions
+
+    def _build_lineage_population(self) -> list[LineageAgent]:
+        """Construct Agent records for every known agent (state + vector table + genealogy)."""
+        # Collect all known agent IDs from multiple sources
+        all_ids: set[int] = set()
+
+        # 1. Agents in lifecycle state (WAL)
+        for aid, st in self._state.items():
+            if st != LifecycleState.SUNSET:
+                all_ids.add(aid)
+
+        # 2. Agents in vector table metadata
+        if self._vector_table is not None:
+            all_ids.update(self._vector_table._meta.keys())
+
+        # 3. Agents in genealogy table
+        conn = sqlite3.connect(self._wal_path, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        cur = conn.execute("SELECT agent_id, parent_a, parent_b, generation FROM genealogy")
+        genealogy_rows: dict[int, dict[str, Any]] = {}
+        for row in cur:
+            aid = row["agent_id"]
+            all_ids.add(aid)
+            if row["parent_a"] is not None:
+                all_ids.add(row["parent_a"])
+            if row["parent_b"] is not None:
+                all_ids.add(row["parent_b"])
+            genealogy_rows[aid] = dict(row)
+        conn.close()
+
+        agents: list[LineageAgent] = []
+        for aid in all_ids:
+            g = genealogy_rows.get(aid) or self._wal.get_genealogy(aid)
+            vec: list[float] = []
+            if self._vector_table is not None:
+                # Try to get raw vector from index
+                if hasattr(self._vector_table._index, "_vectors"):
+                    v = self._vector_table._index._vectors.get(aid)
+                    if v is not None:
+                        vec = v.tolist() if hasattr(v, "tolist") else list(v)
+            gen = g["generation"] if g else 0
+            pa = g.get("parent_a") if g else None
+            pb = g.get("parent_b") if g else None
+            agents.append(
+                LineageAgent(
+                    id=aid,
+                    vector=vec,
+                    generation=gen,
+                    parent_a=pa,
+                    parent_b=pb,
+                )
+            )
+        return agents
+
 
     @property
     def state(self) -> dict[int, LifecycleState]:
