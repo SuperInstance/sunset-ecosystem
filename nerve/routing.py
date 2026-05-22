@@ -136,6 +136,13 @@ class RoutingLayer:
     def _channel_key(self, a: str, b: str) -> str:
         return f"{a}↔{b}"
 
+    def _decompose_channel_key(self, key: str) -> tuple[str, str]:
+        """Split a channel key back into node names."""
+        parts = key.split("↔")
+        if len(parts) != 2:
+            raise ValueError(f"Invalid channel key: {key}")
+        return parts[0], parts[1]
+
     def add_route(self, source: str, destination: str, strength: float = 0.5) -> Route:
         """Register a new route — updates both dict and precomputed index."""
         key = self._route_key(source, destination)
@@ -262,12 +269,16 @@ class RoutingLayer:
             for i in range(n):
                 for j in range(i + 1, n):
                     keys.append(self._channel_key(fired[i], fired[j]))
-            # Batch activate: check which exist
+            # Batch activate: check which exist, create missing
             with self._lock:
                 for key in keys:
                     ch = self._channels.get(key)
                     if ch is not None:
                         ch.activate()
+                    else:
+                        # Auto-create Hebbian channel on first co-fire
+                        i, j = self._decompose_channel_key(key)
+                        self._channels[key] = HebbianChannel(i, j)
         else:
             # Large: sample random pairs via numpy, no list(range) materialization
             n_pairs = min(top_k, n * (n - 1) // 2)
@@ -282,6 +293,10 @@ class RoutingLayer:
                     ch = self._channels.get(key)
                     if ch is not None:
                         ch.activate()
+                    else:
+                        # Auto-create Hebbian channel on first co-fire
+                        i, j = self._decompose_channel_key(key)
+                        self._channels[key] = HebbianChannel(i, j)
 
     def feedback(self, source: str, destination: str, success: bool) -> None:
         """Provide feedback on a route's outcome."""

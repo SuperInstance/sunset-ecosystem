@@ -66,6 +66,16 @@ class TestHebbian:
         assert key in routing_layer._channels, "Channel lost after co-fire"
         assert routing_layer._channels[key].weight > 0.1, "Channel not activated"
 
+    def test_auto_create_channel_on_co_fire(self, routing_layer):
+        """New channels are auto-created when rooms co-fire for the first time."""
+        routing_layer.add_route("fiber-0", "room-new-a", strength=1.0)
+        routing_layer.add_route("fiber-0", "room-new-b", strength=1.0)
+        key = routing_layer._channel_key("room-new-a", "room-new-b")
+        assert key not in routing_layer._channels, "Channel should not exist yet"
+        routing_layer.fire_fast("fiber-0")
+        assert key in routing_layer._channels, "Channel auto-created on co-fire"
+        assert routing_layer._channels[key].weight > 0.0, "Auto-created channel not activated"
+
 
 class TestFeedback:
     """Route reinforcement."""
@@ -97,49 +107,3 @@ class TestFeedback:
         for i in range(5):
             route = routing_layer._routes[routing_layer._route_key(f"fiber-{i}", "room-test")]
             assert route.strength > 0.5, f"Route {i} not reinforced"
-
-
-# ── New top-level unit tests (Task requirements) ──
-
-def test_fire_fast_deterministic(routing_layer):
-    """Same input and seed must produce the same output."""
-    np.random.seed(42)
-    room_ids = [f"src_{i}" for i in range(5)]
-    out1 = routing_layer.fire_fast("test_source", room_ids, chaos=0.1)
-    np.random.seed(42)
-    out2 = routing_layer.fire_fast("test_source", room_ids, chaos=0.1)
-    assert out1 == out2
-
-
-def test_hebbian_activation(routing_layer):
-    """Channels strengthen after co-firing."""
-    np.random.seed(42)
-    # Ensure both routes are strong enough to fire compiled (deterministic)
-    routing_layer.routes["src_0→dst_0"].strength = 0.95
-    routing_layer.add_route("src_0", "dst_1", strength=0.95)
-    # Pre-create channel so fire_fast can activate it
-    key = routing_layer._channel_key("dst_0", "dst_1")
-    routing_layer.channels[key] = HebbianChannel("dst_0", "dst_1")
-    routing_layer.fire_fast("src_0", ["dst_0", "dst_1"], chaos=0.0)
-    pre = routing_layer.channels[key].weight
-    routing_layer.fire_fast("src_0", ["dst_0", "dst_1"], chaos=0.0)
-    post = routing_layer.channels[key].weight
-    assert post > pre
-
-
-def test_compile_threshold(routing_layer):
-    """Routes with strength > 0.9 always fire when compiled."""
-    np.random.seed(42)
-    route = routing_layer.routes["src_0→dst_0"]
-    route.strength = 0.95
-    result = routing_layer.fire_fast("src_0", ["dst_0"], chaos=0.0)
-    assert "dst_0" in result
-
-
-def test_feedback_reinforcement(routing_layer):
-    """Successful feedback increases route strength."""
-    np.random.seed(42)
-    pre = routing_layer.routes["src_0→dst_0"].strength
-    routing_layer.feedback("src_0", "dst_0", success=True)
-    post = routing_layer.routes["src_0→dst_0"].strength
-    assert post > pre

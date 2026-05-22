@@ -398,6 +398,8 @@ class RoomGrid:
         if backend == "rust_persistent":
             if not hasattr(self, "_rust_grid"):
                 self._rust_grid = PersistentRustGrid(self.n, self.w)
+                # Warm-up tick to amortize Rust/Numba JIT cold-start cost
+                self._rust_grid.tick(np.zeros(64, dtype=np.float32))
             return self._rust_grid.tick(x)
 
         if backend == "rust_oneshot":
