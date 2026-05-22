@@ -11,4 +11,6 @@ __all__ = [
     "FederationEndpoint",
     "NexusError",
     "ConnectionRefusedError",
+    "FleetConductor",
+    "BeatState",
 ]
