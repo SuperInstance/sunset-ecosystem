@@ -198,30 +198,42 @@ class RoutingLayer:
         if not candidates:
             return []
 
-        # Split: compiled (deterministic) vs exploratory (random)
-        compiled = []
-        exploratory = []
-        for r in candidates:
-            (compiled if r.strength > self._compile_threshold else exploratory).append(r)
+        n = len(candidates)
+        # Vectorized: extract strengths and destinations as arrays
+        strengths = np.empty(n, dtype=np.float32)
+        dests = [None] * n  # type: ignore
+        for i, r in enumerate(candidates):
+            strengths[i] = r.strength
+            dests[i] = r.destination
 
-        fired = [r.destination for r in compiled]
+        # Compiled routes fire deterministically
+        compiled_mask = strengths > self._compile_threshold
+        n_exploratory = n - int(compiled_mask.sum())
 
-        # Vectorized random check for exploratory routes
-        if exploratory:
-            strengths = np.array([r.strength for r in exploratory], dtype=np.float32)
+        # Exploratory: vectorized random check
+        if n_exploratory > 0:
+            exploratory_mask = ~compiled_mask
+            exp_strengths = strengths[exploratory_mask]
+            n_exp = len(exp_strengths)
             # Batch random rolls
-            rolls = np.random.random(len(exploratory))
-            strength_mask = rolls < strengths
-            # Chaos rolls
-            chaos_rolls = np.random.random(len(exploratory))
-            chaos_mask = chaos_rolls < self.chaos
-            # Fire if either strength or chaos triggers
-            fire_idx = np.where(strength_mask | chaos_mask)[0]
-            for idx in fire_idx:
-                r = exploratory[idx]
+            rolls = np.random.random(n_exp)
+            strength_fire = rolls < exp_strengths
+            chaos_fire = np.random.random(n_exp) < self.chaos
+            fire_mask = strength_fire | chaos_fire
+            # Update route stats for fired exploratory routes
+            exploratory_idx = np.where(exploratory_mask)[0]
+            fired_exploratory = []
+            for idx in exploratory_idx[fire_mask]:
+                r = candidates[idx]
                 r.fires += 1
                 r.last_fired = time.time()
-                fired.append(r.destination)
+                fired_exploratory.append(r.destination)
+        else:
+            fired_exploratory = []
+
+        # Build fired list: compiled + exploratory that fired
+        compiled_idx = np.where(compiled_mask)[0]
+        fired = [candidates[i].destination for i in compiled_idx] + fired_exploratory
 
         # Batch Hebbian activation — top-k pairs only
         self._activate_channels_limited(fired, top_k=20)
