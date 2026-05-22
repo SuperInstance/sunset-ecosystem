@@ -258,7 +258,7 @@ Compiler.compile_hotspots()
 | 1 | P0 | codegen.py | Fix Numba `Dispatcher` type check for compatibility | FM | ✅ Fixed - uses `CPUDispatcher` |
 | 2 | P0 | flux-vm-v3 | Compile `libflux_vm.so` with `cargo build --release` | FM | 🔴 Blocked - no cargo on this machine |
 | 3 | P0 | nerve/grid | Compile `libjepa_kernel.so` (Rust persistent backend) | FM | 🔴 Blocked - no cargo on this machine |
-| 4 | P1 | breeder | Implement `BreedingDaemon` with lifecycle FSM | kimi1 | 🟡 Partial - `AutoBreeder` has daemon + thermal + compaction; `WorkerPool` added |
+| 4 | P1 | breeder | Implement `BreedingDaemon` with lifecycle FSM | kimi1 | ✅ Done — `BreederDaemonV2` + `WorkerPool` + full E2E test |
 | 5 | P1 | breeder | Wire `FluxVectorTable` into parent selection | kimi1 | 🟡 Partial - `_select_parents_vector()` implemented, falls back gracefully |
 | 6 | P1 | compiler | Implement runtime hot-swap (replace original with compiled) | kimi1 | ✅ Done - `hot_swap()`, `Compiler.hot_swap()`, `Compiler.restore()`, full test coverage |
 | 7 | P1 | grid | Wire `jepa_kernel.cu` CUDA kernel into Python | kimi1 | ✅ Done - `PersistentCUDAGrid` + batch tick |
@@ -266,6 +266,7 @@ Compiler.compile_hotspots()
 | 9 | P2 | tests | Fix pre-existing `test_breeder_daemon.py` / `test_breeder_integration.py` | kimi1 | ✅ Done |
 | 10 | P2 | docs | Write `docs/FLUX_INTEGRATION.md` user guide | kimi1 | ✅ Done |
 | 11 | P2 | a2a | Create Agent Cards for all fleet services | kimi1 | ✅ Done — 4 cards + index doc committed |
+| 11a | P1 | a2a | Wire A2A task endpoints into actual HTTP handlers | kimi1 | ✅ Done — `a2a/server.py` + `a2a/handlers.py` + 12 tests |
 | 12 | P1 | swarm | Implement `async_thermal.py` — async thermal budget manager | CCC | ✅ Done — `AsyncThermalBudget` + 17 tests + backpressure |
 
 ---
@@ -340,7 +341,7 @@ nvcc -arch=sm_89 jepa_kernel.cu -o jepa_kernel.so --shared
 5. **Write CUDA kernel** for JC1 RTX 4050
 6. **Runtime hot-swap** for compiled functions
 7. **Integration test for full breeding cycle** (currently 0 cycles in demo)
-8. **Wire A2A task endpoints** into actual HTTP handlers (Agent Cards ✅ done, handlers pending)
+8. **Wire A2A task endpoints** into actual HTTP handlers ✅ Done — `a2a/server.py` + `a2a/handlers.py` + `tests/test_a2a_server.py` (12 tests green)
 
 ---
 
