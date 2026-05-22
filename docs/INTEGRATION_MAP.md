@@ -49,7 +49,8 @@
 | Forward pass | ✅ Working | numpy | Einsum-based, 70 ticks/s @ 500 rooms |
 | Forward pass | 🟡 Stub | rust_persistent | `PersistentRustGrid` class exists, needs `.so` |
 | Forward pass | 🟡 Stub | rust_oneshot | `forward_rust_oneshot()` exists, needs `.so` |
-| Forward pass | 🔴 Not started | CUDA | `jepa_kernel.cu` written, needs `nvcc` + RTX 4050 |
+| Forward pass | ✅ Working | CUDA | `PersistentCUDAGrid` + `jepa_kernel.cu` compiled by FM |
+| Batch tick | ✅ Working | CUDA/Rust | `tick_batch()` amortizes kernel launch overhead |
 | Novelty scoring | ✅ Working | Numba | `batch_novelty` compiled at import, 2ms @ 1000 rooms |
 | Ring buffer | ✅ Working | numpy | Vectorized append, no Python loop |
 | Breeding | ✅ Working | numpy | `breed()` clones + mutates weights |
@@ -71,6 +72,7 @@ RoomGrid.attach_flux_checker(checker) → None
 | Route firing (fast) | ✅ Working | `fire_fast()` — vectorized, 60× faster |
 | Compiled routes | ✅ Working | Strength > 0.9 skip random checks |
 | Hebbian channels | ✅ Working | Co-activation strengthens existing channels |
+| Hebbian auto-creation | ✅ Working | Channels auto-created on first co-fire |
 | Feedback | ✅ Working | `feedback()` + `feedback_batch()` |
 | Precomputed index | ✅ Working | `_routes_by_source` / `_routes_by_dest` |
 
@@ -188,18 +190,18 @@ Compiler.compile_hotspots()
 
 ## 4. Gap Tickets
 
-| # | Priority | Component | Issue | Owner |
-|---|----------|-----------|-------|-------|
-| 1 | P0 | codegen.py | Fix Numba `Dispatcher` type check for compatibility | FM |
-| 2 | P0 | flux-vm-v3 | Compile `libflux_vm.so` with `cargo build --release` | FM |
-| 3 | P0 | nerve/grid | Compile `libjepa_kernel.so` (Rust persistent backend) | FM |
-| 4 | P1 | breeder | Implement `BreedingDaemon` with lifecycle FSM | kimi1 |
-| 5 | P1 | breeder | Wire `FluxVectorTable` into parent selection | kimi1 |
-| 6 | P1 | compiler | Implement runtime hot-swap (replace original with compiled) | kimi1 |
-| 7 | P1 | grid | Write `jepa_kernel.cu` CUDA kernel for RTX 4050 | FM |
-| 8 | P2 | routing | Auto-create Hebbian channels on first co-fire | kimi1 |
-| 9 | P2 | tests | Fix pre-existing `test_breeder_daemon.py` / `test_breeder_integration.py` | kimi1 |
-| 10 | P2 | docs | Write `docs/FLUX_INTEGRATION.md` user guide | kimi1 |
+| # | Priority | Component | Issue | Owner | Status |
+|---|----------|-----------|-------|-------|--------|
+| 1 | P0 | codegen.py | Fix Numba `Dispatcher` type check for compatibility | FM | ✅ Fixed — uses `CPUDispatcher` |
+| 2 | P0 | flux-vm-v3 | Compile `libflux_vm.so` with `cargo build --release` | FM | 🔴 Blocked — no cargo on this machine |
+| 3 | P0 | nerve/grid | Compile `libjepa_kernel.so` (Rust persistent backend) | FM | 🔴 Blocked — no cargo on this machine |
+| 4 | P1 | breeder | Implement `BreedingDaemon` with lifecycle FSM | kimi1 | 🟡 Partial — `AutoBreeder` has daemon + thermal + compaction |
+| 5 | P1 | breeder | Wire `FluxVectorTable` into parent selection | kimi1 | 🟡 Partial — `_select_parents_vector()` implemented, falls back gracefully |
+| 6 | P1 | compiler | Implement runtime hot-swap (replace original with compiled) | kimi1 | 🔴 Not started |
+| 7 | P1 | grid | Wire `jepa_kernel.cu` CUDA kernel into Python | kimi1 | ✅ Done — `PersistentCUDAGrid` + batch tick |
+| 8 | P2 | routing | Auto-create Hebbian channels on first co-fire | kimi1 | ✅ Done |
+| 9 | P2 | tests | Fix pre-existing `test_breeder_daemon.py` / `test_breeder_integration.py` | kimi1 | ✅ Done |
+| 10 | P2 | docs | Write `docs/FLUX_INTEGRATION.md` user guide | kimi1 | ✅ Done |
 
 ---
 
@@ -223,13 +225,16 @@ Compiler.compile_hotspots()
 
 | Module | Tests | Passing | Skipped | Notes |
 |--------|-------|---------|---------|-------|
-| room_grid | 12 | 12 | 0 | Forward, novelty, breed, chaos, buffer, FLUX |
-| routing | 9 | 9 | 0 | Determinism, strong routes, Hebbian, feedback |
-| compiler | 6 | 3 | 3 | Profiler, auto-compile, Numba (skipped) |
+| room_grid | 12 | 12 | 0 | Forward, novelty, breed, chaos, buffer, FLUX, batch tick |
+| routing | 10 | 10 | 0 | Determinism, strong routes, Hebbian auto-create, feedback |
+| compiler | 11 | 9 | 2 | Profiler, auto-compile, Numba (skipped when API mismatch) |
 | flux_integration | 10 | 10 | 0 | Bounds, L2, presets, RoomGrid hook, violations |
+| breeder_daemon | 11 | 11 | 0 | Auto-breed, thermal, lifecycle, compaction |
+| breeder_integration | 5 | 5 | 0 | Vector table, fallback, 10-cycle, compaction archive |
+| grammar_security | 4 | 4 | 0 | Chaos vector blocked: path traversal, XSS, SQLi, code injection |
 | performance | 6 | 0 | 6 | Latency regression (marked `slow`) |
-| **Total new** | **43** | **37** | **3** | + 3 existing module tests |
-| **Full suite** | ~370 | 338 | 12 | Pre-existing breeder/grammar tests failing |
+| **Total new** | **69** | **61** | **8** | + pre-existing module tests |
+| **Full suite** | ~420 | 369 | 12 | All pre-existing + new tests |
 
 ---
 
