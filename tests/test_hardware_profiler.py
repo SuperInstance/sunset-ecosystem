@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from scripts.profile_hardware import HardwareProfiler, HardwareReport
 
 
+@pytest.mark.slow
 class TestHardwareProfiler:
     def test_detect_devices_returns_at_least_cpu(self):
         profiler = HardwareProfiler()

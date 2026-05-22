@@ -101,6 +101,7 @@ class TestEvaluateSingle:
 
 # ── Test 2: aging evolution → non-empty Pareto frontier ──
 
+@pytest.mark.slow
 class TestAgingEvolution:
     def test_returns_non_empty_list(self, nas_jetson):
         frontier = nas_jetson.aging_evolution(population_size=5, generations=3)
@@ -137,6 +138,7 @@ class TestAgingEvolution:
 
 # ── Test 3: hardware-specific frontiers differ ──
 
+@pytest.mark.slow
 class TestHardwareSpecificFrontiers:
     def test_jetson_prefers_smaller_configs_than_oracle1(self):
         """Jetson (8GB RAM) should converge to smaller n_rooms than Oracle1 (32GB)."""

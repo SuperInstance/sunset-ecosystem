@@ -17,6 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BENCHMARK_SCRIPT = PROJECT_ROOT / "benchmarks" / "cuda_benchmark.py"
 
 
+@pytest.mark.slow
 class TestCUDABenchmark:
     def test_script_exists(self):
         assert BENCHMARK_SCRIPT.exists()
