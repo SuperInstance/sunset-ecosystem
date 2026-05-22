@@ -388,6 +388,7 @@ class BreederDaemonV2:
         self._tick_count = 0
         self._room_allocations: dict[int, int] = {}  # room_id → agent_id
         self._transitions_log: list[LifecycleTransition] = []
+        self._slot_registry: dict[int, int] = {}  # agent_id → economic slots
 
         # Thermal hysteresis counter (how many ticks we've been blocked)
         self._thermal_blocked_ticks: int = 0
@@ -401,6 +402,13 @@ class BreederDaemonV2:
 
         # Replay WAL to reconstruct state
         self._state = self._wal.replay()
+
+        # Seed slot registry for recovered agents
+        if self._inheritance_tax is not None:
+            for agent_id in self._state:
+                if agent_id not in self._slot_registry:
+                    self._slot_registry[agent_id] = InheritanceTax.DEFAULT_SLOTS
+
         logger.info(
             "BreederDaemonV2 replayed WAL: %d agents, %d pending queue items",
             len(self._state),
@@ -568,6 +576,41 @@ class BreederDaemonV2:
 
         # Determine child agent ID
         child_id = self._next_agent_id()
+
+        # ── Inheritance Tax ─────────────────────────────────────
+        if self._inheritance_tax is not None and parent_a is not None:
+            parent_slots = self._slot_registry.get(
+                parent_a, InheritanceTax.DEFAULT_SLOTS
+            )
+            # Child inherits a portion of parent's slots
+            child_slots = int(parent_slots * 0.8)
+
+            # Fitness from vector table (0.0 default for unscored agents)
+            parent_fitness = 0.0
+            child_fitness = 0.0
+            if self._vector_table is not None:
+                meta = self._vector_table._meta.get(parent_a)
+                if meta is not None:
+                    parent_fitness = meta.fitness
+
+            parent_after, child_after = self._inheritance_tax.apply_tax(
+                parent_slots, child_slots, parent_fitness, child_fitness
+            )
+            self._slot_registry[parent_a] = parent_after
+            self._slot_registry[child_id] = child_after
+
+            # Social welfare: grant bonus slots from global pool
+            bonus = self._inheritance_tax.fund_new_agent(
+                InheritanceTax.DEFAULT_SLOTS
+            )
+            if bonus > 0:
+                self._slot_registry[child_id] += bonus
+                logger.info(
+                    "InheritanceTax: agent %d granted %d bonus slots "
+                    "from global pool (pool=%d)",
+                    child_id, bonus, self._inheritance_tax.global_pool
+                )
+
         generation = 0
         if parent_b is not None:
             g_a = self._wal.get_genealogy(parent_a)
