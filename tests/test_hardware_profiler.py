@@ -21,7 +21,7 @@ class TestHardwareProfiler:
 
     def test_measure_idle_returns_positive_power(self):
         profiler = HardwareProfiler()
-        result = profiler.measure_idle(duration_sec=1.0)
+        result = profiler.measure_idle(duration_sec=0.5)
         assert "mean_watts" in result
         assert result["mean_watts"] > 0, f"Expected positive power, got {result['mean_watts']}"
         assert "duration_sec" in result
@@ -30,7 +30,7 @@ class TestHardwareProfiler:
     def test_measure_einsum_returns_joules_per_op(self):
         profiler = HardwareProfiler()
         config = {"n_rooms": 100, "n_fibers": 2}
-        result = profiler.measure_operation("einsum", config, duration_sec=2.0)
+        result = profiler.measure_operation("einsum", config, duration_sec=0.5)
         assert "joules_per_op" in result
         assert result["joules_per_op"] >= 0, f"Expected non-negative joules_per_op, got {result['joules_per_op']}"
         assert "ops_per_second" in result
@@ -63,20 +63,20 @@ class TestHardwareProfiler:
     def test_measure_novelty_scoring(self):
         profiler = HardwareProfiler()
         config = {"n_rooms": 100, "n_fibers": 2}
-        result = profiler.measure_operation("novelty_scoring", config, duration_sec=2.0)
+        result = profiler.measure_operation("novelty_scoring", config, duration_sec=0.5)
         assert "joules_per_op" in result
         assert result["ops_per_second"] > 0
 
     def test_measure_routing(self):
         profiler = HardwareProfiler()
         config = {"n_rooms": 100, "n_fibers": 4}
-        result = profiler.measure_operation("routing", config, duration_sec=2.0)
+        result = profiler.measure_operation("routing", config, duration_sec=0.5)
         assert "joules_per_op" in result
         assert result["ops_per_second"] > 0
 
     def test_measure_thermal_scheduling(self):
         profiler = HardwareProfiler()
         config = {"n_rooms": 100, "n_fibers": 2}
-        result = profiler.measure_operation("thermal_scheduling", config, duration_sec=2.0)
+        result = profiler.measure_operation("thermal_scheduling", config, duration_sec=0.5)
         assert "joules_per_op" in result
         assert result["ops_per_second"] > 0

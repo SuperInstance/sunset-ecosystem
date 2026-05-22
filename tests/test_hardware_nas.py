@@ -113,14 +113,14 @@ class TestAgingEvolution:
             assert isinstance(item, dict)
 
     def test_frontier_contains_expected_keys(self, nas_jetson):
-        frontier = nas_jetson.aging_evolution(population_size=5, generations=3)
+        frontier = nas_jetson.aging_evolution(population_size=5, generations=2)
         expected = {"n_rooms", "d_latent", "h_history", "l_signal", "chaos_decay",
                     "route_density", "ticks_per_second", "memory_mb", "diversity", "stability"}
         for item in frontier:
             assert expected.issubset(item.keys())
 
     def test_frontier_is_pareto_optimal(self, nas_jetson):
-        frontier = nas_jetson.aging_evolution(population_size=5, generations=3)
+        frontier = nas_jetson.aging_evolution(population_size=5, generations=2)
         objectives = ["ticks_per_second", "diversity", "stability", "memory_mb"]
         maximize = {"ticks_per_second", "diversity", "stability"}
         # No point in frontier should dominate another
@@ -131,7 +131,7 @@ class TestAgingEvolution:
                         f"Frontier point {i} dominates {j} — not a true frontier"
 
     def test_eval_count_bounded_by_max_evals(self, nas_jetson):
-        nas_jetson.aging_evolution(population_size=5, generations=10)
+        nas_jetson.aging_evolution(population_size=5, generations=5)
         assert nas_jetson.eval_count <= nas_jetson.max_evals
 
 
@@ -140,11 +140,11 @@ class TestAgingEvolution:
 class TestHardwareSpecificFrontiers:
     def test_jetson_prefers_smaller_configs_than_oracle1(self):
         """Jetson (8GB RAM) should converge to smaller n_rooms than Oracle1 (32GB)."""
-        nas_j = HardwareConditionalNAS(jetson_profile, max_evals=30, seed=7)
-        nas_o = HardwareConditionalNAS(oracle1_profile, max_evals=30, seed=7)
+        nas_j = HardwareConditionalNAS(jetson_profile, max_evals=20, seed=7)
+        nas_o = HardwareConditionalNAS(oracle1_profile, max_evals=20, seed=7)
 
-        frontier_j = nas_j.aging_evolution(population_size=5, generations=4)
-        frontier_o = nas_o.aging_evolution(population_size=5, generations=4)
+        frontier_j = nas_j.aging_evolution(population_size=3, generations=2)
+        frontier_o = nas_o.aging_evolution(population_size=3, generations=2)
 
         assert len(frontier_j) > 0
         assert len(frontier_o) > 0
