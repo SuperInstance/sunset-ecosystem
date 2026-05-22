@@ -89,6 +89,8 @@ class AutoBreeder:
         n_winners: int = 3,
         device: DeviceType = DeviceType.GPU,
         vector_table: Optional["FluxVectorTable"] = None,
+        compaction=None,
+        compaction_interval: int = 10,
     ) -> None:
         self.grid = grid
         self.thermal = thermal
@@ -97,12 +99,15 @@ class AutoBreeder:
         self.n_winners = n_winners
         self.device = device
         self._vector_table = vector_table
+        self._compaction = compaction
+        self._compaction_interval = compaction_interval
 
         self._log: list[RebirthRecord] = []
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._tick_count = 0
+        self._room_allocations: dict[int, str] = {}  # room_id → agent_id for thermal budget
 
     # ── public API ──────────────────────────────────────────
 
@@ -263,12 +268,22 @@ class AutoBreeder:
                     )
                     continue
 
+            # Release old thermal allocation for this room before rebirthing
+            old_agent_id = self._room_allocations.get(room_id)
+            if old_agent_id is not None:
+                self.thermal.release(old_agent_id)
+                del self._room_allocations[room_id]
+                # Archive the sunset agent if compaction is configured
+                if self._compaction is not None:
+                    self._compaction.archive_sunset(room_id)
+
             # Clone parent weights for rebirth (instead of random init)
             self._rebirth_with_clone(room_id, parent_room)
 
             # Allocate child in thermal budget
             child_id = child["id"]
             self.thermal.allocate(child_id, self.device)
+            self._room_allocations[room_id] = child_id
 
             selected_by_vec = child.get("selected_by_vector_search", False)
 
@@ -308,7 +323,22 @@ class AutoBreeder:
                 selected_by_vec,
             )
 
+        # Trigger compaction if interval reached
+        if (
+            self._compaction is not None
+            and self._compaction_interval > 0
+            and tick % self._compaction_interval == 0
+        ):
+            try:
+                self._compaction.compact()
+            except Exception:
+                logger.exception("Compaction failed on tick %d", tick)
+
         return results
+
+    def cycle(self, n_winners: Optional[int] = None) -> list[tuple[int, str]]:
+        """Alias for auto_breed() — matches BreedingDaemon interface."""
+        return self.auto_breed(n_winners=n_winners)
 
     def start(self) -> None:
         """Start the background daemon thread."""
@@ -541,7 +571,9 @@ class AutoBreeder:
                 )
             self.grid.activity[target_room] = 0
             self.grid.chaos[target_room] = 0.3
-            self.grid.history[target_room] = []
+            # Clear ring-buffer history for rebirthed room
+            self.grid._hist[:, target_room, :] = 0.0
+            self.grid._hist_count[target_room] = 0
 
     def _run_loop(self) -> None:
         """Background loop: auto_breed every N ticks."""
