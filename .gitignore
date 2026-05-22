@@ -7,3 +7,4 @@ __pycache__/
 data/
 *.tar.gz
 
+nerve/libjepa_cuda.so

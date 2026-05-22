@@ -8,7 +8,7 @@ import urllib.request
 import json
 from pathlib import Path
 
-ROOT = Path("/tmp/sunset-ecosystem")
+ROOT = Path(__file__).resolve().parent.parent
 
 # Start server
 print("Starting grammar server...")
