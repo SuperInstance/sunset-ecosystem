@@ -13,10 +13,15 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
+
+# Add project root to path so imports resolve when run from scripts/
+_project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_project_root))
+
 import tempfile
 import time
 import types
-from pathlib import Path
 
 import numpy as np
 
@@ -196,6 +201,11 @@ def run_demo():
 
                     if room_id is not None:
                         try:
+                            # Daemon already allocated thermal; release so pool can manage
+                            thermal.release(f"agent_{child_id}")
+                        except Exception:
+                            pass
+                        try:
                             pool.spawn_worker(
                                 agent_id=child_id,
                                 config={
@@ -226,7 +236,7 @@ def run_demo():
             fitness_values.extend(gen_fitness)
 
         diversity = daemon.diversity_score
-        thermal_pct = (thermal.total_current / thermal.total_capacity) * 100
+        thermal_pct = (thermal.total_current / thermal.total_max) * 100
 
         gen_events = []
         if bred_this_gen:
