@@ -175,7 +175,8 @@ class TestWebcamCaptureMock:
         with pytest.raises(ImportError, match="opencv-python"):
             WebcamCapture(device_id=0)
 
-    def test_stats_dict(self):
+    def test_stats_dict(self, monkeypatch):
+        monkeypatch.setattr("perception.capture._HAS_CV2", True)
         cap = WebcamCapture(device_id=0)
         stats = cap.stats
         assert stats["device_id"] == 0
