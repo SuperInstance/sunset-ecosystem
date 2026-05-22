@@ -142,16 +142,9 @@ class TidePoolVisualizer:
     @staticmethod
     def _compute_diversity(domains: dict[str, int], total: int) -> float:
         """Normalized Shannon entropy over agent domains."""
+        import math
         if total <= 1 or not domains:
             return 0.0
-        entropy = 0.0
-        for count in domains.values():
-            if count:
-                p = count / total
-                entropy -= p * (p.bit_length() - 1)  # rough log2 approx
-        max_entropy = (total.bit_length() - 1) if total > 0 else 1
-        # Proper entropy calculation
-        import math
         entropy = 0.0
         for count in domains.values():
             if count:
@@ -190,8 +183,18 @@ class TidePoolVisualizer:
     # 2. render_html
     # ------------------------------------------------------------------
 
-    def render_html(self, snapshot: FleetSnapshot | None = None) -> str:
-        """Return a complete HTML page with embedded CSS/JS."""
+    def render_html(self, snapshot: FleetSnapshot | None = None, *, template_path: str | None = None) -> str:
+        """Return a complete HTML page with embedded CSS/JS.
+
+        Parameters
+        ----------
+        snapshot : FleetSnapshot | None
+            The snapshot to render. Uses latest history if omitted.
+        template_path : str | None
+            Path to an external HTML template file containing the
+            placeholder ``{{SNAPSHOT_JSON}}``. If *None*, the bundled
+            inline template is used.
+        """
         snap = snapshot or self._latest_snapshot()
         data_json = json.dumps(
             {
@@ -207,6 +210,14 @@ class TidePoolVisualizer:
                 "timestamp": snap.timestamp,
             }
         )
+
+        if template_path is not None:
+            try:
+                with open(template_path, "r", encoding="utf-8") as fh:
+                    tpl = fh.read()
+                return tpl.replace("{{SNAPSHOT_JSON}}", data_json)
+            except FileNotFoundError:
+                pass  # fall back to inline template
 
         return self._html_template(data_json)
 
