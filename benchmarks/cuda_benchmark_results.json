@@ -4,9 +4,9 @@
       "backend": "numpy",
       "rooms": 1000,
       "ticks": 50,
-      "total_ms": 30.616422998718917,
-      "ms_per_tick": 0.6123284599743783,
-      "rooms_per_sec": 1633110.438867798
+      "total_ms": 31.749269997817464,
+      "ms_per_tick": 0.6349853999563493,
+      "rooms_per_sec": 1574839.3586194941
     },
     "cuda": {
       "backend": "cuda",
@@ -23,9 +23,9 @@
       "backend": "numpy",
       "rooms": 5000,
       "ticks": 50,
-      "total_ms": 208.38795600866433,
-      "ms_per_tick": 4.167759120173287,
-      "rooms_per_sec": 1199685.4558600571
+      "total_ms": 158.71649100154173,
+      "ms_per_tick": 3.1743298200308345,
+      "rooms_per_sec": 1575135.6297158282
     },
     "cuda": {
       "backend": "cuda",
@@ -42,9 +42,9 @@
       "backend": "numpy",
       "rooms": 10000,
       "ticks": 50,
-      "total_ms": 314.1609170124866,
-      "ms_per_tick": 6.283218340249732,
-      "rooms_per_sec": 1591541.0635885273
+      "total_ms": 367.7715650119353,
+      "ms_per_tick": 7.355431300238706,
+      "rooms_per_sec": 1359539.5826313365
     },
     "cuda": {
       "backend": "cuda",
