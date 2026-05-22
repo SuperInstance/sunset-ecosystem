@@ -43,6 +43,7 @@ import numpy as np
 from nerve.room_grid import RoomGrid
 from swarm.thermal import DeviceType, ThermalBudget
 from swarm.tournament import AgentScore, TournamentRound, breed
+from swarm.trajectory_monitor import TrajectoryMonitor, SecurityEvent
 
 logger = logging.getLogger(__name__)
 
@@ -363,6 +364,7 @@ class BreederDaemonV2:
         wal_path: str = "breeder.wal.sqlite",
         mesh: Any = None,
         tick_interval: float = 1.0,
+        trajectory_monitor: TrajectoryMonitor | None = None,
     ) -> None:
         self.grid = grid
         self.thermal = thermal
@@ -372,6 +374,7 @@ class BreederDaemonV2:
         self._wal_path = wal_path
         self._mesh = mesh
         self._tick_interval = tick_interval
+        self._trajectory_monitor = trajectory_monitor or TrajectoryMonitor()
 
         self._wal = _WALSchema(wal_path)
         self._state: dict[int, LifecycleState] = {}
@@ -486,6 +489,19 @@ class BreederDaemonV2:
                 )
                 if pairs:
                     _, parent_b = pairs[0]
+
+        # ── TrajectoryMonitor circuit breaker ───────────────────
+        parents_to_check = [p for p in (parent_a, parent_b) if p is not None]
+        flagged_parents = self._trajectory_monitor.circuit_breaker(parents_to_check)
+        if flagged_parents:
+            logger.warning(
+                "Step %d: breeding ticket %d aborted — "
+                "anomalous trajectory detected in parent(s) %s",
+                tick, ticket, flagged_parents,
+            )
+            # Do NOT re-queue — a flagged parent is a security event.
+            # Return empty transitions; the ticket is consumed.
+            return transitions
 
         # Thermal check
         device = DeviceType.GPU  # default; could be configurable per agent
@@ -616,6 +632,8 @@ class BreederDaemonV2:
                     thermal_pressure=0.0,
                 )
             )
+            # Record trajectory for security monitoring
+            self._trajectory_monitor.record(child_id, vec)
 
         logger.info(
             "Step %d: spawned agent %d in room %d (parents=%s, gen=%d)",

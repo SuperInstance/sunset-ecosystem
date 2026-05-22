@@ -26,7 +26,7 @@ from typing import Optional, Protocol
 
 import numpy as np
 
-from nerve.room_grid import RoomGrid
+from logos.intent_protocol import FleetState, IntentConfirmationProtocol
 from nerve.routing import RoutingLayer
 from swarm.breeder_daemon import AutoBreeder
 
