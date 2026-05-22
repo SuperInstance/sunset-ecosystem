@@ -21,20 +21,12 @@ import logging
 import threading
 import time
 from dataclasses import dataclass, field
-from enum import Enum, auto
 from typing import Any, Callable
 
+# Re-export canonical LifecycleState from lifecycle_fsm to avoid dual enum problem
+from swarm.lifecycle_fsm import LifecycleState
+
 log = logging.getLogger(__name__)
-
-
-class LifecycleState(Enum):
-    """Canonical 6-state agent lifecycle."""
-    EGG = auto()
-    COMPETE = auto()
-    SURVIVE = auto()
-    BREED = auto()
-    SUNSET = auto()
-    ARCHIVE = auto()
 
 
 class TransitionError(ValueError):
