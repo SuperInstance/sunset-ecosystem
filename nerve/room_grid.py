@@ -63,7 +63,18 @@ if _BACKEND == "numpy":
         _RUST_LIB.jepa_forward_batch.argtypes = [POINTER(c_float)]*7 + [c_size_t, POINTER(c_float)]
         _RUST_LIB.jepa_forward_batch.restype = None
         _BACKEND = "rust_persistent"
-    except (StopIteration, OSError):
+    except (StopIteration, OSError, AttributeError):
+        _RUST_LIB = None
+
+# If persistent API missing, try oneshot-only (FM's v1 .so has forward_batch only)
+if _BACKEND == "numpy":
+    try:
+        _so = next(Path(__file__).parent.glob("target/release/libjepa_kernel.so"))
+        _RUST_LIB = CDLL(str(_so))
+        _RUST_LIB.jepa_forward_batch.argtypes = [POINTER(c_float)]*7 + [c_size_t, POINTER(c_float)]
+        _RUST_LIB.jepa_forward_batch.restype = None
+        _BACKEND = "rust_oneshot"
+    except (StopIteration, OSError, AttributeError):
         _RUST_LIB = None
 
 
@@ -185,6 +196,8 @@ def _select_backend(n: int):
             return "rust_persistent"
         elif n >= _RUST_PERSIST_THRESHOLD:
             return "rust_oneshot"
+    if _BACKEND == "rust_oneshot" and n >= _RUST_ONESHOT_THRESHOLD:
+        return "rust_oneshot"
     return "numpy"
 
 
