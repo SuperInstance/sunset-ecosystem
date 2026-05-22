@@ -5,7 +5,7 @@ Implements the breeding pipeline per SPEC-BREEDER:
 """
 from __future__ import annotations
 
-__all__ = ["Breeder", "AgentLifecycle", "spawn_from_template"]
+__all__ = ["Breeder", "AgentLifecycle", "spawn_from_template", "BreedingDaemon"]
 
 import logging
 from dataclasses import dataclass, field
@@ -17,6 +17,7 @@ from nerve.room_grid import RoomGrid
 from nerve.templates import AgentTemplate
 from swarm.thermal import ThermalBudget
 from swarm.tournament import AgentScore, TournamentRound, breed, sunset_candidates
+from swarm.breeder_daemon import BreedingDaemon
 
 logger = logging.getLogger(__name__)
 

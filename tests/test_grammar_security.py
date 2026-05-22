@@ -50,12 +50,6 @@ CHAOS_VECTORS = [
 ]
 
 
-@pytest.mark.parametrize("payload", CHAOS_VECTORS, ids=lambda p: p["attack"])
-def test_chaos_vector_blocked(payload: dict) -> None:
-    """Each chaos vector must be blocked or safely sanitized."""
-    assert _test_chaos_vector(payload.copy(), verbose=False)
-
-
 def _test_chaos_vector(payload: dict, verbose: bool = True) -> bool:
     """Test one chaos vector. Returns True if blocked or safely sanitized."""
     attack_name = payload.pop("attack")
@@ -100,6 +94,12 @@ def _test_chaos_vector(payload: dict, verbose: bool = True) -> bool:
                 print(f"     {issue}")
 
     return is_safe
+
+
+@pytest.mark.parametrize("payload", CHAOS_VECTORS, ids=lambda p: p["attack"])
+def test_chaos_vector_blocked(payload: dict) -> None:
+    """Each chaos vector must be blocked or safely sanitized."""
+    assert _test_chaos_vector(payload.copy(), verbose=False)
 
 
 def run_all() -> bool:

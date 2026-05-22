@@ -14,7 +14,7 @@ winners. This enables:
 
 from __future__ import annotations
 
-__all__ = ["AutoBreeder"]
+__all__ = ["AutoBreeder", "BreedingDaemon"]
 
 import logging
 import random
@@ -574,6 +574,9 @@ class AutoBreeder:
             # Clear ring-buffer history for rebirthed room
             self.grid._hist[:, target_room, :] = 0.0
             self.grid._hist_count[target_room] = 0
+            # Invalidate persistent grid — weights changed
+            if hasattr(self.grid, "_rust_grid"):
+                del self.grid._rust_grid
 
     def _run_loop(self) -> None:
         """Background loop: auto_breed every N ticks."""
@@ -596,3 +599,90 @@ def _crossover(a: float, b: float) -> float:
 def _mutate(value: float, sigma: float = 0.05) -> float:
     """Gaussian mutation clamped to [0, 1]."""
     return max(0.0, min(1.0, random.gauss(value, sigma)))
+
+
+class BreedingDaemon:
+    """High-level daemon that wraps AutoBreeder with compaction support.
+
+    This is the interface expected by integration tests and fleet ops.
+    It delegates breeding logic to AutoBreeder while adding:
+        - Periodic compaction of the vector table
+        - A ``cycle()`` convenience method
+        - Unified lifecycle management (start / stop / running / log)
+    """
+
+    def __init__(
+        self,
+        grid: RoomGrid,
+        thermal: ThermalBudget,
+        *,
+        interval: float = 10.0,
+        cold_threshold: int = 3,
+        n_winners: int = 3,
+        device: DeviceType = DeviceType.GPU,
+        vector_table: Optional["FluxVectorTable"] = None,
+        compaction: Optional["CompactionManager"] = None,
+        compaction_interval: int = 3,
+    ) -> None:
+        self._breeder = AutoBreeder(
+            grid=grid,
+            thermal=thermal,
+            interval=interval,
+            cold_threshold=cold_threshold,
+            n_winners=n_winners,
+            device=device,
+            vector_table=vector_table,
+        )
+        self._compaction = compaction
+        self._compaction_interval = compaction_interval
+        self._cycle_count = 0
+
+    # ── public API ──────────────────────────────────────────
+
+    def select_parents(
+        self,
+        n_winners: Optional[int] = None,
+        use_vector: bool = True,
+    ) -> list[AgentScore]:
+        """Select parent agents for breeding.
+
+        Delegates to the internal AutoBreeder.
+        """
+        return self._breeder.select_parents(n_winners=n_winners, use_vector=use_vector)
+
+    def cycle(self, n_winners: Optional[int] = None) -> list[tuple[int, str]]:
+        """Run one breeding cycle, optionally triggering compaction.
+
+        Returns:
+            List of (reborn_room_id, parent_agent_id) tuples.
+        """
+        results = self._breeder.auto_breed(n_winners=n_winners)
+        self._cycle_count += 1
+
+        if self._compaction is not None:
+            # Archive sunset agents (rooms that were rebirthed)
+            for room_id, parent_id in results:
+                self._compaction.archive_sunset(room_id)
+
+            if self._cycle_count % self._compaction_interval == 0:
+                self._compaction.compact()
+
+        return results
+
+    def start(self) -> None:
+        """Start the background daemon thread."""
+        self._breeder.start()
+
+    def stop(self) -> None:
+        """Stop the background daemon thread."""
+        self._breeder.stop()
+
+    @property
+    def running(self) -> bool:
+        """Whether the daemon thread is alive."""
+        return self._breeder.running
+
+    @property
+    def log(self) -> list[RebirthRecord]:
+        """Read-only copy of the rebirth log."""
+        return self._breeder.log
