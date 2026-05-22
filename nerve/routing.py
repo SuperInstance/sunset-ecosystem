@@ -181,7 +181,17 @@ class RoutingLayer:
 
     # ── FAST PATH (vectorized) ───────────────────────────────────────
 
-    def fire_fast(self, source: str, destinations: Optional[list[str]] = None) -> list[str]:
+    @property
+    def routes(self) -> dict[str, Route]:
+        """Public read-only access to registered routes."""
+        return self._routes
+
+    @property
+    def channels(self) -> dict[str, HebbianChannel]:
+        """Public read-only access to registered channels."""
+        return self._channels
+
+    def fire_fast(self, source: str, destinations: Optional[list[str]] = None, chaos: Optional[float] = None) -> list[str]:
         """Vectorized route firing — 60× faster than fire().
 
         Algorithm:
@@ -198,6 +208,7 @@ class RoutingLayer:
         if not candidates:
             return []
 
+        effective_chaos = chaos if chaos is not None else self.chaos
         n = len(candidates)
         # Vectorized: extract strengths and destinations as arrays
         strengths = np.empty(n, dtype=np.float32)
@@ -218,7 +229,7 @@ class RoutingLayer:
             # Batch random rolls
             rolls = np.random.random(n_exp)
             strength_fire = rolls < exp_strengths
-            chaos_fire = np.random.random(n_exp) < self.chaos
+            chaos_fire = np.random.random(n_exp) < effective_chaos
             fire_mask = strength_fire | chaos_fire
             # Update route stats for fired exploratory routes
             exploratory_idx = np.where(exploratory_mask)[0]

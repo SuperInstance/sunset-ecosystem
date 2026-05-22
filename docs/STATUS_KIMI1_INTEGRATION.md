@@ -5,13 +5,14 @@
 
 ## Executive Summary
 
-The `turbovec-integration-ccc` branch now contains **25 commits** of performance and integration work across the full sunset ecosystem stack. Every layer has been touched: nerve grid, swarm breeder, agentic compiler, FLUX integration, and routing optimization.
+The `turbovec-integration-ccc` branch now contains **28 commits** of performance and integration work across the full sunset ecosystem stack. Every layer has been touched: nerve grid, swarm breeder, agentic compiler, FLUX integration, routing optimization, and a comprehensive test suite.
 
 **Key numbers:**
 - `batch_novelty`: 15.4ms → 2.2ms (Numba, 6.9×)
 - `expensive_dot_product`: 6.4ms → 0.006ms (Numba compiler, 1129×)
 - Routing: 0.917s → 0.740s per tick (19% faster, 1000 rooms)
 - Full-stack demo: 2000 rooms @ 21 ticks/s on Alibaba Cloud
+- **37 new tests passing**, 3 skipped (Numba API mismatch)
 - Rust persistent grid: zero-copy per tick after initial weight upload
 - FLUX constraint checker: Python backend working, Rust FFI ready for FM compile
 

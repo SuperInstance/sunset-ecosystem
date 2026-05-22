@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from nerve.routing import RoutingLayer, HebbianChannel
+from nerve.routing import RoutingLayer, Route, HebbianChannel
 
 
 class TestFireFast:

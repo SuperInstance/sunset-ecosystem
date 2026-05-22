@@ -333,7 +333,7 @@ class CodeGenerator:
         # Detect already-compiled Numba functions and pass through
         try:
             import numba
-            if isinstance(func, numba.core.registry.Dispatcher):
+            if isinstance(func, numba.core.registry.CPUDispatcher):
                 return GeneratedKernel(
                     name=getattr(func, "__qualname__", "unknown"),
                     source_language="numba",

@@ -6,6 +6,13 @@ import pytest
 from sunset.compiler import Compiler
 from sunset.codegen import CodeGenerator
 
+NUMBA_AVAILABLE = False
+try:
+    import numba
+    NUMBA_AVAILABLE = True
+except ImportError:
+    pass
+
 
 class SlowSumClass:
     """Simple class with method for profiler testing."""
@@ -60,7 +67,7 @@ class TestNumbaBackend:
         # Skip if numba has API mismatch
         try:
             import numba.core.registry
-            numba.core.registry.Dispatcher
+            numba.core.registry.CPUDispatcher
         except AttributeError:
             pytest.skip("Numba API mismatch — cannot test compilation")
 
@@ -75,7 +82,7 @@ class TestNumbaBackend:
         """Compiled function is faster than original."""
         try:
             import numba.core.registry
-            numba.core.registry.Dispatcher
+            numba.core.registry.CPUDispatcher
         except AttributeError:
             pytest.skip("Numba API mismatch")
 
@@ -94,7 +101,7 @@ class TestNumbaBackend:
         """Compiled output matches original (±1e-3)."""
         try:
             import numba.core.registry
-            numba.core.registry.Dispatcher
+            numba.core.registry.CPUDispatcher
         except AttributeError:
             pytest.skip("Numba API mismatch")
 

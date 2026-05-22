@@ -105,3 +105,59 @@ class TestDetailedViolations:
         room_ids = [f"room-{i}" for i in range(5)]
         violations = checker.get_violations(latents, room_ids)
         assert len(violations) == 0
+
+
+# ── New top-level unit tests (Task requirements) ──
+
+def test_python_backend_detects_violations():
+    """Large latent values are flagged by the Python backend."""
+    from sunset.flux_integration import _PythonBackend, PRESETS
+    backend = _PythonBackend()
+    latents = np.zeros((10, 16), dtype=np.float32)
+    latents[0, 0] = 15.0  # exceeds safe_mode bound of 5
+    violations = backend.check_batch(latents, PRESETS["safe_mode"])
+    assert violations[0]
+
+
+def test_safe_mode_stricter():
+    """safe_mode catches more violations than neural_bounds."""
+    checker = FluxConstraintChecker(preset="neural_bounds")
+    latents = np.zeros((10, 16), dtype=np.float32)
+    latents[:, 0] = 7.0  # >5 but <10
+    neural = checker.check_batch(latents, "neural_bounds")
+    safe = checker.check_batch(latents, "safe_mode")
+    assert safe.sum() > neural.sum()
+
+
+def test_room_grid_integration():
+    """RoomGrid with attached checker shows increased chaos for violations."""
+    from nerve.room_grid import RoomGrid
+    np.random.seed(42)
+    grid = RoomGrid(10)
+    x = np.random.randn(64).astype(np.float32)
+    grid.tick(x)
+    baseline = grid.chaos.copy()
+
+    checker = FluxConstraintChecker(preset="safe_mode")
+    # Force every room to be flagged as violating
+    checker.check_batch = lambda latents, preset=None: np.ones(len(latents), dtype=bool)
+    grid.attach_flux_checker(checker)
+    grid.tick(x)
+    after = grid.chaos.copy()
+    assert (after > baseline).sum() > 0
+
+
+def test_rust_backend_when_available():
+    """Use Rust backend if libflux_vm.so is present."""
+    import os
+    so_paths = [
+        os.path.join(os.path.dirname(__file__), "..", "flux-vm-v3-temp", "target", "release", "libflux_vm.so"),
+        "/usr/local/lib/libflux_vm.so",
+    ]
+    found = any(os.path.exists(p) for p in so_paths)
+    if not found:
+        pytest.skip("libflux_vm.so not available")
+    from sunset.flux_integration import _RustBackend
+    idx = [i for i, p in enumerate(so_paths) if os.path.exists(p)][0]
+    backend = _RustBackend(so_paths[idx])
+    assert backend.available

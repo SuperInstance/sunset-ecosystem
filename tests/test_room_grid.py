@@ -2,7 +2,8 @@
 import numpy as np
 import pytest
 
-from nerve.room_grid import RoomGrid, make_weights, batch_novelty
+from nerve.room_grid import RoomGrid, make_weights, batch_novelty, forward_einsum, forward_rust_oneshot, _RUST_LIB
+from sunset.flux_integration import FluxConstraintChecker, apply_constraint_feedback
 
 
 class TestRoomGridForward:
@@ -134,3 +135,78 @@ class TestFluxIntegration:
         room_grid_100.tick(signal_64)
         assert room_grid_100.latents is not None
         assert room_grid_100.latents.shape == (100, 16)
+
+
+# ── New top-level unit tests (Task requirements) ──
+
+def test_forward_consistency(room_grid_1000):
+    """numpy, rust_persistent, and rust_oneshot produce equivalent outputs (±1e-3)."""
+    np.random.seed(42)
+    x = np.random.randn(64).astype(np.float32)
+    out_np = forward_einsum(room_grid_1000.w, x)
+    if _RUST_LIB is None:
+        pytest.skip("Rust backend not available")
+    out_oneshot = forward_rust_oneshot(room_grid_1000.w, x, room_grid_1000.n)
+    out_persistent = room_grid_1000._forward(x)
+    assert np.allclose(out_np, out_oneshot, atol=1e-3)
+    assert np.allclose(out_np, out_persistent, atol=1e-3)
+
+
+def test_novelty_range(room_grid_1000):
+    """Novelty scores are bounded in [0, 1]."""
+    np.random.seed(42)
+    latents = np.random.randn(1000, 16).astype(np.float32)
+    scores = batch_novelty(latents, room_grid_1000._hist,
+                           room_grid_1000._hist_count,
+                           room_grid_1000._hist_idx, room_grid_1000._hist_max)
+    assert scores.min() >= 0.0
+    assert scores.max() <= 1.0
+
+
+def test_ring_buffer(room_grid_100):
+    """History buffer wraps correctly after >20 ticks."""
+    np.random.seed(42)
+    x = np.random.randn(64).astype(np.float32)
+    initial_idx = room_grid_100._hist_idx
+    for _ in range(25):
+        room_grid_100.tick(x)
+    assert room_grid_100._hist_idx == (initial_idx + 25) % room_grid_100._hist_max
+    assert room_grid_100._hist_count.min() == room_grid_100._hist_max
+
+
+def test_breed_preserves_structure(room_grid_100):
+    """Breeding copies weight shapes from source to destination."""
+    np.random.seed(42)
+    src = 5
+    dst = 10
+    before_shapes = {k: room_grid_100.w[k][dst].shape for k in ("w1", "w2", "w3")}
+    room_grid_100.breed(src, dst)
+    after_shapes = {k: room_grid_100.w[k][dst].shape for k in ("w1", "w2", "w3")}
+    for k in before_shapes:
+        assert after_shapes[k] == before_shapes[k]
+
+
+def test_chaos_bounds(room_grid_100):
+    """Chaos stays in [0.01, 1.0] after any number of ticks."""
+    np.random.seed(42)
+    x = np.random.randn(64).astype(np.float32)
+    for _ in range(50):
+        room_grid_100.tick(x)
+        assert room_grid_100.chaos.min() >= 0.01
+        assert room_grid_100.chaos.max() <= 1.0
+
+
+def test_flux_checker(room_grid_100):
+    """attach_flux_checker increases chaos for violating rooms."""
+    np.random.seed(42)
+    x = np.random.randn(64).astype(np.float32)
+    room_grid_100.tick(x)
+    baseline = room_grid_100.chaos.copy()
+
+    checker = FluxConstraintChecker(preset="safe_mode")
+    # Force every room to be flagged as violating
+    checker.check_batch = lambda latents, preset=None: np.ones(len(latents), dtype=bool)
+    room_grid_100.attach_flux_checker(checker)
+    room_grid_100.tick(x)
+    after = room_grid_100.chaos.copy()
+    assert (after > baseline).sum() > 0
