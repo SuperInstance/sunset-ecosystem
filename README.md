@@ -110,6 +110,53 @@ The `ranking/` module handles preference learning:
 - **FeedbackLoop** — implicit feedback (did the human re-ask the same question?)
 - **Personalization** — adapts trinity weights per user
 
+## RoomGrid Tick Integration
+
+The `nerve/room_grid_tick_integration.py` module orchestrates three
+subsystems that operate around `RoomGrid.tick()`:
+
+1. **Metronome Synchronization** (`nerve/metronome_integration.py`)
+   — Dispatches synchronized ticks across registered devices,
+   detects offline devices, and applies drift correction.
+
+2. **Compiler Hot-Swap** (`compiler/hot_swap_integration.py`)
+   — Monitors RoomGrid configuration for changes, auto-recompiles
+   hot paths (Numba JIT), A/B tests the compiled version, and
+   rolls back on failure. Agents receive JIT-compended functions
+   transparently at runtime.
+
+3. **FleetEventBus Telemetry** (`nexus/fleet_event_bus.py`)
+   — Emits per-tick metrics (`grid_tick_metrics`) including
+   thermal pressure, active room ratio, backend in use, and
+   tick duration.  Downstream dashboards or breeders can subscribe.
+
+Usage::
+
+```python
+from nerve.room_grid import RoomGrid
+from nerve.room_grid_tick_integration import RoomGridTickIntegration
+from nexus.fleet_event_bus import FleetEventBus
+
+grid = RoomGrid(250)
+bus = FleetEventBus()
+
+# Subscribe a breeder to tick metrics
+bus.on("grid_tick_metrics", lambda ev: breeder.thermal_update(ev.payload))
+
+integration = RoomGridTickIntegration(grid, event_bus=bus)
+
+# Single tick with full instrumentation
+result = integration.tick(np.random.randn(64))
+
+# Batch tick with synchronized dispatch
+results = integration.tick_batch(batch_signals)
+```
+
+The integration is **non-invasive** — it wraps `RoomGrid` without
+monkey-patching, so existing tests and standalone usage continue to
+work unchanged.  All optional dependencies (metronome, compiler,
+event bus) degrade gracefully when absent.
+
 ## Why does this work?
 
 Biological systems work this way. Organisms compete for resources (ethos), respond to environmental pressure (pathos), and pass successful genes to offspring (logos). The ones that don't fit their niche don't survive. The ones that do, breed.

@@ -60,10 +60,13 @@ class FSMBridgedDaemon:
             current = fsm.get_state() if hasattr(fsm, "get_state") else LifecycleState.EGG
             upgraded[agent_id] = BreederFSMV2(
                 agent_id=str(agent_id),
-                initial_state=current,
-                auto_transition=True,
+                initial_state=LifecycleState[current.name],
             )
         self._daemon._fsm = upgraded  # type: ignore[assignment]
+
+    def _to_breeder_state(self, state: Any) -> LifecycleState:
+        """Convert lifecycle_fsm.LifecycleState → breeder_fsm_v2.LifecycleState."""
+        return LifecycleState[state.name]
 
     # ── delegate all public API ───────────────────────────
 
@@ -101,12 +104,13 @@ class FSMBridgedDaemon:
 
         for tr in raw_transitions:
             fsm = self._daemon._fsm.get(tr.agent_id)
+            to_state = self._to_breeder_state(tr.to_state)
+            from_state = self._to_breeder_state(tr.from_state) if tr.from_state else None
             if fsm is None:
                 # New agent — create FSM at from_state
                 fsm = BreederFSMV2(
                     agent_id=str(tr.agent_id),
-                    initial_state=tr.from_state,
-                    auto_transition=True,
+                    initial_state=from_state or LifecycleState.EGG,
                 )
                 self._daemon._fsm[tr.agent_id] = fsm
             elif not hasattr(fsm, "transition_to"):
@@ -118,25 +122,24 @@ class FSMBridgedDaemon:
                 )
                 fsm = BreederFSMV2(
                     agent_id=str(tr.agent_id),
-                    initial_state=current,
-                    auto_transition=True,
+                    initial_state=LifecycleState[current.name],
                 )
                 self._daemon._fsm[tr.agent_id] = fsm
 
             # Validate and perform transition via FSM
             try:
-                fsm.transition_to(tr.to_state, reason=tr.to_state.name.lower())
+                fsm.transition_to(to_state, reason=to_state.name.lower())
             except Exception:
                 logger.warning(
                     "FSM blocked transition: agent %d %s → %s",
                     tr.agent_id,
                     fsm.current_state.name,
-                    tr.to_state.name,
+                    to_state.name,
                 )
                 # Record the blocked transition for audit
                 self._emit("transition_blocked", {
                     "agent_id": tr.agent_id,
-                    "requested": tr.to_state.name,
+                    "requested": to_state.name,
                     "current": fsm.current_state.name,
                 })
                 continue
@@ -156,15 +159,15 @@ class FSMBridgedDaemon:
             })
 
             # State-specific side effects
-            if tr.to_state == LifecycleState.COMPETE:
+            if to_state == LifecycleState.COMPETE:
                 self._emit("agent_competing", {"agent_id": tr.agent_id})
-            elif tr.to_state == LifecycleState.SURVIVE:
+            elif to_state == LifecycleState.SURVIVE:
                 self._emit("agent_survived", {"agent_id": tr.agent_id})
-            elif tr.to_state == LifecycleState.SUNSET:
+            elif to_state == LifecycleState.SUNSET:
                 self._emit("agent_sunset", {"agent_id": tr.agent_id})
                 # Cleanup FSM
                 self._daemon._fsm.pop(tr.agent_id, None)
-            elif tr.to_state == LifecycleState.ARCHIVE:
+            elif to_state == LifecycleState.ARCHIVE:
                 self._emit("agent_archived", {"agent_id": tr.agent_id})
 
         return validated

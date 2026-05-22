@@ -51,7 +51,7 @@ sys.modules["turbovec"] = _mock_turbovec
 from nexus.fleet_event_bus import FleetEventBus
 from nerve.room_grid import RoomGrid
 from swarm.breeder_daemon_v2 import BreederDaemonV2, DiversityConfig, ThermalConfig, LifecycleState
-from swarm.breeder_fsm_v2 import BreederFSMV2
+from swarm.breeder_fsm_v2 import BreederFSMV2, LifecycleState as FSMState
 from swarm.daemon_fsm_bridge import FSMBridgedDaemon
 from swarm.thermal import DeviceType, ThermalBudget
 
@@ -142,16 +142,16 @@ class TestStateCleanup:
 
         # Manually add an agent at COMPETE and transition to SUNSET
         bridge._daemon._fsm[999] = BreederFSMV2(
-            agent_id="999", initial_state=LifecycleState.COMPETE
+            agent_id="999", initial_state=FSMState.COMPETE
         )
-        bridge._daemon._fsm[999].transition_to(LifecycleState.SUNSET)
+        bridge._daemon._fsm[999].transition_to(FSMState.SUNSET)
 
         # Simulate step noticing the sunset
         from swarm.breeder_daemon_v2 import LifecycleTransition
         tr = LifecycleTransition(
             agent_id=999,
-            from_state=LifecycleState.COMPETE,
-            to_state=LifecycleState.SUNSET,
+            from_state=FSMState.COMPETE,
+            to_state=FSMState.SUNSET,
             timestamp=time.time(),
         )
         validated = bridge._daemon.step()
