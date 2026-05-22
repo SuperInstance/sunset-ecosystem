@@ -163,7 +163,7 @@ class AutoBreeder:
         if self._vector_table is not None:
             parent_pairs = self._select_parents_vector(winners, len(cold_rooms))
         else:
-            parent_pairs = self._select_parents_random(winners, len(cold_rooms))
+            parent_pairs = self._select_parents_random(winners, min(n_winners, len(cold_rooms)))
 
         # Breed children from selected parent pairs
         children = self._breed_from_pairs(parent_pairs)
