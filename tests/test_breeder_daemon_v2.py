@@ -83,6 +83,7 @@ sys.modules["turbovec"] = _mock_turbovec
 from nerve.room_grid import RoomGrid
 from swarm.breeder_daemon_v2 import (
     BreederDaemonV2,
+    AgentLifecycleFSM,
     DiversityConfig,
     LifecycleState,
     LifecycleTransition,
@@ -169,10 +170,10 @@ class TestWALReplay:
         daemon.queue_breed(parent_a=1, parent_b=2, priority=0)
         transitions = daemon.step()
 
-        # Collect agent ID that reached INCUBATE
+        # Collect agent ID that reached COMPETE
         incubated = [
             tr.agent_id for tr in transitions
-            if tr.to_state == LifecycleState.INCUBATE
+            if tr.to_state == LifecycleState.COMPETE
         ]
         assert len(incubated) == 1
         child_id = incubated[0]
@@ -187,7 +188,7 @@ class TestWALReplay:
         # Replayed state should include the incubated agent
         replayed = daemon2.state
         assert child_id in replayed
-        assert replayed[child_id] == LifecycleState.INCUBATE
+        assert replayed[child_id] == LifecycleState.COMPETE
 
         daemon2.stop()
 
@@ -244,10 +245,10 @@ class TestLifecycleTransitions:
 
         daemon.stop()
 
-        # Should see EGG → INCUBATE
+        # Should see EGG → COMPETE
         found = False
         for tr in transitions:
-            if tr.to_state == LifecycleState.INCUBATE:
+            if tr.to_state == LifecycleState.COMPETE:
                 found = True
                 assert tr.from_state == LifecycleState.EGG
                 assert tr.parent_a == 1
@@ -264,7 +265,7 @@ class TestLifecycleTransitions:
         daemon.stop()
 
         incubate_tr = next(
-            (t for t in transitions if t.to_state == LifecycleState.INCUBATE), None
+            (t for t in transitions if t.to_state == LifecycleState.COMPETE), None
         )
         assert incubate_tr is not None
         assert incubate_tr.generation == 1  # max(0,0)+1
@@ -321,8 +322,8 @@ class TestThermalBudget:
         transitions = daemon.step()
         daemon.stop()
 
-        # Should not have reached INCUBATE — blocked by thermal
-        incubated = [t for t in transitions if t.to_state == LifecycleState.INCUBATE]
+        # Should not have reached COMPETE — blocked by thermal
+        incubated = [t for t in transitions if t.to_state == LifecycleState.COMPETE]
         assert len(incubated) == 0
 
     def test_hysteresis_ticks(self, grid, wal_path, vector_table):
@@ -338,8 +339,8 @@ class TestThermalBudget:
         tr2 = daemon.step()
         daemon.stop()
 
-        assert len([t for t in tr1 if t.to_state == LifecycleState.INCUBATE]) == 0
-        assert len([t for t in tr2 if t.to_state == LifecycleState.INCUBATE]) == 0
+        assert len([t for t in tr1 if t.to_state == LifecycleState.COMPETE]) == 0
+        assert len([t for t in tr2 if t.to_state == LifecycleState.COMPETE]) == 0
 
     def test_succeeds_when_room_available(self, grid, thermal, wal_path, vector_table):
         """When thermal has room, step() should spawn."""
@@ -350,7 +351,7 @@ class TestThermalBudget:
         transitions = daemon.step()
         daemon.stop()
 
-        incubated = [t for t in transitions if t.to_state == LifecycleState.INCUBATE]
+        incubated = [t for t in transitions if t.to_state == LifecycleState.COMPETE]
         assert len(incubated) > 0
 
     def test_parent_sacrifice(self, grid, wal_path, vector_table):
@@ -391,13 +392,13 @@ class TestDiversityScore:
         daemon = make_daemon(grid, thermal, wal_path, vector_table)
         daemon.start()
 
-        # Manually inject multiple agents in INCUBATE state with diverse vectors
+        # Manually inject multiple agents in COMPETE state with diverse vectors
         # (breeding repeatedly into the same room would sunset previous agents,
         # so we directly populate state + vector table for this property test)
         rng = np.random.RandomState(77)
         for i in range(5):
             aid = 9000 + i
-            daemon._state[aid] = LifecycleState.INCUBATE
+            daemon._fsm[aid] = AgentLifecycleFSM(agent_id=aid, initial_state=LifecycleState.COMPETE, strict=False)
             vec = (rng.randn(256).astype(np.float32) * (1.0 if i < 3 else 0.2)).tolist()
             daemon._vector_table.add(
                 AgentVector(
@@ -506,7 +507,9 @@ class TestVectorParentSelection:
         rng = np.random.RandomState(99)
         for i in range(6):
             aid = 100 + i
-            daemon._state[aid] = LifecycleState.SURVIVE
+            daemon._fsm[aid] = AgentLifecycleFSM(
+                agent_id=aid, initial_state=LifecycleState.SURVIVE, strict=False
+            )
             vec = (rng.randn(256).astype(np.float32) * (2.0 if i < 3 else 0.3)).tolist()
             daemon._vector_table.add(
                 AgentVector(
@@ -549,7 +552,9 @@ class TestVectorParentSelection:
 
         # Seed agents without any vector table backing
         for i in range(4):
-            daemon._state[200 + i] = LifecycleState.SURVIVE
+            daemon._fsm[200 + i] = AgentLifecycleFSM(
+                agent_id=200 + i, initial_state=LifecycleState.SURVIVE, strict=False
+            )
 
         candidates = daemon._get_breedable_candidates()
         pairs = daemon._select_parents_vector(
@@ -571,7 +576,9 @@ class TestVectorParentSelection:
         daemon.start()
 
         # Seed one breedable agent
-        daemon._state[300] = LifecycleState.SURVIVE
+        daemon._fsm[300] = AgentLifecycleFSM(
+            agent_id=300, initial_state=LifecycleState.SURVIVE, strict=False
+        )
         daemon._vector_table.add(
             AgentVector(
                 agent_id=300,
@@ -582,7 +589,9 @@ class TestVectorParentSelection:
         )
 
         # Seed another so there are at least 2 candidates
-        daemon._state[301] = LifecycleState.SURVIVE
+        daemon._fsm[301] = AgentLifecycleFSM(
+            agent_id=301, initial_state=LifecycleState.SURVIVE, strict=False
+        )
         daemon._vector_table.add(
             AgentVector(
                 agent_id=301,
@@ -597,7 +606,7 @@ class TestVectorParentSelection:
         transitions = daemon.step()
         daemon.stop()
 
-        incubated = [t for t in transitions if t.to_state == LifecycleState.INCUBATE]
+        incubated = [t for t in transitions if t.to_state == LifecycleState.COMPETE]
         assert len(incubated) > 0
         # parent_b should have been filled in (not None in the transition)
         tr = incubated[0]

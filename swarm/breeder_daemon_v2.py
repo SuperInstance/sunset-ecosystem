@@ -1,7 +1,7 @@
 """BreederDaemonV2 — persistent, diversity-aware, thermal-scheduled breeding daemon.
 
 Implements the lifecycle FSM from SPEC_BREEDER_DAEMON_V2.md:
-    EGG → INCUBATE → COMPETE → SURVIVE → BREED → SUNSET
+    EGG → COMPETE → SURVIVE → BREED → SUNSET → ARCHIVE
 
 Every transition is logged to an append-only SQLite WAL. On restart,
 the WAL is replayed to reconstruct agent states.
@@ -19,6 +19,7 @@ from __future__ import annotations
 
 __all__ = [
     "BreederDaemonV2",
+    "AgentLifecycleFSM",
     "LifecycleState",
     "LifecycleTransition",
     "DiversityConfig",
@@ -34,13 +35,13 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
 
 from nerve.room_grid import RoomGrid
+from swarm.lifecycle_fsm import AgentLifecycleFSM, LifecycleState
 from swarm.thermal import DeviceType, ThermalBudget
 from swarm.tournament import AgentScore, TournamentRound, breed
 from swarm.inheritance_tax import InheritanceTax
@@ -48,19 +49,9 @@ from swarm.crdt_merge import CRDTMergeEngine, Agent as CRDTAgent
 from swarm.lineage_checker import LineageSanityChecker, Agent as LineageAgent
 from swarm.trajectory_monitor import TrajectoryMonitor, SecurityEvent
 from logos.signed_wal import SignedWAL, WALEntry
+from logos.decision_journal import log_spawn, log_sunset, log_breed
 
 logger = logging.getLogger(__name__)
-
-
-class LifecycleState(Enum):
-    """Explicit lifecycle states for every agent in the fleet."""
-
-    EGG = auto()       # Vector exists in table, no room allocated
-    INCUBATE = auto()  # Room allocated, chaos=0.3
-    COMPETE = auto()   # Active, chaos decaying
-    SURVIVE = auto()   # Pareto non-dominated, stable activity
-    BREED = auto()     # Actively breeding
-    SUNSET = auto()    # Retired, room freed
 
 
 @dataclass(frozen=True)
@@ -117,7 +108,7 @@ class _WALSchema:
     CREATE TABLE IF NOT EXISTS lifecycle (
         agent_id INTEGER PRIMARY KEY,
         state TEXT CHECK(state IN (
-            'EGG','INCUBATE','COMPETE','SURVIVE','BREED','SUNSET'
+            'EGG','COMPETE','SURVIVE','BREED','SUNSET','ARCHIVE'
         )),
         entered_at REAL,
         generation INTEGER DEFAULT 0,
@@ -173,23 +164,29 @@ class _WALSchema:
         conn.commit()
         conn.close()
 
-    def replay(self) -> dict[int, LifecycleState]:
-        """Replay WAL: return current state of every known agent."""
+    def replay(self) -> dict[int, AgentLifecycleFSM]:
+        """Replay WAL: return FSM for every known agent."""
         conn = sqlite3.connect(self.path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         cur = conn.execute(
             "SELECT agent_id, state FROM lifecycle ORDER BY entered_at"
         )
-        states: dict[int, LifecycleState] = {}
+        fsm_map: dict[int, AgentLifecycleFSM] = {}
         for row in cur:
             agent_id = row["agent_id"]
             state_name = row["state"]
             try:
-                states[agent_id] = LifecycleState[state_name]
+                state = LifecycleState[state_name]
             except KeyError:
                 logger.warning("Unknown state %r for agent %d", state_name, agent_id)
+                continue
+            fsm_map[agent_id] = AgentLifecycleFSM(
+                agent_id=agent_id,
+                initial_state=state,
+                strict=False,  # replay must not crash on historic transitions
+            )
         conn.close()
-        return states
+        return fsm_map
 
     def transition(
         self,
@@ -372,6 +369,7 @@ class BreederDaemonV2:
         tick_interval: float = 1.0,
         trajectory_monitor: TrajectoryMonitor | None = None,
         inheritance_tax: InheritanceTax | None = None,
+        decision_journal_path: str | None = None,
     ) -> None:
         self.grid = grid
         self.thermal = thermal
@@ -383,6 +381,7 @@ class BreederDaemonV2:
         self._tick_interval = tick_interval
         self._trajectory_monitor = trajectory_monitor or TrajectoryMonitor()
         self._inheritance_tax = inheritance_tax
+        self._decision_journal_path = decision_journal_path
 
         self._signed_wal_path = signed_wal_path
         self._signed_wal_algorithm = signed_wal_algorithm
@@ -390,7 +389,7 @@ class BreederDaemonV2:
         self._safe_mode: bool = False
 
         self._wal = _WALSchema(wal_path)
-        self._state: dict[int, LifecycleState] = {}
+        self._fsm: dict[int, AgentLifecycleFSM] = {}
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -410,17 +409,17 @@ class BreederDaemonV2:
             return
 
         # Replay WAL to reconstruct state
-        self._state = self._wal.replay()
+        self._fsm = self._wal.replay()
 
         # Seed slot registry for recovered agents
         if self._inheritance_tax is not None:
-            for agent_id in self._state:
+            for agent_id in self._fsm:
                 if agent_id not in self._slot_registry:
                     self._slot_registry[agent_id] = InheritanceTax.DEFAULT_SLOTS
 
         logger.info(
             "BreederDaemonV2 replayed WAL: %d agents, %d pending queue items",
-            len(self._state),
+            len(self._fsm),
             self._wal.count_pending(),
         )
 
@@ -593,14 +592,26 @@ class BreederDaemonV2:
             self.thermal.release(f"agent_{old_agent_id}")
             del self._room_allocations[room_id]
             # Record SUNSET for old agent
+            old_fsm = self._fsm.get(old_agent_id)
+            old_state = old_fsm.get_state() if old_fsm else LifecycleState.COMPETE
             sunset_tr = LifecycleTransition(
                 agent_id=old_agent_id,
-                from_state=self._state.get(old_agent_id, LifecycleState.COMPETE),
+                from_state=old_state,
                 to_state=LifecycleState.SUNSET,
                 timestamp=time.time(),
             )
             self._wal.transition(sunset_tr)
-            self._state[old_agent_id] = LifecycleState.SUNSET
+            self._log_transition_to_signed_wal(sunset_tr)
+            if self._decision_journal_path:
+                log_sunset(
+                    agent_id=old_agent_id,
+                    reason="room_reuse",
+                    generation=0,
+                    journal_path=self._decision_journal_path,
+                )
+            self._fsm[old_agent_id] = AgentLifecycleFSM(
+                agent_id=old_agent_id, initial_state=LifecycleState.SUNSET, strict=False
+            )
             transitions.append(sunset_tr)
 
         # Determine child agent ID
@@ -663,10 +674,29 @@ class BreederDaemonV2:
             origin_node="local" if not remote else "remote",
         )
         self._wal.transition(egg_tr)
-        self._state[child_id] = LifecycleState.EGG
+        self._log_transition_to_signed_wal(egg_tr)
+        self._fsm[child_id] = AgentLifecycleFSM(
+            agent_id=child_id, initial_state=LifecycleState.EGG, strict=False
+        )
         transitions.append(egg_tr)
 
-        # Allocate room → INCUBATE
+        if self._decision_journal_path:
+            log_breed(
+                parent_a=parent_a,
+                parent_b=parent_b,
+                child_id=child_id,
+                generation=generation,
+                journal_path=self._decision_journal_path,
+            )
+            log_spawn(
+                agent_id=child_id,
+                parents=(parent_a, parent_b),
+                generation=generation,
+                reason="breeder_daemon_v2 step",
+                journal_path=self._decision_journal_path,
+            )
+
+        # Allocate room → COMPETE
         # Use grid.rebirth() to reset room, then clone parent weights
         parent_room = self._find_room_for_agent(parent_a)
         if parent_room is not None:
@@ -677,7 +707,7 @@ class BreederDaemonV2:
         incubate_tr = LifecycleTransition(
             agent_id=child_id,
             from_state=LifecycleState.EGG,
-            to_state=LifecycleState.INCUBATE,
+            to_state=LifecycleState.COMPETE,
             timestamp=time.time(),
             generation=generation,
             parent_a=parent_a,
@@ -685,7 +715,10 @@ class BreederDaemonV2:
             origin_node="local" if not remote else "remote",
         )
         self._wal.transition(incubate_tr)
-        self._state[child_id] = LifecycleState.INCUBATE
+        self._log_transition_to_signed_wal(incubate_tr)
+        self._fsm[child_id] = AgentLifecycleFSM(
+            agent_id=child_id, initial_state=LifecycleState.COMPETE, strict=False
+        )
         transitions.append(incubate_tr)
 
         # Allocate thermal budget
@@ -743,7 +776,7 @@ class BreederDaemonV2:
                 # Sunset the child immediately
                 sunset_tr = LifecycleTransition(
                     agent_id=child_id,
-                    from_state=LifecycleState.INCUBATE,
+                    from_state=LifecycleState.COMPETE,
                     to_state=LifecycleState.SUNSET,
                     timestamp=time.time(),
                     generation=generation,
@@ -752,7 +785,17 @@ class BreederDaemonV2:
                     origin_node="local" if not remote else "remote",
                 )
                 self._wal.transition(sunset_tr)
-                self._state[child_id] = LifecycleState.SUNSET
+                self._log_transition_to_signed_wal(sunset_tr)
+                if self._decision_journal_path:
+                    log_sunset(
+                        agent_id=child_id,
+                        reason=f"lineage_tamper: {reason}",
+                        generation=generation,
+                        journal_path=self._decision_journal_path,
+                    )
+                self._fsm[child_id] = AgentLifecycleFSM(
+                    agent_id=child_id, initial_state=LifecycleState.SUNSET, strict=False
+                )
                 transitions.append(sunset_tr)
                 # Release resources
                 self.thermal.release(child_agent_str)
@@ -781,7 +824,8 @@ class BreederDaemonV2:
         all_ids: set[int] = set()
 
         # 1. Agents in lifecycle state (WAL)
-        for aid, st in self._state.items():
+        for aid, fsm in self._fsm.items():
+            st = fsm.get_state()
             if st != LifecycleState.SUNSET:
                 all_ids.add(aid)
 
@@ -869,7 +913,8 @@ class BreederDaemonV2:
     def _build_crdt_population(self) -> list[CRDTAgent]:
         """Construct CRDT Agent records from current non-SUNSET WAL state."""
         agents: list[CRDTAgent] = []
-        for aid, st in self._state.items():
+        for aid, fsm in self._fsm.items():
+            st = fsm.get_state()
             if st == LifecycleState.SUNSET:
                 continue
             g = self._wal.get_genealogy(aid)
@@ -908,7 +953,7 @@ class BreederDaemonV2:
     def state(self) -> dict[int, LifecycleState]:
         """Current lifecycle state of every known agent."""
         with self._lock:
-            return dict(self._state)
+            return {aid: fsm.get_state() for aid, fsm in self._fsm.items()}
 
     @property
     def diversity_score(self) -> float:
@@ -921,8 +966,8 @@ class BreederDaemonV2:
 
         # Collect vectors for all non-SUNSET agents
         agent_ids = [
-            aid for aid, st in self._state.items()
-            if st not in (LifecycleState.SUNSET, LifecycleState.EGG)
+            aid for aid, fsm in self._fsm.items()
+            if fsm.get_state() not in (LifecycleState.SUNSET, LifecycleState.EGG)
         ]
         if len(agent_ids) < 2:
             return 0.0
@@ -959,6 +1004,38 @@ class BreederDaemonV2:
     def wal_path(self) -> str:
         return self._wal_path
 
+    def _log_transition_to_signed_wal(self, tr: LifecycleTransition) -> None:
+        """Mirror a lifecycle transition into the cryptographically signed WAL."""
+        if self._signed_wal is None:
+            return
+
+        # Map lifecycle state to operation name
+        op_map = {
+            LifecycleState.EGG: "spawn",
+            LifecycleState.COMPETE: "spawn",
+            LifecycleState.COMPETE: "mutate",
+            LifecycleState.SURVIVE: "mutate",
+            LifecycleState.BREED: "breed",
+            LifecycleState.SUNSET: "sunset",
+        }
+        operation = op_map.get(tr.to_state, "signal")
+
+        parent_ids: list[int] = []
+        if tr.parent_a is not None:
+            parent_ids.append(tr.parent_a)
+        if tr.parent_b is not None:
+            parent_ids.append(tr.parent_b)
+
+        entry = WALEntry(
+            timestamp=tr.timestamp,
+            agent_id=tr.agent_id,
+            operation=operation,
+            vector_hash=tr.vector_hash or "0" * 64,
+            parent_ids=parent_ids,
+            generation=tr.generation,
+        )
+        self._signed_wal.append(entry)
+
     # ── compatibility shim: wrap AutoBreeder ────────────────
 
     def auto_breed(
@@ -981,7 +1058,7 @@ class BreederDaemonV2:
         for _ in tickets:
             transitions = self.step()
             for tr in transitions:
-                if tr.to_state == LifecycleState.INCUBATE:
+                if tr.to_state == LifecycleState.COMPETE:
                     parent_str = f"agent_{tr.parent_a}" if tr.parent_a else "unknown"
                     # Find which room got this agent
                     room_id = None
@@ -1020,8 +1097,8 @@ class BreederDaemonV2:
     def _get_breedable_candidates(self) -> list[int]:
         """Return agent IDs that are eligible for breeding."""
         return [
-            aid for aid, st in self._state.items()
-            if st in (LifecycleState.SURVIVE, LifecycleState.BREED)
+            aid for aid, fsm in self._fsm.items()
+            if fsm.get_state() in (LifecycleState.SURVIVE, LifecycleState.BREED)
         ]
 
     def _get_vector(self, agent_id: int) -> np.ndarray | None:
