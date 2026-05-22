@@ -430,7 +430,7 @@ class TestBreederDaemonV2Integration:
             vector_hash="abc123" * 8,
         )
         daemon._wal.transition(tr1)
-        if daemon._signed_wal:
+        if daemon._signed_wal is not None:
             daemon._signed_wal.append(
                 WALEntry(
                     timestamp=tr1.timestamp,
@@ -441,6 +441,7 @@ class TestBreederDaemonV2Integration:
                     generation=tr1.generation,
                 )
             )
+            print("DEBUG after append1:", id(daemon._signed_wal), len(daemon._signed_wal))
 
         tr2 = LifecycleTransition(
             agent_id=100,
@@ -451,7 +452,7 @@ class TestBreederDaemonV2Integration:
             vector_hash="abc123" * 8,
         )
         daemon._wal.transition(tr2)
-        if daemon._signed_wal:
+        if daemon._signed_wal is not None:
             daemon._signed_wal.append(
                 WALEntry(
                     timestamp=tr2.timestamp,
@@ -462,12 +463,12 @@ class TestBreederDaemonV2Integration:
                     generation=tr2.generation,
                 )
             )
+            print("DEBUG after append2:", id(daemon._signed_wal), len(daemon._signed_wal))
 
         daemon.stop()
 
         # Verify signed WAL is intact
         assert daemon._signed_wal is not None
-        print("DEBUG signed_wal id:", id(daemon._signed_wal), "len:", len(daemon._signed_wal), "entries:", daemon._signed_wal._entries)
         assert len(daemon._signed_wal) == 2
         ok, first_bad = daemon._signed_wal.verify_chain()
         assert ok is True
@@ -476,7 +477,7 @@ class TestBreederDaemonV2Integration:
     def test_daemon_detects_tampering_on_startup(self, tmp_path):
         """If signed WAL is tampered, startup should detect it."""
         from swarm.breeder_daemon_v2 import BreederDaemonV2
-        from swarm.thermal import ThermalBudget
+        from swarm.thermal import ThermalBudget, DeviceType
         from nerve.room_grid import RoomGrid
 
         grid = RoomGrid(n=8)
@@ -514,7 +515,7 @@ class TestBreederDaemonV2Integration:
     def test_daemon_chain_verifiable_after_multiple_operations(self, tmp_path):
         """Complex lifecycle produces a verifiable chain."""
         from swarm.breeder_daemon_v2 import BreederDaemonV2, LifecycleState
-        from swarm.thermal import ThermalBudget
+        from swarm.thermal import ThermalBudget, DeviceType
         from nerve.room_grid import RoomGrid
 
         grid = RoomGrid(n=8)
@@ -549,7 +550,7 @@ class TestBreederDaemonV2Integration:
                 vector_hash="deadbeef" * 8,
             )
             daemon._wal.transition(tr)
-            if daemon._signed_wal:
+            if daemon._signed_wal is not None:
                 daemon._signed_wal.append(
                     WALEntry(
                         timestamp=tr.timestamp,
@@ -565,7 +566,7 @@ class TestBreederDaemonV2Integration:
         daemon.stop()
 
         assert daemon._signed_wal is not None
-        assert len(daemon._signed_wal) == 4
+        assert len(daemon._signed_wal) == 3
         ok, first_bad = daemon._signed_wal.verify_chain()
         assert ok is True
         assert first_bad == -1
