@@ -11,12 +11,14 @@ Each room = 3.4K params. No training, no backprop."""
 from __future__ import annotations
 __all__ = ["RoomGrid", "JEPAGrid", "Fingerprint", "make_weights", "novelty", "batch_novelty"]
 
-import math, threading
+import math, threading, logging
 from collections import deque
 from ctypes import CDLL, c_float, c_size_t, POINTER, c_void_p
 from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
+
+log = logging.getLogger(__name__)
 
 # ── Hardware detection — gets to the metal ────────────────
 _RUST_LIB = None
@@ -362,6 +364,7 @@ class RoomGrid:
         self.ticks = 0
         self.l = l
         self._out = np.empty((n, 16), dtype=np.float32)  # pre-allocated output buffer
+        self.latents = np.zeros((n, 16), dtype=np.float32)  # last tick outputs
         # Ring buffer history: (maxlen, n, l) — vectorized, no per-room deques
         self._hist_max = 20
         self._hist = np.zeros((self._hist_max, n, l), dtype=np.float32)
@@ -371,6 +374,16 @@ class RoomGrid:
         self._ref = {"sine": np.sin(t).astype(np.float32),
                      "noise": np.random.randn(d).astype(np.float32),
                      "step": np.concatenate([np.zeros(d//2), np.ones(d//2)]).astype(np.float32)}
+        self._flux_checker = None  # Optional FluxConstraintChecker
+
+    def attach_flux_checker(self, checker) -> None:
+        """Attach a FLUX constraint checker for self-correcting behavior."""
+        from sunset.flux_integration import FluxConstraintChecker
+        if isinstance(checker, FluxConstraintChecker):
+            self._flux_checker = checker
+            log.info("FLUX constraint checker attached to RoomGrid(n=%d)", self.n)
+        else:
+            raise TypeError("Expected FluxConstraintChecker instance")
 
     def _forward(self, x):
         """Auto-dispatch to fastest backend for this room count."""
@@ -393,6 +406,7 @@ class RoomGrid:
     def tick(self, x):
         self.ticks += 1
         latents = self._forward(x)
+        self.latents = latents  # Store for constraint checking
         # Vectorized ring-buffer append — no Python loop, no per-room .copy()
         self._hist[self._hist_idx] = latents
         self._hist_idx = (self._hist_idx + 1) % self._hist_max
@@ -404,6 +418,10 @@ class RoomGrid:
         fired = np.where(fired_mask)[0].tolist()[:10]
         self.activity[fired_mask] += 1
         self.chaos = np.where(fired_mask, np.maximum(0.01, self.chaos * 0.99), self.chaos)
+        # FLUX constraint feedback — self-correcting behavior
+        if self._flux_checker is not None:
+            from sunset.flux_integration import apply_constraint_feedback
+            apply_constraint_feedback(self, self._flux_checker)
         return {"fired": int(fired_mask.sum()), "ids": fired, "tick": self.ticks}
 
     def fingerprints(self, n=50):
