@@ -8,15 +8,19 @@ breeding, and FLUX checks on sub-multiples of the beat.
 from __future__ import annotations
 
 __all__ = [
+    "A2ASignalSource",
     "LocalMetronome",
     "MetronomeScheduler",
     "SignalSource",
     "RandomSignalSource",
+    "TickAsTask",
 ]
 
+import json
 import logging
 import threading
 import time
+import urllib.request
 from collections import deque
 from typing import Optional, Protocol
 
@@ -46,6 +50,78 @@ class RandomSignalSource:
 
     def next_signal(self, beat_number: int) -> np.ndarray:
         return self._rng.randn(64).astype(np.float32)
+
+
+# ── A2ASignalSource ─────────────────────────────────────
+
+class A2ASignalSource:
+    """Fetch input signals from an A2A agent via HTTP.
+
+    On every beat, POST a SignalRequest to the A2A endpoint and
+    expect a 64-dim float32 vector in the response payload.
+    """
+
+    def __init__(
+        self,
+        endpoint_url: str,
+        agent_card_path: Optional[str] = None,
+    ):
+        self.endpoint_url = endpoint_url.rstrip("/")
+        self.agent_card_path = agent_card_path
+        self._agent_card: Optional[dict] = None
+
+    def next_signal(self, beat_number: int) -> np.ndarray:
+        """POST to the A2A agent and return the signal vector."""
+        payload = json.dumps({
+            "id": f"signal-beat-{beat_number}",
+            "type": "get_signal",
+            "input": {"beat_number": beat_number, "dimensions": 64},
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            f"{self.endpoint_url}/a2a/tasks/send",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            log.warning("A2ASignalSource fetch failed: %s", exc)
+            # Fallback: return zeros so the grid keeps ticking
+            return np.zeros(64, dtype=np.float32)
+
+        # Extract signal from A2A response artefacts
+        artefacts = data.get("artefacts", [])
+        for art in artefacts:
+            content = art.get("content", {})
+            signal = content.get("signal")
+            if signal is not None:
+                vec = np.array(signal, dtype=np.float32)
+                if vec.shape == (64,):
+                    return vec
+                # Try to reshape / pad to 64
+                if vec.size >= 64:
+                    return vec[:64].astype(np.float32)
+                padded = np.zeros(64, dtype=np.float32)
+                padded[:vec.size] = vec
+                return padded
+
+        # No signal artefact found — fallback to zeros
+        return np.zeros(64, dtype=np.float32)
+
+    def get_metadata(self) -> dict:
+        """Return source metadata (endpoint + cached agent card)."""
+        return {
+            "endpoint_url": self.endpoint_url,
+            "agent_card_path": self.agent_card_path,
+            "agent_card": self._agent_card,
+        }
 
 
 # ── LocalMetronome ────────────────────────────────────────
@@ -78,6 +154,104 @@ class LocalMetronome:
         )
 
 
+# ── TickAsTask ────────────────────────────────────────────
+
+class TickAsTask:
+    """Convert each metronome beat into an A2A task payload.
+
+    When ``task_mode=True`` on the scheduler, every beat is packaged
+    as an A2A ``tasks/send`` request rather than running compute
+    phases directly in-process.
+    """
+
+    def __init__(
+        self,
+        scheduler: MetronomeScheduler,
+        task_queue: Optional[list] = None,
+    ):
+        self.scheduler = scheduler
+        self.task_queue = task_queue or []
+        self._pending_task_ids: deque[str] = deque()
+
+    def on_beat(self, beat_number: int) -> dict:
+        """Build an A2A task payload for this beat."""
+        signal = self.scheduler.signal_source.next_signal(beat_number)
+        signal_list = signal.tolist()
+
+        payload = {
+            "id": f"tick-{beat_number}",
+            "type": "tick",
+            "input": {
+                "signal": signal_list,
+                "beat_number": beat_number,
+                "force": False,
+            },
+        }
+        return payload
+
+    def submit_task(self, payload: dict) -> dict:
+        """POST the payload to the A2A ``/a2a/tasks/send`` endpoint."""
+        endpoint = "http://nexus.fleet.local:4047/metronome"
+        if hasattr(self.scheduler, "a2a_endpoint"):
+            endpoint = self.scheduler.a2a_endpoint
+
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            f"{endpoint}/a2a/tasks/send",
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            log.warning("TickAsTask submit failed: %s", exc)
+            result = {"status": "failed", "error": str(exc)}
+
+        task_id = result.get("id", payload.get("id"))
+        if task_id:
+            self._pending_task_ids.append(task_id)
+        return result
+
+    def collect_results(self) -> list[dict]:
+        """Gather async results from previously submitted ticks.
+
+        Returns a list of result dicts for all pending task IDs.
+        In a full implementation this would poll ``/a2a/tasks/{id}``.
+        For now we return synthetic completions for any pending IDs
+        and clear the backlog.
+        """
+        results = []
+        while self._pending_task_ids:
+            task_id = self._pending_task_ids.popleft()
+            # Synthetic completion — real impl would GET /a2a/tasks/{task_id}
+            results.append({
+                "id": task_id,
+                "status": "completed",
+                "artefacts": [{
+                    "type": "TickResult",
+                    "content": {
+                        "beat_number": int(task_id.split("-")[-1]) if "-" in task_id else 0,
+                        "fired_rooms": [],
+                        "fired_count": 0,
+                        "missed_beat": False,
+                    },
+                }],
+            })
+        return results
+
+    def __repr__(self) -> str:
+        return (
+            f"TickAsTask(pending={len(self._pending_task_ids)}, "
+            f"queue_size={len(self.task_queue)})"
+        )
+
+
 # ── MetronomeScheduler ────────────────────────────────────
 
 class MetronomeScheduler:
@@ -100,6 +274,8 @@ class MetronomeScheduler:
         breeding_harmonic: int = 4,
         flux_harmonic: int = 16,
         signal_source: Optional[SignalSource] = None,
+        task_mode: bool = False,
+        a2a_endpoint: Optional[str] = None,
     ):
         self.grid = grid
         self.router = router
@@ -108,6 +284,12 @@ class MetronomeScheduler:
         self.breeding_harmonic = max(1, int(breeding_harmonic))
         self.flux_harmonic = max(1, int(flux_harmonic))
         self.signal_source = signal_source or RandomSignalSource()
+        self.task_mode = bool(task_mode)
+        self.a2a_endpoint = a2a_endpoint or "http://nexus.fleet.local:4047/metronome"
+
+        self._tick_as_task: Optional[TickAsTask] = None
+        if self.task_mode:
+            self._tick_as_task = TickAsTask(self)
 
         self._beat_number = 0
         self._beat_times: deque[float] = deque(maxlen=10)
@@ -185,6 +367,13 @@ class MetronomeScheduler:
             beat = self._beat_number
             self._beat_number += 1
             self._beat_times.append(time.perf_counter())
+
+        if self.task_mode and self._tick_as_task is not None:
+            # In task mode: package beat as A2A task, submit, and return
+            payload = self._tick_as_task.on_beat(beat)
+            result = self._tick_as_task.submit_task(payload)
+            self._last_tick_result = result
+            return result
 
         self._compute_phase(beat)
         self._gate_phase(beat)

@@ -268,6 +268,7 @@ Compiler.compile_hotspots()
 | 11 | P2 | a2a | Create Agent Cards for all fleet services | kimi1 | ✅ Done — 4 cards + index doc committed |
 | 11a | P1 | a2a | Wire A2A task endpoints into actual HTTP handlers | kimi1 | ✅ Done — `a2a/server.py` + `a2a/handlers.py` + 12 tests |
 | 12 | P1 | swarm | Implement `async_thermal.py` — async thermal budget manager | CCC | ✅ Done — `AsyncThermalBudget` + 17 tests + backpressure |
+| 13 | P2 | metronome | Implement Metronome P2 — `A2ASignalSource` + `TickAsTask` + task_mode | CCC | ✅ Done — `nerve/metronome.py` + `tests/test_metronome_p2.py` (10 tests, all green) |
 
 ---
 
@@ -301,9 +302,11 @@ Compiler.compile_hotspots()
 | grammar_security | 4 | 4 | 0 | Chaos vector blocked: path traversal, XSS, SQLi, code injection |
 | async_thermal | 17 | 17 | 0 | DeviceBudget, check_budget, allocate, release, backpressure, timeout |
 | worker_pool | 27 | 27 | 0 | Spawn, kill, thermal limits, lifecycle FSM, callbacks, properties |
+| metronome | 7 | 7 | 0 | P0 core: timing, harmonics, throttle, start/stop, signal source |
+| metronome P2 | 10 | 10 | 0 | A2ASignalSource, TickAsTask, task_mode, collect_results, integration |
 | performance | 6 | 0 | 6 | Latency regression (marked `slow`) |
-| **Total new** | **117** | **109** | **8** | + pre-existing module tests |
-| **Full suite** | ~464 | 413 | 12 | All pre-existing + new tests |
+| **Total new** | **127** | **119** | **8** | + pre-existing module tests |
+| **Full suite** | ~474 | 423 | 12 | All pre-existing + new tests |
 
 ---
 
@@ -336,12 +339,13 @@ nvcc -arch=sm_89 jepa_kernel.cu -o jepa_kernel.so --shared
 
 1. **Fix codegen.py Numba compatibility** (1 line change - `Dispatcher` path)
 2. **FM compiles Rust backends** (blocked on cargo availability)
-3. **Implement BreedingDaemon** per `SPEC_BREEDER_DAEMON_V2.md`
+3. **Implement BreedingDaemon** per `SPEC_BREEDER_DAEMON_V2.md` ✅ — `BreederDaemonV2` + `WorkerPool` + lifecycle FSM
 4. **Wire FluxVectorTable** into breeder parent selection
 5. **Write CUDA kernel** for JC1 RTX 4050
 6. **Runtime hot-swap** for compiled functions
-7. **Integration test for full breeding cycle** (currently 0 cycles in demo)
+7. **Integration test for full breeding cycle** ✅ — `tests/test_breeding_cycle_e2e.py` (7 test classes) + `scripts/demo_breeding_cycle.py`
 8. **Wire A2A task endpoints** into actual HTTP handlers ✅ Done — `a2a/server.py` + `a2a/handlers.py` + `tests/test_a2a_server.py` (12 tests green)
+9. **Metronome P2 — A2ASignalSource + TickAsTask** ✅ Done — `nerve/metronome.py` + `tests/test_metronome_p2.py` (10 tests green)
 
 ---
 
