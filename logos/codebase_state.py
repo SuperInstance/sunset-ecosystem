@@ -106,7 +106,8 @@ def _count_files_and_lines(root: Path) -> tuple:
             if lang:
                 lang_files[lang] = lang_files.get(lang, 0) + 1
             try:
-                line_count = sum(1 for _ in open(fpath, errors="ignore"))
+                with open(fpath, errors="ignore") as fh:
+                    line_count = sum(1 for _ in fh)
             except OSError:
                 continue
             total_lines += line_count

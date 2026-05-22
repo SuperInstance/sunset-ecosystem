@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
 
@@ -46,7 +46,7 @@ class Agent:
     phase: AgentPhase = AgentPhase.INCUBATING
     trinity_score: float = 0.0
     resource_budget: ResourceBudget = field(default_factory=ResourceBudget)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def __post_init__(self) -> None:
         if not self.room:
