@@ -22,6 +22,8 @@ from typing import Any
 
 import requests
 
+from nexus.holonomy_bridge import HolonomyBridge
+
 logger = logging.getLogger(__name__)
 
 # ── constants ───────────────────────────────────────────────────
@@ -207,6 +209,30 @@ class FederatedNexus:
     def close(self) -> None:
         """Close the underlying HTTP session."""
         self._session.close()
+
+    # ── holonomy bridge integration ───────────────────────────
+
+    def topology_check(
+        self,
+        peer_edges: list[tuple[str, str]],
+        node_states: dict[str, float] | None = None,
+    ) -> "BridgeReport":
+        """Delegate fleet topology verification to holonomy-consensus.
+
+        Builds a :class:`HolonomyBridge` from registered peers and
+        runs cycle verification + H¹ cohomology + emergence detection.
+
+        Args:
+            peer_edges: List of (node_a, node_b) edges in the fleet.
+            node_states: Optional consensus state per node.
+
+        Returns:
+            :class:`BridgeReport` summarizing topology health.
+        """
+        bridge = HolonomyBridge.from_fleet_edges(peer_edges, node_states=node_states)
+        # Include self in the graph
+        bridge.add_fleet_node(self.node_id)
+        return bridge.check()
 
     # ── convenience factory ───────────────────────────────────
 
