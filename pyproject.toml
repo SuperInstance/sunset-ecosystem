@@ -26,7 +26,7 @@ dev = ["pytest>=7.0", "pytest-cov"]
 vecsearch = ["turbovec>=0.1.0", "numpy"]
 
 [tool.setuptools.packages.find]
-include = ["ethos*", "pathos*", "logos*", "sunset*", "swarm*", "nexus*", "grammar*", "nerve*", "triage*", "flux_compat*"]
+include = ["ethos*", "pathos*", "logos*", "sunset*", "swarm*", "nexus*", "grammar*", "nerve*", "triage*", "flux_compat*", "superinstance*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
