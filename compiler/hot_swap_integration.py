@@ -24,6 +24,14 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
+# ── Optional agentic-compiler integration ─────────────────────────
+try:
+    from agentic_compiler.core import Compiler as _AgenticCompiler
+    _HAS_AGENTIC_COMPILER = True
+except Exception:
+    _AgenticCompiler = None  # type: ignore[misc,assignment]
+    _HAS_AGENTIC_COMPILER = False
+
 
 @dataclass
 class CompileResult:
@@ -170,30 +178,129 @@ class CompilerHotSwap:
                 attrs[attr] = val
         return str(hash(str(attrs)))
 
+    def _generate_grid_source(self) -> str:
+        """Generate Python source code from current grid state.
+
+        Produces a standalone ``tick(grid)`` function that mirrors the
+        grid's current configuration (n, chaos, activity, latents).
+        """
+        n = getattr(self.grid, "n", 10)
+        chaos = getattr(self.grid, "chaos", 0.5)
+        source = (
+            "def tick(grid):\n"
+            f"    n = {n}\n"
+            f"    chaos = {chaos}\n"
+            "    for i in range(n):\n"
+            "        grid.activity[i] = (\n"
+            "            grid.activity[i] * 0.9\n"
+            "            + grid.latents[i] * chaos * 0.1\n"
+            "        )\n"
+            "    grid.ticks += 1\n"
+        )
+        return source
+
+    def _compile_source_to_function(self, source_code: str) -> tuple[Any, str]:
+        """Compile a source-code string into a callable function.
+
+        Writes to a temporary file so that :func:`inspect.getsource`
+        works for downstream compilers (e.g. Numba caching).
+
+        Returns ``(function, temp_file_path)``.  The caller is responsible
+        for deleting *temp_file_path* when compilation is complete.
+        """
+        import importlib.util
+        import os
+        import sys
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(source_code)
+            path = f.name
+
+        try:
+            spec = importlib.util.spec_from_file_location("__compiler_generated__", path)
+            if spec is None or spec.loader is None:
+                raise RuntimeError("Failed to create module spec")
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules["__compiler_generated__"] = mod
+            spec.loader.exec_module(mod)
+
+            for name in dir(mod):
+                obj = getattr(mod, name)
+                if callable(obj) and not name.startswith("_"):
+                    return obj, path
+            raise RuntimeError("No callable found in generated source")
+        except Exception:
+            os.unlink(path)
+            sys.modules.pop("__compiler_generated__", None)
+            raise
+
+    def _compile_with_agentic(self, source_code: str) -> Any:
+        """Compile generated source using agentic_compiler.core.Compiler.
+
+        Returns an object with a ``tick()`` method suitable for A/B testing.
+        """
+        import os
+        import sys
+
+        tick_fn, path = self._compile_source_to_function(source_code)
+        try:
+            result = self.compiler.compile_function(tick_fn)
+            compiled_fn = result.compiled if result.compiled is not None else tick_fn
+        finally:
+            os.unlink(path)
+            sys.modules.pop("__compiler_generated__", None)
+
+        class _CompiledWrapper:
+            def __init__(self, grid: Any, fn: Any) -> None:
+                self._grid = grid
+                self._fn = fn
+
+            def tick(self) -> None:
+                self._fn(self._grid)
+
+        return _CompiledWrapper(self.grid, compiled_fn)
+
     def _compile(self) -> CompileResult:
         """Trigger compilation via the compiler."""
         start = time.perf_counter()
         self._compile_count += 1
 
         try:
-            if self.compiler and hasattr(self.compiler, "compile"):
-                compiled = self.compiler.compile(self.grid)
-                compile_time = (time.perf_counter() - start) * 1000
-                return CompileResult(
-                    success=True,
-                    compiled_func=compiled,
-                    error=None,
-                    compile_time_ms=compile_time,
-                )
-            else:
-                # No compiler - simulate success
-                compile_time = (time.perf_counter() - start) * 1000
-                return CompileResult(
-                    success=True,
-                    compiled_func=None,
-                    error=None,
-                    compile_time_ms=compile_time,
-                )
+            if self.compiler is not None:
+                # 1. Try agentic_compiler integration
+                if _HAS_AGENTIC_COMPILER and isinstance(
+                    self.compiler, _AgenticCompiler
+                ):
+                    source = self._generate_grid_source()
+                    compiled = self._compile_with_agentic(source)
+                    compile_time = (time.perf_counter() - start) * 1000
+                    return CompileResult(
+                        success=True,
+                        compiled_func=compiled,
+                        error=None,
+                        compile_time_ms=compile_time,
+                    )
+
+                # 2. Duck-typing fallback for other compilers
+                if hasattr(self.compiler, "compile"):
+                    compiled = self.compiler.compile(self.grid)
+                    compile_time = (time.perf_counter() - start) * 1000
+                    return CompileResult(
+                        success=True,
+                        compiled_func=compiled,
+                        error=None,
+                        compile_time_ms=compile_time,
+                    )
+
+            # No compiler - simulate success
+            compile_time = (time.perf_counter() - start) * 1000
+            return CompileResult(
+                success=True,
+                compiled_func=None,
+                error=None,
+                compile_time_ms=compile_time,
+            )
         except Exception as e:
             compile_time = (time.perf_counter() - start) * 1000
             log.error("Compilation failed: %s", e)
