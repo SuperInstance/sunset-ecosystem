@@ -359,8 +359,8 @@ class RoomGridCompiler:
                 return False
 
         original = getattr(mod, attr_name, None)
-        if original is None:
-            return False
+        # Allow hot-swap even if attr does not exist yet (original = None)
+        self._originals[key] = original
 
         if hasattr(original, "__qualname__"):
             replacement.__qualname__ = original.__qualname__
@@ -370,7 +370,6 @@ class RoomGridCompiler:
         replacement._sunset_original = original  # type: ignore[attr-defined]
 
         setattr(mod, attr_name, replacement)
-        self._originals[key] = original
         return True
 
     def _restore(self, key: str) -> bool:
@@ -382,7 +381,11 @@ class RoomGridCompiler:
         mod = sys.modules.get(mod_name)
         if mod is None:
             return False
-        setattr(mod, attr_name, original)
+        if original is None:
+            if hasattr(mod, attr_name):
+                delattr(mod, attr_name)
+        else:
+            setattr(mod, attr_name, original)
         return True
 
     # ── Individual compilations ───────────────────────────

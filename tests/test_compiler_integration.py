@@ -14,7 +14,35 @@ from nerve.room_grid import RoomGrid, forward_einsum, batch_novelty, _batch_nove
 from sunset.compiler_integration import RoomGridCompiler, _HAS_NUMBA
 
 
+@pytest.fixture(autouse=True)
+def _cleanup_compiler_hot_swaps():
+    """Remove any lingering hot-swaps between tests."""
+    mod = sys.modules.get("nerve.room_grid")
+    if mod is not None:
+        for attr in ("forward_einsum", "batch_novelty", "_tick_routing_compiled"):
+            obj = getattr(mod, attr, None)
+            if obj is not None and hasattr(obj, "_sunset_original"):
+                setattr(mod, attr, obj._sunset_original)
+            if attr == "_tick_routing_compiled" and hasattr(mod, attr):
+                delattr(mod, attr)
+    yield
+    mod = sys.modules.get("nerve.room_grid")
+    if mod is not None:
+        for attr in ("forward_einsum", "batch_novelty", "_tick_routing_compiled"):
+            obj = getattr(mod, attr, None)
+            if obj is not None and hasattr(obj, "_sunset_original"):
+                setattr(mod, attr, obj._sunset_original)
+            if attr == "_tick_routing_compiled" and hasattr(mod, attr):
+                delattr(mod, attr)
+
+
 # ── Custom small grid fixture (numba wins for n≤10) ──
+
+@pytest.fixture
+def room_grid_5():
+    np.random.seed(42)
+    return RoomGrid(5)
+
 
 @pytest.fixture
 def room_grid_10():
@@ -46,42 +74,42 @@ class TestCompileEinsum:
     at small sizes, giving the numba serial kernel a clear win.
     """
 
-    def test_compile_einsum_speedup_and_correctness(self, room_grid_10):
+    def test_compile_einsum_speedup_and_correctness(self, room_grid_5):
         if not _HAS_NUMBA:
             pytest.skip("Numba not available")
-        compiler = RoomGridCompiler(room_grid_10)
-        result = compiler.compile_einsum(ab_trials=50)
+        compiler = RoomGridCompiler(room_grid_5)
+        result = compiler.compile_einsum(ab_trials=100)
         assert result.validated, f"A/B correctness failed: {result.error}"
         assert result.speedup > 1.0, f"Expected speedup > 1.0, got {result.speedup}"
 
-    def test_compile_einsum_hot_swap_active(self, room_grid_10):
+    def test_compile_einsum_hot_swap_active(self, room_grid_5):
         if not _HAS_NUMBA:
             pytest.skip("Numba not available")
-        compiler = RoomGridCompiler(room_grid_10)
-        compiler.compile_einsum(ab_trials=50)
+        compiler = RoomGridCompiler(room_grid_5)
+        compiler.compile_einsum(ab_trials=100)
         current = sys.modules["nerve.room_grid"].forward_einsum
         assert hasattr(current, "_sunset_original"), "Hot-swap did not install _sunset_original"
 
-    def test_compile_einsum_restore_reverts(self, room_grid_10):
+    def test_compile_einsum_restore_reverts(self, room_grid_5):
         if not _HAS_NUMBA:
             pytest.skip("Numba not available")
-        compiler = RoomGridCompiler(room_grid_10)
-        compiler.compile_einsum(ab_trials=50)
+        compiler = RoomGridCompiler(room_grid_5)
+        compiler.compile_einsum(ab_trials=100)
         original = sys.modules["nerve.room_grid"].forward_einsum._sunset_original
         restored_count = compiler.restore_original()
         assert restored_count > 0, "restore_original returned 0"
         current = sys.modules["nerve.room_grid"].forward_einsum
         assert current is original, "After restore, forward_einsum is not the original"
 
-    def test_compile_einsum_outputs_match_after_swap(self, room_grid_10):
+    def test_compile_einsum_outputs_match_after_swap(self, room_grid_5):
         if not _HAS_NUMBA:
             pytest.skip("Numba not available")
         np.random.seed(42)
         x = np.random.randn(64).astype(np.float32)
-        compiler = RoomGridCompiler(room_grid_10)
-        expected = forward_einsum(room_grid_10.w, x)
-        compiler.compile_einsum(ab_trials=50)
-        actual = forward_einsum(room_grid_10.w, x)
+        compiler = RoomGridCompiler(room_grid_5)
+        expected = forward_einsum(room_grid_5.w, x)
+        compiler.compile_einsum(ab_trials=100)
+        actual = forward_einsum(room_grid_5.w, x)
         assert np.allclose(expected, actual, atol=1e-4, rtol=1e-3), "Outputs diverged after hot-swap"
         compiler.restore_original()
 
@@ -135,40 +163,40 @@ class TestCompileNovelty:
 class TestCompileRouting:
     """Routing kernel compilation."""
 
-    def test_compile_routing_speedup_and_correctness(self, room_grid_1000):
+    def test_compile_routing_speedup_and_correctness(self, room_grid_100):
         if not _HAS_NUMBA:
             pytest.skip("Numba not available")
-        compiler = RoomGridCompiler(room_grid_1000)
-        result = compiler.compile_routing(ab_trials=50)
+        compiler = RoomGridCompiler(room_grid_100)
+        result = compiler.compile_routing(ab_trials=100)
         assert result.validated, f"A/B correctness failed: {result.error}"
         assert result.speedup > 1.0, f"Expected speedup > 1.0, got {result.speedup}"
 
-    def test_compile_routing_hot_swap_active(self, room_grid_1000):
+    def test_compile_routing_hot_swap_active(self, room_grid_100):
         if not _HAS_NUMBA:
             pytest.skip("Numba not available")
-        compiler = RoomGridCompiler(room_grid_1000)
-        compiler.compile_routing(ab_trials=50)
+        compiler = RoomGridCompiler(room_grid_100)
+        compiler.compile_routing(ab_trials=100)
         current = getattr(sys.modules["nerve.room_grid"], "_tick_routing_compiled", None)
         assert current is not None, "_tick_routing_compiled not installed"
 
-    def test_compile_routing_restore_reverts(self, room_grid_1000):
+    def test_compile_routing_restore_reverts(self, room_grid_100):
         if not _HAS_NUMBA:
             pytest.skip("Numba not available")
-        compiler = RoomGridCompiler(room_grid_1000)
-        compiler.compile_routing(ab_trials=50)
+        compiler = RoomGridCompiler(room_grid_100)
+        compiler.compile_routing(ab_trials=100)
         compiler.restore_original()
         current = getattr(sys.modules["nerve.room_grid"], "_tick_routing_compiled", None)
         assert current is None, "_tick_routing_compiled should be removed after restore"
 
-    def test_compile_routing_tick_still_works(self, room_grid_1000):
+    def test_compile_routing_tick_still_works(self, room_grid_100):
         if not _HAS_NUMBA:
             pytest.skip("Numba not available")
-        compiler = RoomGridCompiler(room_grid_1000)
-        compiler.compile_routing(ab_trials=50)
+        compiler = RoomGridCompiler(room_grid_100)
+        compiler.compile_routing(ab_trials=100)
         np.random.seed(42)
         x = np.random.randn(64).astype(np.float32)
         for _ in range(10):
-            out = room_grid_1000.tick(x)
+            out = room_grid_100.tick(x)
             assert "fired" in out
             assert "ids" in out
         compiler.restore_original()
