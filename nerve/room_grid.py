@@ -390,8 +390,10 @@ class RoomGrid:
         backend = _select_backend(self.n)
 
         if backend == "cuda":
-            # TODO: load CUDA kernel — jc1 has RTX 4050
-            return forward_einsum(self.w, x)
+            if not hasattr(self, "_cuda_grid"):
+                from nerve.cuda_bridge import PersistentCUDAGrid
+                self._cuda_grid = PersistentCUDAGrid(self.n, self.w)
+            return self._cuda_grid.tick(x)
 
         if backend == "rust_persistent":
             if not hasattr(self, "_rust_grid"):
@@ -424,6 +426,45 @@ class RoomGrid:
             apply_constraint_feedback(self, self._flux_checker)
         return {"fired": int(fired_mask.sum()), "ids": fired, "tick": self.ticks}
 
+    def tick_batch(self, signals):
+        """Batch tick: signals (batch, 64) -> list of tick dicts.
+
+        Amortizes kernel launch overhead across multiple ticks.
+        Falls back to numpy einsum if no fast backend is available.
+        """
+        backend = _select_backend(self.n)
+        if backend == "cuda" and hasattr(self, "_cuda_grid"):
+            latents = self._cuda_grid.tick_batch(signals)
+        elif backend == "rust_persistent" and hasattr(self, "_rust_grid"):
+            latents = self._rust_grid.tick_batch(signals)
+        else:
+            # Fallback: numpy loop
+            results = []
+            for sig in signals:
+                results.append(self.tick(sig))
+            return results
+
+        # Process batch results through novelty/chaos/feedback
+        results = []
+        for b in range(latents.shape[0]):
+            self.ticks += 1
+            latent = latents[b]
+            self.latents = latent
+            self._hist[self._hist_idx] = latent
+            self._hist_idx = (self._hist_idx + 1) % self._hist_max
+            self._hist_count = np.minimum(self._hist_count + 1, self._hist_max)
+            nv = batch_novelty(latent, self._hist, self._hist_count, self._hist_idx, self._hist_max)
+            chaos_fire = np.random.random(self.n) < self.chaos
+            fired_mask = (nv > 0.5) | chaos_fire
+            fired = np.where(fired_mask)[0].tolist()[:10]
+            self.activity[fired_mask] += 1
+            self.chaos = np.where(fired_mask, np.maximum(0.01, self.chaos * 0.99), self.chaos)
+            if self._flux_checker is not None:
+                from sunset.flux_integration import apply_constraint_feedback
+                apply_constraint_feedback(self, self._flux_checker)
+            results.append({"fired": int(fired_mask.sum()), "ids": fired, "tick": self.ticks})
+        return results
+
     def fingerprints(self, n=50):
         return [Fingerprint(i, forward_one(self.w,i,self._ref["sine"]),
                 forward_one(self.w,i,self._ref["noise"]),
@@ -449,6 +490,9 @@ class RoomGrid:
         # Invalidate persistent grid — weights changed
         if hasattr(self, "_rust_grid"):
             del self._rust_grid
+        # Invalidate CUDA grid — weights changed
+        if hasattr(self, "_cuda_grid"):
+            del self._cuda_grid
 
     def breed(self, src, dst):
         """Clone src weights to dst + mutation. Invalidates Rust cache."""
@@ -464,6 +508,9 @@ class RoomGrid:
         # Invalidate persistent grid — weights changed
         if hasattr(self, "_rust_grid"):
             del self._rust_grid
+        # Invalidate CUDA grid — weights changed
+        if hasattr(self, "_cuda_grid"):
+            del self._cuda_grid
 
     def __repr__(self):
         backend = _select_backend(self.n)

@@ -151,3 +151,60 @@ def slow_sum_func(a, b):
     for i in range(len(a)):
         total += a[i] * b[i]
     return total
+
+
+# ── New top-level unit tests (Task requirements) ──
+
+def test_profiler_detects_hotspot(compiler):
+    """After 100 calls the profiler identifies the watched function."""
+    def dummy(x):
+        return x + 1
+
+    watched = compiler.profiler.watch(dummy)
+    for i in range(100):
+        watched(i)
+    hotspots = compiler.profiler.get_hotspots()
+    names = [h.name for h in hotspots]
+    assert any("dummy" in n for n in names)
+
+
+@pytest.mark.skipif(not NUMBA_AVAILABLE, reason="numba not installed")
+def test_numba_speedup(compiler):
+    """Numba-compiled function achieves >2× speedup over original."""
+    np.random.seed(42)
+
+    def slow_sum(array_a, array_b):
+        total = 0.0
+        for i in range(len(array_a)):
+            total += array_a[i] * array_b[i]
+        return total
+
+    res = compiler.compile_function(slow_sum)
+    assert res.backend == "numba"
+    assert res.speedup > 2.0
+    assert res.error is None
+
+
+def test_auto_compile_wired(compiler):
+    """NerveTopology.enable_compiler() installs the compiler profiler."""
+    from nerve.topology import NerveTopology
+    topo = NerveTopology(n_fibers=2, n_rooms=4)
+    topo.enable_compiler()
+    assert topo._compiler is not None
+    assert topo._compiler._installed is True
+
+
+@pytest.mark.skipif(not NUMBA_AVAILABLE, reason="numba not installed")
+def test_compiler_skips_numba(compiler):
+    """Already-@njit functions are returned as-is without double-compilation."""
+    @numba.njit
+    def already_fast(array_a, array_b):
+        total = 0.0
+        for i in range(len(array_a)):
+            total += array_a[i] * array_b[i]
+        return total
+
+    res = compiler.compile_function(already_fast)
+    assert res.backend == "numba"
+    assert res.compiled is already_fast
+    assert res.error is None
