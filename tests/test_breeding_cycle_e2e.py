@@ -328,7 +328,7 @@ class TestBreedToSunset:
 
         # Child should be in daemon state
         assert child_id in daemon.state
-        assert daemon.state[child_id] == LifecycleState.EGG
+        assert daemon.state[child_id] == LifecycleState.COMPETE
 
         daemon.stop()
 
