@@ -7,6 +7,8 @@ Provides:
   - ScreenCapture: MSS/PIL-based screen region capture
   - MicrophoneCapture: sounddevice/pyaudio capture with frame dropping
   - SystemAudioCapture: ffmpeg/pyaudio loopback capture
+  - CognitionLoop: observe → reason → act cycle for RoomGrid agents
+  - AgentConfig: configuration for autonomous agent behavior
 """
 from __future__ import annotations
 
@@ -19,9 +21,13 @@ __all__ = [
     "ScreenCapture",
     "MicrophoneCapture",
     "SystemAudioCapture",
+    "CognitionLoop",
+    "AgentConfig",
+    "CognitionState",
 ]
 
 from .vision_encoder import VisionTileEncoder, EncoderBackend
 from .audio_encoder import AudioTileEncoder, AudioEncoderBackend
 from .capture import WebcamCapture, ScreenCapture
 from .audio_capture import MicrophoneCapture, SystemAudioCapture
+from .cognition_loop import CognitionLoop, AgentConfig, CognitionState

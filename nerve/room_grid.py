@@ -16,6 +16,7 @@ from collections import deque
 from ctypes import CDLL, c_float, c_size_t, POINTER, c_void_p
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Optional
 import numpy as np
 
 log = logging.getLogger(__name__)
@@ -356,7 +357,8 @@ class RoomGrid:
         g.breed(5, 100)              # clone room 5's weights to 100
     """
 
-    def __init__(self, n=250, d=64, h=32, l=16, chaos=0.3, compiler=None):
+    def __init__(self, n=250, d=64, h=32, l=16, chaos=0.3, compiler=None,
+                 agent_config=None):
         self.n = n
         self.w = make_weights(n, d, h, l)
         self.activity = np.zeros(n, dtype=np.int32)
@@ -376,6 +378,26 @@ class RoomGrid:
                      "step": np.concatenate([np.zeros(d//2), np.ones(d//2)]).astype(np.float32)}
         self._flux_checker = None  # Optional FluxConstraintChecker
         self._compiler = None     # Optional RoomGridCompiler
+        self._cognition_loop = None  # Optional CognitionLoop
+        self._last_fired_ids: list[int] = []  # stored for cognition observer
+        # ── Cognition integration ────────────────────────────
+        if agent_config is not None:
+            from perception.cognition_loop import AgentConfig, CognitionLoop
+            if isinstance(agent_config, AgentConfig):
+                self._agent_config = agent_config
+                if agent_config.enable_cognition:
+                    self._cognition_loop = CognitionLoop(agent_config)
+                    log.info("CognitionLoop attached (interval=%d)",
+                             agent_config.cognition_interval)
+            elif hasattr(agent_config, "enable_cognition"):
+                # Duck-typed config
+                self._agent_config = agent_config
+                if agent_config.enable_cognition:
+                    self._cognition_loop = CognitionLoop(agent_config)
+            else:
+                raise TypeError("agent_config must be an AgentConfig or duck-typed equivalent")
+        else:
+            self._agent_config = None
         # ── Auto-compile integration ─────────────────────────
         if compiler is not None:
             if compiler == "auto":
@@ -440,23 +462,31 @@ class RoomGrid:
             )
             self.chaos = new_chaos
             fired = np.where(fired_mask)[0].tolist()[:10]
+            self._last_fired_ids = fired
             self.activity[fired_mask] += 1
             # FLUX constraint feedback
             if self._flux_checker is not None:
                 from sunset.flux_integration import apply_constraint_feedback
                 apply_constraint_feedback(self, self._flux_checker)
+            # ── Cognition loop (compiled path) ─────────────
+            if self._cognition_loop is not None:
+                self._cognition_loop.loop(self)
             return {"fired": fired_count, "ids": fired, "tick": self.ticks}
         # ── Fallback vectorised novelty + chaos gating ───────
         nv = batch_novelty(latents, self._hist, self._hist_count, self._hist_idx, self._hist_max)
         chaos_fire = np.random.random(self.n) < self.chaos
         fired_mask = (nv > 0.5) | chaos_fire
         fired = np.where(fired_mask)[0].tolist()[:10]
+        self._last_fired_ids = fired
         self.activity[fired_mask] += 1
         self.chaos = np.where(fired_mask, np.maximum(0.01, self.chaos * 0.99), self.chaos)
-        # FLUX constraint feedback — self-correcting behavior
+        # FLUX constraint feedback
         if self._flux_checker is not None:
             from sunset.flux_integration import apply_constraint_feedback
             apply_constraint_feedback(self, self._flux_checker)
+        # ── Cognition loop ───────────────────────────────────
+        if self._cognition_loop is not None:
+            self._cognition_loop.loop(self)
         return {"fired": int(fired_mask.sum()), "ids": fired, "tick": self.ticks}
 
     def tick_batch(self, signals):
@@ -490,11 +520,15 @@ class RoomGrid:
             chaos_fire = np.random.random(self.n) < self.chaos
             fired_mask = (nv > 0.5) | chaos_fire
             fired = np.where(fired_mask)[0].tolist()[:10]
+            self._last_fired_ids = fired
             self.activity[fired_mask] += 1
             self.chaos = np.where(fired_mask, np.maximum(0.01, self.chaos * 0.99), self.chaos)
             if self._flux_checker is not None:
                 from sunset.flux_integration import apply_constraint_feedback
                 apply_constraint_feedback(self, self._flux_checker)
+            # ── Cognition loop (batch) ─────────────────────
+            if self._cognition_loop is not None:
+                self._cognition_loop.loop(self)
             results.append({"fired": int(fired_mask.sum()), "ids": fired, "tick": self.ticks})
         return results
 
