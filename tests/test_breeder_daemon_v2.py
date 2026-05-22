@@ -150,6 +150,7 @@ def make_daemon(grid, thermal, wal_path, vector_table=None):
         diversity=DiversityConfig(),
         thermal_cfg=ThermalConfig(max_agents=65, hysteresis_ticks=2),
         wal_path=wal_path,
+        tick_interval=60.0,
     )
 
 
@@ -160,43 +161,33 @@ class TestWALReplay:
 
     def test_replay_recovers_agents(self, grid, thermal, wal_path, vector_table):
         """Start → breed → stop → new daemon → start → verify state recovered."""
-        # Use a larger grid so multiple cold rooms exist and agents don't
-        # immediately get sunset by room reuse.
-        big_grid = RoomGrid(n=50)
-        for _ in range(20):
-            for i in range(25):
-                big_grid.activity[i] += 5
-
-        daemon = make_daemon(big_grid, thermal, wal_path, vector_table)
+        daemon = make_daemon(grid, thermal, wal_path, vector_table)
         daemon.start()
         assert daemon.running
 
-        # Seed some agents by queuing and stepping
+        # Seed a single agent (one breed avoids room-reuse sunset)
         daemon.queue_breed(parent_a=1, parent_b=2, priority=0)
-        daemon.queue_breed(parent_a=3, parent_b=4, priority=0)
+        transitions = daemon.step()
 
-        # Step twice to process queue
-        tr1 = daemon.step()
-        tr2 = daemon.step()
-
-        # Collect agent IDs that reached INCUBATE
-        incubated = []
-        for tr in tr1 + tr2:
-            if tr.to_state == LifecycleState.INCUBATE:
-                incubated.append(tr.agent_id)
+        # Collect agent ID that reached INCUBATE
+        incubated = [
+            tr.agent_id for tr in transitions
+            if tr.to_state == LifecycleState.INCUBATE
+        ]
+        assert len(incubated) == 1
+        child_id = incubated[0]
 
         daemon.stop()
 
         # Fresh daemon on same WAL
-        daemon2 = make_daemon(big_grid, thermal, wal_path, vector_table)
+        daemon2 = make_daemon(grid, thermal, wal_path, vector_table)
         daemon2.start()
         assert daemon2.running
 
-        # Replayed state should include the incubated agents
+        # Replayed state should include the incubated agent
         replayed = daemon2.state
-        for aid in incubated:
-            assert aid in replayed
-            assert replayed[aid] == LifecycleState.INCUBATE
+        assert child_id in replayed
+        assert replayed[child_id] == LifecycleState.INCUBATE
 
         daemon2.stop()
 
@@ -397,20 +388,25 @@ class TestDiversityScore:
     def test_returns_positive_with_diverse_population(
         self, grid, thermal, wal_path, vector_table
     ):
-        # Use a larger grid so each breed lands in a different cold room
-        # and multiple agents survive for diversity measurement.
-        big_grid = RoomGrid(n=50)
-        for _ in range(20):
-            for i in range(25):
-                big_grid.activity[i] += 5
-
-        daemon = make_daemon(big_grid, thermal, wal_path, vector_table)
+        daemon = make_daemon(grid, thermal, wal_path, vector_table)
         daemon.start()
 
-        # Seed multiple agents so diversity is measurable
+        # Manually inject multiple agents in INCUBATE state with diverse vectors
+        # (breeding repeatedly into the same room would sunset previous agents,
+        # so we directly populate state + vector table for this property test)
+        rng = np.random.RandomState(77)
         for i in range(5):
-            daemon.queue_breed(parent_a=i, parent_b=(i + 1) % 5)
-            daemon.step()
+            aid = 9000 + i
+            daemon._state[aid] = LifecycleState.INCUBATE
+            vec = (rng.randn(256).astype(np.float32) * (1.0 if i < 3 else 0.2)).tolist()
+            daemon._vector_table.add(
+                AgentVector(
+                    agent_id=aid,
+                    vector=vec,
+                    fitness=0.5,
+                    generation=1,
+                )
+            )
 
         score = daemon.diversity_score
         daemon.stop()

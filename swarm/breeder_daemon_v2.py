@@ -362,6 +362,7 @@ class BreederDaemonV2:
         thermal_cfg: ThermalConfig = ThermalConfig(),
         wal_path: str = "breeder.wal.sqlite",
         mesh: Any = None,
+        tick_interval: float = 1.0,
     ) -> None:
         self.grid = grid
         self.thermal = thermal
@@ -370,6 +371,7 @@ class BreederDaemonV2:
         self._thermal_cfg = thermal_cfg
         self._wal_path = wal_path
         self._mesh = mesh
+        self._tick_interval = tick_interval
 
         self._wal = _WALSchema(wal_path)
         self._state: dict[int, LifecycleState] = {}
@@ -554,11 +556,8 @@ class BreederDaemonV2:
         # Thermal check passed (or sacrifice succeeded)
         self._thermal_blocked_ticks = 0
 
-        # Find a cold room for the child that isn't currently allocated
-        cold_rooms = [
-            r for r in self.grid.cold(thresh=1)
-            if r not in self._room_allocations
-        ]
+        # Find a cold room for the child
+        cold_rooms = self.grid.cold(thresh=1)
         if not cold_rooms:
             # No cold rooms — park this request back in queue
             self._wal.enqueue_breed(parent_a, parent_b, priority, remote)
@@ -761,13 +760,13 @@ class BreederDaemonV2:
     # ── internals ─────────────────────────────────────────
 
     def _run_loop(self) -> None:
-        """Background loop: step() every second."""
+        """Background loop: step() every tick_interval seconds."""
         while not self._stop_event.is_set():
             try:
                 self.step()
             except Exception:
                 logger.exception("BreederDaemonV2 step failed")
-            self._stop_event.wait(1.0)
+            self._stop_event.wait(self._tick_interval)
 
     def _next_agent_id(self) -> int:
         """Generate a fresh agent ID (signed 63-bit hash of uuid)."""
