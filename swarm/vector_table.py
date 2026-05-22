@@ -243,13 +243,41 @@ class FluxVectorTable:
     def __len__(self) -> int:
         return len(self._meta)
 
-    def __repr__(self) -> str:
-        return (
-            f"FluxVectorTable(dim={self.dim}, bit_width={self.bit_width}, "
-            f"n_agents={len(self)})"
-        )
+    def compute_novelty(
+        self,
+        agent_id: int,
+        vector: list[float],
+        population_vectors: list[list[float]],
+    ) -> float:
+        """Compute novelty as cosine distance from population centroid.
 
-    # ── internals ───────────────────────────────────────────
+        Args:
+            agent_id: Agent ID (included for API symmetry; not used in calc).
+            vector: The agent's vector.
+            population_vectors: Vectors of all other agents in the population.
+
+        Returns:
+            Cosine distance in [0, 2]. 0 = identical to population,
+            higher = more divergent.
+        """
+        import numpy as np
+
+        if not population_vectors:
+            return 0.0
+
+        vec = np.array(vector, dtype=np.float32)
+        pop = np.array(population_vectors, dtype=np.float32)
+        centroid = np.mean(pop, axis=0)
+
+        vn = np.linalg.norm(vec)
+        cn = np.linalg.norm(centroid)
+        if vn == 0 or cn == 0:
+            return 1.0
+
+        sim = float(np.dot(vec, centroid) / (vn * cn))
+        # Clamp for numerical safety
+        sim = max(-1.0, min(1.0, sim))
+        return 1.0 - sim  # distance = 1 - similarity
 
     def _build_allowlist(
         self,

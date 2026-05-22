@@ -492,3 +492,114 @@ class TestDaemonThread:
         t2 = daemon._thread
         assert t1 is t2
         daemon.stop()
+
+
+class TestVectorParentSelection:
+    """_select_parents_vector wired into step() and select_parents()."""
+
+    def test_diversity_parent_selection(self, grid, thermal, wal_path, vector_table):
+        """Vector table produces different parents than random fallback."""
+        daemon = make_daemon(grid, thermal, wal_path, vector_table)
+        daemon.start()
+
+        # Seed some agents in breedable states with known vectors
+        rng = np.random.RandomState(99)
+        for i in range(6):
+            aid = 100 + i
+            daemon._state[aid] = LifecycleState.SURVIVE
+            vec = (rng.randn(256).astype(np.float32) * (2.0 if i < 3 else 0.3)).tolist()
+            daemon._vector_table.add(
+                AgentVector(
+                    agent_id=aid,
+                    vector=vec,
+                    fitness=0.9 if i < 3 else 0.2,
+                    generation=1,
+                )
+            )
+
+        candidates = daemon._get_breedable_candidates()
+
+        # With vector table — should pick high-fitness + diverse agents
+        vec_pairs = daemon._select_parents_vector(
+            population=candidates,
+            vector_table=daemon._vector_table,
+            n_children=2,
+        )
+
+        # Without vector table — random fallback
+        random_pairs = daemon._select_parents_random(n_children=2)
+
+        daemon.stop()
+
+        assert len(vec_pairs) > 0
+        assert len(random_pairs) > 0
+        # Vector-based selection should differ from pure random
+        # (statistically almost certain with diverse vectors)
+        assert vec_pairs != random_pairs or len(vec_pairs) == 0
+
+        # Verify vector-based parents are from the candidate set
+        for a, b in vec_pairs:
+            assert a in candidates
+            assert b in candidates
+
+    def test_fallback_without_vector_table(self, grid, thermal, wal_path):
+        """When vector_table is None, fallback to fitness-only/random works."""
+        daemon = make_daemon(grid, thermal, wal_path, vector_table=None)
+        daemon.start()
+
+        # Seed agents without any vector table backing
+        for i in range(4):
+            daemon._state[200 + i] = LifecycleState.SURVIVE
+
+        candidates = daemon._get_breedable_candidates()
+        pairs = daemon._select_parents_vector(
+            population=candidates,
+            vector_table=None,
+            n_children=2,
+        )
+
+        daemon.stop()
+
+        assert len(pairs) > 0
+        for a, b in pairs:
+            assert a in candidates
+            assert b in candidates
+
+    def test_step_fills_missing_parent_b(self, grid, thermal, wal_path, vector_table):
+        """step() fills in parent_b via _select_parents_vector when queued as None."""
+        daemon = make_daemon(grid, thermal, wal_path, vector_table)
+        daemon.start()
+
+        # Seed one breedable agent
+        daemon._state[300] = LifecycleState.SURVIVE
+        daemon._vector_table.add(
+            AgentVector(
+                agent_id=300,
+                vector=np.random.randn(256).astype(np.float32).tolist(),
+                fitness=0.8,
+                generation=1,
+            )
+        )
+
+        # Seed another so there are at least 2 candidates
+        daemon._state[301] = LifecycleState.SURVIVE
+        daemon._vector_table.add(
+            AgentVector(
+                agent_id=301,
+                vector=np.random.randn(256).astype(np.float32).tolist(),
+                fitness=0.7,
+                generation=1,
+            )
+        )
+
+        # Queue with only parent_a — step() should fill parent_b
+        daemon.queue_breed(parent_a=300, parent_b=None, priority=0)
+        transitions = daemon.step()
+        daemon.stop()
+
+        incubated = [t for t in transitions if t.to_state == LifecycleState.INCUBATE]
+        assert len(incubated) > 0
+        # parent_b should have been filled in (not None in the transition)
+        tr = incubated[0]
+        assert tr.parent_a == 300
+        assert tr.parent_b is not None

@@ -443,67 +443,20 @@ class BreederDaemonV2:
     ) -> list[tuple[int, int]]:
         """Diversity-aware parent selection.
 
-        1. Build Pareto frontier from vector table (fitness vs novelty).
-        2. For each child, pick parent_a = highest Pareto score.
-        3. Search vector table for most *distant* compatible winner = parent_b.
-        4. Reject pairs that violate inbreeding rules.
+        Delegates to _select_parents_vector when a FluxVectorTable is
+        available, otherwise falls back to random selection.
         """
-        if self._vector_table is None or len(self._vector_table) == 0:
-            # Legacy fallback: random tournament winners
-            return self._select_parents_random(n_children)
-
-        # Get all agents in SURVIVE or BREED state as candidates
         candidates = self._get_breedable_candidates()
-        if len(candidates) < 2:
-            return self._select_parents_random(n_children)
-
-        # Compute Pareto-novelty scores
-        scored = []
-        for aid in candidates:
-            meta = self._vector_table._meta.get(aid)
-            if meta is None:
-                continue
-            fitness = meta.fitness
-            novelty = self._avg_nearest_neighbor_distance(aid, candidates, k=3)
-            score = fitness * (1 - self._diversity.novelty_weight) + novelty * self._diversity.novelty_weight
-            scored.append((aid, score, fitness, novelty))
-
-        if len(scored) < 2:
-            return self._select_parents_random(n_children)
-
-        scored.sort(key=lambda x: x[1], reverse=True)
-        pairs: list[tuple[int, int]] = []
-
-        for _ in range(n_children):
-            parent_a = scored[0][0]  # highest Pareto score
-
-            # Find most distant compatible candidate
-            best_b: int | None = None
-            best_dist = -1.0
-
-            vec_a = self._get_vector(parent_a)
-            if vec_a is not None:
-                for aid, _, _, _ in scored[1:]:
-                    if aid == parent_a:
-                        continue
-                    # Inbreeding guard (1-generation: no direct parent-child)
-                    if self._is_inbred(parent_a, aid):
-                        continue
-                    vec_b = self._get_vector(aid)
-                    if vec_b is not None:
-                        dist = self._vector_distance(vec_a, vec_b)
-                        if dist > best_dist:
-                            best_dist = dist
-                            best_b = aid
-
-            if best_b is None:
-                # Fallback to second-best scored
-                best_b = scored[1][0] if len(scored) > 1 else scored[0][0]
-
-            pairs.append((parent_a, best_b))
-
-        return pairs
-
+        pairs = self._select_parents_vector(
+            population=candidates,
+            vector_table=self._vector_table,
+            n_children=n_children,
+        )
+        # Pad with random if we didn't get enough
+        while len(pairs) < n_children:
+            extra = self._select_parents_random(n_children - len(pairs))
+            pairs.extend(extra)
+        return pairs[:n_children]
     def step(self) -> list[LifecycleTransition]:
         """Run one scheduler tick: dequeue, check thermal, spawn or wait.
 
@@ -521,6 +474,18 @@ class BreederDaemonV2:
             return transitions
 
         ticket, parent_a, parent_b, priority, remote = request
+
+        # If only one parent was specified, select a diverse mate
+        if parent_b is None:
+            candidates = self._get_breedable_candidates()
+            if parent_a in candidates:
+                pairs = self._select_parents_vector(
+                    population=candidates,
+                    vector_table=self._vector_table,
+                    n_children=1,
+                )
+                if pairs:
+                    _, parent_b = pairs[0]
 
         # Thermal check
         device = DeviceType.GPU  # default; could be configurable per agent
@@ -881,6 +846,100 @@ class BreederDaemonV2:
             elif len(vec) > target_dim:
                 vec = vec[:target_dim]
         return vec
+
+    def _select_parents_vector(
+        self,
+        population: list[int],
+        vector_table: Optional["FluxVectorTable"] = None,
+        n_children: int = 1,
+    ) -> list[tuple[int, int]]:
+        """Diversity-aware parent selection.
+
+        If *vector_table* is provided, compute novelty as
+        ``fitness + distance from population centroid``.
+        Falls back to fitness-only (sorted by fitness descending) when
+        *vector_table* is None or empty.
+        """
+        if len(population) < 2:
+            return self._select_parents_random(n_children)
+
+        if vector_table is None or len(vector_table) == 0:
+            # Fitness-only fallback
+            scored: list[tuple[int, float]] = []
+            for aid in population:
+                fitness = 0.0
+                if self._vector_table is not None:
+                    meta = self._vector_table._meta.get(aid)
+                    if meta is not None:
+                        fitness = meta.fitness
+                scored.append((aid, fitness))
+
+            scored.sort(key=lambda x: x[1], reverse=True)
+            pairs: list[tuple[int, int]] = []
+            for _ in range(n_children):
+                parent_a = scored[0][0]
+                parent_b = scored[1][0] if len(scored) > 1 else scored[0][0]
+                pairs.append((parent_a, parent_b))
+            return pairs
+
+        # Diversity-aware: novelty = fitness + distance from centroid
+        scored = []
+        for aid in population:
+            meta = vector_table._meta.get(aid)
+            if meta is None:
+                continue
+            fitness = meta.fitness
+
+            vec = self._get_vector(aid)
+            if vec is None:
+                continue
+
+            # Build population vectors excluding self
+            pop_vectors: list[list[float]] = []
+            for other_id in population:
+                if other_id == aid:
+                    continue
+                other_vec = self._get_vector(other_id)
+                if other_vec is not None:
+                    pop_vectors.append(other_vec.tolist())
+
+            novelty = vector_table.compute_novelty(aid, vec.tolist(), pop_vectors)
+            score = fitness + novelty
+            scored.append((aid, score, fitness, novelty))
+
+        if len(scored) < 2:
+            return self._select_parents_random(n_children)
+
+        scored.sort(key=lambda x: x[1], reverse=True)
+        pairs = []
+
+        for _ in range(n_children):
+            parent_a = scored[0][0]
+
+            # Find most distant compatible candidate
+            best_b: int | None = None
+            best_dist = -1.0
+
+            vec_a = self._get_vector(parent_a)
+            if vec_a is not None:
+                for aid, _, _, _ in scored[1:]:
+                    if aid == parent_a:
+                        continue
+                    if self._is_inbred(parent_a, aid):
+                        continue
+                    vec_b = self._get_vector(aid)
+                    if vec_b is not None:
+                        dist = self._vector_distance(vec_a, vec_b)
+                        if dist > best_dist:
+                            best_dist = dist
+                            best_b = aid
+
+            if best_b is None:
+                best_b = scored[1][0] if len(scored) > 1 else scored[0][0]
+
+            pairs.append((parent_a, best_b))
+
+        return pairs
 
     def _select_parents_random(
         self,
