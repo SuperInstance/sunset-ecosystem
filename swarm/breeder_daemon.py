@@ -17,6 +17,7 @@ from __future__ import annotations
 __all__ = ["AutoBreeder"]
 
 import logging
+import random
 import threading
 import time
 from dataclasses import dataclass, field

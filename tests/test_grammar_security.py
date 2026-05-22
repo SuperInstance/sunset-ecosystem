@@ -8,7 +8,8 @@ grammar engine instance. All should be rejected with ValidationError.
 from __future__ import annotations
 
 import sys
-sys.path.insert(0, "/tmp/sunset-ecosystem")
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from grammar.core import ValidationError, create_rule_from_dict
 
@@ -47,7 +48,7 @@ CHAOS_VECTORS = [
 ]
 
 
-def test_chaos_vector(payload: dict, verbose: bool = True) -> bool:
+def _check_chaos_vector(payload: dict, verbose: bool = True) -> bool:
     """Test one chaos vector. Returns True if blocked or safely sanitized."""
     attack_name = payload.pop("attack")
     field = payload.pop("field")
@@ -93,6 +94,12 @@ def test_chaos_vector(payload: dict, verbose: bool = True) -> bool:
     return is_safe
 
 
+def test_all_chaos_vectors_blocked():
+    """All chaos vectors should be blocked or sanitized."""
+    for payload in CHAOS_VECTORS:
+        assert _check_chaos_vector(payload.copy(), verbose=False), f"Attack not blocked: {payload.get('attack', 'unknown')}"
+
+
 def run_all() -> None:
     print("=" * 70)
     print("Grammar Engine Security Test — Chaos Vector Validation")
@@ -103,7 +110,7 @@ def run_all() -> None:
     passed = 0
 
     for payload in CHAOS_VECTORS:
-        if test_chaos_vector(payload.copy()):
+        if _check_chaos_vector(payload.copy()):
             blocked += 1
         else:
             passed += 1
