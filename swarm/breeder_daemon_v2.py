@@ -44,6 +44,7 @@ from nerve.room_grid import RoomGrid
 from swarm.thermal import DeviceType, ThermalBudget
 from swarm.tournament import AgentScore, TournamentRound, breed
 from swarm.inheritance_tax import InheritanceTax
+from swarm.crdt_merge import CRDTMergeEngine, Agent as CRDTAgent
 from swarm.lineage_checker import LineageSanityChecker, Agent as LineageAgent
 from swarm.trajectory_monitor import TrajectoryMonitor, SecurityEvent
 
@@ -799,6 +800,81 @@ class BreederDaemonV2:
             )
         return agents
 
+
+    def merge_remote_population(
+        self, remote_agents: list[CRDTAgent]
+    ) -> list[CRDTAgent]:
+        """Merge a remote population into local state before accepting new agents.
+
+        Called when a network partition heals and a remote node sends its
+        divergent population.  Runs CRDT merge, logs a divergence report,
+        and returns the merged agent list (which the caller may use to update
+        its own vector table / WAL).
+        """
+        local_agents = self._build_crdt_population()
+
+        # Use the local vector table as the merge target; if none, create a
+        # transient one so the engine can still perform lineage checks.
+        from swarm.vector_table import FluxVectorTable
+        vt = self._vector_table or FluxVectorTable(dim=64, bit_width=4)
+        engine = CRDTMergeEngine(vt)
+
+        merged = engine.merge_populations(local_agents, remote_agents)
+        report = engine.detect_divergence(local_agents, remote_agents)
+
+        logger.info(
+            "Remote merge report: local_only=%d remote_only=%d "
+            "common_diverged=%d lineage_conflicts=%d fitness_delta=%.4f",
+            len(report.local_only),
+            len(report.remote_only),
+            len(report.common_diverged),
+            len(report.lineage_conflicts),
+            report.fitness_delta,
+        )
+
+        # Update our vector table reference if we created a transient one
+        if self._vector_table is None and vt is not None:
+            self._vector_table = vt
+
+        return merged
+
+    def _build_crdt_population(self) -> list[CRDTAgent]:
+        """Construct CRDT Agent records from current non-SUNSET WAL state."""
+        agents: list[CRDTAgent] = []
+        for aid, st in self._state.items():
+            if st == LifecycleState.SUNSET:
+                continue
+            g = self._wal.get_genealogy(aid)
+            vec: list[float] = []
+            last_updated = 0.0
+            fitness = 0.0
+            capability = 0xFFFF
+            if self._vector_table is not None:
+                meta = self._vector_table._meta.get(aid)
+                if meta is not None:
+                    last_updated = float(meta.extra.get("last_updated", 0.0))
+                    fitness = meta.fitness
+                    capability = meta.capability_mask
+                if hasattr(self._vector_table._index, "_vectors"):
+                    v = self._vector_table._index._vectors.get(aid)
+                    if v is not None:
+                        vec = v.tolist() if hasattr(v, "tolist") else list(v)
+            gen = g["generation"] if g else 0
+            pa = g.get("parent_a") if g else None
+            pb = g.get("parent_b") if g else None
+            agents.append(
+                CRDTAgent(
+                    agent_id=aid,
+                    fitness=fitness,
+                    generation=gen,
+                    parent_a=pa,
+                    parent_b=pb,
+                    vector=vec,
+                    last_updated=last_updated,
+                    capability_mask=capability,
+                )
+            )
+        return agents
 
     @property
     def state(self) -> dict[int, LifecycleState]:

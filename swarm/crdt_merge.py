@@ -43,6 +43,7 @@ class Agent:
     generation: int = 0
     parent_a: int | None = None
     parent_b: int | None = None
+    all_parents: list[int] = field(default_factory=list)
     vector: list[float] = field(default_factory=list)
     last_updated: float = field(default_factory=time.time)
     capability_mask: int = 0xFFFF
@@ -52,6 +53,13 @@ class Agent:
             raise ValueError(f"fitness must be in [0, 1], got {self.fitness}")
         if self.generation < 0:
             raise ValueError(f"generation must be >= 0, got {self.generation}")
+        # Derive all_parents from parent_a/parent_b if not explicitly set
+        if not self.all_parents and (self.parent_a is not None or self.parent_b is not None):
+            parents: list[int] = []
+            for p in (self.parent_a, self.parent_b):
+                if p is not None and p not in parents:
+                    parents.append(p)
+            object.__setattr__(self, 'all_parents', parents)
 
 
 @dataclass
@@ -198,8 +206,9 @@ class CRDTMergeEngine:
                 agent_id=winner.agent_id,
                 fitness=winner.fitness,
                 generation=winner.generation,
-                parent_a=merged_parents[0],
+                parent_a=merged_parents[0] if len(merged_parents) > 0 else None,
                 parent_b=merged_parents[1] if len(merged_parents) > 1 else None,
+                all_parents=merged_parents,
                 vector=winner.vector,
                 last_updated=max(local_agent.last_updated, remote_agent.last_updated),
                 capability_mask=winner.capability_mask,
@@ -337,7 +346,7 @@ class CRDTMergeEngine:
         """True if both agents have valid but different parent records."""
         a_has_parents = a.parent_a is not None or a.parent_b is not None
         b_has_parents = b.parent_a is not None or b.parent_b is not None
-        if not a_has_parents and not b_has_parents:
+        if not a_has_parents or not b_has_parents:
             return False
         return (a.parent_a, a.parent_b) != (b.parent_a, b.parent_b)
 

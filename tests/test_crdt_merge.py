@@ -231,9 +231,10 @@ class TestLineageConflictMerge:
         child = next(a for a in merged if a.agent_id == 10)
 
         # Merged lineage should include all unique parents
-        parents = {child.parent_a, child.parent_b}
-        assert 1 in parents or 2 in parents
-        assert 3 in parents or 4 in parents
+        assert set(child.all_parents) == {1, 2, 3, 4}
+        assert child.parent_a in (1, 2, 3, 4)
+        assert child.parent_b in (1, 2, 3, 4)
+        assert child.parent_a != child.parent_b
 
     def test_same_parents_no_conflict(self):
         vt = _make_table()
@@ -252,18 +253,16 @@ class TestLineageConflictMerge:
         vt = _make_table()
         engine = CRDTMergeEngine(vt)
 
-        local = [_agent(1, generation=0, parent_a=None, parent_b=None)]
-        remote = [_agent(1, generation=1, parent_a=10, parent_b=11)]
+        local = [_agent(1, generation=0, parent_a=None, parent_b=None, last_updated=200.0)]
+        remote = [_agent(1, generation=1, parent_a=10, parent_b=11, last_updated=100.0)]
 
         merged = engine.merge_populations(local, remote)
         winner = next(a for a in merged if a.agent_id == 1)
 
-        # The side with parents should win (higher gen → higher fitness logic not applicable,
-        # but they have same fitness 0.5; tie-break on timestamp. Since timestamps are equal,
-        # local wins. However lineage conflict only triggers when BOTH have parents.
-        # Here local has no parents, so no conflict — winner is local (fitness tie + same ts)
+        # Local wins (higher timestamp) and has no parents → no lineage conflict
         assert winner.parent_a is None
         assert winner.parent_b is None
+        assert winner.all_parents == []
 
 
 class TestVectorTableLWWSync:
@@ -451,6 +450,7 @@ class TestDetectDivergence:
 
         assert report.local_only == [1]
         assert report.remote_only == [3]
-        assert report.common_diverged == []
+        # Agent 2 exists on both sides with different parents → diverged
+        assert report.common_diverged == [2]
         assert report.lineage_conflicts == [2]
         assert report.fitness_delta == 0.0
