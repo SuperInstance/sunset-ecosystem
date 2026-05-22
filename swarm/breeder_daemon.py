@@ -4,7 +4,7 @@ Periodically finds cold rooms, runs tournaments among hot rooms,
 breeds winners, and rebirths cold rooms with cloned winner weights.
 Thread-safe. Respects ThermalBudget (parent-sacrifice-before-child-spawn).
 
-**New in this version:** Optional `FluxVectorTable` integration for
+**New in this version:** Optional ``FluxVectorTable`` integration for
 vector-based parent selection instead of random sampling from tournament
 winners. This enables:
     - Diversity-aware breeding (search for dissimilar parents)

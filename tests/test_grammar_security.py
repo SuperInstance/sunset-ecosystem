@@ -53,14 +53,21 @@ CHAOS_VECTORS = [
 @pytest.mark.parametrize("payload", CHAOS_VECTORS, ids=lambda p: p["attack"])
 def test_chaos_vector_blocked(payload: dict) -> None:
     """Each chaos vector must be blocked or safely sanitized."""
+    assert _test_chaos_vector(payload.copy(), verbose=False)
+
+
+def _test_chaos_vector(payload: dict, verbose: bool = True) -> bool:
+    """Test one chaos vector. Returns True if blocked or safely sanitized."""
     attack_name = payload.pop("attack")
     field = payload.pop("field")
 
     try:
         rule = create_rule_from_dict(payload)
-    except ValidationError:
-        # BLOCKED by validator — this is the expected path
-        return
+    except ValidationError as exc:
+        if verbose:
+            print(f"  ✅ {attack_name} ({field}) — BLOCKED by validator")
+            print(f"     {exc}")
+        return True
 
     # Rule was created — check if output is safe
     is_safe = True
@@ -81,7 +88,18 @@ def test_chaos_vector_blocked(payload: dict) -> None:
         is_safe = False
         issues.append(f"exec still contains import: {rule.production.exec_field!r}")
 
-    assert is_safe, f"{attack_name} ({field}) — RULE CREATED UNSAFELY: " + "; ".join(issues)
+    if verbose:
+        if is_safe:
+            print(f"  ✅ {attack_name} ({field}) — ALLOWED but SANITIZED")
+            print(f"     tagline={rule.production.tagline!r}")
+            print(f"     condition={rule.production.condition!r}")
+            print(f"     exec={rule.production.exec_field!r}")
+        else:
+            print(f"  ❌ {attack_name} ({field}) — RULE CREATED UNSAFELY")
+            for issue in issues:
+                print(f"     {issue}")
+
+    return is_safe
 
 
 def run_all() -> bool:
@@ -95,30 +113,9 @@ def run_all() -> bool:
     passed = 0
 
     for payload in CHAOS_VECTORS:
-        p = payload.copy()
-        attack_name = p.pop("attack")
-        field = p.pop("field")
-
-        try:
-            rule = create_rule_from_dict(p)
-        except ValidationError:
-            print(f"  ✅ {attack_name} ({field}) — BLOCKED by validator")
-            blocked += 1
-            continue
-
-        is_safe = True
-        if "<" in rule.production.tagline or ">" in rule.production.tagline:
-            is_safe = False
-        if ";" in rule.production.condition or "DROP" in rule.production.condition.upper():
-            is_safe = False
-        if rule.production.exec_field and "import" in rule.production.exec_field.lower():
-            is_safe = False
-
-        if is_safe:
-            print(f"  ✅ {attack_name} ({field}) — ALLOWED but SANITIZED")
+        if _test_chaos_vector(payload.copy()):
             blocked += 1
         else:
-            print(f"  ❌ {attack_name} ({field}) — RULE CREATED UNSAFELY")
             passed += 1
         print()
 
