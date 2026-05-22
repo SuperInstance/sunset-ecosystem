@@ -1206,18 +1206,25 @@ class BreederDaemonV2:
         vector_table: Optional["FluxVectorTable"] = None,
         n_children: int = 1,
     ) -> list[tuple[int, int]]:
-        """Diversity-aware parent selection.
+        """Diversity-aware parent selection using FLUX vector table methods.
 
-        If *vector_table* is provided, compute novelty as
-        ``fitness + distance from population centroid``.
-        Falls back to fitness-only (sorted by fitness descending) when
-        *vector_table* is None or empty.
+        Priority when *vector_table* is provided:
+        1. ``search_diverse_parents`` — maximally diverse pairs via novelty
+           + tournament results, filtered to breedable population.
+        2. ``recommend_breed_pair`` — niche-crossing high-fitness parents.
+        3. Legacy fitness + distance-from-centroid fallback.
+        4. Random fallback.
+
+        When *vector_table* is None, falls back to fitness-only selection
+        from the provided population.
         """
         if len(population) < 2:
             return self._select_parents_random(n_children)
 
+        pairs: list[tuple[int, int]] = []
+
+        # ── Fitness-only fallback when no vector table ─────
         if vector_table is None or len(vector_table) == 0:
-            # Fitness-only fallback
             scored: list[tuple[int, float]] = []
             for aid in population:
                 fitness = 0.0
@@ -1228,14 +1235,41 @@ class BreederDaemonV2:
                 scored.append((aid, fitness))
 
             scored.sort(key=lambda x: x[1], reverse=True)
-            pairs: list[tuple[int, int]] = []
             for _ in range(n_children):
                 parent_a = scored[0][0]
                 parent_b = scored[1][0] if len(scored) > 1 else scored[0][0]
                 pairs.append((parent_a, parent_b))
             return pairs
 
-        # Diversity-aware: novelty = fitness + distance from centroid
+        # ── Path 1: FluxVectorTable.search_diverse_parents ─────
+        if hasattr(vector_table, "search_diverse_parents"):
+            try:
+                diverse_pairs = vector_table.search_diverse_parents(
+                    n_results=n_children * 2
+                )
+                for a, b in diverse_pairs:
+                    if a in population and b in population and not self._is_inbred(a, b):
+                        pairs.append((a, b))
+                    if len(pairs) >= n_children:
+                        return pairs[:n_children]
+            except Exception:
+                logger.exception("search_diverse_parents failed, falling back")
+
+        # ── Path 2: FluxVectorTable.recommend_breed_pair ───────
+        if len(pairs) < n_children and hasattr(vector_table, "recommend_breed_pair"):
+            try:
+                rec = vector_table.recommend_breed_pair()
+                if rec is not None:
+                    a, b = rec
+                    if a in population and b in population and not self._is_inbred(a, b):
+                        if (a, b) not in pairs and (b, a) not in pairs:
+                            pairs.append((a, b))
+                    if len(pairs) >= n_children:
+                        return pairs[:n_children]
+            except Exception:
+                logger.exception("recommend_breed_pair failed, falling back")
+
+        # ── Path 3: Legacy fitness + distance-from-centroid ────
         scored = []
         for aid in population:
             meta = vector_table._meta.get(aid)
@@ -1260,39 +1294,41 @@ class BreederDaemonV2:
             score = fitness + novelty
             scored.append((aid, score, fitness, novelty))
 
-        if len(scored) < 2:
-            return self._select_parents_random(n_children)
+        if len(scored) >= 2:
+            scored.sort(key=lambda x: x[1], reverse=True)
+            while len(pairs) < n_children:
+                parent_a = scored[0][0]
 
-        scored.sort(key=lambda x: x[1], reverse=True)
-        pairs = []
+                # Find most distant compatible candidate
+                best_b: int | None = None
+                best_dist = -1.0
 
-        for _ in range(n_children):
-            parent_a = scored[0][0]
+                vec_a = self._get_vector(parent_a)
+                if vec_a is not None:
+                    for aid, _, _, _ in scored[1:]:
+                        if aid == parent_a:
+                            continue
+                        if self._is_inbred(parent_a, aid):
+                            continue
+                        vec_b = self._get_vector(aid)
+                        if vec_b is not None:
+                            dist = self._vector_distance(vec_a, vec_b)
+                            if dist > best_dist:
+                                best_dist = dist
+                                best_b = aid
 
-            # Find most distant compatible candidate
-            best_b: int | None = None
-            best_dist = -1.0
+                if best_b is None:
+                    best_b = scored[1][0] if len(scored) > 1 else scored[0][0]
 
-            vec_a = self._get_vector(parent_a)
-            if vec_a is not None:
-                for aid, _, _, _ in scored[1:]:
-                    if aid == parent_a:
-                        continue
-                    if self._is_inbred(parent_a, aid):
-                        continue
-                    vec_b = self._get_vector(aid)
-                    if vec_b is not None:
-                        dist = self._vector_distance(vec_a, vec_b)
-                        if dist > best_dist:
-                            best_dist = dist
-                            best_b = aid
+                pairs.append((parent_a, best_b))
+                if len(pairs) >= n_children:
+                    return pairs[:n_children]
 
-            if best_b is None:
-                best_b = scored[1][0] if len(scored) > 1 else scored[0][0]
-
-            pairs.append((parent_a, best_b))
-
-        return pairs
+        # ── Path 4: Random fallback ────────────────────────────
+        while len(pairs) < n_children:
+            extra = self._select_parents_random(n_children - len(pairs))
+            pairs.extend(extra)
+        return pairs[:n_children]
 
     def _select_parents_random(
         self,

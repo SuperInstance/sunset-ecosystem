@@ -289,11 +289,13 @@ class IntentConfirmationProtocol:
         confirmed: bool,
         scope: str,
         journal: Optional[Any] = None,
+        journal_path: Optional[str] = None,
     ) -> None:
         """Log to Decision Journal (FLAME format).
 
         If a journal object with a .record() method is provided, it is used.
-        Otherwise this is a no-op (the caller should persist elsewhere).
+        If *journal_path* is provided, writes to the daily JSONL journal via
+        ``log_human_command``.
         """
         if journal is not None and hasattr(journal, "record"):
             journal.record(
@@ -304,4 +306,12 @@ class IntentConfirmationProtocol:
                 actual="" if not confirmed else "pending",
                 confidence=1.0 - self.measure_ambiguity(intent),
                 scope=scope,
+            )
+        if journal_path is not None:
+            from logos.decision_journal import log_human_command
+            log_human_command(
+                intent=intent,
+                confirmed=confirmed,
+                scope=scope,
+                journal_path=journal_path,
             )

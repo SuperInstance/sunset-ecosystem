@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 try:
     from turbovec import IdMapIndex
 except ImportError as exc:
@@ -278,6 +280,250 @@ class FluxVectorTable:
         # Clamp for numerical safety
         sim = max(-1.0, min(1.0, sim))
         return 1.0 - sim  # distance = 1 - similarity
+
+    def _get_vector(self, agent_id: int) -> np.ndarray | None:
+        """Retrieve the raw float32 vector for an agent."""
+        if agent_id not in self._meta:
+            return None
+        if hasattr(self._index, "_vectors"):
+            vec = self._index._vectors.get(agent_id)
+            if vec is not None:
+                return np.array(vec, dtype=np.float32)
+        return None
+
+    def compute_diversity_matrix(self) -> tuple[np.ndarray, list[int]]:
+        """Compute pairwise diversity (cosine distance) for all agents.
+
+        Returns:
+            (diversity_matrix, agent_ids) where diversity_matrix[i, j]
+            is the cosine distance between agent_ids[i] and agent_ids[j].
+            Range [0, 2] — 0 = identical, 2 = opposite.
+        """
+        agent_ids = sorted(self._meta.keys())
+        n = len(agent_ids)
+        if n < 2:
+            return np.zeros((n, n), dtype=np.float32), agent_ids
+
+        vectors: list[np.ndarray] = []
+        for aid in agent_ids:
+            vec = self._get_vector(aid)
+            if vec is not None:
+                vectors.append(vec)
+            else:
+                vectors.append(np.zeros(self.dim, dtype=np.float32))
+
+        vecs = np.array(vectors, dtype=np.float32)
+        norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        normalized = vecs / norms
+
+        sims = normalized @ normalized.T
+        sims = np.clip(sims, -1.0, 1.0)
+        dists = 1.0 - sims
+        # Zero out self-distances exactly
+        np.fill_diagonal(dists, 0.0)
+        return dists, agent_ids
+
+    def find_niche_centroids(self, k: int = 3) -> tuple[np.ndarray, dict[int, int]]:
+        """K-means on latent vectors to find population clusters (niches).
+
+        Args:
+            k: Number of clusters. If population < k, k is reduced.
+
+        Returns:
+            (centroids, assignments) where centroids has shape (k, dim)
+            and assignments maps agent_id -> cluster_index.
+        """
+        agent_ids = sorted(self._meta.keys())
+        n = len(agent_ids)
+        if n == 0:
+            return np.zeros((k, self.dim), dtype=np.float32), {}
+
+        k = min(k, n)
+
+        vectors: list[np.ndarray] = []
+        valid_ids: list[int] = []
+        for aid in agent_ids:
+            vec = self._get_vector(aid)
+            if vec is not None:
+                vectors.append(vec)
+                valid_ids.append(aid)
+
+        if len(valid_ids) < k:
+            centroids = np.zeros((k, self.dim), dtype=np.float32)
+            assignments = {aid: 0 for aid in agent_ids}
+            return centroids, assignments
+
+        X = np.array(vectors, dtype=np.float32)
+        rng = np.random.RandomState(42)
+        indices = rng.choice(len(X), size=k, replace=False)
+        centroids = X[indices].copy()
+
+        max_iter = 100
+        labels = np.zeros(len(X), dtype=int)
+        for _ in range(max_iter):
+            distances = np.linalg.norm(X[:, None, :] - centroids[None, :, :], axis=2)
+            labels = np.argmin(distances, axis=1)
+
+            new_centroids = np.zeros_like(centroids)
+            for j in range(k):
+                mask = labels == j
+                if np.any(mask):
+                    new_centroids[j] = X[mask].mean(axis=0)
+                else:
+                    new_centroids[j] = X[rng.randint(len(X))]
+
+            if np.allclose(centroids, new_centroids, atol=1e-4):
+                break
+            centroids = new_centroids
+
+        assignments = {aid: int(labels[i]) for i, aid in enumerate(valid_ids)}
+        # Agents without vectors get assigned to cluster 0
+        for aid in agent_ids:
+            if aid not in assignments:
+                assignments[aid] = 0
+        return centroids, assignments
+
+    def search_diverse_parents(self, n_results: int = 2) -> list[tuple[int, int]]:
+        """Find maximally diverse parent pairs using novelty scoring + tournament results.
+
+        Uses the diversity matrix to select pairs that are far apart
+        while both having high fitness + novelty scores.
+
+        Returns:
+            List of (parent_a, parent_b) tuples, sorted by combined score.
+        """
+        agent_ids = sorted(self._meta.keys())
+        if len(agent_ids) < 2:
+            return []
+
+        dists, ids = self.compute_diversity_matrix()
+        id_to_idx = {aid: i for i, aid in enumerate(ids)}
+
+        # Build population centroid for novelty
+        vectors: list[np.ndarray] = []
+        for aid in agent_ids:
+            vec = self._get_vector(aid)
+            if vec is not None:
+                vectors.append(vec)
+        centroid = np.mean(np.array(vectors), axis=0) if vectors else np.zeros(self.dim)
+
+        # Score each agent: fitness + novelty (distance from centroid)
+        scored: list[tuple[int, float, float, float]] = []
+        for aid in agent_ids:
+            meta = self._meta.get(aid)
+            fitness = meta.fitness if meta else 0.0
+            vec = self._get_vector(aid)
+            novelty = 0.0
+            if vec is not None and np.linalg.norm(centroid) > 0:
+                vn = np.linalg.norm(vec)
+                cn = np.linalg.norm(centroid)
+                if vn > 0:
+                    sim = float(np.dot(vec, centroid) / (vn * cn))
+                    sim = max(-1.0, min(1.0, sim))
+                    novelty = 1.0 - sim
+            score = fitness + novelty
+            scored.append((aid, score, fitness, novelty))
+
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        pairs: list[tuple[int, int]] = []
+        used: set[int] = set()
+
+        for _ in range(n_results):
+            if len(scored) < 2:
+                break
+
+            parent_a = None
+            for aid, _, _, _ in scored:
+                if aid not in used:
+                    parent_a = aid
+                    break
+            if parent_a is None:
+                break
+
+            # Find most diverse compatible candidate
+            best_b: int | None = None
+            best_dist = -1.0
+            idx_a = id_to_idx.get(parent_a)
+
+            for aid, _, _, _ in scored:
+                if aid == parent_a or aid in used:
+                    continue
+                idx_b = id_to_idx.get(aid)
+                if idx_a is not None and idx_b is not None:
+                    dist = dists[idx_a, idx_b]
+                    if dist > best_dist:
+                        best_dist = dist
+                        best_b = aid
+
+            if best_b is None:
+                for aid, _, _, _ in scored:
+                    if aid != parent_a and aid not in used:
+                        best_b = aid
+                        break
+
+            if best_b is None:
+                break
+
+            pairs.append((parent_a, best_b))
+            used.add(parent_a)
+            used.add(best_b)
+
+        return pairs
+
+    def recommend_breed_pair(self) -> tuple[int, int] | None:
+        """Pick parents from different niches with high fitness.
+
+        Uses k-means clustering to identify niches, then selects the
+        highest-fitness pair from two different niches.
+
+        Returns:
+            (parent_a, parent_b) or None if population < 2.
+        """
+        agent_ids = sorted(self._meta.keys())
+        if len(agent_ids) < 2:
+            return None
+
+        k = min(3, len(agent_ids))
+        centroids, assignments = self.find_niche_centroids(k=k)
+
+        # Group agents by niche
+        niche_agents: dict[int, list[int]] = {}
+        for aid in agent_ids:
+            niche = assignments.get(aid, 0)
+            niche_agents.setdefault(niche, []).append(aid)
+
+        # Sort within each niche by fitness descending
+        for niche in niche_agents:
+            niche_agents[niche].sort(
+                key=lambda aid: self._meta.get(aid, AgentMeta()).fitness,
+                reverse=True,
+            )
+
+        niche_ids = sorted(niche_agents.keys())
+        if len(niche_ids) < 2:
+            # All in one niche — fall back to diverse search
+            pairs = self.search_diverse_parents(n_results=1)
+            return pairs[0] if pairs else None
+
+        # Pick top agents from two different niches
+        best_pair: tuple[int, int] | None = None
+        best_score = -1.0
+
+        for i in range(len(niche_ids)):
+            for j in range(i + 1, len(niche_ids)):
+                for a in niche_agents[niche_ids[i]][:2]:
+                    for b in niche_agents[niche_ids[j]][:2]:
+                        meta_a = self._meta.get(a, AgentMeta())
+                        meta_b = self._meta.get(b, AgentMeta())
+                        # Score = sum of fitness + niche separation bonus
+                        score = meta_a.fitness + meta_b.fitness + 0.5
+                        if score > best_score:
+                            best_score = score
+                            best_pair = (a, b)
+
+        return best_pair
 
     def _build_allowlist(
         self,

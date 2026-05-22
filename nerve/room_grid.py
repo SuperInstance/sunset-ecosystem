@@ -11,7 +11,7 @@ Each room = 3.4K params. No training, no backprop."""
 from __future__ import annotations
 __all__ = ["RoomGrid", "JEPAGrid", "Fingerprint", "make_weights", "novelty", "batch_novelty"]
 
-import math, threading, logging
+import math, threading, logging, sys
 from collections import deque
 from ctypes import CDLL, c_float, c_size_t, POINTER, c_void_p
 from dataclasses import dataclass
@@ -356,7 +356,7 @@ class RoomGrid:
         g.breed(5, 100)              # clone room 5's weights to 100
     """
 
-    def __init__(self, n=250, d=64, h=32, l=16, chaos=0.3):
+    def __init__(self, n=250, d=64, h=32, l=16, chaos=0.3, compiler=None):
         self.n = n
         self.w = make_weights(n, d, h, l)
         self.activity = np.zeros(n, dtype=np.int32)
@@ -375,6 +375,21 @@ class RoomGrid:
                      "noise": np.random.randn(d).astype(np.float32),
                      "step": np.concatenate([np.zeros(d//2), np.ones(d//2)]).astype(np.float32)}
         self._flux_checker = None  # Optional FluxConstraintChecker
+        self._compiler = None     # Optional RoomGridCompiler
+        # ── Auto-compile integration ─────────────────────────
+        if compiler is not None:
+            if compiler == "auto":
+                try:
+                    from sunset.compiler_integration import RoomGridCompiler
+                    self._compiler = RoomGridCompiler(self)
+                    self._compiler.auto_compile(ticks=100, ab_trials=50)
+                except Exception as e:
+                    log.warning("RoomGrid auto-compile failed: %s", e)
+            elif hasattr(compiler, "auto_compile"):
+                self._compiler = compiler
+                compiler.grid = self
+            else:
+                raise TypeError("compiler must be 'auto' or a RoomGridCompiler instance")
 
     def attach_flux_checker(self, checker) -> None:
         """Attach a FLUX constraint checker for self-correcting behavior."""
@@ -415,7 +430,23 @@ class RoomGrid:
         self._hist[self._hist_idx] = latents
         self._hist_idx = (self._hist_idx + 1) % self._hist_max
         self._hist_count = np.minimum(self._hist_count + 1, self._hist_max)
-        # Vectorized novelty + chaos gating
+        # ── Compiled routing fast-path ───────────────────────
+        _tick_routing_compiled = getattr(sys.modules.get("nerve.room_grid"), "_tick_routing_compiled", None)
+        if _tick_routing_compiled is not None:
+            nv = batch_novelty(latents, self._hist, self._hist_count, self._hist_idx, self._hist_max)
+            fired_mask, new_chaos, fired_count = _tick_routing_compiled(
+                latents, self.chaos, self.n,
+                self._hist, self._hist_count, self._hist_idx, self._hist_max,
+            )
+            self.chaos = new_chaos
+            fired = np.where(fired_mask)[0].tolist()[:10]
+            self.activity[fired_mask] += 1
+            # FLUX constraint feedback
+            if self._flux_checker is not None:
+                from sunset.flux_integration import apply_constraint_feedback
+                apply_constraint_feedback(self, self._flux_checker)
+            return {"fired": fired_count, "ids": fired, "tick": self.ticks}
+        # ── Fallback vectorised novelty + chaos gating ───────
         nv = batch_novelty(latents, self._hist, self._hist_count, self._hist_idx, self._hist_max)
         chaos_fire = np.random.random(self.n) < self.chaos
         fired_mask = (nv > 0.5) | chaos_fire

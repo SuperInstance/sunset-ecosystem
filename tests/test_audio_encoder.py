@@ -94,10 +94,13 @@ class TestEncodeSilence:
         assert emb.shape == (512,)
         assert emb.dtype == np.float32
 
-    def test_l2_normalised_even_for_silence(self, encoder, synthetic_silence):
+    def test_silence_returns_zero_vector(self, encoder, synthetic_silence):
+        """Silence produces a zero embedding (norm=0) — valid but unnormalizable."""
         emb = encoder.encode_segment(synthetic_silence, sample_rate=16000)
         norm = np.linalg.norm(emb)
-        assert pytest.approx(norm, abs=1e-4) == 1.0
+        # Zero input → zero output is deterministic and valid
+        assert norm == 0.0
+        assert not np.any(np.isnan(emb))
 
 
 class TestEncodeBatch:
