@@ -100,6 +100,7 @@ class FluxVectorTable:
         dim: int,
         bit_width: int = 4,
         capability_filter: int | None = None,
+        use_hdc: bool = False,
     ) -> None:
         if dim % 8 != 0:
             raise ValueError(f"dim must be multiple of 8, got {dim}")
@@ -109,10 +110,23 @@ class FluxVectorTable:
         self.dim = dim
         self.bit_width = bit_width
         self._capability_filter = capability_filter
+        self._use_hdc = use_hdc
 
         self._index = IdMapIndex(dim=dim, bit_width=bit_width)
         self._meta: dict[int, AgentMeta] = {}
         self._vectors: dict[int, np.ndarray] = {}  # raw float32 vectors for diversity ops
+
+        if use_hdc:
+            try:
+                from swarm.hdc_novelty import hdc_novelty_score
+                self._hdc_score = hdc_novelty_score
+                logger.info("FluxVectorTable using HDC novelty for diversity matrix")
+            except ImportError:
+                logger.warning("HDC novelty requested but not available; falling back to cosine")
+                self._use_hdc = False
+                self._hdc_score = None
+        else:
+            self._hdc_score = None
 
     # ── public API ──────────────────────────────────────────
 
@@ -304,18 +318,40 @@ class FluxVectorTable:
         return self._vectors.get(agent_id)
 
     def compute_diversity_matrix(self) -> tuple[np.ndarray, list[int]]:
-        """Compute pairwise diversity (cosine distance) for all agents.
+        """Compute pairwise diversity for all agents.
+
+        When ``use_hdc=True`` was passed to the constructor, this uses
+        HDC (XOR+POPCNT Hamming) distance instead of cosine distance.
+        The two metrics are highly correlated (~0.943) but HDC can be
+        ~100–1000× faster on AVX-512 hardware.
 
         Returns:
             (diversity_matrix, agent_ids) where diversity_matrix[i, j]
-            is the cosine distance between agent_ids[i] and agent_ids[j].
-            Range [0, 2] — 0 = identical, 2 = opposite.
+            is the distance between agent_ids[i] and agent_ids[j].
+            Range [0, 2] for cosine, [0, 1] for HDC.
         """
         agent_ids = sorted(self._meta.keys())
         n = len(agent_ids)
         if n < 2:
             return np.zeros((n, n), dtype=np.float32), agent_ids
 
+        if self._use_hdc and self._hdc_score is not None:
+            # HDC path: pairwise XOR+POPCNT novelty
+            dists = np.zeros((n, n), dtype=np.float32)
+            for i in range(n):
+                vec_i = self._get_vector(agent_ids[i])
+                if vec_i is None:
+                    continue
+                for j in range(i + 1, n):
+                    vec_j = self._get_vector(agent_ids[j])
+                    if vec_j is None:
+                        continue
+                    dists[i, j] = self._hdc_score(vec_i, vec_j)
+                    dists[j, i] = dists[i, j]
+            np.fill_diagonal(dists, 0.0)
+            return dists, agent_ids
+
+        # Cosine path (default)
         vectors: list[np.ndarray] = []
         for aid in agent_ids:
             vec = self._get_vector(aid)

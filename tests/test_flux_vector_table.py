@@ -301,3 +301,76 @@ class TestGetVector:
             vec = vector_table._get_vector(aid)
             assert vec is not None
             assert len(vec) == 64
+
+
+class TestHDCIntegration:
+    """FluxVectorTable with use_hdc=True uses HDC novelty for diversity."""
+
+    def test_hdc_diversity_matrix_shape(self):
+        vt = FluxVectorTable(dim=64, bit_width=4, use_hdc=True)
+        rng = np.random.RandomState(42)
+        for i in range(5):
+            vec = rng.randn(64).astype(np.float32)
+            vt.add(AgentVector(agent_id=i, vector=vec.tolist(), fitness=0.5))
+        dists, agent_ids = vt.compute_diversity_matrix()
+        assert dists.shape == (5, 5)
+        assert len(agent_ids) == 5
+        np.testing.assert_allclose(np.diag(dists), 0.0, atol=1e-6)
+
+    def test_hdc_diversity_range(self):
+        vt = FluxVectorTable(dim=64, bit_width=4, use_hdc=True)
+        rng = np.random.RandomState(42)
+        for i in range(5):
+            vec = rng.randn(64).astype(np.float32)
+            vt.add(AgentVector(agent_id=i, vector=vec.tolist(), fitness=0.5))
+        dists, _ = vt.compute_diversity_matrix()
+        assert np.all(dists >= 0.0)
+        assert np.all(dists <= 1.0)
+
+    def test_hdc_correlates_with_cosine(self):
+        """HDC distance should be correlated with cosine distance."""
+        rng = np.random.RandomState(42)
+        vectors = [rng.randn(64).astype(np.float32) for _ in range(8)]
+
+        vt_cos = FluxVectorTable(dim=64, bit_width=4, use_hdc=False)
+        vt_hdc = FluxVectorTable(dim=64, bit_width=4, use_hdc=True)
+        for i, vec in enumerate(vectors):
+            av = AgentVector(agent_id=i, vector=vec.tolist(), fitness=0.5)
+            vt_cos.add(av)
+            vt_hdc.add(av)
+
+        dists_cos, _ = vt_cos.compute_diversity_matrix()
+        dists_hdc, _ = vt_hdc.compute_diversity_matrix()
+
+        # Extract upper-triangle (excluding diagonal)
+        triu = np.triu_indices(8, k=1)
+        cos_vals = dists_cos[triu]
+        hdc_vals = dists_hdc[triu]
+
+        # Pearson correlation should be reasonably high
+        if np.std(cos_vals) > 1e-6 and np.std(hdc_vals) > 1e-6:
+            corr = np.corrcoef(cos_vals, hdc_vals)[0, 1]
+            assert corr > 0.5, f"HDC/cosine correlation {corr} too low"
+
+    def test_hdc_search_diverse_parents(self):
+        vt = FluxVectorTable(dim=64, bit_width=4, use_hdc=True)
+        rng = np.random.RandomState(42)
+        for i in range(5):
+            vec = rng.randn(64).astype(np.float32)
+            vt.add(AgentVector(agent_id=i, vector=vec.tolist(), fitness=0.5))
+        pairs = vt.search_diverse_parents(n_results=2)
+        assert len(pairs) == 2
+        for a, b in pairs:
+            assert a != b
+
+    def test_hdc_recommend_breed_pair(self):
+        vt = FluxVectorTable(dim=64, bit_width=4, use_hdc=True)
+        rng = np.random.RandomState(42)
+        for i in range(5):
+            vec = rng.randn(64).astype(np.float32)
+            vt.add(AgentVector(agent_id=i, vector=vec.tolist(), fitness=0.5))
+        pair = vt.recommend_breed_pair()
+        assert pair is not None
+        a, b = pair
+        assert a != b
+
