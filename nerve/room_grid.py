@@ -624,6 +624,10 @@ class RoomGrid:
         backend = _select_backend(self.n)
         return f"RoomGrid(n={self.n}, ticks={self.ticks}, active={int((self.activity>0).sum())}, backend={backend})"
 
+    def agent_count(self) -> int:
+        """Return the number of rooms that have fired at least once."""
+        return int((self.activity > 0).sum())
+
     @property
     def stats(self):
         a = int((self.activity > 0).sum())

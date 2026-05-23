@@ -90,20 +90,20 @@ class RoomGridPlatoObserver:
     def _write_diversity(self, grid: RoomGrid, tick: int):
         """Write diversity scores for the current room grid state."""
         try:
-            score = grid.diversity()
+            score = grid.diversity(use_hdc=False)
         except Exception:
             return None  # diversity() may fail if no agents
 
         payload = {
             "tick": tick,
             "room_count": grid.n,
-            "active_rooms": int((grid.activity > 0).sum()),
+            "active_rooms": grid.agent_count(),
             "diversity_score": float(score),
         }
         return self.bridge._make_tile(
             tile_id=f"rg-diversity-{tick}",
             name=f"RoomGrid diversity @ tick {tick}",
-            description=f"{grid.n} rooms, {int((grid.activity > 0).sum())} active, score={score:.4f}",
+            description=f"{grid.n} rooms, {grid.agent_count()} active, score={score:.4f}",
             payload=payload,
         )
 
@@ -133,8 +133,7 @@ class RoomGridPlatoObserver:
 
     def _write_occupancy(self, grid: RoomGrid, tick: int):
         """Write room occupancy counts."""
-        # RoomGrid uses activity array for occupancy
-        active_count = int((grid.activity > 0).sum())
+        active_count = grid.agent_count()
 
         payload = {
             "tick": tick,
