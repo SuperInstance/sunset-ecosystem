@@ -609,7 +609,62 @@ class RoomGrid:
     @property
     def stats(self):
         a = int((self.activity > 0).sum())
-        return {"rooms": self.n, "ticks": self.ticks, "active": a, "cold": self.n - a, "pct": f"{a/self.n*100:.1f}%"}
+        return {"rooms": self.n, "ticks": self.ticks, "active": a, "cold": self.n - a, "pct": f"{a/self.n*100:.1f}%", "diversity": self.diversity()}
+
+    def diversity(self, use_hdc: bool = True) -> float:
+        """Population diversity: mean pairwise distance between active rooms.
+
+        Computes the average Hamming (HDC) or cosine distance between all
+        pairs of rooms that have fired at least once.  Returns 0.0 when
+        fewer than 2 rooms are active.
+
+        Args:
+            use_hdc: When True, use HDC (XOR+POPCNT) Hamming distance.
+                When False, use cosine distance.  HDC is ~100-1000x
+                faster on AVX-512 hardware.
+
+        Returns:
+            Mean pairwise distance in [0, 1].  Higher = more diverse.
+        """
+        active = [i for i in range(self.n) if self.activity[i] > 0]
+        m = len(active)
+        if m < 2:
+            return 0.0
+
+        # Flatten each room's weights into a single vector
+        vectors: list[np.ndarray] = []
+        for i in active:
+            vec = np.concatenate([
+                self.w["w1"][i].ravel(),
+                self.w["w2"][i].ravel(),
+                self.w["w3"][i].ravel(),
+            ]).astype(np.float32)
+            vectors.append(vec)
+
+        if use_hdc:
+            try:
+                from swarm.hdc_novelty import hdc_novelty_score
+                total = 0.0
+                count = 0
+                for i in range(m):
+                    for j in range(i + 1, m):
+                        total += hdc_novelty_score(vectors[i], vectors[j])
+                        count += 1
+                return total / count if count else 0.0
+            except ImportError:
+                pass  # fall through to cosine
+
+        # Cosine fallback
+        vecs = np.array(vectors, dtype=np.float32)
+        norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        normalized = vecs / norms
+        sims = normalized @ normalized.T
+        sims = np.clip(sims, -1.0, 1.0)
+        dists = 1.0 - sims
+        # Upper triangle mean (excluding diagonal)
+        triu = np.triu_indices(m, k=1)
+        return float(dists[triu].mean())
 
 
 if __name__ == "__main__":
