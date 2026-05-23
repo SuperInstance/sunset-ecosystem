@@ -142,6 +142,34 @@ class _MockIdMapIndex:
 _mock_turbovec.IdMapIndex = _MockIdMapIndex  # type: ignore[attr-defined]
 sys.modules["turbovec"] = _mock_turbovec
 
+# ── Mock cocapn_traps before breeder_daemon_v2 import ──
+_mock_cocapn_traps = types.ModuleType("cocapn_traps")
+_mock_cocapn_traps_types = types.ModuleType("cocapn_traps.traps")
+_mock_diversity_trap = types.ModuleType("cocapn_traps.traps.diversity_collapse_trap")
+
+class _MockDiversityAlert:
+    def __init__(self, level, recommended_action):
+        self.level = level
+        self.recommended_action = recommended_action
+
+class _MockDiversityCollapseTrap:
+    def __init__(self, *args, **kwargs):
+        self._history = []
+    def record(self, diversity_score):
+        self._history.append(diversity_score)
+    def check(self):
+        if len(self._history) >= 3:
+            return _MockDiversityAlert("CRITICAL", "CROSS_SHIP_INJECTION")
+        if len(self._history) >= 2:
+            return _MockDiversityAlert("WARNING", "EMERGENCY_MUTATE")
+        return None
+
+_mock_diversity_trap.DiversityCollapseTrap = _MockDiversityCollapseTrap
+_mock_diversity_trap.DiversityAlert = _MockDiversityAlert
+sys.modules["cocapn_traps"] = _mock_cocapn_traps
+sys.modules["cocapn_traps.traps"] = _mock_cocapn_traps_types
+sys.modules["cocapn_traps.traps.diversity_collapse_trap"] = _mock_diversity_trap
+
 # Now safe to import sunset / swarm modules
 from sunset.plato_bridge import PlatoBridge
 from sunset.roomgrid_plato_observer import RoomGridPlatoObserver
