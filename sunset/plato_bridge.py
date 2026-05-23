@@ -159,7 +159,7 @@ class PlatoBridge:
     def write_lifecycle_event(
         self,
         agent_id: str,
-        phase: AgentPhase,
+        phase: Optional[Any] = None,
         reason: str = "",
     ) -> TrainingTile:
         """Emit a lifecycle transition tile for *agent_id*."""
@@ -168,24 +168,25 @@ class PlatoBridge:
         # If a previous lifecycle tile exists, supersede it.
         parent = ""
         old = self._store.get(tile_id)
+        phase_str = phase.value if phase is not None else "unknown"
         if old is not None:
             parent = old.tile_id
             old.transition(
                 TileLifecycle.SUPERSEDED,
-                reason=f"Phase changed to {phase.value}",
+                reason=f"Phase changed to {phase_str}",
                 lamport=self._clock.tick(),
             )
 
         payload = {
             "agent_id": agent_id,
-            "phase": phase.value,
+            "phase": phase_str,
             "reason": reason,
             "transition_time": time.time(),
         }
         tile = self._make_tile(
             tile_id=tile_id,
-            name=f"Lifecycle: {agent_id} → {phase.value}",
-            description=f"{agent_id} now in {phase.value}",
+            name=f"Lifecycle: {agent_id} → {phase_str}",
+            description=f"{agent_id} now in {phase_str}",
             payload=payload,
             tile_type=TileType.METRICS,
             parent_tile=parent,

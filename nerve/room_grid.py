@@ -398,6 +398,7 @@ class RoomGrid:
         self._flux_checker = None  # Optional FluxConstraintChecker
         self._compiler = None     # Optional RoomGridCompiler
         self._cognition_loop = None  # Optional CognitionLoop
+        self._plato_observer = None  # Optional RoomGridPlatoObserver
         self._last_fired_ids: list[int] = []  # stored for cognition observer
         # ── Cognition integration ────────────────────────────
         if agent_config is not None:
@@ -431,6 +432,14 @@ class RoomGrid:
                 compiler.grid = self
             else:
                 raise TypeError("compiler must be 'auto' or a RoomGridCompiler instance")
+
+    def attach_plato_observer(self, observer) -> None:
+        """Attach a PLATO tile observer for tick/lifecycle events."""
+        if hasattr(observer, "on_tick") and hasattr(observer, "on_agent_spawn"):
+            self._plato_observer = observer
+            log.info("PlatoObserver attached to RoomGrid(n=%d)", self.n)
+        else:
+            raise TypeError("Expected RoomGridPlatoObserver-like object")
 
     def attach_flux_checker(self, checker) -> None:
         """Attach a FLUX constraint checker for self-correcting behavior."""
@@ -494,6 +503,9 @@ class RoomGrid:
             # ── Cognition loop (compiled path) ─────────────
             if self._cognition_loop is not None:
                 self._cognition_loop.loop(self)
+            # ── PLATO observer ─────────────────────────────────
+            if self._plato_observer is not None:
+                self._plato_observer.on_tick(self, self.ticks, 0.0)
             return {"fired": fired_count, "ids": fired, "tick": self.ticks}
         # ── Fallback vectorised novelty + chaos gating ───────
         nv = batch_novelty(latents, self._hist, self._hist_count, self._hist_idx, self._hist_max)
@@ -510,6 +522,9 @@ class RoomGrid:
         # ── Cognition loop ───────────────────────────────────
         if self._cognition_loop is not None:
             self._cognition_loop.loop(self)
+        # ── PLATO observer ─────────────────────────────────
+        if self._plato_observer is not None:
+            self._plato_observer.on_tick(self, self.ticks, 0.0)
         return {"fired": int(fired_mask.sum()), "ids": fired, "tick": self.ticks}
 
     def tick_batch(self, signals):
@@ -552,6 +567,9 @@ class RoomGrid:
             # ── Cognition loop (batch) ─────────────────────
             if self._cognition_loop is not None:
                 self._cognition_loop.loop(self)
+            # ── PLATO observer (batch) ─────────────────────
+            if self._plato_observer is not None:
+                self._plato_observer.on_tick(self, self.ticks, 0.0)
             results.append({"fired": int(fired_mask.sum()), "ids": fired, "tick": self.ticks})
         return results
 
