@@ -5,6 +5,8 @@ import time
 
 import pytest
 
+pytest.importorskip("plato_core", reason="plato_core not installed")
+
 from plato_core.types import (
     LamportClock,
     TileLifecycle,
