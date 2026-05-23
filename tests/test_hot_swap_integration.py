@@ -160,7 +160,7 @@ class TestHotSwap:
     def test_hot_swap_success(self):
         grid = MockGrid()
         compiler = MockCompiler(fast=True)
-        swap = CompilerHotSwap(grid, compiler=compiler)
+        swap = CompilerHotSwap(grid, compiler=compiler, ab_test_ticks=50)
         result = swap.hot_swap()
         assert result.success
         assert swap._swap_count == 1
@@ -198,7 +198,7 @@ class TestStatus:
     def test_status_after_swap(self):
         grid = MockGrid()
         compiler = MockCompiler(fast=True)
-        swap = CompilerHotSwap(grid, compiler=compiler)
+        swap = CompilerHotSwap(grid, compiler=compiler, ab_test_ticks=50)
         swap.hot_swap()
         status = swap.get_status()
         assert status["compile_count"] == 1
