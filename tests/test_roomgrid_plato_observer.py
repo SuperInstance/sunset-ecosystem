@@ -62,7 +62,7 @@ _mock_plato_types.LamportClock = _MockLamportClock
 _mock_plato_types.TileLifecycle = _MockTileLifecycle
 _mock_plato_types.TileType = _MockTileType
 _mock_plato_types.TrainingTile = _MockTrainingTile
-_mock_plato_types.content_hash = lambda x: "mock-hash"
+_mock_plato_types.content_hash = lambda x: f"mock-hash-{hash(str(x)) & 0xFFFFFF}"
 
 _mock_plato.types = _mock_plato_types
 sys.modules["plato_core"] = _mock_plato

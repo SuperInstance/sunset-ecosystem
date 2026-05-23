@@ -80,6 +80,29 @@ class _MockIdMapIndex:
 _mock_turbovec.IdMapIndex = _MockIdMapIndex  # type: ignore[attr-defined]
 sys.modules["turbovec"] = _mock_turbovec
 
+# ── Mock cocapn_traps before swarm.breeder_daemon_v2 import ──
+_mock_cocapn_traps = types.ModuleType("cocapn_traps")
+_mock_cocapn_traps_traps = types.ModuleType("cocapn_traps.traps")
+_mock_cocapn_traps_diversity = types.ModuleType("cocapn_traps.traps.diversity_collapse_trap")
+
+class _MockAlert:
+    level = "WARNING"
+    recommended_action = "mock alert"
+
+class _MockDiversityCollapseTrap:
+    def __init__(self, bus=None):
+        self._history = []
+    def record(self, value: float) -> None:
+        self._history.append(value)
+    def check(self):
+        return None  # no alerts in tests
+
+_mock_cocapn_traps_diversity.DiversityCollapseTrap = _MockDiversityCollapseTrap
+_mock_cocapn_traps_diversity.Alert = _MockAlert
+sys.modules["cocapn_traps"] = _mock_cocapn_traps
+sys.modules["cocapn_traps.traps"] = _mock_cocapn_traps_traps
+sys.modules["cocapn_traps.traps.diversity_collapse_trap"] = _mock_cocapn_traps_diversity
+
 # Now safe to import swarm modules
 from nerve.room_grid import RoomGrid
 from swarm.breeder_daemon_v2 import (
