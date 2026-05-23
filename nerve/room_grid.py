@@ -187,8 +187,14 @@ class PersistentRustGrid:
 _dispatch = {}
 
 
-def _select_backend(n: int):
-    """Return the fastest backend for `n` rooms."""
+def _select_backend(n: int, d: int = 64, h: int = 32, l: int = 16):
+    """Return the fastest backend for this room count and dimensions.
+
+    Rust/CUDA backends are compiled with fixed dimensions (64→32→16).
+    If dimensions differ, fall back to numpy to avoid segfaults.
+    """
+    if d != 64 or h != 32 or l != 16:
+        return "numpy"
     if _BACKEND == "cuda" and n >= _CUDA_THRESHOLD:
         return "cuda"
     if _BACKEND == "rust_persistent":
@@ -437,7 +443,11 @@ class RoomGrid:
 
     def _forward(self, x):
         """Auto-dispatch to fastest backend for this room count."""
-        backend = _select_backend(self.n)
+        # Infer dimensions from weights
+        d = self.w["w1"].shape[1]  # (n, d, h)
+        h = self.w["w1"].shape[2]
+        l = self.w["w3"].shape[1]  # (n, l, l)
+        backend = _select_backend(self.n, d, h, l)
 
         if backend == "cuda":
             if not hasattr(self, "_cuda_grid"):
@@ -449,7 +459,7 @@ class RoomGrid:
             if not hasattr(self, "_rust_grid"):
                 self._rust_grid = PersistentRustGrid(self.n, self.w)
                 # Warm-up tick to amortize Rust/Numba JIT cold-start cost
-                self._rust_grid.tick(np.zeros(64, dtype=np.float32))
+                self._rust_grid.tick(np.zeros(d, dtype=np.float32))
             return self._rust_grid.tick(x)
 
         if backend == "rust_oneshot":
