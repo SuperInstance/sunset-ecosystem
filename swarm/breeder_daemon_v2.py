@@ -48,6 +48,7 @@ from swarm.inheritance_tax import InheritanceTax
 from swarm.crdt_merge import CRDTMergeEngine, Agent as CRDTAgent
 from swarm.lineage_checker import LineageSanityChecker, Agent as LineageAgent
 from swarm.trajectory_monitor import TrajectoryMonitor, SecurityEvent
+from cocapn_traps.traps.diversity_collapse_trap import DiversityCollapseTrap
 from logos.signed_wal import SignedWAL, WALEntry
 from logos.decision_journal import log_spawn, log_sunset, log_breed
 
@@ -407,6 +408,9 @@ class BreederDaemonV2:
 
         # Thermal hysteresis counter (how many ticks we've been blocked)
         self._thermal_blocked_ticks: int = 0
+
+        # Diversity collapse monitor (hooked after each breeding round)
+        self._diversity_trap = DiversityCollapseTrap(bus=mesh)
 
     # ── public API ──────────────────────────────────────────
 
@@ -822,6 +826,19 @@ class BreederDaemonV2:
             (parent_a, parent_b),
             generation,
         )
+
+        # ── Diversity collapse hook ───────────────────────────────
+        if self._vector_table is not None:
+            diversity = self.diversity_score
+            self._diversity_trap.record(diversity)
+            alert = self._diversity_trap.check()
+            if alert is not None:
+                logger.warning(
+                    "DIVERSITY %s (tick=%d): %s",
+                    alert.level,
+                    tick,
+                    alert.recommended_action,
+                )
 
         return transitions
 
