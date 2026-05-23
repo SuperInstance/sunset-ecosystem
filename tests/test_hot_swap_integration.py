@@ -21,6 +21,11 @@ class MockGrid:
     def tick(self) -> None:
         self.tick_count += 1
         self.ticks += 1
+        # Realistic workload so A/B timing isn't dominated by call overhead
+        for i in range(self.n):
+            self.activity[i] = (
+                self.activity[i] * 0.9 + self.latents[i] * self.chaos * 0.1
+            )
 
 
 class MockCompiler:
@@ -44,7 +49,9 @@ class MockCompiledGrid:
     def tick(self) -> None:
         if not self.fast:
             time.sleep(0.001)
-        self._grid.tick()
+        # Fast path: skip the per-element loop, just bump counters
+        self._grid.tick_count += 1
+        self._grid.ticks += 1
 
 
 class TestEnableDisable:
