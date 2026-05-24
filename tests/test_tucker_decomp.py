@@ -40,12 +40,12 @@ def _make_smooth_tensor(dims: tuple[int, int, int]) -> np.ndarray:
 
 @pytest.fixture
 def dims():
-    return (64, 64, 64)
+    return (32, 32, 32)
 
 
 @pytest.fixture
 def ranks():
-    return (16, 16, 16)
+    return (8, 8, 8)
 
 
 @pytest.fixture
