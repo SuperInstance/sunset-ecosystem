@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CocapnFleetA2AMetronomeTasks",
+  "description": "A2A task schema for distributed metronome sync across the Cocapn fleet.",
+  "type": "object",
+  "required": ["id", "type", "input"],
+  "properties": {
+    "id": { "type": "string", "description": "Unique task identifier" },
+    "type": {
+      "type": "string",
+      "enum": ["beat_sync", "bpm_negotiation", "drift_alert", "tick_as_task"],
+      "description": "A2A metronome task type"
+    },
+    "input": { "type": "object" }
+  },
+  "oneOf": [
+    {
+      "title": "BeatSyncTask",
+      "properties": {
+        "type": { "const": "beat_sync" },
+        "input": {
+          "type": "object",
+          "required": ["node_id", "target_beat", "timestamp_ns", "bpm"],
+          "properties": {
+            "node_id":     { "type": "string", "description": "Source node identifier" },
+            "target_beat": { "type": "integer", "minimum": 0, "description": "Beat number to sync to" },
+            "timestamp_ns":{ "type": "integer", "minimum": 1, "description": "Wall-clock timestamp in nanoseconds when the beat occurred" },
+            "bpm":         { "type": "number", "exclusiveMinimum": 0, "description": "Current BPM of the source node" }
+          }
+        }
+      }
+    },
+    {
+      "title": "BPMNegotiationTask",
+      "properties": {
+        "type": { "const": "bpm_negotiation" },
+        "input": {
+          "type": "object",
+          "required": ["node_id", "proposed_bpm", "ramp_ms", "response_action"],
+          "properties": {
+            "node_id":          { "type": "string" },
+            "proposed_bpm":     { "type": "number", "exclusiveMinimum": 0 },
+            "ramp_ms":          { "type": "integer", "minimum": 0, "description": "Ramp duration for BPM change" },
+            "reason":           { "type": "string", "description": "Human-readable rationale" },
+            "response_action":  { "type": "string", "enum": ["propose", "accept", "counter", "reject"] },
+            "counter_bpm":      { "type": "number", "description": "Counter-offer BPM (required when action=counter)" }
+          }
+        }
+      }
+    },
+    {
+      "title": "DriftAlertTask",
+      "properties": {
+        "type": { "const": "drift_alert" },
+        "input": {
+          "type": "object",
+          "required": ["node_id", "drift_ms", "drift_beats", "threshold_ms", "requested_action"],
+          "properties": {
+            "node_id":           { "type": "string" },
+            "drift_ms":          { "type": "number", "minimum": 0, "description": "Measured drift in milliseconds" },
+            "drift_beats":       { "type": "number", "minimum": 0, "description": "Measured drift in whole beats" },
+            "threshold_ms":      { "type": "number", "exclusiveMinimum": 0, "description": "Configured drift tolerance" },
+            "requested_action":  { "type": "string", "enum": ["phase_nudge", "skip_jump", "partition"] },
+            "target_beat":       { "type": "integer", "description": "Beat number at which drift was observed" }
+          }
+        }
+      }
+    },
+    {
+      "title": "TickAsTask",
+      "properties": {
+        "type": { "const": "tick_as_task" },
+        "input": {
+          "type": "object",
+          "required": ["beat_number", "force"],
+          "properties": {
+            "beat_number": { "type": "integer", "minimum": 0 },
+            "signal":      { "type": "array", "items": { "type": "number" }, "description": "64-element float32 array (optional; zero-filled if absent)" },
+            "room_ids":    { "type": "array", "items": { "type": "integer", "minimum": 0 }, "description": "Subset of room IDs to tick (optional; full grid if absent)" },
+            "force":       { "type": "boolean", "description": "Force tick even if beat is paused" }
+          }
+        }
+      }
+    }
+  ],
+  "resultSchema": {
+    "type": "object",
+    "required": ["status", "task_type", "beat_number", "payload"],
+    "properties": {
+      "status":      { "type": "string", "enum": ["completed", "failed", "rejected"] },
+      "task_type":   { "type": "string" },
+      "beat_number": { "type": "integer" },
+      "payload":     { "type": "object" },
+      "error":       { "type": ["string", "null"] }
+    }
+  }
+}
