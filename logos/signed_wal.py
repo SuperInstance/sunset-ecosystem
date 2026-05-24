@@ -41,6 +41,8 @@ class WALEntry:
     vector_hash: str  # SHA-256 of agent vector
     parent_ids: list[int]
     generation: int
+    node_id: str = ""  # originating node (e.g. fleet node name)
+    room_id: str = ""  # room / zone where event occurred
 
 
 @dataclass(frozen=True)
@@ -209,6 +211,8 @@ class SignedWAL:
                     "vector_hash": se.entry.vector_hash,
                     "parent_ids": se.entry.parent_ids,
                     "generation": se.entry.generation,
+                    "node_id": se.entry.node_id,
+                    "room_id": se.entry.room_id,
                 },
                 "signature": se.signature.hex(),
                 "previous_hash": se.previous_hash,
@@ -227,6 +231,8 @@ class SignedWAL:
             vector_hash=data["entry"]["vector_hash"],
             parent_ids=data["entry"]["parent_ids"],
             generation=data["entry"]["generation"],
+            node_id=data["entry"].get("node_id", ""),
+            room_id=data["entry"].get("room_id", ""),
         )
         return SignedEntry(
             entry=entry,
