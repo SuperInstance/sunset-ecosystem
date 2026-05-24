@@ -2,3 +2,9 @@ __pycache__/
 *.pyc
 .pytest_cache/
 *.egg-info/
+
+# Dataset artifacts
+data/
+*.tar.gz
+
+nerve/libjepa_cuda.so

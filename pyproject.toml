@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "sunset-ecosystem"
@@ -20,16 +20,13 @@ classifiers = [
 
 [project.optional-dependencies]
 gpu = ["torch", "numpy"]
+npu = ["onnx", "onnxruntime", "torch", "numpy"]
 dev = ["pytest>=7.0", "pytest-cov"]
-ecosystem = [
-    "eisenstein-embed @ file:///home/phoenix/.openclaw/workspace/eisenstein-embed",
-    "device-router @ file:///home/phoenix/.openclaw/workspace/device-router",
-    "tensor-spline @ file:///home/phoenix/.openclaw/workspace/tensor-spline",
-    "triplet-miner @ file:///home/phoenix/.openclaw/workspace/triplet-miner",
-]
+# ecosystem deps removed - local file:// URLs not allowed on PyPI
+vecsearch = ["turbovec>=0.1.0", "numpy"]
 
 [tool.setuptools.packages.find]
-include = ["ethos*", "pathos*", "logos*", "sunset*"]
+include = ["ethos*", "pathos*", "logos*", "sunset*", "swarm*", "nexus*", "grammar*", "nerve*", "triage*", "flux_compat*", "superinstance*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

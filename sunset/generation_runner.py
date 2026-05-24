@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 from sunset.agent import Agent, AgentPhase, ResourceBudget
@@ -90,7 +90,7 @@ class GenerationRunner:
         """
         ethos = ethos or EthosProfile()
         gen = generation if generation is not None else self._current_generation
-        started = datetime.utcnow()
+        started = datetime.now(timezone.utc)
 
         # 1. Spawn N agents
         agents = self._spawn_agents(gen, ethos.parallel_capacity, ethos.budget_per_agent)
@@ -129,7 +129,7 @@ class GenerationRunner:
             mean_score=sum(scores) / len(scores) if scores else 0.0,
             children_spawned=children_count,
             started_at=started,
-            finished_at=datetime.utcnow(),
+            finished_at=datetime.now(timezone.utc),
         )
 
         self._current_generation = gen + 1

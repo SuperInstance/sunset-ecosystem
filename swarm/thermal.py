@@ -18,7 +18,10 @@ __all__ = [
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from swarm.thermal_auction import Bid, Allocation
 
 
 class DeviceType(Enum):
@@ -79,11 +82,16 @@ class ThermalBudget:
 
     Args:
         budgets: Optional per-device budgets. Defaults to DEFAULT_BUDGETS.
+        use_auction: If True, spawn() queues bids and a VCG auction is run
+            every `auction_interval` ticks instead of first-come-first-served.
+        auction_interval: Number of ticks between auction runs (default: 1).
     """
 
     def __init__(
         self,
         budgets: dict[DeviceType, int] | None = None,
+        use_auction: bool = False,
+        auction_interval: int = 1,
     ) -> None:
         config = budgets if budgets is not None else DEFAULT_BUDGETS
         self._devices: dict[DeviceType, DeviceBudget] = {
@@ -93,10 +101,18 @@ class ThermalBudget:
         self._allocations: dict[str, DeviceType] = {}  # agent_id → device
         self._lock = threading.Lock()
 
+        # Auction state
+        self._use_auction = use_auction
+        self._auction_interval = max(1, auction_interval)
+        self._auction_tick_counter: int = 0
+        self._bid_queue: list = []  # list[Bid] — populated lazily to avoid circular import
+        self._last_auction_results: dict[str, "Allocation"] = {}
+
     def __repr__(self) -> str:
         total = sum(d.current_agents for d in self._devices.values())
         max_total = sum(d.max_agents for d in self._devices.values())
-        return f"ThermalBudget({total}/{max_total} agents)"
+        mode = "auction" if self._use_auction else "direct"
+        return f"ThermalBudget({total}/{max_total} agents, mode={mode})"
 
     @property
     def total_max(self) -> int:
@@ -107,6 +123,22 @@ class ThermalBudget:
     def total_current(self) -> int:
         """Total currently allocated agents."""
         return sum(d.current_agents for d in self._devices.values())
+
+    @property
+    def use_auction(self) -> bool:
+        """Whether auction mode is enabled."""
+        return self._use_auction
+
+    @property
+    def auction_interval(self) -> int:
+        """Ticks between auction runs."""
+        return self._auction_interval
+
+    @property
+    def last_auction_results(self) -> dict[str, "Allocation"]:
+        """Results of the most recent auction (agent_id → Allocation)."""
+        with self._lock:
+            return dict(self._last_auction_results)
 
     def device_budget(self, device: DeviceType) -> DeviceBudget:
         """Get the budget for a specific device."""
@@ -241,3 +273,130 @@ class ThermalBudget:
             for db in self._devices.values():
                 db.current_agents = 0
             self._allocations.clear()
+            self._bid_queue.clear()
+            self._last_auction_results.clear()
+
+    # ── Auction integration ──────────────────────────────────────────
+
+    def spawn(
+        self,
+        agent_id: str,
+        preferred_device: DeviceType,
+        fallback_devices: list[DeviceType] | None = None,
+        bid_value: float | None = None,
+        fitness: float | None = None,
+    ) -> tuple[bool, DeviceType | None]:
+        """Allocate a slot, using VCG auction if auction mode is enabled.
+
+        When `use_auction` is False (default), this behaves exactly like
+        `spawn_with_thermal_check` — first-come-first-served.
+
+        When `use_auction` is True, the bid is queued and the caller
+        should call `tick()` periodically to run the auction and apply
+        allocations.
+
+        Args:
+            agent_id: Unique agent identifier.
+            preferred_device: First choice device.
+            fallback_devices: Ordered list of fallback devices.
+            bid_value: Agent's private value for the slot (required in
+                auction mode; used directly as the bid value).
+            fitness: Current fitness score (used for tie-breaking and
+                audit in auction mode).
+
+        Returns:
+            (success, allocated_device). In auction mode, success is True
+            if the bid was queued. The actual allocation happens on the
+            next `tick()` that triggers an auction run.
+        """
+        if not self._use_auction:
+            return self.spawn_with_thermal_check(agent_id, preferred_device, fallback_devices)
+
+        # Auction mode: queue a bid
+        from swarm.thermal_auction import Bid
+
+        value = bid_value if bid_value is not None else (fitness or 0.0)
+        bid = Bid(
+            agent_id=agent_id,
+            device_type=preferred_device,
+            value=float(value),
+            fitness=float(fitness or 0.0),
+        )
+        with self._lock:
+            self._bid_queue.append(bid)
+        return (True, None)
+
+    def tick(self) -> dict[str, "Allocation"]:
+        """Increment tick counter and run auction if interval elapsed.
+
+        Returns:
+            Auction results from this tick (empty if no auction ran).
+        """
+        with self._lock:
+            self._auction_tick_counter += 1
+            if self._auction_tick_counter % self._auction_interval != 0:
+                return {}
+
+            if not self._bid_queue:
+                return {}
+
+            # Run VCG auction
+            from swarm.thermal_auction import VCGAuction, Allocation
+
+            auction = VCGAuction(self)
+            bids = list(self._bid_queue)
+            self._bid_queue.clear()
+
+            results = auction.run_auction(bids)
+
+            # Apply winning allocations to the budget
+            for agent_id, allocation in results.items():
+                db = self._devices.get(allocation.device_type)
+                if db and db.current_agents < db.max_agents:
+                    db.current_agents += 1
+                    self._allocations[agent_id] = allocation.device_type
+
+            self._last_auction_results = dict(results)
+            return dict(results)
+
+    def spawn_with_thermal_check(
+        self,
+        agent_id: str,
+        preferred_device: DeviceType,
+        fallback_devices: list[DeviceType] | None = None,
+    ) -> tuple[bool, DeviceType | None]:
+        """Allocate a slot, falling back to other devices if preferred is full.
+
+        Per SPEC-BREEDER §4: try preferred device first, then fallbacks,
+        then reject if all full.
+
+        Args:
+            agent_id: Unique agent identifier.
+            preferred_device: First choice device.
+            fallback_devices: Ordered list of fallback devices (defaults to
+                [GPU, CPU, IGPU, NPU] with preferred_device removed).
+
+        Returns:
+            (success, allocated_device) — allocated_device is None if no slot.
+        """
+        # Build ordered candidate list
+        all_devices = list(DeviceType)
+        candidates = [preferred_device]
+        fallbacks = fallback_devices or [d for d in all_devices if d != preferred_device]
+        for d in fallbacks:
+            if d not in candidates:
+                candidates.append(d)
+
+        with self._lock:
+            # Already allocated?
+            if agent_id in self._allocations:
+                return (False, self._allocations[agent_id])
+
+            for device in candidates:
+                db = self._devices.get(device)
+                if db and db.current_agents < db.max_agents:
+                    db.current_agents += 1
+                    self._allocations[agent_id] = device
+                    return (True, device)
+
+            return (False, None)

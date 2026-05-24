@@ -1,0 +1,183 @@
+{
+  "name": "fleet-flux-constraint-checker",
+  "version": "3.0.0",
+  "description": "Formally proven constraint checker with proof certificates. Verifies that room latents, routing weights, and hardware states stay within declared bounds. FLUX-certified.",
+  "url": "http://nexus.fleet.local:4047/flux",
+  "capabilities": {
+    "check_constraints": {
+      "description": "Verify a batch of values against FLUX constraints (bounds, L2 norm, variance). Returns a proof certificate for each check or a violation report with remediation hints.",
+      "input": {
+        "type": "ConstraintCheckRequest",
+        "properties": {
+          "values": {
+            "type": "array",
+            "items": { "type": "array", "items": { "type": "number" } },
+            "description": "Batch of vectors to check (shape: [N, D])",
+            "required": true
+          },
+          "preset": {
+            "type": "string",
+            "enum": ["neural_bounds", "safe_mode", "exploration", "custom"],
+            "description": "Constraint preset (default: 'neural_bounds')",
+            "required": false
+          },
+          "custom_bounds": {
+            "type": "object",
+            "properties": {
+              "min_value": { "type": "number" },
+              "max_value": { "type": "number" },
+              "max_l2_norm": { "type": "number" },
+              "max_variance": { "type": "number" }
+            },
+            "description": "Required only when preset='custom'",
+            "required": false
+          },
+          "domain": {
+            "type": "string",
+            "description": "Domain label for the check (e.g. 'aviation', 'neural', 'thermal')",
+            "required": false
+          },
+          "generate_certificate": {
+            "type": "boolean",
+            "description": "If true, include a ProofCertificate artefact (default: true)",
+            "required": false
+          }
+        }
+      },
+      "output": {
+        "type": "ConstraintCheckResult",
+        "properties": {
+          "pass": { "type": "boolean", "description": "True if all values pass all constraints" },
+          "checked_count": { "type": "integer" },
+          "violation_count": { "type": "integer" },
+          "violations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": { "type": "integer", "description": "Batch index of the violating vector" },
+                "constraint": { "type": "string", "enum": ["bounds", "l2_norm", "variance"] },
+                "expected": { "type": "number" },
+                "actual": { "type": "number" },
+                "severity": { "type": "string", "enum": ["warning", "error", "critical"] },
+                "remediation": { "type": "string", "description": "Suggested fix (e.g. 'clip to [-10, 10]')" }
+              }
+            }
+          },
+          "certificates": {
+            "type": "array",
+            "description": "One certificate per checked item if generate_certificate=true",
+            "items": {
+              "type": "object",
+              "properties": {
+                "result": { "type": "string", "enum": ["PASS", "FAIL"] },
+                "hash": { "type": "string" },
+                "timestamp": { "type": "string", "format": "date-time" },
+                "verified": { "type": "boolean" }
+              }
+            }
+          },
+          "preset_used": { "type": "string" }
+        }
+      }
+    },
+    "get_violations": {
+      "description": "Return all constraint violations observed since a given beat or across all history. Supports filtering by severity, domain, and constraint type.",
+      "input": {
+        "type": "ViolationsRequest",
+        "properties": {
+          "since_beat": { "type": "integer", "description": "Return violations from this beat onward (default: all time)", "required": false },
+          "severity": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["warning", "error", "critical"] },
+            "description": "Filter by severity (default: all)",
+            "required": false
+          },
+          "constraint_type": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["bounds", "l2_norm", "variance"] },
+            "description": "Filter by constraint type (default: all)",
+            "required": false
+          },
+          "domain": { "type": "string", "description": "Filter by domain label", "required": false },
+          "limit": { "type": "integer", "description": "Max violations to return (default: 100)", "required": false }
+        }
+      },
+      "output": {
+        "type": "ViolationsResult",
+        "properties": {
+          "violations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "beat": { "type": "integer" },
+                "index": { "type": "integer" },
+                "constraint": { "type": "string" },
+                "expected": { "type": "number" },
+                "actual": { "type": "number" },
+                "severity": { "type": "string" },
+                "domain": { "type": "string" },
+                "remediation": { "type": "string" }
+              }
+            }
+          },
+          "total": { "type": "integer", "description": "Total violations matching the filter" },
+          "unique_indices": { "type": "integer", "description": "Number of distinct batch indices with violations" }
+        }
+      }
+    },
+    "apply_feedback": {
+      "description": "Apply FLUX feedback to a RoomGrid or other target system. Increases chaos on violating rooms, optionally triggers rebirth for persistently violating rooms, and returns the actions taken.",
+      "input": {
+        "type": "FeedbackRequest",
+        "properties": {
+          "target_id": { "type": "string", "description": "ID of the target system (e.g. room grid node ID)", "required": true },
+          "violations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "room_id": { "type": "integer" },
+                "constraint": { "type": "string" },
+                "severity": { "type": "string" }
+              }
+            },
+            "description": "Specific violations to act on (default: use cached violations from last check)",
+            "required": false
+          },
+          "chaos_delta": { "type": "number", "description": "Amount to increase chaos per violation (default: 0.1)", "required": false },
+          "rebirth_threshold": { "type": "integer", "description": "Rebirth room after this many consecutive violations (default: 3)", "required": false },
+          "dry_run": { "type": "boolean", "description": "If true, report what would be done without doing it (default: false)", "required": false }
+        }
+      },
+      "output": {
+        "type": "FeedbackResult",
+        "properties": {
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "room_id": { "type": "integer" },
+                "action": { "type": "string", "enum": ["chaos_increase", "rebirth", "none"] },
+                "chaos_before": { "type": "number" },
+                "chaos_after": { "type": "number" },
+                "consecutive_violations": { "type": "integer" }
+              }
+            }
+          },
+          "rebirths_triggered": { "type": "integer" },
+          "chaos_adjustments": { "type": "integer" },
+          "dry_run": { "type": "boolean" }
+        }
+      }
+    }
+  },
+  "authentication": {
+    "scheme": "x509",
+    "required": true
+  },
+  "defaultInputContentType": "application/json",
+  "defaultOutputContentType": "application/json"
+}

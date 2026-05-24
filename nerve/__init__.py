@@ -8,6 +8,10 @@ between raw signals and reasoning agents.
 from .fiber import NerveFiber, FiberState, SensoryTile
 from .routing import RoutingLayer, Route, HebbianChannel
 from .adaptation import AdaptationEngine, ShoeTracker
+from .templates import AgentTemplate, TemplateRegistry, BUILTIN_TEMPLATES
+from .topology import NerveTopology, TickResult
+from .metronome_bridge import MetronomeBridge
+from .metronome import LocalMetronome, MetronomeScheduler, RandomSignalSource, SignalSource
 
 __all__ = [
     "NerveFiber",
@@ -18,4 +22,14 @@ __all__ = [
     "HebbianChannel",
     "AdaptationEngine",
     "ShoeTracker",
+    "AgentTemplate",
+    "TemplateRegistry",
+    "BUILTIN_TEMPLATES",
+    "LocalMetronome",
+    "MetronomeScheduler",
+    "RandomSignalSource",
+    "SignalSource",
+    "NerveTopology",
+    "TickResult",
+    "MetronomeBridge",
 ]

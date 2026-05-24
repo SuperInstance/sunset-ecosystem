@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tide Pool — Fleet Ambient Visualization</title>
+<style>
+  :root {
+    --deep: #0a1628;
+    --mid: #1a3a5c;
+    --shallow: #2dd4bf;
+    --bright: #67e8f9;
+    --surface: #ffffff;
+    --warm: #f97316;
+    --hot: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--deep);
+    color: var(--bright);
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  header {
+    text-align: center;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--mid);
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-size: clamp(1.2rem, 4vw, 2rem);
+    color: var(--surface);
+    text-shadow: 0 0 10px var(--shallow), 0 0 20px var(--bright);
+  }
+  header .subtitle {
+    color: var(--shallow);
+    font-size: 0.85rem;
+    margin-top: 0.3rem;
+    opacity: 0.8;
+  }
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .metric {
+    background: linear-gradient(135deg, var(--mid), var(--deep));
+    border: 1px solid rgba(45, 212, 191, 0.15);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .metric:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(45, 212, 191, 0.2);
+  }
+  .metric .value {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--surface);
+    text-shadow: 0 0 8px var(--shallow);
+  }
+  .metric .label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--shallow);
+    margin-top: 0.3rem;
+  }
+  .hex-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: rgba(10, 22, 40, 0.5);
+    border-radius: 16px;
+    border: 1px solid rgba(45, 212, 191, 0.1);
+  }
+  .hex {
+    width: clamp(28px, 6vw, 48px);
+    height: clamp(28px, 6vw, 48px);
+    background: var(--mid);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: background 0.5s, filter 0.5s;
+    cursor: pointer;
+  }
+  .hex.active {
+    background: var(--shallow);
+    filter: drop-shadow(0 0 6px var(--bright));
+  }
+  .hex.glow {
+    background: var(--bright);
+    filter: drop-shadow(0 0 10px var(--surface));
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .hex .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: 0 0 4px var(--surface);
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(0.9); }
+  }
+  .thermal-bars {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .thermal-device {
+    background: var(--deep);
+    border: 1px solid rgba(45, 212, 191, 0.1);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+  }
+  .thermal-device .dev-name {
+    font-size: 0.75rem;
+    color: var(--shallow);
+    margin-bottom: 0.4rem;
+  }
+  .thermal-device .bar-track {
+    height: 6px;
+    background: var(--mid);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .thermal-device .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s, background 0.5s;
+  }
+  .thermal-device .bar-fill.cool { background: var(--shallow); }
+  .thermal-device .bar-fill.warm { background: var(--warm); }
+  .thermal-device .bar-fill.hot { background: var(--hot); }
+  .events {
+    background: rgba(10, 22, 40, 0.6);
+    border-radius: 12px;
+    padding: 1rem;
+    border: 1px solid rgba(45, 212, 191, 0.1);
+  }
+  .events h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--shallow);
+    margin-bottom: 0.75rem;
+  }
+  .event-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid rgba(45, 212, 191, 0.05);
+    font-size: 0.85rem;
+  }
+  .event-item:last-child { border-bottom: none; }
+  .event-type {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 0.5rem;
+  }
+  .event-type.breed { background: rgba(45, 212, 191, 0.15); color: var(--shallow); }
+  .event-type.sunset { background: rgba(239, 68, 68, 0.15); color: var(--hot); }
+  .event-type.error { background: rgba(249, 115, 22, 0.15); color: var(--warm); }
+  .event-type.info { background: rgba(103, 232, 249, 0.1); color: var(--bright); }
+  .top-agents {
+    margin-top: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+  }
+  .agent-card {
+    background: linear-gradient(135deg, var(--mid), var(--deep));
+    border: 1px solid rgba(45, 212, 191, 0.1);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .agent-card .agent-id {
+    font-size: 0.8rem;
+    color: var(--bright);
+  }
+  .agent-card .agent-domain {
+    font-size: 0.7rem;
+    color: var(--shallow);
+    opacity: 0.8;
+  }
+  .agent-card .agent-fit {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--surface);
+  }
+  footer {
+    text-align: center;
+    padding: 1rem 0;
+    font-size: 0.7rem;
+    color: rgba(45, 212, 191, 0.4);
+    border-top: 1px solid var(--mid);
+    margin-top: 1rem;
+  }
+  @media (max-width: 480px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .hex { width: 24px; height: 24px; }
+    .agent-card { padding: 0.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Tide Pool</h1>
+    <div class="subtitle">Fleet ambient visualization — <span id="refresh-timer">5</span>s refresh</div>
+  </header>
+
+  <section class="metrics" id="metrics">
+    <!-- injected by JS -->
+  </section>
+
+  <section class="hex-grid" id="hex-grid">
+    <!-- injected by JS -->
+  </section>
+
+  <section class="thermal-bars" id="thermal-bars">
+    <!-- injected by JS -->
+  </section>
+
+  <section class="events">
+    <h2>Recent Events</h2>
+    <div id="events-list"><!-- injected by JS --></div>
+  </section>
+
+  <section class="top-agents" id="top-agents">
+    <!-- injected by JS -->
+  </section>
+
+  <footer>
+    Cocapn Fleet · Tide Pool Visualization · Experiment: Ambient Awareness
+  </footer>
+</div>
+
+<script>
+  const DATA = {{SNAPSHOT_JSON}};
+
+  function renderMetrics(data) {
+    const el = document.getElementById('metrics');
+    const items = [
+      { label: 'Agents', value: data.n_agents, id: 'm-agents' },
+      { label: 'Rooms', value: data.n_rooms, id: 'm-rooms' },
+      { label: 'Mean Fitness', value: data.mean_fitness.toFixed(3), id: 'm-fitness' },
+      { label: 'Diversity', value: (data.diversity * 100).toFixed(0) + '%', id: 'm-diversity' },
+      { label: 'Chaos', value: (data.chaos_level * 100).toFixed(0) + '%', id: 'm-chaos' },
+    ];
+    el.innerHTML = items.map(m => `
+      <div class="metric" id="${m.id}">
+        <div class="value">${m.value}</div>
+        <div class="label">${m.label}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderHexGrid(data) {
+    const el = document.getElementById('hex-grid');
+    const nRooms = Math.max(1, data.n_rooms || 1);
+    const nAgents = data.n_agents || 0;
+    const hexCount = Math.min(64, Math.max(16, Math.ceil(nRooms / 4)));
+    const activeHexes = Math.min(hexCount, Math.ceil(nAgents / Math.max(1, nAgents / hexCount)));
+    let html = '';
+    for (let i = 0; i < hexCount; i++) {
+      const cls = i < activeHexes ? (Math.random() > 0.8 ? 'hex glow' : 'hex active') : 'hex';
+      const dot = i < activeHexes ? '<div class="dot"></div>' : '';
+      html += `<div class="${cls}">${dot}</div>`;
+    }
+    el.innerHTML = html;
+  }
+
+  function renderThermal(data) {
+    const el = document.getElementById('thermal-bars');
+    const state = data.thermal_state || {};
+    const devices = Object.entries(state);
+    if (!devices.length) {
+      el.innerHTML = '<div class="thermal-device"><div class="dev-name">No thermal data</div></div>';
+      return;
+    }
+    el.innerHTML = devices.map(([name, load]) => {
+      const pct = Math.min(100, Math.round(load * 100));
+      const cls = pct > 80 ? 'hot' : pct > 50 ? 'warm' : 'cool';
+      return `
+        <div class="thermal-device">
+          <div class="dev-name">${name}</div>
+          <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderEvents(data) {
+    const el = document.getElementById('events-list');
+    const evs = data.recent_events || [];
+    if (!evs.length) {
+      el.innerHTML = '<div class="event-item"><span>— No recent events —</span></div>';
+      return;
+    }
+    el.innerHTML = evs.map(e => `
+      <div class="event-item">
+        <span><span class="event-type ${e.type || 'info'}">${e.type || 'info'}</span>${e.message || ''}</span>
+        <span style="opacity:0.5;font-size:0.75rem;">${e.time || ''}</span>
+      </div>
+    `).join('');
+  }
+
+  function renderTopAgents(data) {
+    const el = document.getElementById('top-agents');
+    const agents = data.top_agents || [];
+    if (!agents.length) {
+      el.innerHTML = '<div class="agent-card"><div class="agent-id">No active agents</div></div>';
+      return;
+    }
+    el.innerHTML = agents.map(a => `
+      <div class="agent-card">
+        <div>
+          <div class="agent-id">${a.id}</div>
+          <div class="agent-domain">${a.domain} · ${a.status}</div>
+        </div>
+        <div class="agent-fit">${a.fitness}</div>
+      </div>
+    `).join('');
+  }
+
+  function init() {
+    renderMetrics(DATA);
+    renderHexGrid(DATA);
+    renderThermal(DATA);
+    renderEvents(DATA);
+    renderTopAgents(DATA);
+  }
+
+  init();
+
+  let timer = 5;
+  setInterval(() => {
+    timer--;
+    if (timer <= 0) timer = 5;
+    const t = document.getElementById('refresh-timer');
+    if (t) t.textContent = timer;
+  }, 1000);
+</script>
+</body>
+</html>

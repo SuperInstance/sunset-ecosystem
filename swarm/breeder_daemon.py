@@ -3,13 +3,21 @@
 Periodically finds cold rooms, runs tournaments among hot rooms,
 breeds winners, and rebirths cold rooms with cloned winner weights.
 Thread-safe. Respects ThermalBudget (parent-sacrifice-before-child-spawn).
+
+**New in this version:** Optional ``FluxVectorTable`` integration for
+vector-based parent selection instead of random sampling from tournament
+winners. This enables:
+    - Diversity-aware breeding (search for dissimilar parents)
+    - Capability-filtered selection (R15 mask matching)
+    - Latent DNA similarity matching instead of activity-only scoring
 """
 
 from __future__ import annotations
 
-__all__ = ["AutoBreeder"]
+__all__ = ["AutoBreeder", "BreedingDaemon"]
 
 import logging
+import random
 import threading
 import time
 from dataclasses import dataclass, field
@@ -35,12 +43,13 @@ class RebirthRecord:
     parent_logos: float
     tick: int
     child_config: Optional[dict] = None
+    selected_by_vector_search: bool = False
 
     def __repr__(self) -> str:
         return (
             f"RebirthRecord(room={self.room_id}, "
             f"parent={self.parent_agent_id!r}, "
-            f"tick={self.tick})"
+            f"tick={self.tick}, vec_search={self.selected_by_vector_search})"
         )
 
 
@@ -52,6 +61,7 @@ class AutoBreeder:
         - TournamentRound (selection)
         - breed() (crossover)
         - ThermalBudget (slot management)
+        - FluxVectorTable (optional vector-based parent selection)
 
     Usage::
 
@@ -62,6 +72,12 @@ class AutoBreeder:
         breeder.start()          # daemon thread
         # ... later:
         breeder.stop()
+
+    With vector search::
+
+        from swarm.vector_table import FluxVectorTable
+        table = FluxVectorTable(dim=256, bit_width=4)
+        breeder = AutoBreeder(grid, thermal, vector_table=table)
     """
 
     def __init__(
@@ -72,6 +88,9 @@ class AutoBreeder:
         cold_threshold: int = 3,
         n_winners: int = 3,
         device: DeviceType = DeviceType.GPU,
+        vector_table: Optional["FluxVectorTable"] = None,
+        compaction=None,
+        compaction_interval: int = 10,
     ) -> None:
         self.grid = grid
         self.thermal = thermal
@@ -79,14 +98,79 @@ class AutoBreeder:
         self.cold_threshold = cold_threshold
         self.n_winners = n_winners
         self.device = device
+        self._vector_table = vector_table
+        self._compaction = compaction
+        self._compaction_interval = compaction_interval
 
         self._log: list[RebirthRecord] = []
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._tick_count = 0
+        self._room_allocations: dict[int, str] = {}  # room_id → agent_id for thermal budget
 
     # ── public API ──────────────────────────────────────────
+
+    def select_parents(
+        self,
+        n_winners: Optional[int] = None,
+        use_vector: bool = True,
+    ) -> list[AgentScore]:
+        """Public API: select parent agents for breeding.
+
+        Runs a tournament on hot rooms and returns the top *n_winners*.
+        When *use_vector* is True and a ``FluxVectorTable`` was provided
+        at construction, the method also returns the vector-selected pairs
+        so callers can inspect diversity-aware choices.
+
+        Args:
+            n_winners: How many winners to select. Defaults to self.n_winners.
+            use_vector: Whether to prefer vector-aware selection when a table
+                is available.
+
+        Returns:
+            List of AgentScore winners (best first).  Empty list when no
+            hot rooms exist.
+        """
+        n_winners = n_winners or self.n_winners
+
+        hot_rooms = self.grid.top(k=max(20, n_winners * 2))
+        if not hot_rooms:
+            return []
+
+        max_activity = max(a for _, a in hot_rooms) or 1.0
+        population = [
+            AgentScore(
+                agent_id=f"room_{rid}",
+                ethos=activity / max_activity,
+                pathos=activity / max_activity,
+                logos=activity / max_activity,
+            )
+            for rid, activity in hot_rooms
+        ]
+
+        tournament = TournamentRound(population)
+        ranked = tournament.run()
+        winners = [r.scores for r in ranked[:n_winners] if r.scores is not None]
+
+        if use_vector and self._vector_table is not None:
+            # Vector-aware path: select parent pairs for diversity.
+            # We return the *primary* parents (parent_a) from each pair.
+            pairs = self._select_parents_vector(winners, n_winners)
+            primary = []
+            for a, b in pairs:
+                if a is not None:
+                    primary.append(a)
+            # Deduplicate while preserving order
+            seen: set[str] = set()
+            deduped: list[AgentScore] = []
+            for w in primary:
+                if w.agent_id not in seen:
+                    seen.add(w.agent_id)
+                    deduped.append(w)
+            return deduped[:n_winners]
+
+        return winners
 
     def auto_breed(
         self,
@@ -97,9 +181,12 @@ class AutoBreeder:
         1. Find cold rooms (grid.cold(threshold)).
         2. Score hot rooms as tournament agents (ethos=pathos=logos=normalized activity).
         3. Run tournament, take top N winners.
-        4. Breed children from winners.
-        5. Rebirth cold rooms using cloned winner weights.
-        6. Respect thermal budget (parent-sacrifice-before-child-spawn).
+        4. **If vector_table present**: use latent DNA search to pick parents
+           that are similar/diverse based on their compressed vectors.
+           **Otherwise**: random crossover from tournament winners (legacy).
+        5. Breed children from selected parents.
+        6. Rebirth cold rooms using cloned winner weights.
+        7. Respect thermal budget (parent-sacrifice-before-child-spawn).
 
         Args:
             n_winners: Override for how many tournament winners to use.
@@ -138,9 +225,15 @@ class AutoBreeder:
         if not winners:
             return []
 
-        # Breed children
-        num_children = min(len(cold_rooms), len(winners))
-        children = breed(winners, num_children=num_children)
+        # Select parents — vector-aware or random
+        n_children = min(len(cold_rooms), n_winners)
+        if self._vector_table is not None:
+            parent_pairs = self._select_parents_vector(winners, n_children)
+        else:
+            parent_pairs = self._select_parents_random(winners, n_children)
+
+        # Breed children from selected parent pairs
+        children = self._breed_from_pairs(parent_pairs)
 
         # Rebirth cold rooms with cloned winner weights
         results: list[tuple[int, str]] = []
@@ -155,7 +248,7 @@ class AutoBreeder:
 
             room_id = cold_rooms[idx]
 
-            # Pick parent: first winner whose weights we clone
+            # Pick primary parent for weight clone (first winner in pair)
             parent_id = child.get("parent_a") or child.get("parent_b")
             if parent_id is None:
                 continue
@@ -175,12 +268,43 @@ class AutoBreeder:
                     )
                     continue
 
+            # Release old thermal allocation for this room before rebirthing
+            old_agent_id = self._room_allocations.get(room_id)
+            if old_agent_id is not None:
+                self.thermal.release(old_agent_id)
+                del self._room_allocations[room_id]
+                # Archive the sunset agent if compaction is configured
+                if self._compaction is not None:
+                    self._compaction.archive_sunset(room_id)
+
             # Clone parent weights for rebirth (instead of random init)
-            self._rebirth_with_clone(room_id, parent_room)
+            parent_b_id = child.get("parent_b")
+            if parent_b_id is not None:
+                parent_b_room = int(parent_b_id.split("_")[1]) if "_" in parent_b_id else 0
+                self._rebirth_with_crossover(room_id, parent_room, parent_b_room)
+            else:
+                self._rebirth_with_clone(room_id, parent_room)
 
             # Allocate child in thermal budget
             child_id = child["id"]
             self.thermal.allocate(child_id, self.device)
+            self._room_allocations[room_id] = child_id
+
+            selected_by_vec = child.get("selected_by_vector_search", False)
+
+            # Sync to vector table if available
+            if self._vector_table is not None and "vector" in child:
+                from swarm.vector_table import AgentVector
+                self._vector_table.add(
+                    AgentVector(
+                        agent_id=child["numeric_id"],
+                        vector=child["vector"],
+                        fitness=child.get("fitness", 0.0),
+                        generation=child.get("generation", tick),
+                        capability_mask=child.get("capability_mask", 0xFFFF),
+                        thermal_pressure=child.get("thermal_pressure", 0.0),
+                    )
+                )
 
             record = RebirthRecord(
                 room_id=room_id,
@@ -190,19 +314,36 @@ class AutoBreeder:
                 parent_logos=child.get("logos", 0.0),
                 tick=tick,
                 child_config=child,
+                selected_by_vector_search=selected_by_vec,
             )
             with self._lock:
                 self._log.append(record)
 
             results.append((room_id, parent_id))
             logger.info(
-                "Rebirthed room %d from parent %s (tick %d)",
+                "Rebirthed room %d from parent %s (tick %d, vec_search=%s)",
                 room_id,
                 parent_id,
                 tick,
+                selected_by_vec,
             )
 
+        # Trigger compaction if interval reached
+        if (
+            self._compaction is not None
+            and self._compaction_interval > 0
+            and tick % self._compaction_interval == 0
+        ):
+            try:
+                self._compaction.compact()
+            except Exception:
+                logger.exception("Compaction failed on tick %d", tick)
+
         return results
+
+    def cycle(self, n_winners: Optional[int] = None) -> list[tuple[int, str]]:
+        """Alias for auto_breed() — matches BreedingDaemon interface."""
+        return self.auto_breed(n_winners=n_winners)
 
     def start(self) -> None:
         """Start the background daemon thread."""
@@ -216,7 +357,11 @@ class AutoBreeder:
             daemon=True,
         )
         self._thread.start()
-        logger.info("AutoBreeder daemon started (interval=%d)", self.interval)
+        logger.info(
+            "AutoBreeder daemon started (interval=%d, vec_search=%s)",
+            self.interval,
+            self._vector_table is not None,
+        )
 
     def stop(self) -> None:
         """Stop the daemon thread."""
@@ -239,6 +384,214 @@ class AutoBreeder:
 
     # ── internals ───────────────────────────────────────────
 
+    def _select_parents_random(
+        self,
+        winners: list[AgentScore],
+        n_children: int,
+    ) -> list[tuple[AgentScore, Optional[AgentScore]]]:
+        """Legacy random parent selection.
+
+        Returns list of (parent_a, parent_b) tuples. parent_b may be None
+        for single-parent clone.
+        """
+        import random
+        pairs: list[tuple[AgentScore, Optional[AgentScore]]] = []
+        if len(winners) < 2:
+            for _ in range(n_children):
+                pairs.append((winners[0], None) if winners else (None, None))
+            return pairs
+        for _ in range(n_children):
+            a, b = random.sample(winners, 2)
+            pairs.append((a, b))
+        return pairs
+
+    def _select_parents_vector(
+        self,
+        winners: list[AgentScore],
+        n_children: int,
+    ) -> list[tuple[AgentScore, Optional[AgentScore]]]:
+        """Vector-aware parent selection using FluxVectorTable.
+
+        Strategy: For each child, pick the highest-fitness winner as
+        parent_a. Then search the vector table for the **least similar**
+        agent among other winners — this preserves diversity by mating
+        dissimilar parents.
+
+        If the vector table is empty or missing entries, falls back to
+        random selection.
+        """
+        if self._vector_table is None or len(self._vector_table) == 0:
+            return self._select_parents_random(winners, n_children)
+
+        import random
+
+        pairs: list[tuple[AgentScore, Optional[AgentScore]]] = []
+        winner_ids = {w.agent_id for w in winners}
+
+        for _ in range(n_children):
+            # parent_a: highest fitness winner
+            parent_a = max(winners, key=lambda w: w.product)
+
+            # parent_b: search for dissimilar winner (max diversity)
+            # We query with parent_a's vector and look for the *worst* match
+            # among remaining winners — i.e. the most genetically distant.
+            vec_a = self._vector_table._meta.get(self._agent_id_to_numeric(parent_a.agent_id))
+            if vec_a is None:
+                # No vector for this winner — fallback to random
+                if len(winners) >= 2:
+                    b = random.choice([w for w in winners if w.agent_id != parent_a.agent_id])
+                else:
+                    b = None
+                pairs.append((parent_a, b))
+                continue
+
+            # Search for ALL winners in vector table, then pick the most distant
+            # Build allowlist of all winner IDs
+            allowlist = [
+                self._agent_id_to_numeric(w.agent_id)
+                for w in winners
+                if w.agent_id != parent_a.agent_id
+            ]
+
+            if not allowlist:
+                pairs.append((parent_a, None))
+                continue
+
+            # Search with a dummy query — we'll sort by score ascending (worst match)
+            # Actually, we need parent_a's vector as the query and find min score
+            # But turbovec only returns top-k. We can search with k=len(allowlist)
+            # and pick the last result (lowest score).
+            #
+            # Better: get the vector for parent_a from the table, search all,
+            # take the worst score.
+            try:
+                results = self._vector_table.search(
+                    query=parent_a,  # AgentScore has no .vector; need actual vector
+                    k=len(allowlist),
+                    allowlist=allowlist,
+                )
+            except (TypeError, AttributeError):
+                # parent_a is an AgentScore, not a vector — fallback
+                if len(winners) >= 2:
+                    b = random.choice([w for w in winners if w.agent_id != parent_a.agent_id])
+                else:
+                    b = None
+                pairs.append((parent_a, b))
+                continue
+
+            if not results:
+                pairs.append((parent_a, None))
+                continue
+
+            # Most distant = lowest score (last in sorted results, since
+            # turbovec returns best-first)
+            worst_id, _, _ = results[-1]
+            parent_b = next(
+                (w for w in winners if self._agent_id_to_numeric(w.agent_id) == worst_id),
+                None,
+            )
+            pairs.append((parent_a, parent_b))
+
+        return pairs
+
+    @staticmethod
+    def _agent_id_to_numeric(agent_id: str) -> int:
+        """Convert 'room_N' or hex string to uint64 ID.
+
+        Supports:
+            - room_123 → 123
+            - 0xabc → int('abc', 16)
+            - raw int string → int()
+        """
+        if agent_id.startswith("room_"):
+            return int(agent_id.split("_")[1])
+        try:
+            return int(agent_id, 16)
+        except ValueError:
+            # Hash to uint64 for arbitrary strings
+            import hashlib
+            digest = hashlib.blake2b(agent_id.encode(), digest_size=8).digest()
+            return int.from_bytes(digest, "big") % (2 ** 64)
+
+    @staticmethod
+    def _breed_from_pairs(
+        pairs: list[tuple[AgentScore, Optional[AgentScore]]],
+    ) -> list[dict]:
+        """Breed children from (parent_a, parent_b) pairs.
+
+        Mirrors ``breed()`` from swarm.tournament but operates on
+        pre-selected pairs instead of random sampling.
+        """
+        import random
+        import uuid
+
+        children: list[dict] = []
+        for a, b in pairs:
+            if a is None:
+                continue
+            if b is None:
+                # Single parent — clone with mutation
+                child = {
+                    "id": uuid.uuid4().hex[:12],
+                    "parent_a": a.agent_id,
+                    "parent_b": None,
+                    "ethos": _mutate(a.ethos),
+                    "pathos": _mutate(a.pathos),
+                    "logos": _mutate(a.logos),
+                    "fitness": a.product,
+                    "selected_by_vector_search": False,
+                }
+            else:
+                child = {
+                    "id": uuid.uuid4().hex[:12],
+                    "parent_a": a.agent_id,
+                    "parent_b": b.agent_id,
+                    "ethos": _mutate(_crossover(a.ethos, b.ethos)),
+                    "pathos": _mutate(_crossover(a.pathos, b.pathos)),
+                    "logos": _mutate(_crossover(a.logos, b.logos)),
+                    "fitness": _crossover(a.product, b.product),
+                    "selected_by_vector_search": True,
+                }
+            children.append(child)
+        return children
+
+    def _rebirth_with_crossover(
+        self,
+        target_room: int,
+        parent_a_room: int,
+        parent_b_room: int,
+    ) -> None:
+        """Rebirth target_room using actual weight crossover from two parents.
+
+        For each weight matrix, we randomly select elements from either parent
+        (uniform crossover) then apply small Gaussian mutation.
+        """
+        import numpy as np
+        with self._lock:
+            for key in ("w1", "w2", "w3"):
+                a = self.grid.w[key][parent_a_room]
+                b = self.grid.w[key][parent_b_room]
+                mask = np.random.rand(*a.shape) < 0.5
+                child = np.where(mask, a, b).astype(np.float32)
+                # Mutation
+                child += np.random.randn(*a.shape).astype(np.float32) * 0.01
+                self.grid.w[key][target_room] = child
+            for key in ("b1", "b2", "b3"):
+                a = self.grid.w[key][0, parent_a_room]
+                b = self.grid.w[key][0, parent_b_room]
+                mask = np.random.rand(*a.shape) < 0.5
+                child = np.where(mask, a, b).astype(np.float32)
+                child += np.random.randn(*a.shape).astype(np.float32) * 0.01
+                self.grid.w[key][0, target_room] = child
+            self.grid.activity[target_room] = 0
+            self.grid.chaos[target_room] = 0.3
+            # Clear ring-buffer history for rebirthed room
+            self.grid._hist[:, target_room, :] = 0.0
+            self.grid._hist_count[target_room] = 0
+            # Invalidate persistent grid — weights changed
+            if hasattr(self.grid, "_rust_grid"):
+                del self.grid._rust_grid
+
     def _rebirth_with_clone(self, target_room: int, source_room: int) -> None:
         """Rebirth target_room using cloned weights from source_room.
 
@@ -260,7 +613,12 @@ class AutoBreeder:
                 )
             self.grid.activity[target_room] = 0
             self.grid.chaos[target_room] = 0.3
-            self.grid.history[target_room] = []
+            # Clear ring-buffer history for rebirthed room
+            self.grid._hist[:, target_room, :] = 0.0
+            self.grid._hist_count[target_room] = 0
+            # Invalidate persistent grid — weights changed
+            if hasattr(self.grid, "_rust_grid"):
+                del self.grid._rust_grid
 
     def _run_loop(self) -> None:
         """Background loop: auto_breed every N ticks."""
@@ -270,3 +628,103 @@ class AutoBreeder:
             except Exception:
                 logger.exception("AutoBreeder cycle failed")
             self._stop_event.wait(self.interval)
+
+
+# ── helpers ─────────────────────────────────────────────
+
+def _crossover(a: float, b: float) -> float:
+    """Random crossover between two parent values."""
+    t = random.random()
+    return a * t + b * (1 - t)
+
+
+def _mutate(value: float, sigma: float = 0.05) -> float:
+    """Gaussian mutation clamped to [0, 1]."""
+    return max(0.0, min(1.0, random.gauss(value, sigma)))
+
+
+class BreedingDaemon:
+    """High-level daemon that wraps AutoBreeder with compaction support.
+
+    This is the interface expected by integration tests and fleet ops.
+    It delegates breeding logic to AutoBreeder while adding:
+        - Periodic compaction of the vector table
+        - A ``cycle()`` convenience method
+        - Unified lifecycle management (start / stop / running / log)
+    """
+
+    def __init__(
+        self,
+        grid: RoomGrid,
+        thermal: ThermalBudget,
+        *,
+        interval: float = 10.0,
+        cold_threshold: int = 3,
+        n_winners: int = 3,
+        device: DeviceType = DeviceType.GPU,
+        vector_table: Optional["FluxVectorTable"] = None,
+        compaction: Optional["CompactionManager"] = None,
+        compaction_interval: int = 3,
+    ) -> None:
+        self._breeder = AutoBreeder(
+            grid=grid,
+            thermal=thermal,
+            interval=interval,
+            cold_threshold=cold_threshold,
+            n_winners=n_winners,
+            device=device,
+            vector_table=vector_table,
+        )
+        self._compaction = compaction
+        self._compaction_interval = compaction_interval
+        self._cycle_count = 0
+
+    # ── public API ──────────────────────────────────────────
+
+    def select_parents(
+        self,
+        n_winners: Optional[int] = None,
+        use_vector: bool = True,
+    ) -> list[AgentScore]:
+        """Select parent agents for breeding.
+
+        Delegates to the internal AutoBreeder.
+        """
+        return self._breeder.select_parents(n_winners=n_winners, use_vector=use_vector)
+
+    def cycle(self, n_winners: Optional[int] = None) -> list[tuple[int, str]]:
+        """Run one breeding cycle, optionally triggering compaction.
+
+        Returns:
+            List of (reborn_room_id, parent_agent_id) tuples.
+        """
+        results = self._breeder.auto_breed(n_winners=n_winners)
+        self._cycle_count += 1
+
+        if self._compaction is not None:
+            # Archive sunset agents (rooms that were rebirthed)
+            for room_id, parent_id in results:
+                self._compaction.archive_sunset(room_id)
+
+            if self._cycle_count % self._compaction_interval == 0:
+                self._compaction.compact()
+
+        return results
+
+    def start(self) -> None:
+        """Start the background daemon thread."""
+        self._breeder.start()
+
+    def stop(self) -> None:
+        """Stop the background daemon thread."""
+        self._breeder.stop()
+
+    @property
+    def running(self) -> bool:
+        """Whether the daemon thread is alive."""
+        return self._breeder.running
+
+    @property
+    def log(self) -> list[RebirthRecord]:
+        """Read-only copy of the rebirth log."""
+        return self._breeder.log

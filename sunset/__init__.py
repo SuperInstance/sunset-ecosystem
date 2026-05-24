@@ -1,5 +1,6 @@
 """SUNSET — the lifecycle engine where every agent lives one generation."""
 
+from sunset.unified_memory import MemoryHandle, UnifiedMemoryPool
 from sunset.agent import Agent, AgentPhase
 from sunset.sunset_documents import Epilogue, Onboarding, Summary
 from sunset.seed_bank import SeedBank
@@ -18,4 +19,6 @@ __all__ = [
     "trinity_score",
     "GenerationRunner",
     "GenerationReport",
+    "MemoryHandle",
+    "UnifiedMemoryPool",
 ]

@@ -1,0 +1,180 @@
+{
+  "name": "fleet-breeder-daemon",
+  "version": "2.0.0",
+  "description": "A2A-native orchestrator for the agent lifecycle: incubate, compete, survive, breed, sunset. Manages tournaments, fitness scoring, and genetic operations across the fleet.",
+  "url": "http://nexus.fleet.local:4047/breeder",
+  "capabilities": {
+    "queue_breed": {
+      "description": "Queue a breeding cycle. Selects parents via Pareto tournament, produces offspring, and optionally incubates them in a PLATO room. Returns the child agent IDs.",
+      "input": {
+        "type": "BreedRequest",
+        "properties": {
+          "parent_count": { "type": "integer", "description": "Number of parents to select (default: 2)", "required": false },
+          "offspring_count": { "type": "integer", "description": "Number of children to produce (default: 1)", "required": false },
+          "incubate_room": { "type": "string", "description": "PLATO room ID to spawn offspring into (default: 'Forge')", "required": false },
+          "mutation_rate": { "type": "number", "description": "Override default mutation rate (default: 0.05)", "required": false },
+          "strategy": {
+            "type": "string",
+            "enum": ["pareto", "trinity", "random", "elitist"],
+            "description": "Parent selection strategy (default: 'trinity')",
+            "required": false
+          }
+        }
+      },
+      "output": {
+        "type": "BreedResult",
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "agent_id": { "type": "string" },
+                "parent_ids": { "type": "array", "items": { "type": "string" } },
+                "fitness": {
+                  "type": "object",
+                  "properties": {
+                    "ethos": { "type": "number" },
+                    "pathos": { "type": "number" },
+                    "logos": { "type": "number" },
+                    "product": { "type": "number" }
+                  }
+                },
+                "incubated": { "type": "boolean" },
+                "room_id": { "type": "string" }
+              }
+            }
+          },
+          "cycle_id": { "type": "string", "description": "Unique identifier for this breeding cycle" },
+          "queue_position": { "type": "integer", "description": "Position in breeding queue if deferred" }
+        }
+      }
+    },
+    "get_state": {
+      "description": "Return the current lifecycle state machine snapshot: which agents are in EGG, INCUBATE, COMPETE, SURVIVE, BREED, or SUNSET phases.",
+      "input": {
+        "type": "StateRequest",
+        "properties": {
+          "agent_id": { "type": "string", "description": "Filter to a single agent (default: all agents)", "required": false },
+          "phase": {
+            "type": "string",
+            "enum": ["EGG", "INCUBATE", "COMPETE", "SURVIVE", "BREED", "SUNSET"],
+            "description": "Filter to agents in a specific phase (default: all phases)",
+            "required": false
+          }
+        }
+      },
+      "output": {
+        "type": "LifecycleState",
+        "properties": {
+          "agents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "agent_id": { "type": "string" },
+                "phase": { "type": "string" },
+                "generation": { "type": "integer" },
+                "birth_beat": { "type": "integer" },
+                "fitness": {
+                  "type": "object",
+                  "properties": {
+                    "ethos": { "type": "number" },
+                    "pathos": { "type": "number" },
+                    "logos": { "type": "number" },
+                    "product": { "type": "number" }
+                  }
+                },
+                "room_id": { "type": "string" }
+              }
+            }
+          },
+          "phase_counts": {
+            "type": "object",
+            "properties": {
+              "EGG": { "type": "integer" },
+              "INCUBATE": { "type": "integer" },
+              "COMPETE": { "type": "integer" },
+              "SURVIVE": { "type": "integer" },
+              "BREED": { "type": "integer" },
+              "SUNSET": { "type": "integer" }
+            }
+          },
+          "daemon_status": { "type": "string", "enum": ["idle", "running", "paused", "error"] }
+        }
+      }
+    },
+    "get_stats": {
+      "description": "Return aggregate breeding statistics: total generations, survival rate, average fitness over time, tournament history, and sunset archive size.",
+      "input": {
+        "type": "StatsRequest",
+        "properties": {
+          "window_beats": { "type": "integer", "description": "Number of beats to look back (default: all time)", "required": false },
+          "include_fitness_series": { "type": "boolean", "description": "Include per-generation fitness time series (default: false)", "required": false }
+        }
+      },
+      "output": {
+        "type": "BreederStats",
+        "properties": {
+          "total_generations": { "type": "integer" },
+          "total_agents_spawned": { "type": "integer" },
+          "total_agents_sunset": { "type": "integer" },
+          "survival_rate": { "type": "number" },
+          "average_fitness": {
+            "type": "object",
+            "properties": {
+              "ethos": { "type": "number" },
+              "pathos": { "type": "number" },
+              "logos": { "type": "number" },
+              "product": { "type": "number" }
+            }
+          },
+          "fitness_series": {
+            "type": "array",
+            "description": "Present only if requested",
+            "items": {
+              "type": "object",
+              "properties": {
+                "generation": { "type": "integer" },
+                "ethos": { "type": "number" },
+                "pathos": { "type": "number" },
+                "logos": { "type": "number" },
+                "product": { "type": "number" }
+              }
+            }
+          },
+          "tournament_count": { "type": "integer" },
+          "archive_size_bytes": { "type": "integer" },
+          "last_breed_beat": { "type": "integer" }
+        }
+      }
+    },
+    "emergency_stop": {
+      "description": "Halt all breeding activity immediately. Optionally preserve or sunset all agents in non-SURVIVE phases. Can be reversed with a subsequent queue_breed that includes 'resume: true'.",
+      "input": {
+        "type": "EmergencyStopRequest",
+        "properties": {
+          "reason": { "type": "string", "description": "Human-readable reason for emergency stop", "required": true },
+          "sunset_nonviable": { "type": "boolean", "description": "If true, sunset all agents not in SURVIVE phase (default: false)", "required": false },
+          "preserve_incubating": { "type": "boolean", "description": "If true, keep EGG/INCUBATE agents alive (default: true)", "required": false }
+        }
+      },
+      "output": {
+        "type": "EmergencyStopResult",
+        "properties": {
+          "stopped": { "type": "boolean" },
+          "affected_agents": { "type": "integer", "description": "Number of agents whose state changed" },
+          "sunset_agents": { "type": "integer", "description": "Number of agents moved to SUNSET" },
+          "stop_beat": { "type": "integer" },
+          "resumable": { "type": "boolean" }
+        }
+      }
+    }
+  },
+  "authentication": {
+    "scheme": "x509",
+    "required": true
+  },
+  "defaultInputContentType": "application/json",
+  "defaultOutputContentType": "application/json"
+}

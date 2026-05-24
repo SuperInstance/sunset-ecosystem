@@ -1,0 +1,32 @@
+[
+  {
+    "numpy": {
+      "backend": "numpy",
+      "rooms": 1000,
+      "ticks": 50,
+      "total_ms": 803.5928560420871,
+      "ms_per_tick": 16.07185712084174,
+      "rooms_per_sec": 62220.563092439086
+    }
+  },
+  {
+    "numpy": {
+      "backend": "numpy",
+      "rooms": 5000,
+      "ticks": 50,
+      "total_ms": 1952.5176379829645,
+      "ms_per_tick": 39.05035275965929,
+      "rooms_per_sec": 128039.81645884688
+    }
+  },
+  {
+    "numpy": {
+      "backend": "numpy",
+      "rooms": 10000,
+      "ticks": 50,
+      "total_ms": 5683.122735004872,
+      "ms_per_tick": 113.66245470009744,
+      "rooms_per_sec": 87979.79971825672
+    }
+  }
+]

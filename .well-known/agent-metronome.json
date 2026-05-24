@@ -1,0 +1,127 @@
+{
+  "name": "fleet-metronome",
+  "version": "1.0.0",
+  "description": "Periodic pulse generator that drives the nerve grid. Each beat triggers compute, gate, route, and optional harmonic phases (breeding, FLUX audit).",
+  "url": "http://nexus.fleet.local:4047/metronome",
+  "capabilities": {
+    "tick": {
+      "description": "Advance the fleet beat by one. Runs compute → gate → route phases. Returns which rooms fired and the current beat number.",
+      "input": {
+        "type": "TickRequest",
+        "properties": {
+          "signal": {
+            "type": "SignalPayload",
+            "description": "64-dim float32 vector to drive the grid forward pass",
+            "required": false
+          },
+          "force": {
+            "type": "boolean",
+            "description": "If true, execute tick even if previous beat is still running (default: false)",
+            "required": false
+          }
+        }
+      },
+      "output": {
+        "type": "TickResult",
+        "properties": {
+          "beat_number": { "type": "integer", "description": "Monotonic global beat counter" },
+          "fired_rooms": { "type": "array", "items": { "type": "integer" }, "description": "Room IDs that fired this beat" },
+          "fired_count": { "type": "integer", "description": "Number of rooms that fired" },
+          "phase_durations_ms": {
+            "type": "object",
+            "properties": {
+              "compute": { "type": "number" },
+              "gate": { "type": "number" },
+              "route": { "type": "number" }
+            }
+          },
+          "missed_beat": { "type": "boolean", "description": "True if this beat was skipped due to overload" }
+        }
+      }
+    },
+    "set_bpm": {
+      "description": "Change fleet tempo. Supports ramped transitions to avoid jarring phase jumps.",
+      "input": {
+        "type": "BPMRequest",
+        "properties": {
+          "bpm": { "type": "number", "description": "Target beats per minute (e.g. 60=1000ms/beat, 120=500ms/beat, 240=250ms/beat)", "required": true },
+          "ramp_ms": { "type": "integer", "description": "Transition duration in milliseconds (default: 0 = instant)", "required": false },
+          "reason": { "type": "string", "description": "Human-readable reason for BPM change", "required": false }
+        }
+      },
+      "output": {
+        "type": "BPMResult",
+        "properties": {
+          "new_bpm": { "type": "number" },
+          "actual_bpm": { "type": "number", "description": "Measured BPM over last 10 beats" },
+          "beat_duration_ms": { "type": "number" },
+          "ramp_complete": { "type": "boolean" }
+        }
+      }
+    },
+    "sync": {
+      "description": "Exchange beat state with peer nodes for drift detection and correction. CRDT-style merge.",
+      "input": {
+        "type": "BeatState",
+        "properties": {
+          "node_id": { "type": "string", "required": true },
+          "beat_number": { "type": "integer", "required": true },
+          "wall_time_ns": { "type": "integer", "required": true },
+          "perf_counter_ns": { "type": "integer", "required": true },
+          "rtt_ms": { "type": "number", "required": false }
+        }
+      },
+      "output": {
+        "type": "BeatState",
+        "properties": {
+          "node_id": { "type": "string" },
+          "beat_number": { "type": "integer" },
+          "wall_time_ns": { "type": "integer" },
+          "perf_counter_ns": { "type": "integer" },
+          "drift_ms": { "type": "number", "description": "Detected drift relative to this node's clock" },
+          "correction_applied": { "type": "boolean" }
+        }
+      }
+    },
+    "get_status": {
+      "description": "Return current metronome health: beat counter, actual vs target BPM, missed beats, harmonic registry, and attached room count.",
+      "input": {
+        "type": "StatusRequest",
+        "properties": {
+          "include_histogram": { "type": "boolean", "description": "Include latency histogram (default: false)", "required": false }
+        }
+      },
+      "output": {
+        "type": "MetronomeStatus",
+        "properties": {
+          "beat_number": { "type": "integer" },
+          "target_bpm": { "type": "number" },
+          "actual_bpm": { "type": "number" },
+          "beat_duration_ms": { "type": "number" },
+          "missed_beats": { "type": "integer" },
+          "total_beats": { "type": "integer" },
+          "room_count": { "type": "integer" },
+          "harmonics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "divider": { "type": "integer" },
+                "callback_count": { "type": "integer" },
+                "last_fired_beat": { "type": "integer" }
+              }
+            }
+          },
+          "latency_histogram_ms": { "type": "array", "items": { "type": "number" }, "description": "Present only if requested" },
+          "healthy": { "type": "boolean" }
+        }
+      }
+    }
+  },
+  "authentication": {
+    "scheme": "x509",
+    "required": true
+  },
+  "defaultInputContentType": "application/json",
+  "defaultOutputContentType": "application/json"
+}

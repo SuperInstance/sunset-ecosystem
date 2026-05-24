@@ -1,0 +1,157 @@
+{
+  "name": "fleet-room-grid",
+  "version": "3.0.0",
+  "description": "JEPA-powered room grid. Each room runs an MLP forward pass, novelty scoring, and chaos dynamics. Rooms fire when their latent exceeds a threshold, driving the routing layer.",
+  "url": "http://nexus.fleet.local:4047/grid",
+  "capabilities": {
+    "tick": {
+      "description": "Drive the grid forward by one step. Computes latents for all rooms, applies novelty/chaos gating, and returns which rooms fired. Respects per-room local metronome dividers.",
+      "input": {
+        "type": "GridTickRequest",
+        "properties": {
+          "signal": {
+            "type": "array",
+            "items": { "type": "number" },
+            "description": "64-dim float32 input vector",
+            "required": true
+          },
+          "room_ids": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "description": "Subset of rooms to tick (default: all rooms)",
+            "required": false
+          },
+          "skip_local_metronomes": {
+            "type": "boolean",
+            "description": "If true, ignore per-room dividers and tick all rooms (default: false)",
+            "required": false
+          }
+        }
+      },
+      "output": {
+        "type": "GridTickResult",
+        "properties": {
+          "fired": { "type": "integer", "description": "Number of rooms that fired" },
+          "ids": { "type": "array", "items": { "type": "integer" }, "description": "Room IDs that fired" },
+          "tick": { "type": "integer", "description": "Global tick counter" },
+          "latents": {
+            "type": "array",
+            "items": { "type": "array", "items": { "type": "number" } },
+            "description": "Full latent matrix (optional, expensive)"
+          },
+          "novelty_scores": {
+            "type": "array",
+            "items": { "type": "number" },
+            "description": "Per-room novelty scores"
+          },
+          "chaos_values": {
+            "type": "array",
+            "items": { "type": "number" },
+            "description": "Per-room chaos levels post-tick"
+          }
+        }
+      }
+    },
+    "get_activity": {
+      "description": "Return activity summary for the grid or a subset of rooms: firing rates, chaos levels, novelty distributions, and compile-status (which rooms are 'compiled' with strength > 0.9).",
+      "input": {
+        "type": "ActivityRequest",
+        "properties": {
+          "room_ids": { "type": "array", "items": { "type": "integer" }, "required": false },
+          "window_ticks": { "type": "integer", "description": "Number of ticks to aggregate over (default: 100)", "required": false }
+        }
+      },
+      "output": {
+        "type": "ActivitySummary",
+        "properties": {
+          "room_count": { "type": "integer" },
+          "active_count": { "type": "integer", "description": "Rooms that fired at least once in the window" },
+          "compiled_count": { "type": "integer", "description": "Rooms with routing strength > 0.9" },
+          "average_chaos": { "type": "number" },
+          "average_novelty": { "type": "number" },
+          "firing_rate": { "type": "number", "description": "Fraction of room-tick pairs that fired" },
+          "per_room": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "room_id": { "type": "integer" },
+                "fire_count": { "type": "integer" },
+                "chaos": { "type": "number" },
+                "novelty": { "type": "number" },
+                "compiled": { "type": "boolean" },
+                "local_bpm_divider": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "get_room_state": {
+      "description": "Return the full internal state of one or more rooms: weights, latents, chaos, novelty history, ring buffer contents, and FLUX constraint status.",
+      "input": {
+        "type": "RoomStateRequest",
+        "properties": {
+          "room_ids": { "type": "array", "items": { "type": "integer" }, "description": "Room IDs to query (default: all rooms)", "required": false },
+          "include_weights": { "type": "boolean", "description": "Include full weight matrices (expensive)", "required": false },
+          "include_buffer": { "type": "boolean", "description": "Include ring buffer history", "required": false }
+        }
+      },
+      "output": {
+        "type": "RoomStateResult",
+        "properties": {
+          "rooms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "room_id": { "type": "integer" },
+                "weights_shape": { "type": "array", "items": { "type": "integer" } },
+                "weights": { "type": "array", "items": { "type": "number" }, "description": "Flattened weights if requested" },
+                "latent": { "type": "array", "items": { "type": "number" } },
+                "chaos": { "type": "number" },
+                "novelty": { "type": "number" },
+                "ring_buffer": { "type": "array", "items": { "type": "array", "items": { "type": "number" } }, "description": "Present only if requested" },
+                "flux_violations": { "type": "integer", "description": "Count of constraint violations in last tick" },
+                "last_fired_tick": { "type": "integer" },
+                "birth_tick": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "rebirth_room": {
+      "description": "Reset a room's weights and chaos to initial values, effectively rebirthing it. Used by the breeder when cold rooms are selected for mutation or when FLUX mandates a reset due to persistent violations.",
+      "input": {
+        "type": "RebirthRequest",
+        "properties": {
+          "room_id": { "type": "integer", "description": "Room to rebirth", "required": true },
+          "seed_weights": {
+            "type": "array",
+            "items": { "type": "number" },
+            "description": "Optional pre-seeded weight vector (default: Xavier init)",
+            "required": false
+          },
+          "reason": { "type": "string", "description": "Human-readable reason for rebirth", "required": false }
+        }
+      },
+      "output": {
+        "type": "RebirthResult",
+        "properties": {
+          "room_id": { "type": "integer" },
+          "rebirth_tick": { "type": "integer" },
+          "previous_chaos": { "type": "number" },
+          "new_chaos": { "type": "number" },
+          "weight_checksum": { "type": "string", "description": "SHA-256 of flattened weight matrix" }
+        }
+      }
+    }
+  },
+  "authentication": {
+    "scheme": "x509",
+    "required": true
+  },
+  "defaultInputContentType": "application/json",
+  "defaultOutputContentType": "application/json"
+}
