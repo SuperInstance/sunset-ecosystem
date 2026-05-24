@@ -631,7 +631,7 @@ class RoomGrid:
     @property
     def stats(self):
         a = int((self.activity > 0).sum())
-        return {"rooms": self.n, "ticks": self.ticks, "active": a, "cold": self.n - a, "pct": f"{a/self.n*100:.1f}%", "diversity": self.diversity()}
+        return {"rooms": self.n, "ticks": self.ticks, "active": a, "cold": self.n - a, "pct": f"{a/self.n*100:.1f}%", "diversity": self.diversity(use_hdc=False), "diversity_hdc": self.diversity(use_hdc=True)}
 
     def diversity(self, use_hdc: bool = True) -> float:
         """Population diversity: mean pairwise distance between active rooms.
@@ -665,14 +665,14 @@ class RoomGrid:
 
         if use_hdc:
             try:
-                from swarm.hdc_novelty import hdc_novelty_score
-                total = 0.0
-                count = 0
-                for i in range(m):
-                    for j in range(i + 1, m):
-                        total += hdc_novelty_score(vectors[i], vectors[j])
-                        count += 1
-                return total / count if count else 0.0
+                from swarm.hdc_novelty import HDCDiversityScorer
+                dim = vectors[0].shape[0]
+                scorer = HDCDiversityScorer(dim)
+                packed = scorer.encoder.encode_batch(np.array(vectors, dtype=np.float32))
+                dists = scorer.score_batch(packed, packed)
+                # Upper triangle excluding diagonal
+                triu = np.triu_indices(m, k=1)
+                return float(dists[triu].mean())
             except ImportError:
                 pass  # fall through to cosine
 

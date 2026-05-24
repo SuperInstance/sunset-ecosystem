@@ -1,6 +1,7 @@
 """Tests for RoomGrid — forward consistency, novelty, breeding, chaos, FLUX."""
 import numpy as np
 import pytest
+from unittest import mock
 
 from nerve.room_grid import RoomGrid, make_weights, batch_novelty, forward_einsum, forward_rust_oneshot, _RUST_LIB
 from sunset.flux_integration import FluxConstraintChecker, apply_constraint_feedback
@@ -120,3 +121,34 @@ class TestRoomGridDiversity:
         stats = g.stats
         assert "diversity" in stats
         assert 0.0 <= stats["diversity"] <= 1.0
+
+    def test_diversity_hdc_enabled(self):
+        """HDC path returns a valid diversity score when available."""
+        g = RoomGrid(10)
+        for _ in range(5):
+            g.tick(np.random.randn(64).astype(np.float32))
+        div = g.diversity(use_hdc=True)
+        assert 0.0 <= div <= 1.0
+
+    def test_diversity_hdc_fallback(self):
+        """Falls back to cosine when swarm.hdc_novelty is unavailable."""
+        g = RoomGrid(10)
+        for _ in range(5):
+            g.tick(np.random.randn(64).astype(np.float32))
+        # Force HDC import to fail by hiding the module
+        with mock.patch.dict('sys.modules', {'swarm.hdc_novelty': None}):
+            div_fallback = g.diversity(use_hdc=True)
+        div_cosine = g.diversity(use_hdc=False)
+        # Fallback should match cosine path
+        assert div_fallback == pytest.approx(div_cosine, abs=1e-6)
+
+    def test_diversity_stats_populated(self):
+        """Both diversity and diversity_hdc appear in stats."""
+        g = RoomGrid(10)
+        for _ in range(5):
+            g.tick(np.random.randn(64).astype(np.float32))
+        stats = g.stats
+        assert "diversity" in stats
+        assert "diversity_hdc" in stats
+        assert 0.0 <= stats["diversity"] <= 1.0
+        assert 0.0 <= stats["diversity_hdc"] <= 1.0
