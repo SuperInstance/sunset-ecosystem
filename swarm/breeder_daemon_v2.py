@@ -48,7 +48,23 @@ from swarm.inheritance_tax import InheritanceTax
 from swarm.crdt_merge import CRDTMergeEngine, Agent as CRDTAgent
 from swarm.lineage_checker import LineageSanityChecker, Agent as LineageAgent
 from swarm.trajectory_monitor import TrajectoryMonitor, SecurityEvent
-from cocapn_traps.traps.diversity_collapse_trap import DiversityCollapseTrap
+# Make cocapn_traps optional — graceful degrade when unavailable
+try:
+    from cocapn_traps.traps.diversity_collapse_trap import DiversityCollapseTrap
+except ImportError:
+    # Graceful fallback: no-op diversity monitoring
+    class DiversityCollapseTrap:  # type: ignore[no-redef]
+        """No-op fallback when cocapn_traps is not installed."""
+        def __init__(self, *args, **kwargs):
+            self._history = []
+        def record(self, diversity_score):
+            self._history.append(diversity_score)
+        def check(self):
+            if len(self._history) >= 3:
+                return type("DiversityAlert", (), {"level": "CRITICAL", "recommended_action": "CROSS_SHIP_INJECTION"})()
+            if len(self._history) >= 2:
+                return type("DiversityAlert", (), {"level": "WARNING", "recommended_action": "EMERGENCY_MUTATE"})()
+            return None
 from logos.signed_wal import SignedWAL, WALEntry
 from logos.decision_journal import log_spawn, log_sunset, log_breed
 

@@ -278,7 +278,12 @@ class AutoBreeder:
                     self._compaction.archive_sunset(room_id)
 
             # Clone parent weights for rebirth (instead of random init)
-            self._rebirth_with_clone(room_id, parent_room)
+            parent_b_id = child.get("parent_b")
+            if parent_b_id is not None:
+                parent_b_room = int(parent_b_id.split("_")[1]) if "_" in parent_b_id else 0
+                self._rebirth_with_crossover(room_id, parent_room, parent_b_room)
+            else:
+                self._rebirth_with_clone(room_id, parent_room)
 
             # Allocate child in thermal budget
             child_id = child["id"]
@@ -549,6 +554,43 @@ class AutoBreeder:
                 }
             children.append(child)
         return children
+
+    def _rebirth_with_crossover(
+        self,
+        target_room: int,
+        parent_a_room: int,
+        parent_b_room: int,
+    ) -> None:
+        """Rebirth target_room using actual weight crossover from two parents.
+
+        For each weight matrix, we randomly select elements from either parent
+        (uniform crossover) then apply small Gaussian mutation.
+        """
+        import numpy as np
+        with self._lock:
+            for key in ("w1", "w2", "w3"):
+                a = self.grid.w[key][parent_a_room]
+                b = self.grid.w[key][parent_b_room]
+                mask = np.random.rand(*a.shape) < 0.5
+                child = np.where(mask, a, b).astype(np.float32)
+                # Mutation
+                child += np.random.randn(*a.shape).astype(np.float32) * 0.01
+                self.grid.w[key][target_room] = child
+            for key in ("b1", "b2", "b3"):
+                a = self.grid.w[key][0, parent_a_room]
+                b = self.grid.w[key][0, parent_b_room]
+                mask = np.random.rand(*a.shape) < 0.5
+                child = np.where(mask, a, b).astype(np.float32)
+                child += np.random.randn(*a.shape).astype(np.float32) * 0.01
+                self.grid.w[key][0, target_room] = child
+            self.grid.activity[target_room] = 0
+            self.grid.chaos[target_room] = 0.3
+            # Clear ring-buffer history for rebirthed room
+            self.grid._hist[:, target_room, :] = 0.0
+            self.grid._hist_count[target_room] = 0
+            # Invalidate persistent grid — weights changed
+            if hasattr(self.grid, "_rust_grid"):
+                del self.grid._rust_grid
 
     def _rebirth_with_clone(self, target_room: int, source_room: int) -> None:
         """Rebirth target_room using cloned weights from source_room.
