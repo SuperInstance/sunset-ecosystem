@@ -1,0 +1,54 @@
+{
+  "name": "sunset-breeder",
+  "version": "2.0.0",
+  "description": "A2A-native orchestrator for the agent lifecycle: incubate, compete, survive, breed, sunset. Manages tournaments, fitness scoring, and genetic operations across the fleet with cross-node breeding and vector table awareness.",
+  "url": "http://nexus.fleet.local:4047/breeder",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "streamingResponse": true,
+    "webhooks": false
+  },
+  "skills": [
+    {
+      "id": "cross_breed",
+      "name": "Cross-Node Breeding",
+      "description": "Request breeding with a remote agent by querying vector tables and selecting Pareto-optimal parents",
+      "tags": ["breeding", "vectors", "cross-node", "pareto"],
+      "examples": ["Breed my room 42 with your top scorer"]
+    },
+    {
+      "id": "vector_table_query",
+      "name": "Vector Table Query",
+      "description": "Query remote or local vector tables for agent embeddings, fitness landscapes, and compatibility scores",
+      "tags": ["vectors", "query", "embeddings", "fitness"],
+      "examples": ["Find agents with fitness > 0.8 and vector similarity > 0.9 to agent_7"]
+    },
+    {
+      "id": "thermal_aware_spawn",
+      "name": "Thermal-Aware Spawn",
+      "description": "Incubate offspring only when thermal budget allows, with parent-sacrifice fallback",
+      "tags": ["thermal", "spawn", "budget", "incubation"],
+      "examples": ["Spawn 3 children in the Forge room if thermal headroom > 0.2"]
+    },
+    {
+      "id": "get_lifecycle_state",
+      "name": "Lifecycle State Snapshot",
+      "description": "Return the current lifecycle state machine snapshot across all agents",
+      "tags": ["lifecycle", "state", "agents"],
+      "examples": ["How many agents are in the BREED phase?"]
+    },
+    {
+      "id": "emergency_stop",
+      "name": "Emergency Stop",
+      "description": "Halt all breeding activity immediately with optional sunset of non-viable agents",
+      "tags": ["emergency", "stop", "safety"],
+      "examples": ["Emergency stop breeding — thermal overload detected"]
+    }
+  ],
+  "authentication": {
+    "schemes": ["mtls", "x509"]
+  },
+  "defaultInputContentType": "application/json",
+  "defaultOutputContentType": "application/json"
+}

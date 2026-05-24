@@ -1,0 +1,47 @@
+{
+  "name": "sunset-nexus",
+  "version": "1.0.0",
+  "description": "Fleet nexus for node registration, federation, and discovery. Maintains the canonical agent registry and routes A2A task negotiation between fleet members.",
+  "url": "http://nexus.fleet.local:4047/nexus",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "streamingResponse": true,
+    "webhooks": true
+  },
+  "skills": [
+    {
+      "id": "node_registration",
+      "name": "Node Registration",
+      "description": "Register a new fleet node with its capabilities, agent cards, and endpoint addresses",
+      "tags": ["registration", "nodes", "federation"],
+      "examples": ["Register node alpha-7 with 4 GPUs and thermal budget 85°C"]
+    },
+    {
+      "id": "federation_sync",
+      "name": "Federation Sync",
+      "description": "Synchronize fleet topology, agent registry, and consensus state across federated nodes",
+      "tags": ["federation", "sync", "topology", "consensus"],
+      "examples": ["Sync federation state with nodes beta-1 through beta-4"]
+    },
+    {
+      "id": "agent_discovery",
+      "name": "Agent Discovery",
+      "description": "Discover agents by skill, capability, or identity across the federated fleet",
+      "tags": ["discovery", "agents", "registry", "query"],
+      "examples": ["Find all agents with the 'drift_correction' skill"]
+    },
+    {
+      "id": "route_task",
+      "name": "Task Routing",
+      "description": "Route an A2A task to the best-matching agent based on capability scoring and load",
+      "tags": ["routing", "tasks", "a2a", "negotiation"],
+      "examples": ["Route a compile task to the least-loaded compiler agent"]
+    }
+  ],
+  "authentication": {
+    "schemes": ["mtls", "x509"]
+  },
+  "defaultInputContentType": "application/json",
+  "defaultOutputContentType": "application/json"
+}

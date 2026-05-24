@@ -1,0 +1,47 @@
+{
+  "name": "sunset-thermal",
+  "version": "2.0.0",
+  "description": "Thermal monitoring, auction, and async budget management. Tracks per-device temperature, utilization, and power draw; runs thermal auctions to allocate slots; enforces async budget caps.",
+  "url": "http://nexus.fleet.local:4047/thermal",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "streamingResponse": true,
+    "webhooks": true
+  },
+  "skills": [
+    {
+      "id": "thermal_monitor",
+      "name": "Thermal Monitor",
+      "description": "Stream real-time thermal telemetry: temperature, utilization, power draw per device",
+      "tags": ["thermal", "monitor", "telemetry", "temperature"],
+      "examples": ["Stream thermal telemetry for all GPUs on node delta-3"]
+    },
+    {
+      "id": "thermal_auction",
+      "name": "Thermal Auction",
+      "description": "Run a Vickrey-style auction to allocate limited thermal slots among competing agents",
+      "tags": ["auction", "thermal", "slots", "allocation"],
+      "examples": ["Run thermal auction for 8 slots with bids from breeder and compiler agents"]
+    },
+    {
+      "id": "async_budget",
+      "name": "Async Budget",
+      "description": "Manage async thermal budget caps: set, query, and enforce per-agent thermal quotas",
+      "tags": ["budget", "async", "thermal", "quota"],
+      "examples": ["Set async budget for breeder to 150W TDP on node delta-3"]
+    },
+    {
+      "id": "parent_sacrifice",
+      "name": "Parent Sacrifice",
+      "description": "Allow a parent agent to release its thermal slot before its child is spawned",
+      "tags": ["sacrifice", "parent", "spawn", "thermal"],
+      "examples": ["Agent_42 sacrifices its slot so agent_43 can spawn"]
+    }
+  ],
+  "authentication": {
+    "schemes": ["mtls", "x509"]
+  },
+  "defaultInputContentType": "application/json",
+  "defaultOutputContentType": "application/json"
+}

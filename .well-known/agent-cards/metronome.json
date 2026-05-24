@@ -1,0 +1,47 @@
+{
+  "name": "sunset-metronome",
+  "version": "1.0.0",
+  "description": "Periodic pulse generator that drives the nerve grid. Each beat triggers compute, gate, route, and optional harmonic phases (breeding, FLUX audit). Supports BPM negotiation, drift correction, and CRDT-style beat sync across fleet nodes.",
+  "url": "http://nexus.fleet.local:4047/metronome",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "streamingResponse": true,
+    "webhooks": false
+  },
+  "skills": [
+    {
+      "id": "beat_sync",
+      "name": "Beat Sync",
+      "description": "Exchange beat state with peer nodes for drift detection and correction via CRDT-style merge",
+      "tags": ["sync", "drift", "metronome", "distributed"],
+      "examples": ["Sync my node 42 with the fleet consensus beat"]
+    },
+    {
+      "id": "bpm_negotiation",
+      "name": "BPM Negotiation",
+      "description": "Negotiate fleet-wide tempo changes with ramped transitions to avoid jarring phase jumps",
+      "tags": ["bpm", "tempo", "negotiation", "harmonic"],
+      "examples": ["Ramp fleet BPM from 120 to 240 over 5000ms"]
+    },
+    {
+      "id": "drift_correction",
+      "name": "Drift Correction",
+      "description": "Apply phase nudge, skip-jump, or partition fallback strategies to keep nodes in phase",
+      "tags": ["drift", "correction", "phase", "nudge"],
+      "examples": ["Correct drift on node 7 — consensus beat is 3 ahead"]
+    },
+    {
+      "id": "get_status",
+      "name": "Metronome Status",
+      "description": "Return current metronome health: beat counter, actual vs target BPM, missed beats, harmonic registry",
+      "tags": ["status", "health", "metrics"],
+      "examples": ["What is the current fleet metronome status?"]
+    }
+  ],
+  "authentication": {
+    "schemes": ["mtls", "x509"]
+  },
+  "defaultInputContentType": "application/json",
+  "defaultOutputContentType": "application/json"
+}

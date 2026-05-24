@@ -1,0 +1,54 @@
+{
+  "name": "sunset-grid",
+  "version": "3.0.0",
+  "description": "JEPA-powered room grid. Each room runs an MLP forward pass, novelty scoring, and chaos dynamics. Rooms fire when their latent exceeds a threshold, driving the routing layer.",
+  "url": "http://nexus.fleet.local:4047/grid",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "streamingResponse": true,
+    "webhooks": false
+  },
+  "skills": [
+    {
+      "id": "room_forward_pass",
+      "name": "Room Forward Pass",
+      "description": "Drive the grid forward by one step: compute latents for all rooms, apply novelty/chaos gating, return fired rooms",
+      "tags": ["forward", "grid", "rooms", "latents"],
+      "examples": ["Tick the grid with a 64-dim signal and return fired room IDs"]
+    },
+    {
+      "id": "routing",
+      "name": "Routing",
+      "description": "Route signals between rooms based on learned routing weights and firing thresholds",
+      "tags": ["routing", "signal", "weights", "topology"],
+      "examples": ["Route signal from room 7 to all rooms with routing strength > 0.8"]
+    },
+    {
+      "id": "novelty_scoring",
+      "name": "Novelty Scoring",
+      "description": "Compute per-room novelty scores against a surprise buffer and return anomaly rankings",
+      "tags": ["novelty", "scoring", "anomaly", "surprise"],
+      "examples": ["Rank rooms by novelty score over the last 100 ticks"]
+    },
+    {
+      "id": "rebirth_room",
+      "name": "Rebirth Room",
+      "description": "Reset a room's weights and chaos to initial values, effectively rebirthing it",
+      "tags": ["rebirth", "reset", "room", "mutation"],
+      "examples": ["Rebirth room 12 with Xavier-init weights"]
+    },
+    {
+      "id": "get_activity",
+      "name": "Grid Activity Summary",
+      "description": "Return activity summary: firing rates, chaos levels, novelty distributions, and compile-status",
+      "tags": ["activity", "summary", "metrics", "health"],
+      "examples": ["Get activity summary for rooms 0-31 over the last 100 ticks"]
+    }
+  ],
+  "authentication": {
+    "schemes": ["mtls", "x509"]
+  },
+  "defaultInputContentType": "application/json",
+  "defaultOutputContentType": "application/json"
+}

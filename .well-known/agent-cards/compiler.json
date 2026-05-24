@@ -1,0 +1,47 @@
+{
+  "name": "sunset-compiler",
+  "version": "3.0.0",
+  "description": "Hot-swap compilation agent with built-in profiler and backend selection. Compiles room grids, vector pipelines, and constraint checkers on-the-fly while respecting thermal budgets.",
+  "url": "http://nexus.fleet.local:4047/compiler",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "streamingResponse": true,
+    "webhooks": false
+  },
+  "skills": [
+    {
+      "id": "hot_swap_compile",
+      "name": "Hot-Swap Compilation",
+      "description": "Compile and hot-swap a room grid or pipeline module without stopping the fleet beat",
+      "tags": ["compile", "hot-swap", "backend", "rooms"],
+      "examples": ["Hot-swap room grid 7 to CUDA backend with mixed precision"]
+    },
+    {
+      "id": "profile_pass",
+      "name": "Profile Pass",
+      "description": "Run a profiler pass on a target module and return bottleneck report with optimization hints",
+      "tags": ["profile", "performance", "bottleneck", "optimization"],
+      "examples": ["Profile the grid forward pass on node gamma-2"]
+    },
+    {
+      "id": "backend_selection",
+      "name": "Backend Selection",
+      "description": "Select optimal backend (CPU, CUDA, ROCm, WebGPU) based on workload shape and device telemetry",
+      "tags": ["backend", "selection", "hardware", "dispatch"],
+      "examples": ["Select the best backend for a 4096-room grid on 4x A100"]
+    },
+    {
+      "id": "constraint_audit",
+      "name": "Constraint Audit",
+      "description": "Audit compiled bytecode against FLUX constraints before deployment",
+      "tags": ["audit", "constraints", "flux", "verification"],
+      "examples": ["Audit the compiled room grid for bound violations"]
+    }
+  ],
+  "authentication": {
+    "schemes": ["mtls", "x509"]
+  },
+  "defaultInputContentType": "application/json",
+  "defaultOutputContentType": "application/json"
+}
