@@ -576,10 +576,23 @@ class BreederDaemonV2:
             vector_table=self._vector_table,
             n_children=n_children,
         )
-        # Pad with random if we didn't get enough
-        while len(pairs) < n_children:
+        # Pad with random if we didn't get enough — but respect FLUX gating
+        attempts = 0
+        max_attempts = n_children * 10
+        while len(pairs) < n_children and attempts < max_attempts:
             extra = self._select_parents_random(n_children - len(pairs))
-            pairs.extend(extra)
+            for a, b in extra:
+                if self._flux_checker is not None:
+                    plan = {"parents": (a, b)}
+                    result = self._flux_checker.check_candidate(a, plan)
+                    if not result.passed:
+                        logger.debug("FLUX blocked random pair (%d, %d): %s", a, b, result.violations)
+                        attempts += 1
+                        continue
+                pairs.append((a, b))
+                attempts += 1
+                if len(pairs) >= n_children:
+                    break
         return pairs[:n_children]
     def step(self) -> list[LifecycleTransition]:
         """Run one scheduler tick: dequeue, check thermal, spawn or wait.
@@ -1561,9 +1574,22 @@ class BreederDaemonV2:
                     return pairs[:n_children]
 
         # ── Path 4: Random fallback ────────────────────────────
-        while len(pairs) < n_children:
+        attempts = 0
+        max_attempts = n_children * 10
+        while len(pairs) < n_children and attempts < max_attempts:
             extra = self._select_parents_random(n_children - len(pairs))
-            pairs.extend(extra)
+            for a, b in extra:
+                if self._flux_checker is not None:
+                    plan = {"parents": (a, b)}
+                    result = self._flux_checker.check_candidate(a, plan)
+                    if not result.passed:
+                        logger.debug("FLUX blocked random pair (%d, %d): %s", a, b, result.violations)
+                        attempts += 1
+                        continue
+                pairs.append((a, b))
+                attempts += 1
+                if len(pairs) >= n_children:
+                    break
         return pairs[:n_children]
 
     def _select_parents_random(
