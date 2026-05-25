@@ -87,7 +87,7 @@ class SubsystemWrapper:
             subsystem="", state="disabled", last_ok=0.0, consecutive_failures=0
         )
     )
-    _lock: threading.Lock = field(default_factory=threading.Lock)
+    _lock: threading.RLock = field(default_factory=threading.RLock)
 
     def ensure(self) -> Any | None:
         """Lazy-init the subsystem if enabled and not yet created."""
