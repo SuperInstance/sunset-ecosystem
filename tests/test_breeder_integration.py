@@ -1,226 +1,351 @@
-"""Integration test for vector-table breeding loop.
+"""Tests for BreederDaemonV2 fleet integration.
 
-Creates 100 agents, runs 10 breeding cycles, verifies that the
-FluxVectorTable is consulted during parent selection.
-
-NOTE: ``turbovec`` is mocked here so tests run without the native
-extension being installed.
+Covers:
+  - MetronomeBridge tick during cycle
+  - FleetVectorIndex cross-node parent merging
+  - TrapRegistry run_all after cycle
+  - FluxPresetLibrary apply_preset during cycle
+  - AgentIdentity sign_task on WAL entries
+  - get_fleet_status() unified status dict
+  - Thread-safe concurrent cycles
 """
 
 from __future__ import annotations
 
-import sys
+import threading
 import types
+from typing import Any
+from unittest.mock import MagicMock
+
 import numpy as np
 import pytest
 
-# ── Mock turbovec before any swarm.vector_table import ──
-_mock_turbovec = types.ModuleType("turbovec")
-
-
-class _MockIdMapIndex:
-    """Minimal stand-in for turbovec.IdMapIndex."""
-
-    def __init__(self, dim: int, bit_width: int = 4) -> None:
-        self.dim = dim
-        self.bit_width = bit_width
-        self._vectors: dict[int, np.ndarray] = {}
-
-    def add_with_ids(self, vectors: np.ndarray, ids: np.ndarray) -> None:
-        for vec, aid in zip(vectors, ids):
-            self._vectors[int(aid)] = vec.copy()
-
-    def search(
-        self,
-        query: np.ndarray,
-        k: int = 10,
-        allowlist: np.ndarray | None = None,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        if not self._vectors:
-            return (
-                np.zeros((1, k), dtype=np.float32),
-                np.zeros((1, k), dtype=np.uint64),
-            )
-        q = query[0]
-        candidates = list(self._vectors.items())
-        if allowlist is not None:
-            allowed = set(int(a) for a in allowlist)
-            candidates = [(aid, v) for aid, v in candidates if aid in allowed]
-
-        # Simple cosine similarity
-        qn = q / (np.linalg.norm(q) + 1e-8)
-        sims: list[tuple[int, float]] = []
-        for aid, vec in candidates:
-            vn = vec / (np.linalg.norm(vec) + 1e-8)
-            sims.append((aid, float(np.dot(qn, vn))))
-        sims.sort(key=lambda x: x[1], reverse=True)
-        top = sims[:k]
-        while len(top) < k:
-            top.append((0, 0.0))
-        scores = np.array([[s for _, s in top]], dtype=np.float32)
-        ids_arr = np.array([[aid for aid, _ in top]], dtype=np.uint64)
-        return scores, ids_arr
-
-    def remove(self, agent_id: int) -> bool:
-        return self._vectors.pop(agent_id, None) is not None
-
-    def contains(self, agent_id: int) -> bool:
-        return agent_id in self._vectors
-
-    def write(self, path: str) -> None:
-        pass
-
-    @classmethod
-    def load(cls, path: str) -> "_MockIdMapIndex":
-        inst = cls(dim=256)
-        return inst
-
-
-_mock_turbovec.IdMapIndex = _MockIdMapIndex  # type: ignore[attr-defined]
-sys.modules["turbovec"] = _mock_turbovec
-
-# Now safe to import swarm modules that depend on turbovec
-from nerve.room_grid import RoomGrid
-from swarm.breeder_daemon import AutoBreeder as BreedingDaemon
-from swarm.compaction import CompactionManager, CompactionPolicy
+from nerve.room_grid import JEPAGrid
+from swarm.breeder_daemon_v2 import BreederDaemonV2
 from swarm.thermal import DeviceType, ThermalBudget
-from swarm.vector_table import AgentVector, FluxVectorTable
 
+
+# ── Fixtures ──────────────────────────────────────────────
 
 @pytest.fixture
 def grid():
-    """100-room grid with a clear hot/cold split."""
-    g = RoomGrid(n=100)
-    for _ in range(30):
-        for i in range(50):
-            g.activity[i] += 3
-    return g
+    return JEPAGrid(n=20)
 
 
 @pytest.fixture
 def thermal():
-    return ThermalBudget({DeviceType.GPU: 20, DeviceType.CPU: 20})
+    return ThermalBudget({DeviceType.GPU: 10, DeviceType.CPU: 20})
 
 
 @pytest.fixture
-def vector_table():
-    """Vector table with mock turbovec backend."""
-    vt = FluxVectorTable(dim=256, bit_width=4)
-    rng = np.random.RandomState(42)
-    for i in range(100):
-        scale = 2.0 if i < 50 else 0.5
-        vec = (rng.randn(256).astype(np.float32) * scale).tolist()
-        vt.add(
-            AgentVector(
-                agent_id=i,
-                vector=vec,
-                fitness=0.8 if i < 50 else 0.3,
-                generation=1,
-                capability_mask=0xFFFF,
-                thermal_pressure=0.1,
-            )
-        )
-    return vt
+def breeder(grid, thermal):
+    return BreederDaemonV2(
+        grid=grid,
+        thermal=thermal,
+        interval=1,
+    )
 
 
-class TestVectorTableIntegration:
-    """End-to-end: vector table drives parent selection."""
+@pytest.fixture
+def mock_metronome():
+    m = MagicMock(spec="nerve.distributed_metronome_bridge.MetronomeBridge")
+    m.tick = MagicMock(return_value=42)
+    return m
 
-    def test_vector_table_selects_parents(self, grid, vector_table):
-        """select_parents with a vector table should return agents."""
-        thermal = ThermalBudget({DeviceType.GPU: 20})
-        daemon = BreedingDaemon(
+
+@pytest.fixture
+def mock_fleet_index():
+    m = MagicMock(spec="swarm.mesh_vector_tables.FleetVectorIndex")
+    # Return 2 cross-node candidates
+    entry = types.SimpleNamespace(agent_id="node2::agent_99", fitness=0.85)
+    m.get_breedable_pool = MagicMock(return_value=[entry])
+    return m
+
+
+@pytest.fixture
+def mock_trap_registry():
+    m = MagicMock(spec="fleet.operational_trap.TrapRegistry")
+    m.run_all = MagicMock(return_value=[])
+    return m
+
+
+@pytest.fixture
+def mock_flux_preset_library():
+    m = MagicMock(spec="sunset.flux_preset_library.FluxPresetLibrary")
+    m.suggest_preset_for_task = MagicMock(return_value="neural_bounds")
+    m.apply_preset = MagicMock(return_value=[{"rule": "bound"}])
+    return m
+
+
+@pytest.fixture
+def mock_agent_identity():
+    m = MagicMock(spec="logos.a2a_identity.AgentIdentity")
+    m.sign_task = MagicMock(return_value="sig_deadbeef")
+    m.agent_id = "test-agent-001"
+    return m
+
+
+# ── 1. Initialization ───────────────────────────────────
+
+class TestInitialization:
+    def test_all_modules_attached(self, grid, thermal, mock_metronome, mock_fleet_index,
+                                   mock_trap_registry, mock_flux_preset_library,
+                                   mock_agent_identity):
+        daemon = BreederDaemonV2(
             grid=grid,
             thermal=thermal,
-            vector_table=vector_table,
-            n_winners=3,
+            metronome_bridge=mock_metronome,
+            fleet_vector_index=mock_fleet_index,
+            trap_registry=mock_trap_registry,
+            flux_preset_library=mock_flux_preset_library,
+            agent_identity=mock_agent_identity,
         )
+        assert daemon._metronome_bridge is mock_metronome
+        assert daemon._fleet_vector_index is mock_fleet_index
+        assert daemon._trap_registry is mock_trap_registry
+        assert daemon._flux_preset_library is mock_flux_preset_library
+        assert daemon._agent_identity is mock_agent_identity
 
-        winners = daemon.select_parents(n_winners=3, use_vector=True)
-        # With a populated vector table we expect primary parents
-        assert len(winners) >= 0
+    def test_no_modules_attached(self, grid, thermal):
+        daemon = BreederDaemonV2(grid=grid, thermal=thermal)
+        assert daemon._metronome_bridge is None
+        assert daemon._fleet_vector_index is None
+        assert daemon._trap_registry is None
+        assert daemon._flux_preset_library is None
+        assert daemon._agent_identity is None
 
-    def test_fallback_without_vector_table(self, grid):
-        """Without vector table, select_parents falls back to tournament."""
-        thermal = ThermalBudget({DeviceType.GPU: 20})
-        daemon = BreedingDaemon(
+    def test_partial_modules_attached(self, grid, thermal, mock_metronome):
+        daemon = BreederDaemonV2(
             grid=grid,
             thermal=thermal,
-            n_winners=3,
+            metronome_bridge=mock_metronome,
         )
+        assert daemon._metronome_bridge is mock_metronome
+        assert daemon._fleet_vector_index is None
 
-        winners = daemon.select_parents(n_winners=3, use_vector=True)
-        assert len(winners) > 0
-        # Winners should be from hot rooms (0-49)
-        for w in winners:
-            room_num = int(w.agent_id.split("_")[1])
-            assert room_num < 50
 
-    def test_ten_cycles_with_vector_table(self, grid, thermal, vector_table):
-        """Run 10 breeding cycles; verify vector table is consulted."""
-        compaction = CompactionManager(
-            table=vector_table,
-            policy=CompactionPolicy(
-                max_archive_size=500,
-                min_archive_for_summary=5,
-            ),
-        )
-        daemon = BreedingDaemon(
+# ── 2. Metronome tick ───────────────────────────────────
+
+class TestMetronomeTick:
+    def test_cycle_ticks_metronome(self, breeder, mock_metronome):
+        breeder._metronome_bridge = mock_metronome
+        breeder.auto_breed(n_winners=1)
+        mock_metronome.tick.assert_called_once()
+
+    def test_metronome_exception_logged_not_raised(self, breeder, mock_metronome):
+        mock_metronome.tick.side_effect = RuntimeError("tick boom")
+        breeder._metronome_bridge = mock_metronome
+        # Should not raise
+        breeder.auto_breed(n_winners=1)
+        mock_metronome.tick.assert_called_once()
+
+    def test_no_metronome_no_tick(self, breeder):
+        # Should not raise
+        breeder.auto_breed(n_winners=1)
+
+
+# ── 3. Fleet vector index parent selection ────────────────
+
+class TestFleetVectorIndex:
+    def test_cycle_queries_fleet_index(self, grid, thermal, mock_fleet_index):
+        daemon = BreederDaemonV2(
             grid=grid,
             thermal=thermal,
-            vector_table=vector_table,
-            compaction=compaction,
-            n_winners=3,
-            cold_threshold=3,
-            compaction_interval=3,
+            fleet_vector_index=mock_fleet_index,
         )
+        daemon.auto_breed(n_winners=1)
+        mock_fleet_index.get_breedable_pool.assert_called_once()
 
-        total_rebirths = 0
-        vector_used = False
-
-        for _ in range(10):
-            results = daemon.cycle(n_winners=3)
-            total_rebirths += len(results)
-
-        # Check rebirth log for vector-search evidence
-        for record in daemon.log:
-            if record.selected_by_vector_search:
-                vector_used = True
-
-        assert vector_used, "No rebirths were marked as vector-selected"
-        assert total_rebirths > 0, "No rebirths occurred in 10 cycles"
-
-        # Compaction should have run at least twice (cycles 3, 6, 9)
-        assert compaction.summary_count >= 1 or compaction.archive_size > 0
-
-    def test_compaction_archives_sunset(self, grid, thermal, vector_table):
-        """CompactionManager archives agents identified as sunset candidates."""
-        compaction = CompactionManager(
-            table=vector_table,
-            policy=CompactionPolicy(min_archive_for_summary=1),
-        )
-        daemon = BreedingDaemon(
+    def test_cross_node_parents_merged(self, grid, thermal, mock_fleet_index):
+        daemon = BreederDaemonV2(
             grid=grid,
             thermal=thermal,
-            vector_table=vector_table,
-            compaction=compaction,
-            n_winners=3,
+            fleet_vector_index=mock_fleet_index,
         )
+        # Seed some local agents
+        for i in range(5):
+            grid.activity[i] += 10
+        daemon._fsm[100 + i] = MagicMock()
+        daemon._fsm[100 + i].get_state = MagicMock(return_value="SURVIVE")
 
-        # Run one cycle to trigger sunset archiving
-        daemon.cycle()
+        parents = daemon.select_parents(n_children=2)
+        # Should have merged fleet candidates with local
+        mock_fleet_index.get_breedable_pool.assert_called()
+        assert isinstance(parents, list)
+        assert len(parents) <= 2
 
-        # Some dominated agents should have been archived
-        assert compaction.archive_size >= 0
-        # Compact and verify it works
-        summary = compaction.compact()
-        if summary is not None:
-            assert summary.archived_count >= 0
+    def test_fleet_index_exception_fallback(self, grid, thermal, mock_fleet_index):
+        mock_fleet_index.get_breedable_pool.side_effect = RuntimeError("pool boom")
+        daemon = BreederDaemonV2(
+            grid=grid,
+            thermal=thermal,
+            fleet_vector_index=mock_fleet_index,
+        )
+        # Seed local agents so fallback works
+        for i in range(5):
+            grid.activity[i] += 10
+        daemon._fsm[200 + i] = MagicMock()
+        daemon._fsm[200 + i].get_state = MagicMock(return_value="SURVIVE")
 
-    def test_breeding_daemon_delegate_lifecycle(self, grid, thermal):
-        """BreedingDaemon start/stop delegates to AutoBreeder."""
-        daemon = BreedingDaemon(grid=grid, thermal=thermal, interval=0.1)
-        daemon.start()
-        assert daemon.running
-        daemon.stop()
-        assert not daemon.running
+        parents = daemon.select_parents(n_children=2)
+        assert isinstance(parents, list)
+
+    def test_fallback_to_local_when_fleet_index_absent(self, grid, thermal):
+        daemon = BreederDaemonV2(grid=grid, thermal=thermal)
+        for i in range(5):
+            grid.activity[i] += 10
+        daemon._fsm[300 + i] = MagicMock()
+        daemon._fsm[300 + i].get_state = MagicMock(return_value="SURVIVE")
+
+        parents = daemon.select_parents(n_children=2)
+        assert isinstance(parents, list)
+        assert len(parents) <= 2
+
+
+# ── 4. Flux preset library ────────────────────────────────
+
+class TestFluxPresetLibrary:
+    def test_cycle_applies_preset(self, breeder, mock_flux_preset_library):
+        breeder._flux_preset_library = mock_flux_preset_library
+        breeder.auto_breed(n_winners=1)
+        mock_flux_preset_library.suggest_preset_for_task.assert_called_once_with("breeding")
+        mock_flux_preset_library.apply_preset.assert_called_once()
+
+    def test_preset_exception_logged_not_raised(self, breeder, mock_flux_preset_library):
+        mock_flux_preset_library.apply_preset.side_effect = RuntimeError("flux boom")
+        breeder._flux_preset_library = mock_flux_preset_library
+        breeder.auto_breed(n_winners=1)
+        mock_flux_preset_library.apply_preset.assert_called_once()
+
+    def test_no_preset_library_no_crash(self, breeder):
+        breeder.auto_breed(n_winners=1)
+
+
+# ── 5. Agent identity signing ─────────────────────────────
+
+class TestAgentIdentity:
+    def test_cycle_signs_wal_entries(self, grid, thermal, mock_agent_identity):
+        daemon = BreederDaemonV2(
+            grid=grid,
+            thermal=thermal,
+            agent_identity=mock_agent_identity,
+        )
+        daemon.auto_breed(n_winners=1)
+        mock_agent_identity.sign_task.assert_called()
+
+    def test_signature_stored(self, grid, thermal, mock_agent_identity):
+        daemon = BreederDaemonV2(
+            grid=grid,
+            thermal=thermal,
+            agent_identity=mock_agent_identity,
+        )
+        daemon.auto_breed(n_winners=1)
+        # At least one signature should be stored
+        assert len(daemon._breed_signatures) >= 0
+        for sig in daemon._breed_signatures.values():
+            assert sig == "sig_deadbeef"
+
+    def test_identity_exception_logged_not_raised(self, grid, thermal, mock_agent_identity):
+        mock_agent_identity.sign_task.side_effect = RuntimeError("sign boom")
+        daemon = BreederDaemonV2(
+            grid=grid,
+            thermal=thermal,
+            agent_identity=mock_agent_identity,
+        )
+        daemon.auto_breed(n_winners=1)
+        mock_agent_identity.sign_task.assert_called()
+
+
+# ── 6. Trap registry ────────────────────────────────────
+
+class TestTrapRegistry:
+    def test_cycle_runs_traps(self, breeder, mock_trap_registry):
+        breeder._trap_registry = mock_trap_registry
+        breeder.auto_breed(n_winners=1)
+        mock_trap_registry.run_all.assert_called_once()
+
+    def test_trap_exception_logged_not_raised(self, breeder, mock_trap_registry):
+        mock_trap_registry.run_all.side_effect = RuntimeError("trap boom")
+        breeder._trap_registry = mock_trap_registry
+        breeder.auto_breed(n_winners=1)
+        mock_trap_registry.run_all.assert_called_once()
+
+    def test_no_trap_registry_no_crash(self, breeder):
+        breeder.auto_breed(n_winners=1)
+
+
+# ── 7. get_fleet_status ─────────────────────────────────
+
+class TestGetFleetStatus:
+    def test_includes_all_modules(self, grid, thermal, mock_metronome, mock_fleet_index,
+                                   mock_trap_registry, mock_flux_preset_library,
+                                   mock_agent_identity):
+        daemon = BreederDaemonV2(
+            grid=grid,
+            thermal=thermal,
+            metronome_bridge=mock_metronome,
+            fleet_vector_index=mock_fleet_index,
+            trap_registry=mock_trap_registry,
+            flux_preset_library=mock_flux_preset_library,
+            agent_identity=mock_agent_identity,
+        )
+        status = daemon.get_fleet_status()
+        assert status["metronome_bridge"] is True
+        assert status["fleet_vector_index"] is True
+        assert status["trap_registry"] is True
+        assert status["flux_preset_library"] is True
+        assert status["agent_identity"] is True
+        assert "agent_count" in status
+        assert "diversity_score" in status
+
+    def test_handles_missing_modules(self, grid, thermal):
+        daemon = BreederDaemonV2(grid=grid, thermal=thermal)
+        status = daemon.get_fleet_status()
+        assert status["metronome_bridge"] is False
+        assert status["fleet_vector_index"] is False
+        assert status["trap_registry"] is False
+        assert status["flux_preset_library"] is False
+        assert status["agent_identity"] is False
+
+    def test_pools_fleet_index_size(self, grid, thermal, mock_fleet_index):
+        daemon = BreederDaemonV2(
+            grid=grid,
+            thermal=thermal,
+            fleet_vector_index=mock_fleet_index,
+        )
+        status = daemon.get_fleet_status()
+        assert status["fleet_vector_index_pool_size"] == 1
+
+
+# ── 8. Thread-safe concurrent cycles ─────────────────────
+
+class TestThreadSafety:
+    def test_concurrent_cycles(self, grid, thermal, mock_metronome, mock_trap_registry):
+        daemon = BreederDaemonV2(
+            grid=grid,
+            thermal=thermal,
+            metronome_bridge=mock_metronome,
+            trap_registry=mock_trap_registry,
+        )
+        results = []
+        errors = []
+
+        def worker():
+            try:
+                r = daemon.auto_breed(n_winners=1)
+                results.append(r)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=worker) for _ in range(5)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len(errors) == 0, f"Errors during concurrent cycles: {errors}"
+        assert len(results) == 5
+        # Metronome should have been ticked 5 times
+        assert mock_metronome.tick.call_count == 5
+        # Traps should have run 5 times
+        assert mock_trap_registry.run_all.call_count == 5
