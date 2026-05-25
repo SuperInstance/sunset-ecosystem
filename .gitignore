@@ -8,3 +8,9 @@ data/
 *.tar.gz
 
 nerve/libjepa_cuda.so
+
+# Runtime state
+.a2a/
+*.sqlite
+breeder.wal.sqlite
+benchmarks/cuda_benchmark_results.json
