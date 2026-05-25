@@ -41,6 +41,14 @@ def default_config() -> ConductorConfig:
     )
 
 
+@pytest.fixture(autouse=True)
+def mock_identity(monkeypatch):
+    """Patch FleetConductorV2._get_identity to avoid ed25519 key generation hangs."""
+    monkeypatch.setattr(
+        FleetConductorV2, "_get_identity", lambda self: None
+    )
+
+
 @pytest.fixture
 def minimal_config() -> ConductorConfig:
     """Everything disabled except the bare minimum."""
