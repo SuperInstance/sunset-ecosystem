@@ -247,6 +247,7 @@ class BytecodeEmitter:
         self._const_pool: List[float] = []
         self._labels: Dict[str, int] = {}  # label name → byte offset
         self._backpatches: List[Tuple[str, int]] = []  # (label, offset-of-jump-operand)
+        self.var_slots: Dict[str, int] = {}  # variable name → constant pool index
 
     # ── raw bytes ──
 
@@ -429,6 +430,7 @@ class FluxCompiler:
             emitter.push(expr.value)
         elif isinstance(expr, Var):
             idx = emitter.add_const(self._resolve_var(expr.name))
+            emitter.var_slots[expr.name] = idx
             emitter.load_const(idx)
         elif isinstance(expr, BinOp):
             self.compile_expr(expr.left, emitter, with_validate)
