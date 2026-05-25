@@ -21,7 +21,7 @@ classifiers = [
 [project.optional-dependencies]
 gpu = ["torch", "numpy"]
 npu = ["onnx", "onnxruntime", "torch", "numpy"]
-dev = ["pytest>=7.0", "pytest-cov"]
+dev = ["pytest>=7.0", "pytest-cov", "numpy"]
 # ecosystem deps removed - local file:// URLs not allowed on PyPI
 vecsearch = ["turbovec>=0.1.0", "numpy"]
 
