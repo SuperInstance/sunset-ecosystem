@@ -21,7 +21,7 @@ from fleet.operational_trap import (
     TrapSeverity,
     ThermalTrap,
 )
-from swarm.flux_gating import FluxGatingChecker, FluxGatingConfig, FluxWAL
+from swarm.flux_gating import FluxGatingChecker, FluxGatingConfig, FluxCheckResult
 from swarm.thermal import DeviceType, ThermalBudget
 
 
@@ -253,20 +253,16 @@ def test_thermal_trap_no_fire_when_healthy():
 # ── FluxViolationTrap ───────────────────────────────────
 
 def test_flux_violation_trap_detects_breach():
-    """FluxViolationTrap surfaces WAL records with critical severity."""
-    config = FluxGatingConfig(enable_wal=True)
+    """FluxViolationTrap surfaces recent results with critical severity."""
+    config = FluxGatingConfig()
     checker = FluxGatingChecker(config)
-    # Seed the WAL with a critical violation
-    checker._wal.append(
-        {
-            "event_type": "violation",
-            "severity": "critical",
-            "timestamp": time.time(),
-            "room_id": 42,
-        }
-    )
 
-    trap = FluxViolationTrap(checker=checker)
+    def _get_results():
+        return [
+            FluxCheckResult(passed=False, score=0.9, violations={"bounds": 0.9})
+        ]
+
+    trap = FluxViolationTrap(checker=checker, get_recent_results=_get_results)
     result = trap.check()
     assert result is not None
     assert result.condition == "flux_constraint_breach"
@@ -275,28 +271,26 @@ def test_flux_violation_trap_detects_breach():
 
 
 def test_flux_violation_trap_no_fire_when_clean():
-    """Empty WAL means no trap result."""
-    config = FluxGatingConfig(enable_wal=True)
+    """Empty results list means no trap result."""
+    config = FluxGatingConfig()
     checker = FluxGatingChecker(config)
 
-    trap = FluxViolationTrap(checker=checker)
+    trap = FluxViolationTrap(checker=checker, get_recent_results=lambda: [])
     result = trap.check()
     assert result is None
 
 
 def test_flux_violation_trap_warning_only():
-    """Only warning violations produce WARNING severity."""
-    config = FluxGatingConfig(enable_wal=True)
+    """Only warning-level violations produce WARNING severity."""
+    config = FluxGatingConfig()
     checker = FluxGatingChecker(config)
-    checker._wal.append(
-        {
-            "event_type": "violation",
-            "severity": "warning",
-            "timestamp": time.time(),
-        }
-    )
 
-    trap = FluxViolationTrap(checker=checker)
+    def _get_results():
+        return [
+            FluxCheckResult(passed=False, score=0.4, violations={"l2_norm": 0.4})
+        ]
+
+    trap = FluxViolationTrap(checker=checker, get_recent_results=_get_results)
     result = trap.check()
     assert result is not None
     assert result.severity == TrapSeverity.WARNING

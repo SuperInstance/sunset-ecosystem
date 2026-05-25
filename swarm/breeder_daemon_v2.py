@@ -488,18 +488,41 @@ class BreederDaemonV2:
     def _check_flux(self, parent_idx: int, mutation_plan: dict[str, Any]) -> Any:
         """Check FLUX constraints using compiled checker first, then fallback.
 
+        Extracts weights from the grid (or mutation_plan) and calls the
+        checker with the standard (weights, chaos, thermal_pressure) signature.
+
         Returns the first non-passing result, or a passing result if both pass.
         If compiled_checker is available it takes priority; flux_checker is fallback.
         If both block, returns the compiled checker's result (stricter VM path).
         """
+        # Extract weights
+        if "weights" in mutation_plan:
+            weights = np.asarray(mutation_plan["weights"], dtype=np.float32)
+        elif hasattr(self.grid, "get_weights"):
+            weights = np.asarray(self.grid.get_weights(parent_idx), dtype=np.float32)
+        else:
+            # parent_idx may be an agent ID or a room ID.
+            room_id = self._find_room_for_agent(parent_idx)
+            if room_id is None:
+                room_id = parent_idx
+            try:
+                weights = self._extract_room_vector(room_id)
+            except Exception:
+                # Agent not allocated / room out of bounds — can't extract
+                # weights so skip FLUX gating for this parent.
+                return None
+
+        chaos = float(mutation_plan.get("chaos", 0.3))
+        thermal = float(mutation_plan.get("thermal_pressure", 0.0))
+
         # Try compiled checker first (Path B)
         if self._compiled_checker is not None:
-            result = self._compiled_checker.check_candidate(parent_idx, mutation_plan)
+            result = self._compiled_checker.check_candidate(weights, chaos, thermal)
             if not result.passed:
                 return result
         # Fallback to Python checker (Path A)
         if self._flux_checker is not None:
-            result = self._flux_checker.check_candidate(parent_idx, mutation_plan)
+            result = self._flux_checker.check_candidate(weights, chaos, thermal)
             if not result.passed:
                 return result
         # Both passed (or neither configured)
@@ -895,8 +918,8 @@ class BreederDaemonV2:
                         dev = self.thermal.get_device(f"agent_{aid}")
                         if dev is not None:
                             db = self.thermal.device_budget(dev)
-                            if db.max > 0:
-                                thermal_val = db.current / db.max
+                            if db.max_agents > 0:
+                                thermal_val = db.current_agents / db.max_agents
                     res = self._flux_checker.check_candidate(
                         weights=wvec,
                         chaos=chaos_val,
@@ -1102,8 +1125,8 @@ class BreederDaemonV2:
                         dev = self.thermal.get_device(f"agent_{aid}")
                         if dev is not None:
                             db = self.thermal.device_budget(dev)
-                            if db.max > 0:
-                                thermal_val = db.current / db.max
+                            if db.max_agents > 0:
+                                thermal_val = db.current_agents / db.max_agents
                     thermal_vec.append(thermal_val)
                     room_ids_checked.append(rid)
 

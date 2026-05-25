@@ -251,52 +251,73 @@ class ThermalTrap(OperationalTrap):
 
 
 class FluxViolationTrap(OperationalTrap):
-    """Wraps a ``FluxGatingChecker`` to surface constraint violations as traps.
+    """Detects FLUX constraint violations from recent check results.
 
-    Fires when the most recent batch check contains any violations with
-    severity >= WARNING, or when the aggregate score drops below
-    ``score_threshold``.
+    Accepts either a ``get_recent_results`` callable that returns a list of
+    ``FluxCheckResult``‑like objects, or a *checker* with an optional ``_wal``
+    attribute for backward compatibility.
     """
 
     def __init__(
         self,
-        checker: Any,
+        checker: Any | None = None,
+        get_recent_results: Callable[[], list[Any]] | None = None,
         score_threshold: float = 1.0,
         **kwargs: Any,
     ) -> None:
         super().__init__(name="flux_violation", **kwargs)
         self.checker = checker
+        self.get_recent_results = get_recent_results
         self.score_threshold = score_threshold
         self._last_results: list[Any] = []
 
     def check(self) -> TrapResult | None:
-        from swarm.flux_gating import FluxGatingChecker, ViolationSeverity
+        from swarm.flux_gating import FluxGatingChecker
 
-        if not isinstance(self.checker, FluxGatingChecker):
+        results: list[Any] = []
+
+        # Prefer the explicit callable
+        if self.get_recent_results is not None:
+            try:
+                results = self.get_recent_results()
+            except Exception:
+                logger.exception("get_recent_results failed")
+                return None
+        # Backward compat: checker with a _wal attribute
+        elif self.checker is not None and hasattr(self.checker, "_wal") and self.checker._wal is not None:
+            try:
+                recent = (
+                    self.checker._wal.all()
+                    if hasattr(self.checker._wal, "all")
+                    else list(self.checker._wal)
+                )
+                now = time.time()
+                results = [r for r in recent if now - r.get("timestamp", 0) < 60.0]
+            except Exception:
+                return None
+
+        if not results:
             return None
 
-        # We do not call check_batch here because it needs candidate data.
-        # Instead we inspect the checker's WAL for recent violations.
-        if self.checker._wal is None:
-            return None
-
-        recent = self.checker._wal.all()
-        if not recent:
-            return None
-
-        # Filter violations from the last 60 seconds
-        now = time.time()
-        window = [r for r in recent if now - r.get("timestamp", 0) < 60.0]
-        if not window:
-            return None
-
-        # Count by severity (FluxViolation severity names stored in WAL)
-        critical = sum(
-            1 for r in window if r.get("severity", "").lower() == "critical"
-        )
-        warning = sum(
-            1 for r in window if r.get("severity", "").lower() == "warning"
-        )
+        # Categorise by severity
+        critical = 0
+        warning = 0
+        for r in results:
+            if isinstance(r, dict):
+                sev = r.get("severity", "").lower()
+                if sev == "critical":
+                    critical += 1
+                elif sev == "warning":
+                    warning += 1
+            else:
+                # FluxCheckResult-like object
+                score = getattr(r, "score", 0.0)
+                passed = getattr(r, "passed", True)
+                if not passed:
+                    if score > 0.7:
+                        critical += 1
+                    else:
+                        warning += 1
 
         if critical == 0 and warning == 0:
             return None
@@ -306,11 +327,11 @@ class FluxViolationTrap(OperationalTrap):
             condition="flux_constraint_breach",
             severity=severity,
             message=f"FLUX breach: {critical} critical, {warning} warning violations "
-            f"in last 60s ({len(window)} total records)",
+            f"in last 60s ({len(results)} total records)",
             metadata={
                 "critical_count": critical,
                 "warning_count": warning,
-                "window_size": len(window),
+                "window_size": len(results),
                 "score_threshold": self.score_threshold,
             },
         )
