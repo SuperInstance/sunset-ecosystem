@@ -404,6 +404,7 @@ class BreederDaemonV2:
         trap_registry: Optional[TrapRegistry] = None,
         flux_preset_library: Optional[FluxPresetLibrary] = None,
         agent_identity: Optional[AgentIdentity] = None,
+        flux_checker: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
         self.grid = grid
@@ -423,6 +424,7 @@ class BreederDaemonV2:
         self._trap_registry = trap_registry
         self._flux_preset_library = flux_preset_library
         self._agent_identity = agent_identity
+        self._flux_checker = flux_checker
         self._breed_signatures: dict[int, str] = {}
 
         # Backward-compatible alias: interval overrides tick_interval
@@ -655,6 +657,22 @@ class BreederDaemonV2:
 
         # Thermal check passed (or sacrifice succeeded)
         self._thermal_blocked_ticks = 0
+
+        # ── FLUX gating: check candidate before room allocation ───
+        if self._flux_checker is not None:
+            mutation_plan = {
+                "parents": (parent_a, parent_b),
+                "room_id": None,  # not yet known
+            }
+            flux_result = self._flux_checker.check_candidate(parent_a, mutation_plan)
+            if not flux_result.passed:
+                logger.warning(
+                    "Step %d: FLUX blocked ticket %d (parents=%s): %s",
+                    tick, ticket, (parent_a, parent_b), flux_result.violations,
+                )
+                # Re-queue for later retry — constraint may loosen
+                self._wal.enqueue_breed(parent_a, parent_b, priority, remote)
+                return transitions
 
         # Find a cold room for the child
         cold_rooms = self.grid.cold(thresh=1)
@@ -1430,6 +1448,13 @@ class BreederDaemonV2:
                 )
                 for a, b in diverse_pairs:
                     if a in population and b in population and not self._is_inbred(a, b):
+                        # FLUX gating: check candidate before accepting
+                        if self._flux_checker is not None:
+                            plan = {"parents": (a, b)}
+                            result = self._flux_checker.check_candidate(a, plan)
+                            if not result.passed:
+                                logger.debug("FLUX blocked diverse pair (%d, %d): %s", a, b, result.violations)
+                                continue
                         pairs.append((a, b))
                     if len(pairs) >= n_children:
                         return pairs[:n_children]
@@ -1444,7 +1469,16 @@ class BreederDaemonV2:
                     a, b = rec
                     if a in population and b in population and not self._is_inbred(a, b):
                         if (a, b) not in pairs and (b, a) not in pairs:
-                            pairs.append((a, b))
+                            # FLUX gating
+                            if self._flux_checker is not None:
+                                plan = {"parents": (a, b)}
+                                result = self._flux_checker.check_candidate(a, plan)
+                                if not result.passed:
+                                    logger.debug("FLUX blocked recommend pair (%d, %d): %s", a, b, result.violations)
+                                else:
+                                    pairs.append((a, b))
+                            else:
+                                pairs.append((a, b))
                     if len(pairs) >= n_children:
                         return pairs[:n_children]
             except Exception:
@@ -1500,6 +1534,27 @@ class BreederDaemonV2:
 
                 if best_b is None:
                     best_b = scored[1][0] if len(scored) > 1 else scored[0][0]
+
+                # FLUX gating on legacy fallback pair
+                if self._flux_checker is not None:
+                    plan = {"parents": (parent_a, best_b)}
+                    result = self._flux_checker.check_candidate(parent_a, plan)
+                    if not result.passed:
+                        logger.debug("FLUX blocked legacy pair (%d, %d): %s", parent_a, best_b, result.violations)
+                        # Try next best candidate
+                        for alt_aid, _, _, _ in scored[1:]:
+                            if alt_aid == parent_a or alt_aid == best_b:
+                                continue
+                            if self._is_inbred(parent_a, alt_aid):
+                                continue
+                            alt_plan = {"parents": (parent_a, alt_aid)}
+                            alt_result = self._flux_checker.check_candidate(parent_a, alt_plan)
+                            if alt_result.passed:
+                                best_b = alt_aid
+                                break
+                        else:
+                            # No alt passed — skip this child
+                            continue
 
                 pairs.append((parent_a, best_b))
                 if len(pairs) >= n_children:
