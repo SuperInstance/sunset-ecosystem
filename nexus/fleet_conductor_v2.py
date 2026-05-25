@@ -56,11 +56,17 @@ class ConductorConfig:
     enable_gateway_pacing: bool = True
     enable_sda_loop: bool = True
     enable_breeding: bool = False
+    enable_sse_dashboard: bool = False
+    enable_metronome_gossip: bool = False
+    enable_opcode_index: bool = False
+    enable_hebbian_mesh: bool = False
+    enable_decision_journal: bool = False
     sda_interval_ms: float = 1000.0
     max_drift_ms: float = 10.0
     auto_restart: bool = True
     restart_backoff_base: float = 1.0
     restart_backoff_max: float = 60.0
+    decision_journal_path: str = ""
 
 
 @dataclass
@@ -344,6 +350,58 @@ class FleetConductorV2:
                 enabled=True,
             )
 
+        # 9. SSEStreamDashboard (optional)
+        if cfg.enable_sse_dashboard:
+            def _make_sse() -> Any:
+                from fleet.sse_stream_dashboard import SSEStreamDashboard
+
+                return SSEStreamDashboard()
+
+            self._subsystems["sse_dashboard"] = SubsystemWrapper(
+                name="sse_dashboard",
+                factory=_make_sse,
+                enabled=True,
+            )
+
+        # 10. MetronomeGossipBridge (optional)
+        if cfg.enable_metronome_gossip:
+            def _make_gossip() -> Any:
+                from nerve.metronome_mesh_bridge import MetronomeGossipBridge
+
+                return MetronomeGossipBridge(node_id=cfg.node_id, peers=list(cfg.peers))
+
+            self._subsystems["metronome_gossip"] = SubsystemWrapper(
+                name="metronome_gossip",
+                factory=_make_gossip,
+                enabled=True,
+            )
+
+        # 11. OpcodeCapabilityIndex (optional)
+        if cfg.enable_opcode_index:
+            def _make_opcode() -> Any:
+                from logos.opcode_capability_index import OpcodeCapabilityIndex
+
+                return OpcodeCapabilityIndex()
+
+            self._subsystems["opcode_index"] = SubsystemWrapper(
+                name="opcode_index",
+                factory=_make_opcode,
+                enabled=True,
+            )
+
+        # 12. HebbianMeshLayer (optional)
+        if cfg.enable_hebbian_mesh:
+            def _make_hebbian() -> Any:
+                from swarm.hebbian_mesh import HebbianMeshLayer
+
+                return HebbianMeshLayer(node_id=cfg.node_id)
+
+            self._subsystems["hebbian_mesh"] = SubsystemWrapper(
+                name="hebbian_mesh",
+                factory=_make_hebbian,
+                enabled=True,
+            )
+
     def _init_dispatch_router(self) -> None:
         """Create a lightweight DispatchRouter if available."""
         try:
@@ -409,7 +467,38 @@ class FleetConductorV2:
                 interval_ms=10000.0,
             )
 
-    # ── lazy getters ────────────────────────────────────────
+        # 4. Identity monitor pipeline
+        identity = self._get_identity_registry()
+        if identity is not None:
+            loop.register(
+                sense=_IdentitySense(identity),
+                decide=_IdentityDecide(),
+                act=_NoopAct(),
+                name="identity_monitor",
+                interval_ms=5000.0,
+            )
+
+        # 5. Mesh diversity monitor pipeline
+        mesh_diversity = self._get_mesh()
+        if mesh_diversity is not None:
+            loop.register(
+                sense=_MeshDiversitySense(mesh_diversity),
+                decide=_MeshDiversityDecide(),
+                act=_NoopAct(),
+                name="mesh_diversity_monitor",
+                interval_ms=8000.0,
+            )
+
+        # 6. Opcode safety monitor pipeline
+        opcode_index = self._get_opcode_index()
+        if opcode_index is not None:
+            loop.register(
+                sense=_OpcodeSafetySense(opcode_index),
+                decide=_OpcodeSafetyDecide(),
+                act=_NoopAct(),
+                name="opcode_safety_monitor",
+                interval_ms=10000.0,
+            )
 
     def _get_subsystem(self, name: str) -> Any | None:
         wrapper = self._subsystems.get(name)
@@ -440,6 +529,18 @@ class FleetConductorV2:
 
     def _get_breeder(self) -> Any | None:
         return self._get_subsystem("breeder")
+
+    def _get_sse_dashboard(self) -> Any | None:
+        return self._get_subsystem("sse_dashboard")
+
+    def _get_metronome_gossip(self) -> Any | None:
+        return self._get_subsystem("metronome_gossip")
+
+    def _get_opcode_index(self) -> Any | None:
+        return self._get_subsystem("opcode_index")
+
+    def _get_hebbian_mesh(self) -> Any | None:
+        return self._get_subsystem("hebbian_mesh")
 
     def _get_identity(self) -> Any | None:
         """Return an AgentIdentity if available, else None."""
@@ -562,6 +663,28 @@ class FleetConductorV2:
             self._status_log.append(status)
             if len(self._status_log) > self._status_log_limit:
                 self._status_log = self._status_log[-self._status_log_limit :]
+
+        # 6. Tick breeder if enabled
+        breeder = self._get_breeder()
+        if breeder is not None:
+            try:
+                breeder.step()
+                tick_results["breeder"] = {"stepped": True}
+            except Exception as exc:
+                logger.warning("Breeder step failed: %s", exc)
+                tick_results["breeder"] = {"error": str(exc)}
+                self._maybe_auto_restart("breeder")
+
+        # 7. Publish conductor status to SSEStreamDashboard
+        sse = self._get_sse_dashboard()
+        if sse is not None and hasattr(sse, "publish"):
+            try:
+                status_snapshot = self.get_status()
+                sse.publish(status_snapshot)
+                tick_results["sse_dashboard"] = {"published": True}
+            except Exception as exc:
+                logger.warning("SSE dashboard publish failed: %s", exc)
+                tick_results["sse_dashboard"] = {"error": str(exc)}
 
         tick_results["status_logged_at"] = status.get("timestamp")
         return tick_results
@@ -933,6 +1056,327 @@ class _NoopAct:
         from fleet.sense_decide_act import ActResult
 
         return ActResult(success=True, latency_ms=0.0, side_effects=["noop"])
+
+
+class _IdentitySense:
+    """Sense adapter that reads AgentRegistry health."""
+
+    from fleet.sense_decide_act import Observation
+
+    def __init__(self, registry: Any) -> None:
+        self.registry = registry
+
+    def observe(self) -> "Observation":
+        from fleet.sense_decide_act import Observation
+
+        try:
+            agents = self.registry.list_agents() if hasattr(self.registry, "list_agents") else []
+            return Observation(
+                timestamp=time.time(),
+                source="identity_sense",
+                metrics={"agent_count": len(agents), "healthy": True},
+                severity_hint="info",
+            )
+        except Exception as exc:
+            return Observation(
+                timestamp=time.time(),
+                source="identity_sense",
+                metrics={"error": str(exc)},
+                severity_hint="warning",
+            )
+
+
+class _IdentityDecide:
+    """Decide if agent re-registration is needed."""
+
+    from fleet.sense_decide_act import Decision
+
+    def decide(self, observation: Any) -> "Decision":
+        from fleet.sense_decide_act import Decision
+
+        metrics = getattr(observation, "metrics", {})
+        if "error" in metrics:
+            return Decision(
+                action_type="re_register",
+                confidence=0.9,
+                reasoning="Registry unhealthy — re-register agents",
+            )
+        agent_count = metrics.get("agent_count", 0)
+        if agent_count < 1:
+            return Decision(
+                action_type="re_register",
+                confidence=0.7,
+                reasoning="No agents registered",
+            )
+        return Decision(action_type="noop", confidence=1.0, reasoning="Registry healthy")
+
+
+class _MeshDiversitySense:
+    """Sense adapter that reads mesh diversity score."""
+
+    from fleet.sense_decide_act import Observation
+
+    def __init__(self, mesh: Any) -> None:
+        self.mesh = mesh
+
+    def observe(self) -> "Observation":
+        from fleet.sense_decide_act import Observation
+
+        try:
+            stats = self.mesh.stats if hasattr(self.mesh, "stats") else {}
+            diversity = stats.get("total_entries", 0)
+            return Observation(
+                timestamp=time.time(),
+                source="mesh_diversity_sense",
+                metrics={"diversity": diversity, "total_entries": diversity},
+                severity_hint="info",
+            )
+        except Exception as exc:
+            return Observation(
+                timestamp=time.time(),
+                source="mesh_diversity_sense",
+                metrics={"error": str(exc)},
+                severity_hint="warning",
+            )
+
+
+class _MeshDiversityDecide:
+    """Decide if cross-node breeding is needed based on diversity."""
+
+    from fleet.sense_decide_act import Decision
+
+    def decide(self, observation: Any) -> "Decision":
+        from fleet.sense_decide_act import Decision
+
+        metrics = getattr(observation, "metrics", {})
+        diversity = metrics.get("diversity", 0)
+        if "error" in metrics:
+            return Decision(
+                action_type="cross_breed",
+                confidence=0.6,
+                reasoning="Mesh diversity unreadable — attempt cross-node breed",
+            )
+        if diversity < 5:
+            return Decision(
+                action_type="cross_breed",
+                confidence=0.8,
+                reasoning=f"Low diversity ({diversity}) — cross-node breed recommended",
+            )
+        return Decision(action_type="noop", confidence=1.0, reasoning="Diversity adequate")
+
+
+class _OpcodeSafetySense:
+    """Sense adapter that reads opcode capability index."""
+
+    from fleet.sense_decide_act import Observation
+
+    def __init__(self, opcode_index: Any) -> None:
+        self.opcode_index = opcode_index
+
+    def observe(self) -> "Observation":
+        from fleet.sense_decide_act import Observation
+
+        try:
+            summary = self.opcode_index.get_summary() if hasattr(self.opcode_index, "get_summary") else {}
+            return Observation(
+                timestamp=time.time(),
+                source="opcode_safety_sense",
+                metrics=summary,
+                severity_hint="info",
+            )
+        except Exception as exc:
+            return Observation(
+                timestamp=time.time(),
+                source="opcode_safety_sense",
+                metrics={"error": str(exc)},
+                severity_hint="warning",
+            )
+
+
+class _OpcodeSafetyDecide:
+    """Decide if compile requests are safe based on opcode index."""
+
+    from fleet.sense_decide_act import Decision
+
+    def decide(self, observation: Any) -> "Decision":
+        from fleet.sense_decide_act import Decision
+
+        metrics = getattr(observation, "metrics", {})
+        if "error" in metrics:
+            return Decision(
+                action_type="flag_unsafe",
+                confidence=0.7,
+                reasoning="Opcode index unreadable — assume unsafe",
+            )
+        untested = metrics.get("untested_count", 0)
+        if untested > 0:
+            return Decision(
+                action_type="flag_unsafe",
+                confidence=0.8,
+                reasoning=f"{untested} untested opcodes — gate compile tasks",
+            )
+        return Decision(action_type="noop", confidence=1.0, reasoning="All opcodes safe")
+
+
+class _BreederThermalSense:
+    """Sense adapter that reads breeder queue + thermal budget."""
+
+    from fleet.sense_decide_act import Observation
+
+    def __init__(self, breeder: Any, thermal_limits: dict[str, float]) -> None:
+        self.breeder = breeder
+        self.thermal_limits = thermal_limits
+
+    def observe(self) -> "Observation":
+        from fleet.sense_decide_act import Observation
+
+        try:
+            breeder_status = self.breeder.get_status() if hasattr(self.breeder, "get_status") else {}
+            queue_depth = breeder_status.get("queue_depth", 0)
+            queue_capacity = breeder_status.get("queue_capacity", 0)
+            thermal = self.thermal_limits
+            return Observation(
+                timestamp=time.time(),
+                source="breeder_thermal_sense",
+                metrics={
+                    "queue_depth": queue_depth,
+                    "queue_capacity": queue_capacity,
+                    "thermal_limits": thermal,
+                    "queue_ratio": queue_depth / max(queue_capacity, 1),
+                },
+                severity_hint="info",
+            )
+        except Exception as exc:
+            return Observation(
+                timestamp=time.time(),
+                source="breeder_thermal_sense",
+                metrics={"error": str(exc)},
+                severity_hint="warning",
+            )
+
+
+class _BreederThermalDecide:
+    """Decide spawn rate based on breeder queue and thermal budget."""
+
+    from fleet.sense_decide_act import Decision
+
+    def decide(self, observation: Any) -> "Decision":
+        from fleet.sense_decide_act import Decision
+
+        metrics = getattr(observation, "metrics", {})
+        if "error" in metrics:
+            return Decision(
+                action_type="throttle",
+                confidence=0.8,
+                reasoning="Cannot read breeder/thermal state — throttle spawning",
+            )
+        queue_ratio = metrics.get("queue_ratio", 0.0)
+        if queue_ratio > 0.8:
+            return Decision(
+                action_type="throttle",
+                confidence=0.9,
+                reasoning=f"Queue near full ({queue_ratio:.0%}) — throttle spawning",
+            )
+        if queue_ratio < 0.2:
+            return Decision(
+                action_type="accelerate",
+                confidence=0.8,
+                reasoning=f"Queue near empty ({queue_ratio:.0%}) — accelerate spawning",
+            )
+        return Decision(action_type="noop", confidence=1.0, reasoning="Queue/thermal balanced")
+
+
+class _HebbianRoutingSense:
+    """Sense adapter that reads peer diversity from HebbianMeshLayer."""
+
+    from fleet.sense_decide_act import Observation
+
+    def __init__(self, hebbian: Any) -> None:
+        self.hebbian = hebbian
+
+    def observe(self) -> "Observation":
+        from fleet.sense_decide_act import Observation
+
+        try:
+            diversity = self.hebbian.get_diversity_score() if hasattr(self.hebbian, "get_diversity_score") else 0.5
+            chaos = self.hebbian.chaos_factor if hasattr(self.hebbian, "chaos_factor") else 0.3
+            return Observation(
+                timestamp=time.time(),
+                source="hebbian_routing_sense",
+                metrics={"peer_diversity": diversity, "chaos_factor": chaos},
+                severity_hint="info",
+            )
+        except Exception as exc:
+            return Observation(
+                timestamp=time.time(),
+                source="hebbian_routing_sense",
+                metrics={"error": str(exc)},
+                severity_hint="warning",
+            )
+
+
+class _HebbianRoutingDecide:
+    """Decide routing weights based on peer diversity."""
+
+    from fleet.sense_decide_act import Decision
+
+    def decide(self, observation: Any) -> "Decision":
+        from fleet.sense_decide_act import Decision
+
+        metrics = getattr(observation, "metrics", {})
+        if "error" in metrics:
+            return Decision(
+                action_type="reweight_uniform",
+                confidence=0.6,
+                reasoning="Hebbian state unreadable — uniform routing weights",
+            )
+        diversity = metrics.get("peer_diversity", 0.5)
+        chaos = metrics.get("chaos_factor", 0.3)
+        if diversity < 0.3:
+            return Decision(
+                action_type="reweight_explore",
+                confidence=0.8,
+                reasoning=f"Low diversity ({diversity:.2f}) — increase exploration weights",
+                payload={"chaos_boost": chaos + 0.1},
+            )
+        if diversity > 0.7:
+            return Decision(
+                action_type="reweight_exploit",
+                confidence=0.7,
+                reasoning=f"High diversity ({diversity:.2f}) — increase exploitation weights",
+                payload={"chaos_reduce": max(0.1, chaos - 0.1)},
+            )
+        return Decision(action_type="noop", confidence=1.0, reasoning="Diversity balanced")
+
+
+class _LoggingAct:
+    """Act that logs decisions to the decision journal."""
+
+    from fleet.sense_decide_act import ActResult
+
+    def __init__(self, pipeline_name: str, journal_path: str = "") -> None:
+        self.pipeline_name = pipeline_name
+        self.journal_path = journal_path
+
+    def execute(self, decision: Any) -> "ActResult":
+        from fleet.sense_decide_act import ActResult
+
+        try:
+            from logos.decision_journal import log_human_command
+            log_human_command(
+                intent=type("Intent", (), {
+                    "action": getattr(decision, "action_type", "noop"),
+                    "raw_command": getattr(decision, "reasoning", ""),
+                    "is_destructive": lambda: False,
+                })(),
+                confirmed=True,
+                scope=self.pipeline_name,
+                journal_path=self.journal_path or None,
+            )
+        except Exception as exc:
+            logger.debug("Decision journal log failed: %s", exc)
+
+        return ActResult(success=True, latency_ms=0.0, side_effects=["logged"])
 
 
 class _GatewaySense:
