@@ -8,7 +8,8 @@ grammar engine instance. All should be rejected with ValidationError.
 from __future__ import annotations
 
 import sys
-sys.path.insert(0, "/tmp/sunset-ecosystem")
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 
@@ -51,6 +52,11 @@ CHAOS_VECTORS = [
 
 
 def _test_chaos_vector(payload: dict, verbose: bool = True) -> bool:
+    """Alias for _check_chaos_vector (backward compat)."""
+    return _check_chaos_vector(payload, verbose)
+
+
+def _check_chaos_vector(payload: dict, verbose: bool = True) -> bool:
     """Test one chaos vector. Returns True if blocked or safely sanitized."""
     attack_name = payload.pop("attack")
     field = payload.pop("field")
@@ -102,8 +108,13 @@ def test_chaos_vector_blocked(payload: dict) -> None:
     assert _test_chaos_vector(payload.copy(), verbose=False)
 
 
+def test_all_chaos_vectors_blocked():
+    """All chaos vectors should be blocked or sanitized."""
+    for payload in CHAOS_VECTORS:
+        assert _check_chaos_vector(payload.copy(), verbose=False), f"Attack not blocked: {payload.get('attack', 'unknown')}"
+
+
 def run_all() -> bool:
-    """Standalone runner for manual execution."""
     print("=" * 70)
     print("Grammar Engine Security Test — Chaos Vector Validation")
     print("=" * 70)
@@ -113,7 +124,7 @@ def run_all() -> bool:
     passed = 0
 
     for payload in CHAOS_VECTORS:
-        if _test_chaos_vector(payload.copy()):
+        if _check_chaos_vector(payload.copy()):
             blocked += 1
         else:
             passed += 1
