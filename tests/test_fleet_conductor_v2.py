@@ -7,12 +7,14 @@ thread-safety.
 
 from __future__ import annotations
 
+import sys
 import threading
 import time
 from typing import Any
 
 import numpy as np
 import pytest
+from unittest.mock import MagicMock
 
 from nexus.fleet_conductor_v2 import (
     ConductorConfig,
@@ -23,6 +25,101 @@ from nexus.fleet_conductor_v2 import (
 
 
 # ── fixtures ──────────────────────────────────────────────
+
+@pytest.fixture(autouse=True)
+def mock_heavy_subsystems(monkeypatch):
+    """Mock all heavy subsystem imports so tests never instantiate real I/O."""
+    # MetronomeBridge
+    mock_nerve = MagicMock()
+    mock_nerve.MetronomeBridge = MagicMock()
+    mock_nerve.MetronomeBridge.return_value.tick.return_value = 1
+    mock_nerve.MetronomeBridge.return_value.sync_with_peers.return_value = []
+    mock_nerve.MetronomeBridge.return_value.maybe_correct_drift.return_value = (False, 120.0)
+    mock_nerve.MetronomeBridge.return_value.compute_drift.return_value = 0.0
+    mock_nerve.MetronomeBridge.return_value.peers = []
+    monkeypatch.setitem(sys.modules, "nerve.distributed_metronome_bridge", mock_nerve)
+
+    # FleetVectorIndex
+    mock_swarm = MagicMock()
+    mock_swarm.FleetVectorIndex = MagicMock()
+    mock_table = MagicMock()
+    mock_table.insert_signed.return_value = None
+    mock_swarm.FleetVectorIndex.return_value.get_gen_table.return_value = mock_table
+    mock_swarm.FleetVectorIndex.return_value.get_fleet_sync_payload.return_value = b"{}"
+    mock_swarm.FleetVectorIndex.return_value.stats = {"total_entries": 0}
+    monkeypatch.setitem(sys.modules, "swarm.mesh_vector_tables", mock_swarm)
+
+    # TrapRegistry + ThermalTrap
+    mock_fleet_trap = MagicMock()
+    mock_fleet_trap.TrapRegistry = MagicMock()
+    mock_fleet_trap.TrapRegistry.return_value.run_all.return_value = []
+    mock_fleet_trap.TrapRegistry.return_value.get_status.return_value = {}
+    mock_fleet_trap.ThermalTrap = MagicMock()
+    monkeypatch.setitem(sys.modules, "fleet.operational_trap", mock_fleet_trap)
+
+    # FluxPresetLibrary
+    mock_sunset = MagicMock()
+    mock_sunset.FluxPresetLibrary = MagicMock()
+    monkeypatch.setitem(sys.modules, "sunset.flux_preset_library", mock_sunset)
+
+    # AgentRegistry + AgentIdentity + AgentCard
+    mock_logos = MagicMock()
+    mock_logos.AgentRegistry = MagicMock()
+    mock_logos.AgentRegistry.return_value.list_agents.return_value = []
+    mock_logos.AgentIdentity = MagicMock()
+    mock_logos.AgentCard = MagicMock()
+    mock_logos.AgentCard.from_dict = MagicMock(return_value=MagicMock())
+    monkeypatch.setitem(sys.modules, "logos.a2a_identity", mock_logos)
+
+    # GatewayPacing — stateful mock so circuit-breaker logic works
+    class MockGatewayPacing:
+        def __init__(self):
+            self._timeouts = 0
+            self._state = "OPEN"
+        def can_dispatch(self):
+            if self._state == "CLOSED":
+                return (False, "CLOSED — dispatch blocked")
+            return (True, "OPEN — dispatch allowed")
+        def record_timeout(self):
+            self._timeouts += 1
+            if self._timeouts >= 2:
+                self._state = "CLOSED"
+        def record_success(self):
+            self._timeouts = 0
+            self._state = "OPEN"
+        def record_failure(self):
+            pass
+        def get_status(self):
+            return {"state": self._state}
+
+    mock_pacing = MagicMock()
+    mock_pacing.GatewayPacing = MockGatewayPacing
+    monkeypatch.setitem(sys.modules, "fleet.gateway_pacing", mock_pacing)
+
+    # SDALoop + related classes
+    mock_sda = MagicMock()
+    mock_sda.SDALoop = MagicMock()
+    mock_sda.SDALoop.return_value.tick.return_value = {}
+    mock_sda.TrapSense = MagicMock()
+    mock_sda.GatewayDispatchDecide = MagicMock()
+    mock_sda.FluxPresetDecide = MagicMock()
+    mock_sda.Policy = MagicMock()
+    mock_sda.ActResult = MagicMock()
+    mock_sda.Observation = MagicMock()
+    monkeypatch.setitem(sys.modules, "fleet.sense_decide_act", mock_sda)
+
+    # DispatchRouter
+    mock_dispatch = MagicMock()
+    mock_dispatch.DispatchRouter = MagicMock()
+    mock_dispatch.DispatchRouter.return_value.route.return_value = {"mode": "direct"}
+    monkeypatch.setitem(sys.modules, "fleet.dispatch_router", mock_dispatch)
+
+    # ThermalBudget + DeviceType (used in trap factory)
+    mock_thermal = MagicMock()
+    mock_thermal.ThermalBudget = MagicMock()
+    mock_thermal.DeviceType = MagicMock()
+    monkeypatch.setitem(sys.modules, "swarm.thermal", mock_thermal)
+
 
 @pytest.fixture
 def default_config() -> ConductorConfig:
@@ -68,7 +165,9 @@ def minimal_config() -> ConductorConfig:
 
 @pytest.fixture
 def conductor(default_config: ConductorConfig) -> FleetConductorV2:
-    return FleetConductorV2(config=default_config)
+    c = FleetConductorV2(config=default_config)
+    yield c
+    c.shutdown()
 
 
 # ── 1. Initialization with default config ─────────────────
@@ -646,7 +745,7 @@ def test_beat_after_start_stop_start(conductor: FleetConductorV2):
     conductor.start()
     r = conductor.beat()
     assert "beat_number" in r
-    assert r["beat_number"] == 1  # reset on new start? no, beat_count is not reset
+    assert r["beat_number"] == 2  # beat_count not reset on start
     # Actually beat_count is not reset on start() — only on init. That may be intentional.
     # Let's just verify it works:
     assert conductor.beat_count >= 2
