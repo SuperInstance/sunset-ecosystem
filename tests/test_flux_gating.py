@@ -61,9 +61,6 @@ def breeder(grid, thermal):
     return BreederDaemonV2(
         grid=grid,
         thermal=thermal,
-        interval=1,
-        cold_threshold=3,
-        n_winners=3,
     )
 
 
@@ -163,7 +160,7 @@ class TestSeverityWeightsAffectScore:
 # ── 5. Breeder wires gating in cycle ──────────────────────
 
 class TestBreederWiresGatingInCycle:
-    @pytest.mark.xfail(reason="BreederDaemonV2 V2 API uses FluxPresetLibrary for FLUX gating, not raw FluxGatingChecker. See test_breeder_integration.py for new wiring.")
+    @pytest.mark.xfail(reason="BreederDaemonV2 integration stub — cycle does not call flux checker yet")
     def test_cycle_calls_flux_check(self, breeder, grid, flux_config):
         # Make some rooms hot so tournament produces winners
         for _ in range(10):
@@ -174,24 +171,22 @@ class TestBreederWiresGatingInCycle:
         breeder.attach_flux_gating(checker)
 
         # Run a cycle
-        results = breeder.breed_cycle(n_winners=2)
+        results = breeder.cycle(n_winners=2)
         # Should either succeed or return empty if FLUX blocks everything
         assert isinstance(results, list)
         # Verify that the checker was invoked
         assert checker.stats["checks"] > 0
 
-    @pytest.mark.xfail(reason="BreederDaemonV2 V2 API uses FluxPresetLibrary for FLUX gating, not raw FluxGatingChecker. See test_breeder_integration.py for new wiring.")
+    @pytest.mark.xfail(reason="BreederDaemonV2 integration stub — cycle does not call flux checker yet")
     def test_cycle_uses_flux_config(self, grid, thermal):
         config = FluxGatingConfig(max_violations_per_cycle=1, weight_bounds=(0.0, 0.01))
-        breeder = BreederDaemonV2(
-            grid=grid,
-            thermal=thermal,
-            flux_config=config,
-        )
+        breeder = BreederDaemonV2(grid=grid, thermal=thermal)
+        checker = PythonFluxFallback(config)
+        breeder.attach_flux_gating(checker)
         for _ in range(10):
             for i in range(10):
                 grid.activity[i] += 5
-        results = breeder.breed_cycle(n_winners=2)
+        results = breeder.cycle(n_winners=2)
         # With weight_bounds=(0.0, 0.01), all rooms should be blocked
         assert results == []
 
@@ -199,7 +194,7 @@ class TestBreederWiresGatingInCycle:
 # ── 6. Tournament uses FLUX tiebreak ──────────────────────
 
 class TestTournamentUsesFluxTiebreak:
-    @pytest.mark.xfail(reason="BreederDaemonV2 V2 API uses FluxPresetLibrary for FLUX gating, not raw FluxGatingChecker. See test_breeder_integration.py for new wiring.")
+    @pytest.mark.xfail(reason="BreederDaemonV2 integration stub — select_parents does not use flux tiebreak yet")
     def test_tournament_reorders_by_flux_score(self, breeder, grid):
         # Setup: two rooms with same tournament score but different chaos
         for _ in range(5):
@@ -215,25 +210,25 @@ class TestTournamentUsesFluxTiebreak:
         ]
 
         # Without FLUX, order is arbitrary (depends on tournament internals)
-        winners_no_flux = breeder.tournament_select(population)
+        winners_no_flux = breeder.select_parents(population)
 
         # With FLUX, room_0 (lower chaos) should rank higher
         config = FluxGatingConfig(chaos_limit=1.0)
         checker = PythonFluxFallback(config)
         breeder.attach_flux_gating(checker)
-        winners_flux = breeder.tournament_select(population)
+        winners_flux = breeder.select_parents(population)
 
         # room_0 should be first because lower chaos = higher flux score
         assert winners_flux[0].agent_id == "room_0"
 
-    @pytest.mark.xfail(reason="BreederDaemonV2 V2 API uses FluxPresetLibrary for FLUX gating, not raw FluxGatingChecker. See test_breeder_integration.py for new wiring.")
+    @pytest.mark.xfail(reason="BreederDaemonV2 integration stub — select_parents does not use flux tiebreak yet")
     def test_flux_checker_none_skips_tiebreak(self, breeder, grid):
         from swarm.tournament import AgentScore
         population = [
             AgentScore("room_0", ethos=0.8, pathos=0.8, logos=0.8),
             AgentScore("room_1", ethos=0.5, pathos=0.5, logos=0.5),
         ]
-        winners = breeder.tournament_select(population)
+        winners = breeder.select_parents(population)
         assert len(winners) == 2
         assert winners[0].agent_id == "room_0"
 
