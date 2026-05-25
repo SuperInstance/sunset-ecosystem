@@ -1,7 +1,24 @@
-"""Tests for sunset ↔ PLATO bridge."""
+"""Tests for sunset-ecosystem ↔ PLATO tile-store bridge.
+
+Covers both the legacy PlatoBridge API and the AgentTileAdapter-based API:
+- Trinity score serialization & round-trip
+- Epilogue serialization
+- Seed bank serialization
+- Lifecycle transition serialization
+- Agent snapshot serialization
+- Read filtering by agent_id, tile_type, state
+- Persistence round-trip
+- Clear operation
+- Hash determinism
+- Tile structure
+"""
+
+from __future__ import annotations
 
 import json
+import tempfile
 import time
+from pathlib import Path
 
 import pytest
 
@@ -15,8 +32,10 @@ from plato_core.types import (
     content_hash,
 )
 
-from sunset.agent import AgentPhase
-from sunset.plato_bridge import PlatoBridge
+from sunset.agent import Agent, AgentPhase
+from sunset.plato_bridge import AgentTileAdapter, PlatoBridge
+from sunset.seed_bank import SeedBank, SeedEntry
+from sunset.sunset_documents import Epilogue, Onboarding
 from sunset.trinity_scorer import trinity_score
 
 
@@ -24,14 +43,77 @@ from sunset.trinity_scorer import trinity_score
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def bridge() -> PlatoBridge:
     return PlatoBridge(room="test-sunset")
 
 
 # ---------------------------------------------------------------------------
-# Trinity score round-trip
+# AgentTileAdapter tests
 # ---------------------------------------------------------------------------
+
+
+class TestAgentTileAdapter:
+    def test_phase_to_lifecycle(self):
+        assert AgentTileAdapter.phase_to_lifecycle(AgentPhase.INCUBATING) == TileLifecycle.ACTIVE
+        assert AgentTileAdapter.phase_to_lifecycle(AgentPhase.SUNSETTING) == TileLifecycle.SUPERSEDED
+        assert AgentTileAdapter.phase_to_lifecycle(AgentPhase.ASLEEP) == TileLifecycle.SUPERSEDED
+
+    def test_trinity_tile(self):
+        tile = AgentTileAdapter.trinity_tile("a1", 0.9, 0.8, 0.7)
+        assert tile.tile_type == TileType.METRICS
+        assert tile.room == "a1"
+        desc = json.loads(tile.description)
+        assert desc["ethos"] == pytest.approx(0.9)
+        assert desc["fitness"] == pytest.approx(trinity_score(0.9, 0.8, 0.7))
+
+    def test_epilogue_tile(self):
+        epilogue = Epilogue(
+            agent_id="a1",
+            what_i_tried="foo",
+            what_i_found="bar",
+            peak_trinity_score=0.5,
+            generation=2,
+        )
+        tile = AgentTileAdapter.epilogue_tile(epilogue)
+        assert tile.tile_type == TileType.EVALUATION
+        desc = json.loads(tile.description)
+        assert desc["what_i_tried"] == "foo"
+        assert desc["peak_trinity_score"] == pytest.approx(0.5)
+
+    def test_seed_tile(self):
+        onboarding = Onboarding(
+            agent_id="a1",
+            letter_to_children="hello",
+            variant="mutation",
+            generation=3,
+        )
+        bank = SeedBank()
+        bank.store(onboarding, relevance=0.9, novelty=0.8)
+        entry = list(bank._entries.values())[0]
+        tile = AgentTileAdapter.seed_tile(entry)
+        assert tile.tile_type == TileType.CHECKPOINT
+        desc = json.loads(tile.description)
+        assert desc["variant"] == "mutation"
+        assert desc["relevance"] == pytest.approx(0.9)
+
+    def test_lifecycle_tile(self):
+        tile = AgentTileAdapter.lifecycle_tile(
+            "a1", AgentPhase.INCUBATING, AgentPhase.COMPETING, reason="ready"
+        )
+        assert tile.tile_type == TileType.PREDICTION
+        assert len(tile.lifecycle_events) == 1
+        event = tile.lifecycle_events[0]
+        assert event.reason == "ready"
+        assert event.from_state == TileLifecycle.ACTIVE
+        assert event.to_state == TileLifecycle.ACTIVE
+
+
+# ---------------------------------------------------------------------------
+# Legacy PlatoBridge tests (room-based API)
+# ---------------------------------------------------------------------------
+
 
 class TestTrinityScoreRoundTrip:
     def test_write_read_roundtrip(self, bridge: PlatoBridge):
@@ -60,10 +142,6 @@ class TestTrinityScoreRoundTrip:
         assert abs(result["ethos"] - 0.9) < 1e-9
 
 
-# ---------------------------------------------------------------------------
-# Epilogue storage and retrieval
-# ---------------------------------------------------------------------------
-
 class TestEpilogue:
     def test_write_read_epilogue(self, bridge: PlatoBridge):
         bridge.write_epilogue(
@@ -85,10 +163,6 @@ class TestEpilogue:
         tile = bridge.write_epilogue("agent-011", "Farewell.")
         assert tile.tile_type == TileType.EVALUATION
 
-
-# ---------------------------------------------------------------------------
-# Lifecycle transitions
-# ---------------------------------------------------------------------------
 
 class TestLifecycleTransitions:
     def test_incubating_to_competing(self, bridge: PlatoBridge):
@@ -114,27 +188,20 @@ class TestLifecycleTransitions:
         tile1 = bridge.write_lifecycle_event("agent-103", AgentPhase.INCUBATING)
         assert tile1.is_active()
         tile2 = bridge.write_lifecycle_event("agent-103", AgentPhase.COMPETING)
-        # tile1 was superseded (its state mutated in-memory before being overwritten)
         assert tile1.state == TileLifecycle.SUPERSEDED
-        # The current tile in the store is tile2
         current = bridge.get_tile("sunset-lifecycle-agent-103")
-        assert current.payload if hasattr(current, 'payload') else current._payload["phase"] == "competing"
+        assert current._payload["phase"] == "competing"
 
-
-# ---------------------------------------------------------------------------
-# Hash determinism
-# ---------------------------------------------------------------------------
 
 class TestHashDeterminism:
     def test_same_scores_same_hash(self, bridge: PlatoBridge):
         scores = {"ethos": 0.5, "pathos": 0.5, "logos": 0.5}
         bridge.write_trinity_score("agent-200", scores)
-        tile1 = bridge.get_tile(f"sunset-trinity-agent-200")
+        tile1 = bridge.get_tile("sunset-trinity-agent-200")
 
-        # Create a fresh bridge, write same data
         bridge2 = PlatoBridge(room="test-sunset")
         bridge2.write_trinity_score("agent-200", scores)
-        tile2 = bridge2.get_tile(f"sunset-trinity-agent-200")
+        tile2 = bridge2.get_tile("sunset-trinity-agent-200")
 
         assert tile1.content_hash == tile2.content_hash
 
@@ -145,10 +212,6 @@ class TestHashDeterminism:
         t2 = bridge.get_tile("sunset-trinity-agent-202")
         assert t1.content_hash != t2.content_hash
 
-
-# ---------------------------------------------------------------------------
-# Tile structure
-# ---------------------------------------------------------------------------
 
 class TestTileStructure:
     def test_tile_has_correct_room(self, bridge: PlatoBridge):
@@ -163,6 +226,83 @@ class TestTileStructure:
         bridge.write_trinity_score("a", {"ethos": 0.5, "pathos": 0.5, "logos": 0.5})
         bridge.write_epilogue("a", "bye")
         bridge.write_lifecycle_event("a", AgentPhase.SUNSETTING)
-        # 3 distinct tile IDs, but lifecycle overwrites per-agent so
-        # trinity + epilogue + lifecycle = 3
         assert len(bridge.all_tiles()) == 3
+
+
+# ---------------------------------------------------------------------------
+# Adapter-style PlatoBridge tests
+# ---------------------------------------------------------------------------
+
+
+class TestPlatoBridgeAdapter:
+    def test_write_and_read_trinity_score(self):
+        bridge = PlatoBridge()
+        tile = bridge.write_trinity_score("a1", 0.9, 0.8, 0.7)
+        assert bridge.get_tile(tile.tile_id) is not None
+        results = bridge.read_trinity_scores(agent_id="a1")
+        assert len(results) == 1
+        assert results[0].tile_id == tile.tile_id
+
+    def test_write_epilogue(self):
+        bridge = PlatoBridge()
+        epilogue = Epilogue(agent_id="a1", what_i_tried="x", what_i_found="y")
+        tile = bridge.write_epilogue(epilogue)
+        assert tile.tile_type == TileType.EVALUATION
+        assert bridge.read_epilogues(agent_id="a1")[0].tile_id == tile.tile_id
+
+    def test_write_seed_bank(self):
+        bridge = PlatoBridge()
+        onboarding = Onboarding(agent_id="a1", letter_to_children="hi")
+        bank = SeedBank()
+        bank.store(onboarding, relevance=0.7, novelty=0.6)
+        entry = list(bank._entries.values())[0]
+        tile = bridge.write_seed_bank(entry)
+        assert tile.tile_type == TileType.CHECKPOINT
+        assert len(bridge.read_seed_bank(agent_id="a1")) == 1
+
+    def test_write_lifecycle_transition(self):
+        bridge = PlatoBridge()
+        tile = bridge.write_lifecycle_transition(
+            "a1", AgentPhase.COMPETING, AgentPhase.SUNSETTING, reason="lost"
+        )
+        assert tile.tile_type == TileType.PREDICTION
+        events = bridge.read_lifecycle(agent_id="a1")[0].lifecycle_events
+        assert events[0].reason == "lost"
+
+    def test_write_agent_snapshot(self):
+        bridge = PlatoBridge()
+        agent = Agent(id="a1", generation=2, phase=AgentPhase.BREEDING, trinity_score=0.85)
+        tile = bridge.write_agent_snapshot(agent)
+        assert tile.tile_type == TileType.METRICS
+        assert tile.state == TileLifecycle.ACTIVE
+        desc = json.loads(tile.description)
+        assert desc["generation"] == 2
+        assert desc["phase"] == "breeding"
+
+    def test_read_filters(self):
+        bridge = PlatoBridge()
+        bridge.write_trinity_score("a1", 1.0, 1.0, 1.0)
+        bridge.write_trinity_score("a2", 0.5, 0.5, 0.5)
+        bridge.write_epilogue(Epilogue(agent_id="a1"))
+
+        assert len(bridge.read_tiles(agent_id="a1")) == 2
+        assert len(bridge.read_tiles(tile_type=TileType.METRICS)) == 2
+        assert len(bridge.read_tiles(agent_id="a1", tile_type=TileType.EVALUATION)) == 1
+
+    def test_persistence_round_trip(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "store.json"
+            bridge = PlatoBridge(store_path=str(path))
+            bridge.write_trinity_score("a1", 0.9, 0.8, 0.7)
+            bridge.write_lifecycle_transition("a1", AgentPhase.INCUBATING, AgentPhase.COMPETING)
+
+            bridge2 = PlatoBridge(store_path=str(path))
+            assert len(bridge2._tiles) == 2
+            assert bridge2.get_tile("trinity:a1") is not None
+            assert len(bridge2.read_lifecycle(agent_id="a1")) == 1
+
+    def test_clear(self):
+        bridge = PlatoBridge()
+        bridge.write_trinity_score("a1", 1.0, 1.0, 1.0)
+        bridge.clear()
+        assert len(bridge._tiles) == 0
