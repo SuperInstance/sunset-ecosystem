@@ -73,6 +73,34 @@ from logos.a2a_identity import AgentIdentity
 from logos.signed_wal import SignedWAL, WALEntry
 from logos.decision_journal import log_spawn, log_sunset, log_breed
 
+# FLUX Path A gating — optional, graceful degrade when unavailable
+try:
+    from swarm.flux_gating import FluxGatingChecker, FluxGatingConfig
+except ImportError:
+    # Graceful fallback: no-op gating
+    class FluxGatingConfig:  # type: ignore[no-redef]
+        """No-op fallback when swarm.flux_gating is not available."""
+        pass
+
+    class FluxGatingChecker:  # type: ignore[no-redef]
+        """No-op fallback when swarm.flux_gating is not available."""
+        def __init__(self, *args, **kwargs):
+            pass
+
+# FLUX Path A gating — optional, graceful degrade when unavailable
+try:
+    from swarm.flux_gating import FluxGatingChecker, FluxGatingConfig
+except ImportError:
+    # Graceful fallback: no-op gating
+    class FluxGatingConfig:  # type: ignore[no-redef]
+        """No-op fallback when swarm.flux_gating is not available."""
+        pass
+
+    class FluxGatingChecker:  # type: ignore[no-redef]
+        """No-op fallback when swarm.flux_gating is not available."""
+        def __init__(self, *args, **kwargs):
+            pass
+
 logger = logging.getLogger(__name__)
 
 
@@ -406,6 +434,7 @@ class BreederDaemonV2:
         agent_identity: Optional[AgentIdentity] = None,
         flux_checker: Optional[Any] = None,
         compiled_checker: Optional[Any] = None,
+        flux_config: FluxGatingConfig | None = None,
         **kwargs: Any,
     ) -> None:
         self.grid = grid
@@ -428,6 +457,7 @@ class BreederDaemonV2:
         self._flux_checker = flux_checker
         self._compiled_checker = compiled_checker
         self._breed_signatures: dict[int, str] = {}
+        self._flux_config = flux_config
 
         # Backward-compatible alias: interval overrides tick_interval
         if interval is not None:
@@ -479,6 +509,55 @@ class BreederDaemonV2:
 
         # Diversity collapse monitor (hooked after each breeding round)
         self._diversity_trap = DiversityCollapseTrap(bus=mesh)
+
+    def attach_flux_gating(
+        self,
+        checker: FluxGatingChecker | None = None,
+        config: FluxGatingConfig | None = None,
+    ) -> None:
+        """Attach or replace the FLUX constraint gating checker.
+
+        Args:
+            checker: Pre-built FluxGatingChecker instance.  If None, one is
+                created from *config* (or from ``self._flux_config``).
+            config: Override configuration.  Only used when *checker* is None.
+        """
+        if checker is not None:
+            self._flux_checker = checker
+            logger.info("FLUX gating checker attached (external instance)")
+            return
+
+        cfg = config or self._flux_config
+        if cfg is None:
+            cfg = FluxGatingConfig()
+        self._flux_checker = FluxGatingChecker(config=cfg)
+        logger.info("FLUX gating checker attached (config=%s)", cfg)
+
+        # FLUX Path A gating — initialized on first attach_flux_gating() call
+        self._flux_checker: FluxGatingChecker | None = None
+
+    def attach_flux_gating(
+        self,
+        checker: FluxGatingChecker | None = None,
+        config: FluxGatingConfig | None = None,
+    ) -> None:
+        """Attach or replace the FLUX constraint gating checker.
+
+        Args:
+            checker: Pre-built FluxGatingChecker instance.  If None, one is
+                created from *config* (or from ``self._flux_config``).
+            config: Override configuration.  Only used when *checker* is None.
+        """
+        if checker is not None:
+            self._flux_checker = checker
+            logger.info("FLUX gating checker attached (external instance)")
+            return
+
+        cfg = config or self._flux_config
+        if cfg is None:
+            cfg = FluxGatingConfig()
+        self._flux_checker = FluxGatingChecker(config=cfg)
+        logger.info("FLUX gating checker attached (config=%s)", cfg)
 
     # ── public API ──────────────────────────────────────────
 
@@ -799,6 +878,44 @@ class BreederDaemonV2:
             g_a = self._wal.get_genealogy(parent_a)
             generation = (g_a["generation"] if g_a else 0) + 1
 
+        # ── FLUX Path A: candidate gating ───────────────────────
+        if self._flux_checker is not None:
+            # Gather parent room weights and chaos for FLUX check
+            flux_results: list[tuple[int, Any]] = []
+            for pid in (parent_a, parent_b):
+                if pid is None:
+                    continue
+                pr = self._find_room_for_agent(pid)
+                if pr is not None:
+                    wvec = self._extract_room_vector(pr)
+                    chaos_val = float(self.grid.chaos[pr])
+                    thermal_val = self.thermal.thermal_headroom()
+                    if hasattr(self.thermal, "get_device") and aid is not None:
+                        dev = self.thermal.get_device(f"agent_{aid}")
+                        if dev is not None:
+                            db = self.thermal.device_budget(dev)
+                            if db.max > 0:
+                                thermal_val = db.current / db.max
+                    res = self._flux_checker.check_candidate(
+                        weights=wvec,
+                        chaos=chaos_val,
+                        thermal_pressure=thermal_val,
+                    )
+                    flux_results.append((pid, res))
+
+            flux_fails = [(pid, r) for pid, r in flux_results if not r.passed]
+            if flux_fails:
+                fail_str = ", ".join(
+                    f"agent_{pid}({r.violations})" for pid, r in flux_fails
+                )
+                logger.warning(
+                    "Step %d: breeding ticket %d FLUX-gated — parent(s) %s",
+                    tick, ticket, fail_str,
+                )
+                # Re-queue with slightly lower priority to avoid spin-lock
+                self._wal.enqueue_breed(parent_a, parent_b, max(0, priority - 1), remote)
+                return transitions
+
         # Place child in EGG state
         egg_tr = LifecycleTransition(
             agent_id=child_id,
@@ -965,6 +1082,44 @@ class BreederDaemonV2:
                     tick,
                     alert.recommended_action,
                 )
+
+        # ── FLUX Path A: batch check top-k active rooms ───────────
+        if self._flux_checker is not None:
+            topk = self.grid.top(k=self._flux_checker.config.top_k_batch)
+            if topk:
+                weights_batch: list[np.ndarray] = []
+                chaos_vec: list[float] = []
+                thermal_vec: list[float] = []
+                room_ids_checked: list[int] = []
+                for rid, _ in topk:
+                    wvec = self._extract_room_vector(rid)
+                    weights_batch.append(wvec)
+                    chaos_vec.append(float(self.grid.chaos[rid]))
+                    aid = self._room_allocations.get(rid)
+                    thermal_val = self.thermal.thermal_headroom()
+                    if hasattr(self.thermal, "get_device") and aid is not None:
+                        dev = self.thermal.get_device(f"agent_{aid}")
+                        if dev is not None:
+                            db = self.thermal.device_budget(dev)
+                            if db.max > 0:
+                                thermal_val = db.current / db.max
+                    thermal_vec.append(thermal_val)
+                    room_ids_checked.append(rid)
+
+                if weights_batch:
+                    batch_results = self._flux_checker.check_batch(
+                        np.stack(weights_batch),
+                        np.array(chaos_vec, dtype=np.float32),
+                        np.array(thermal_vec, dtype=np.float32),
+                    )
+                    for rid, br in zip(room_ids_checked, batch_results):
+                        if not br.passed:
+                            # Increase chaos for violating rooms
+                            self.grid.chaos[rid] += 0.1
+                            logger.debug(
+                                "FLUX batch: room %d failed (%s), chaos bumped to %.3f",
+                                rid, br.violations, self.grid.chaos[rid],
+                            )
 
         return transitions
 
@@ -1566,6 +1721,22 @@ class BreederDaemonV2:
                         vec_b = self._get_vector(aid)
                         if vec_b is not None:
                             dist = self._vector_distance(vec_a, vec_b)
+                            # ── FLUX Path A: tiebreak ──────────────────
+                            if self._flux_checker is not None:
+                                pr_a = self._find_room_for_agent(parent_a)
+                                pr_b = self._find_room_for_agent(aid)
+                                if pr_a is not None and pr_b is not None:
+                                    flux_score = self._flux_checker.score_for_breeding(
+                                        self._extract_room_vector(pr_a),
+                                        self._extract_room_vector(pr_b),
+                                        chaos_a=float(self.grid.chaos[pr_a]),
+                                        chaos_b=float(self.grid.chaos[pr_b]),
+                                    )
+                                    # Blend distance with FLUX compliance
+                                    # FLUX score ∈ [0,1]; small weight so it
+                                    # only breaks ties, not dominates
+                                    dist = dist + 0.05 * flux_score
+
                             if dist > best_dist:
                                 best_dist = dist
                                 best_b = aid

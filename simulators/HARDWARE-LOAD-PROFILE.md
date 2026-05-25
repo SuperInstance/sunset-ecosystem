@@ -68,3 +68,4 @@ Adaptive maintained advantage across all tested load levels (50%–95%). Conside
 ---
 
 *Report generated automatically. See `simulators/hardware_swarm_lite.py` for methodology.*
+*Completed by continuation agent — full 50%-95% profile validated.*
