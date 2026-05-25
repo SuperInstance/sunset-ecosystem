@@ -65,6 +65,11 @@ except ImportError:
             if len(self._history) >= 2:
                 return type("DiversityAlert", (), {"level": "WARNING", "recommended_action": "EMERGENCY_MUTATE"})()
             return None
+from nerve.distributed_metronome_bridge import MetronomeBridge
+from swarm.mesh_vector_tables import FleetVectorIndex, VectorTableEntry
+from fleet.operational_trap import TrapRegistry
+from sunset.flux_preset_library import FluxPresetLibrary
+from logos.a2a_identity import AgentIdentity
 from logos.signed_wal import SignedWAL, WALEntry
 from logos.decision_journal import log_spawn, log_sunset, log_breed
 
@@ -393,6 +398,13 @@ class BreederDaemonV2:
         inheritance_tax: InheritanceTax | None = None,
         decision_journal_path: str | None = None,
         use_hdc: bool = False,
+        interval: float | None = None,
+        metronome_bridge: Optional[MetronomeBridge] = None,
+        fleet_vector_index: Optional[FleetVectorIndex] = None,
+        trap_registry: Optional[TrapRegistry] = None,
+        flux_preset_library: Optional[FluxPresetLibrary] = None,
+        agent_identity: Optional[AgentIdentity] = None,
+        **kwargs: Any,
     ) -> None:
         self.grid = grid
         self.thermal = thermal
@@ -406,6 +418,16 @@ class BreederDaemonV2:
         self._inheritance_tax = inheritance_tax
         self._decision_journal_path = decision_journal_path
         self._use_hdc = use_hdc
+        self._metronome_bridge = metronome_bridge
+        self._fleet_vector_index = fleet_vector_index
+        self._trap_registry = trap_registry
+        self._flux_preset_library = flux_preset_library
+        self._agent_identity = agent_identity
+        self._breed_signatures: dict[int, str] = {}
+
+        # Backward-compatible alias: interval overrides tick_interval
+        if interval is not None:
+            self._tick_interval = interval
 
         self._signed_wal_path = signed_wal_path
         self._signed_wal_algorithm = signed_wal_algorithm
@@ -515,10 +537,40 @@ class BreederDaemonV2:
 
         Delegates to _select_parents_vector when a FluxVectorTable is
         available, otherwise falls back to random selection.
+
+        Fleet-aware: if fleet_vector_index is attached, cross-node
+        candidates are merged with local candidates and deduplicated.
         """
-        candidates = self._get_breedable_candidates()
+        # ── Local candidates ────────────────────────────────────
+        local_candidates = self._get_breedable_candidates()
+
+        # ── Fleet-wide candidates ───────────────────────────────
+        fleet_candidates: list[int] = []
+        if self._fleet_vector_index is not None:
+            try:
+                entries = self._fleet_vector_index.get_breedable_pool()
+                for entry in entries:
+                    aid_str = entry.agent_id
+                    if "::agent_" in aid_str:
+                        try:
+                            aid = int(aid_str.split("::agent_")[-1])
+                            fleet_candidates.append(aid)
+                        except ValueError:
+                            pass
+                    else:
+                        try:
+                            aid = int(aid_str)
+                            fleet_candidates.append(aid)
+                        except ValueError:
+                            pass
+            except Exception:
+                logger.exception("FleetVectorIndex.get_breedable_pool failed, using local only")
+
+        # Merge and deduplicate (local first, then fleet)
+        merged = list(dict.fromkeys(local_candidates + fleet_candidates))
+
         pairs = self._select_parents_vector(
-            population=candidates,
+            population=merged,
             vector_table=self._vector_table,
             n_children=n_children,
         )
@@ -1088,7 +1140,30 @@ class BreederDaemonV2:
 
         Uses select_parents() + queue_breed() + step() to emulate
         the old AutoBreeder.auto_breed() behavior.
+
+        Fleet-aware wiring:
+        - Ticks metronome_bridge before breeding if attached.
+        - Queries fleet_vector_index for cross-node parents if attached.
+        - Applies flux_preset_library preset if attached.
+        - Signs breed records with agent_identity if attached.
+        - Runs trap_registry after breeding if attached.
         """
+        # ── Fleet beat sync ─────────────────────────────────────
+        if self._metronome_bridge is not None:
+            try:
+                self._metronome_bridge.tick()
+            except Exception:
+                logger.exception("MetronomeBridge tick failed")
+
+        # ── FLUX preset gating ──────────────────────────────────
+        preset_name: str | None = None
+        if self._flux_preset_library is not None:
+            try:
+                preset_name = self._flux_preset_library.suggest_preset_for_task("breeding")
+                self._flux_preset_library.apply_preset(preset_name, {"daemon": self, "cycle": "auto_breed"})
+            except Exception:
+                logger.exception("FluxPresetLibrary apply_preset failed for %s", preset_name)
+
         n_children = n_winners or 3
         pairs = self.select_parents(n_children)
         tickets: list[int] = []
@@ -1110,8 +1185,72 @@ class BreederDaemonV2:
                             break
                     if room_id is not None:
                         results.append((room_id, parent_str))
+                    # ── Sign breed records ──────────────────────────
+                    if self._agent_identity is not None:
+                        payload = {
+                            "task": "breed",
+                            "agent_id": tr.agent_id,
+                            "parent_a": tr.parent_a,
+                            "parent_b": tr.parent_b,
+                            "generation": tr.generation,
+                            "preset": preset_name,
+                        }
+                        try:
+                            sig = self._agent_identity.sign_task(payload)
+                            self._breed_signatures[tr.agent_id] = sig
+                        except Exception:
+                            logger.exception("AgentIdentity sign_task failed for agent %d", tr.agent_id)
+
+        # ── Operational traps ───────────────────────────────────
+        if self._trap_registry is not None:
+            try:
+                self._trap_registry.run_all()
+            except Exception:
+                logger.exception("TrapRegistry run_all failed")
 
         return results
+
+    def get_fleet_status(self) -> dict[str, Any]:
+        """Unified status from all attached fleet modules."""
+        status: dict[str, Any] = {
+            "running": self.running,
+            "tick_count": self.tick_count,
+            "agent_count": len(self._fsm),
+            "diversity_score": self.diversity_score,
+            "thermal_blocked_ticks": getattr(self, "_thermal_blocked_ticks", 0),
+        }
+        status["metronome_bridge"] = self._metronome_bridge is not None
+        status["fleet_vector_index"] = self._fleet_vector_index is not None
+        status["trap_registry"] = self._trap_registry is not None
+        status["flux_preset_library"] = self._flux_preset_library is not None
+        status["agent_identity"] = self._agent_identity is not None
+        if self._metronome_bridge is not None:
+            try:
+                status["metronome_bridge_beat"] = getattr(self._metronome_bridge, "_beat_count", 0)
+            except Exception:
+                status["metronome_bridge_beat"] = -1
+        if self._fleet_vector_index is not None:
+            try:
+                pool = self._fleet_vector_index.get_breedable_pool()
+                status["fleet_vector_index_pool_size"] = len(pool)
+            except Exception:
+                status["fleet_vector_index_pool_size"] = -1
+        if self._trap_registry is not None:
+            try:
+                status["trap_registry_results"] = len(self._trap_registry.run_all())
+            except Exception:
+                status["trap_registry_results"] = -1
+        if self._flux_preset_library is not None:
+            try:
+                status["flux_preset_suggested"] = self._flux_preset_library.suggest_preset_for_task("breeding")
+            except Exception:
+                status["flux_preset_suggested"] = None
+        if self._agent_identity is not None:
+            try:
+                status["agent_identity_name"] = getattr(self._agent_identity, "agent_id", "unknown")
+            except Exception:
+                status["agent_identity_name"] = None
+        return status
 
     def cycle(self, n_winners: int | None = None) -> list[tuple[int, str]]:
         """Alias for auto_breed()."""
