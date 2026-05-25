@@ -1,7 +1,8 @@
 """Compiled FLUX Checker — Path B integration layer.
 
-Wraps ``FluxCompiler`` + ``FluxVMRunner`` into the same
-``FluxGatingChecker`` interface used by ``PythonFluxFallback``.
+Wraps ``FluxCompiler`` + ``FluxVMRunner`` into the same API as
+``PythonFluxFallback``.
+
 Compiles constraints to bytecode once, caches the result, and
 executes via the VM on every candidate check with runtime values
 patched into the constant pool.
@@ -22,13 +23,7 @@ from swarm.flux_compiler import (
     IfNode,
     Var,
 )
-from swarm.flux_gating import (
-    FluxGatingChecker,
-    FluxGatingConfig,
-    FluxViolation,
-    GatingResult,
-    ViolationSeverity,
-)
+from swarm.flux_gating import FluxGatingConfig, FluxCheckResult
 from swarm.flux_vm_runner import FluxTrap, FluxVMRunner
 
 logger = logging.getLogger(__name__)
@@ -42,25 +37,24 @@ class _CompiledConstraint:
     var_slots: Dict[str, int]
 
 
-class CompiledFluxChecker(FluxGatingChecker):
+class CompiledFluxChecker:
     """FLUX constraint checker using compiled bytecode + VM execution.
+
+    Matches the ``PythonFluxFallback`` API so it can be swapped in
+    as a drop-in replacement.
 
     Usage::
 
         checker = CompiledFluxChecker(config)
-        result = checker.check_candidate(parent_idx, mutation_plan)
+        result = checker.check_candidate(weights, chaos=0.5, thermal_pressure=0.2)
 
     Constraints are compiled once (lazy, on first use) and cached.
     The VM executes the bytecode with runtime values patched into
     the constant pool via ``var_slots``.
-
-    If the VM raises ``FluxTrap`` (Validate sees 0.0), the candidate
-    is blocked.  Any other exception falls back to logging the error
-    and returning ``passed=False`` (safe default).
     """
 
-    def __init__(self, config: Optional[FluxGatingConfig] = None) -> None:
-        super().__init__(config)
+    def __init__(self, config: FluxGatingConfig) -> None:
+        self.config = config
         self._cache: Dict[str, _CompiledConstraint] = {}
         self._compiler = FluxCompiler(prefer_range_check=True)
         self._check_count = 0
@@ -68,25 +62,10 @@ class CompiledFluxChecker(FluxGatingChecker):
 
     # ── compilation helpers ─────────────────────────────────
 
-    def _compile_weight_bounds(self) -> _CompiledConstraint:
-        """Compile ``|weight| <= w_max`` to bytecode."""
-        w_min, w_max = self.config.weight_bounds
-        expr = IfNode(
-            CmpOp("LE", Var("weight_norm"), Const(w_max)),
-            then_expr=Const(1.0),
-            else_expr=Const(0.0),
-        )
-        emitter = self._compiler.compile_constraint(expr, with_validate=False, with_halt=False)
-        return _CompiledConstraint(
-            bytecode=emitter.to_bytes(),
-            const_pool=list(emitter.const_pool),
-            var_slots=dict(emitter.var_slots),
-        )
-
     def _compile_chaos_limit(self) -> _CompiledConstraint:
-        """Compile ``chaos <= c_limit`` to bytecode."""
+        """Compile ``chaos <= max_chaos`` to bytecode."""
         expr = IfNode(
-            CmpOp("LE", Var("chaos"), Const(self.config.chaos_limit)),
+            CmpOp("LE", Var("chaos"), Const(self.config.max_chaos)),
             then_expr=Const(1.0),
             else_expr=Const(0.0),
         )
@@ -98,9 +77,9 @@ class CompiledFluxChecker(FluxGatingChecker):
         )
 
     def _compile_thermal_budget(self) -> _CompiledConstraint:
-        """Compile ``thermal <= t_limit`` to bytecode."""
+        """Compile ``thermal <= thermal_budget_gate`` to bytecode."""
         expr = IfNode(
-            CmpOp("LE", Var("thermal"), Const(self.config.thermal_budget_limit)),
+            CmpOp("LE", Var("thermal"), Const(self.config.thermal_budget_gate)),
             then_expr=Const(1.0),
             else_expr=Const(0.0),
         )
@@ -119,7 +98,6 @@ class CompiledFluxChecker(FluxGatingChecker):
 
     def _run_vm(self, cc: _CompiledConstraint, runtime_vars: Dict[str, float]) -> float:
         """Run the VM with runtime variables patched into the constant pool."""
-        # Clone constant pool and patch variable slots
         pool = list(cc.const_pool)
         for name, idx in cc.var_slots.items():
             if name in runtime_vars:
@@ -131,126 +109,107 @@ class CompiledFluxChecker(FluxGatingChecker):
 
     def check_candidate(
         self,
-        parent_idx: int,
-        mutation_plan: dict[str, Any],
-    ) -> GatingResult:
+        weights: np.ndarray,
+        chaos: float = 0.3,
+        thermal_pressure: float = 0.0,
+    ) -> FluxCheckResult:
         self._check_count += 1
-        violations: List[FluxViolation] = []
+        cfg = self.config
+        violations: dict[str, float] = {}
 
-        # Weight bounds check (Python — weights are vectors, not VM scalars)
-        weights = mutation_plan.get("weights")
-        if weights is not None:
-            w_norm = float(np.linalg.norm(weights))
-            w_min, w_max = self.config.weight_bounds
-            if w_norm < w_min or w_norm > w_max:
-                v = FluxViolation(
-                    room_id=parent_idx,
-                    constraint_id="weight_bounds",
-                    severity=ViolationSeverity.CRITICAL,
-                    context={"norm": w_norm, "bounds": [w_min, w_max]},
-                )
-                violations.append(v)
-                self.record_violation(
-                    parent_idx, "weight_bounds", ViolationSeverity.CRITICAL, {"norm": w_norm}
+        w = np.asarray(weights, dtype=np.float32)
+        w_min, w_max = cfg.weight_bounds
+
+        # 1. Bounds
+        if w.size > 0:
+            over = float(np.max(w)) - w_max
+            under = w_min - float(np.min(w))
+            if over > 0:
+                violations["bounds"] = over / max(abs(w_max), 1e-6)
+            if under > 0:
+                violations["bounds"] = max(
+                    violations.get("bounds", 0.0),
+                    under / max(abs(w_min), 1e-6),
                 )
 
-        # Chaos check — compile once, execute via VM with runtime value patched
-        chaos = mutation_plan.get("chaos")
-        if chaos is not None:
-            cc = self._get_cached("chaos", self._compile_chaos_limit)
-            try:
-                result = self._run_vm(cc, {"chaos": float(chaos)})
-                if result == 0.0:
-                    v = FluxViolation(
-                        room_id=parent_idx,
-                        constraint_id="chaos_limit",
-                        severity=ViolationSeverity.WARNING,
-                        context={"chaos": chaos, "limit": self.config.chaos_limit},
-                    )
-                    violations.append(v)
-                    self.record_violation(
-                        parent_idx, "chaos_limit", ViolationSeverity.WARNING, {"chaos": chaos}
-                    )
-            except FluxTrap:
-                v = FluxViolation(
-                    room_id=parent_idx,
-                    constraint_id="chaos_limit",
-                    severity=ViolationSeverity.CRITICAL,
-                    context={"chaos": chaos, "limit": self.config.chaos_limit, "trap": True},
-                )
-                violations.append(v)
-                self.record_violation(
-                    parent_idx, "chaos_limit", ViolationSeverity.CRITICAL, {"chaos": chaos, "trap": True}
-                )
-            except Exception as e:
-                logger.warning("VM error in chaos check for parent %d: %s", parent_idx, e)
-                v = FluxViolation(
-                    room_id=parent_idx,
-                    constraint_id="chaos_limit",
-                    severity=ViolationSeverity.CRITICAL,
-                    context={"error": str(e)},
-                )
-                violations.append(v)
+        # 2. L2 norm
+        l2 = float(np.linalg.norm(w))
+        if l2 > cfg.max_l2_norm:
+            violations["l2_norm"] = (l2 - cfg.max_l2_norm) / max(cfg.max_l2_norm, 1e-6)
 
-        # Thermal budget check — compile once, execute via VM with runtime value patched
-        thermal = mutation_plan.get("thermal")
-        if thermal is not None:
-            cc = self._get_cached("thermal", self._compile_thermal_budget)
-            try:
-                result = self._run_vm(cc, {"thermal": float(thermal)})
-                if result == 0.0:
-                    v = FluxViolation(
-                        room_id=parent_idx,
-                        constraint_id="thermal_budget",
-                        severity=ViolationSeverity.WARNING,
-                        context={"thermal": thermal, "limit": self.config.thermal_budget_limit},
-                    )
-                    violations.append(v)
-                    self.record_violation(
-                        parent_idx, "thermal_budget", ViolationSeverity.WARNING, {"thermal": thermal}
-                    )
-            except FluxTrap:
-                v = FluxViolation(
-                    room_id=parent_idx,
-                    constraint_id="thermal_budget",
-                    severity=ViolationSeverity.CRITICAL,
-                    context={"thermal": thermal, "limit": self.config.thermal_budget_limit, "trap": True},
-                )
-                violations.append(v)
-                self.record_violation(
-                    parent_idx, "thermal_budget", ViolationSeverity.CRITICAL, {"thermal": thermal, "trap": True}
-                )
-            except Exception as e:
-                logger.warning("VM error in thermal check for parent %d: %s", parent_idx, e)
-                v = FluxViolation(
-                    room_id=parent_idx,
-                    constraint_id="thermal_budget",
-                    severity=ViolationSeverity.CRITICAL,
-                    context={"error": str(e)},
-                )
-                violations.append(v)
+        # 3. Variance
+        if w.size > 1:
+            var = float(np.var(w))
+            if var > cfg.max_variance:
+                violations["variance"] = (var - cfg.max_variance) / max(cfg.max_variance, 1e-6)
 
-        passed = not violations
+        # 4. Chaos — compile once, execute via VM with runtime value patched
+        cc = self._get_cached("chaos", self._compile_chaos_limit)
+        try:
+            result = self._run_vm(cc, {"chaos": float(chaos)})
+            if result == 0.0:
+                violations["chaos"] = (chaos - cfg.max_chaos) / max(cfg.max_chaos, 1e-6)
+        except Exception as e:
+            logger.warning("VM error in chaos check: %s", e)
+            violations["chaos"] = (chaos - cfg.max_chaos) / max(cfg.max_chaos, 1e-6)
+
+        # 5. Thermal — compile once, execute via VM with runtime value patched
+        cc = self._get_cached("thermal", self._compile_thermal_budget)
+        try:
+            result = self._run_vm(cc, {"thermal": float(thermal_pressure)})
+            if result == 0.0:
+                violations["thermal"] = (
+                    thermal_pressure - cfg.thermal_budget_gate
+                ) / max(cfg.thermal_budget_gate, 1e-6)
+        except Exception as e:
+            logger.warning("VM error in thermal check: %s", e)
+            violations["thermal"] = (
+                thermal_pressure - cfg.thermal_budget_gate
+            ) / max(cfg.thermal_budget_gate, 1e-6)
+
+        # Aggregate score
+        score = 0.0
+        for key, val in violations.items():
+            weight = cfg.severity_weights.get(key, 1.0)
+            score += val * weight
+        score = min(score, 1.0)
+
+        passed = score < cfg.pass_threshold
         if not passed:
             self._violation_count += 1
 
-        return GatingResult(
-            candidate_id=str(parent_idx),
-            passed=passed,
-            score=1.0 if passed else 0.0,
-            violations=violations,
-            metadata={"checker_type": "compiled_flux"},
-        )
+        return FluxCheckResult(passed=passed, score=score, violations=violations)
 
     # ── batch check ────────────────────────────────────────
 
     def check_batch(
         self,
-        parent_indices: List[int],
-        mutation_plans: List[dict[str, Any]],
-    ) -> List[GatingResult]:
-        """Check a batch of candidates (serial for now; VM is fast enough)."""
-        return [self.check_candidate(pi, mp) for pi, mp in zip(parent_indices, mutation_plans)]
+        weights_batch: np.ndarray,
+        chaos_vec: np.ndarray | None = None,
+        thermal_vec: np.ndarray | None = None,
+    ) -> list[FluxCheckResult]:
+        """Check a batch of candidates."""
+        batch = np.asarray(weights_batch, dtype=np.float32)
+        if batch.ndim == 1:
+            batch = batch.reshape(1, -1)
+        n = batch.shape[0]
+
+        if chaos_vec is None:
+            chaos_vec = np.full(n, 0.3, dtype=np.float32)
+        else:
+            chaos_vec = np.asarray(chaos_vec, dtype=np.float32)
+
+        if thermal_vec is None:
+            thermal_vec = np.zeros(n, dtype=np.float32)
+        else:
+            thermal_vec = np.asarray(thermal_vec, dtype=np.float32)
+
+        results: list[FluxCheckResult] = []
+        for i in range(n):
+            results.append(
+                self.check_candidate(batch[i], float(chaos_vec[i]), float(thermal_vec[i]))
+            )
+        return results
 
     def stats(self) -> dict[str, Any]:
         return {

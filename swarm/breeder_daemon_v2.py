@@ -475,6 +475,16 @@ class BreederDaemonV2:
         self._thread: Optional[threading.Thread] = None
         self._tick_count = 0
 
+        self._room_allocations: dict[int, int] = {}  # room_id → agent_id
+        self._transitions_log: list[LifecycleTransition] = []
+        self._slot_registry: dict[int, int] = {}  # agent_id → economic slots
+
+        # Thermal hysteresis counter (how many ticks we've been blocked)
+        self._thermal_blocked_ticks: int = 0
+
+        # Diversity collapse monitor (hooked after each breeding round)
+        self._diversity_trap = DiversityCollapseTrap(bus=mesh)
+
     def _check_flux(self, parent_idx: int, mutation_plan: dict[str, Any]) -> Any:
         """Check FLUX constraints using compiled checker first, then fallback.
 
@@ -500,15 +510,6 @@ class BreederDaemonV2:
         if result is None:
             return True  # no checker configured → pass
         return getattr(result, "passed", True)
-        self._room_allocations: dict[int, int] = {}  # room_id → agent_id
-        self._transitions_log: list[LifecycleTransition] = []
-        self._slot_registry: dict[int, int] = {}  # agent_id → economic slots
-
-        # Thermal hysteresis counter (how many ticks we've been blocked)
-        self._thermal_blocked_ticks: int = 0
-
-        # Diversity collapse monitor (hooked after each breeding round)
-        self._diversity_trap = DiversityCollapseTrap(bus=mesh)
 
     def attach_flux_gating(
         self,
