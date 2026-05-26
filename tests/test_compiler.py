@@ -1,4 +1,5 @@
 """Tests for the Sunset Compiler — profiler, Numba backend, auto-compile."""
+import os
 import time
 import numpy as np
 import pytest
@@ -8,9 +9,12 @@ from sunset.compiler import Compiler
 from sunset.codegen import CodeGenerator
 
 NUMBA_AVAILABLE = False
+NUMBA_JIT_ENABLED = False
 try:
     import numba
     NUMBA_AVAILABLE = True
+    import os
+    NUMBA_JIT_ENABLED = os.environ.get('NUMBA_DISABLE_JIT', '0') != '1'
 except ImportError:
     pass
 
@@ -79,6 +83,7 @@ class TestNumbaBackend:
         kernel = gen.compile(slow_sum_func, test_args=(a, b))
         assert kernel is not None, "Compilation failed"
 
+    @pytest.mark.skipif(os.environ.get('NUMBA_DISABLE_JIT', '0') == '1', reason="JIT disabled")
     def test_numba_speedup(self):
         """Compiled function is faster than original."""
         try:
@@ -169,7 +174,7 @@ def test_profiler_detects_hotspot(compiler):
     assert any("dummy" in n for n in names)
 
 
-@pytest.mark.skipif(not NUMBA_AVAILABLE, reason="numba not installed")
+@pytest.mark.skipif(not (NUMBA_AVAILABLE and NUMBA_JIT_ENABLED), reason="numba JIT unavailable")
 def test_numba_speedup(compiler):
     """Numba-compiled function achieves >2× speedup over original."""
     np.random.seed(42)
@@ -307,7 +312,7 @@ def test_hot_swap_is_reversible():
         delattr(test_mod, "_rev_target")
 
 
-@pytest.mark.skipif(not NUMBA_AVAILABLE, reason="numba not installed")
+@pytest.mark.skipif(not (NUMBA_AVAILABLE and NUMBA_JIT_ENABLED), reason="numba JIT unavailable")
 def test_compiler_auto_hot_swap(compiler):
     """Compiler.hot_swap compiles + replaces in a single call."""
     np.random.seed(42)
