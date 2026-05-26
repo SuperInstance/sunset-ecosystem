@@ -13,41 +13,6 @@ import types
 
 import pytest
 
-# ── Mock turbovec before any swarm.vector_table import ──
-_mock_turbovec = types.ModuleType("turbovec")
-
-class _MockIdMapIndex:
-    def __init__(self, dim: int, bit_width: int = 4) -> None:
-        self.dim = dim
-        self.bit_width = bit_width
-        self._vectors: dict[int, Any] = {}
-
-    def add_with_ids(self, vectors: Any, ids: Any) -> None:
-        pass
-
-    def search(self, query: Any, k: int = 10, allowlist: Any = None) -> tuple[Any, Any]:
-        import numpy as np
-        return (
-            np.zeros((1, k), dtype=np.float32),
-            np.zeros((1, k), dtype=np.uint64),
-        )
-
-    def remove(self, agent_id: int) -> bool:
-        return True
-
-    def contains(self, agent_id: int) -> bool:
-        return False
-
-    def write(self, path: str) -> None:
-        pass
-
-    @classmethod
-    def load(cls, path: str) -> "_MockIdMapIndex":
-        return cls(dim=256)
-
-_mock_turbovec.IdMapIndex = _MockIdMapIndex  # type: ignore[attr-defined]
-sys.modules["turbovec"] = _mock_turbovec
-
 from nexus.fleet_event_bus import FleetEventBus
 from nerve.room_grid import RoomGrid
 from swarm.breeder_daemon_v2 import BreederDaemonV2, DiversityConfig, ThermalConfig, LifecycleState

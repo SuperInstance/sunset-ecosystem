@@ -427,7 +427,8 @@ class PlatoBridge:
             if tile is not None:
                 return tile._payload  # type: ignore[attr-defined]
             # Adapter-style fallback
-            return self.read_tiles(agent_id=agent_id, tile_type=TileType.METRICS)
+            result = self.read_tiles(agent_id=agent_id, tile_type=TileType.METRICS)
+            return result if result else None
         # No agent_id: return adapter-style
         return self.read_tiles(tile_type=TileType.METRICS)
 

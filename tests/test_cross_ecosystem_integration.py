@@ -126,7 +126,7 @@ class TestCrossEcosystem:
     def test_plato_tile_round_trip(self):
         """Write a trinity score tile and read it back intact."""
         bridge = PlatoBridge()
-        tile = bridge.write_trinity_score("agent-42", ethos=0.9, pathos=0.8, logos=0.7)
+        tile = bridge.write_trinity_score("agent-42", 0.9, 0.8, 0.7)
         fetched = bridge.get_tile(tile.tile_id)
         assert fetched is not None
         desc = json.loads(fetched.description)

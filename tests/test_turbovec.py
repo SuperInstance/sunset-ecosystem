@@ -3,11 +3,31 @@
 from __future__ import annotations
 
 import os
+import sys
+import importlib.util
 
 import numpy as np
 import pytest
 
 from sunset import turbovec as tv
+
+# ── Restore real turbovec for upstream integration tests ──
+# conftest.py unconditionally mocks turbovec for speed.  This test file
+# specifically verifies the real upstream module, so we bypass the mock
+# by directly loading the real package via importlib.
+_tv_mock = sys.modules.pop("turbovec", None)
+try:
+    _spec = importlib.util.find_spec("turbovec")
+    if _spec is not None and _spec.loader is not None:
+        _real_turbovec = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_real_turbovec)
+        tv.IdMapIndex = _real_turbovec.IdMapIndex
+        tv.TurboQuantIndex = _real_turbovec.TurboQuantIndex
+    else:
+        _real_turbovec = None
+finally:
+    if _tv_mock is not None:
+        sys.modules["turbovec"] = _tv_mock
 
 
 class TestBlasLoading:

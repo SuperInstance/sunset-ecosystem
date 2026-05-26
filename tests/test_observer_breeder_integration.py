@@ -42,12 +42,16 @@ class _MockTileLifecycle:
 class _MockTileType:
     METRICS = "metrics"
     EVALUATION = "evaluation"
+    CHECKPOINT = "checkpoint"
+    PREDICTION = "prediction"
 
 
 class _MockTrainingTile:
-    def __init__(self, tile_id: str, room: str, tile_type: str, state: str,
-                 lamport: int, name: str, description: str, content_hash: str,
-                 base_model: str, source_room: str, parent_tile: str = "") -> None:
+    def __init__(self, tile_id: str = "", room: str = "", tile_type: str = "",
+                 state: str = "", lamport: int = 0, name: str = "",
+                 description: str = "", content_hash: str = "",
+                 base_model: str = "", source_room: str = "",
+                 parent_tile: str = "", **kwargs) -> None:
         self.tile_id = tile_id
         self.room = room
         self.tile_type = tile_type
@@ -59,7 +63,8 @@ class _MockTrainingTile:
         self.base_model = base_model
         self.source_room = source_room
         self.parent_tile = parent_tile
-        self._payload: Dict[str, Any] = {}
+        self._payload: Dict[str, Any] = kwargs.get("payload", {})
+        self.lifecycle_events: List[Any] = kwargs.get("lifecycle_events", [])
 
     def transition(self, new_state: str, reason: str = "", lamport: int = 0) -> None:
         self.state = new_state
@@ -78,69 +83,6 @@ _mock_plato_types.content_hash = lambda x: f"mock-hash-{hash(str(x)) & 0xFFFFFF}
 _mock_plato.types = _mock_plato_types
 sys.modules["plato_core"] = _mock_plato
 sys.modules["plato_core.types"] = _mock_plato_types
-
-# ── Mock turbovec before any swarm.vector_table import ──
-_mock_turbovec = types.ModuleType("turbovec")
-
-
-class _MockIdMapIndex:
-    """Minimal stand-in for turbovec.IdMapIndex."""
-
-    def __init__(self, dim: int, bit_width: int = 4) -> None:
-        self.dim = dim
-        self.bit_width = bit_width
-        self._vectors: dict[int, np.ndarray] = {}
-
-    def add_with_ids(self, vectors: np.ndarray, ids: np.ndarray) -> None:
-        for vec, aid in zip(vectors, ids):
-            self._vectors[int(aid)] = vec.copy()
-
-    def search(
-        self,
-        query: np.ndarray,
-        k: int = 10,
-        allowlist: np.ndarray | None = None,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        if not self._vectors:
-            return (
-                np.zeros((1, k), dtype=np.float32),
-                np.zeros((1, k), dtype=np.uint64),
-            )
-        q = query[0]
-        candidates = list(self._vectors.items())
-        if allowlist is not None:
-            allowed = set(int(a) for a in allowlist)
-            candidates = [(aid, v) for aid, v in candidates if aid in allowed]
-
-        qn = q / (np.linalg.norm(q) + 1e-8)
-        sims: list[tuple[int, float]] = []
-        for aid, vec in candidates:
-            vn = vec / (np.linalg.norm(vec) + 1e-8)
-            sims.append((aid, float(np.dot(qn, vn))))
-        sims.sort(key=lambda x: x[1], reverse=True)
-        top = sims[:k]
-        while len(top) < k:
-            top.append((0, 0.0))
-        scores = np.array([[s for _, s in top]], dtype=np.float32)
-        ids_arr = np.array([[aid for aid, _ in top]], dtype=np.uint64)
-        return scores, ids_arr
-
-    def remove(self, agent_id: int) -> bool:
-        return self._vectors.pop(agent_id, None) is not None
-
-    def contains(self, agent_id: int) -> bool:
-        return agent_id in self._vectors
-
-    def write(self, path: str) -> None:
-        pass
-
-    @classmethod
-    def load(cls, path: str) -> "_MockIdMapIndex":
-        return cls(dim=256)
-
-
-_mock_turbovec.IdMapIndex = _MockIdMapIndex  # type: ignore[attr-defined]
-sys.modules["turbovec"] = _mock_turbovec
 
 # ── Mock cocapn_traps before breeder_daemon_v2 import ──
 _mock_cocapn_traps = types.ModuleType("cocapn_traps")

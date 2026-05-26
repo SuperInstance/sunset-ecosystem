@@ -34,12 +34,16 @@ class _MockTileLifecycle:
 class _MockTileType:
     METRICS = "metrics"
     EVALUATION = "evaluation"
+    CHECKPOINT = "checkpoint"
+    PREDICTION = "prediction"
 
 
 class _MockTrainingTile:
-    def __init__(self, tile_id: str, room: str, tile_type: str, state: str,
-                 lamport: int, name: str, description: str, content_hash: str,
-                 base_model: str, source_room: str, parent_tile: str = "") -> None:
+    def __init__(self, tile_id: str = "", room: str = "", tile_type: str = "",
+                 state: str = "", lamport: int = 0, name: str = "",
+                 description: str = "", content_hash: str = "",
+                 base_model: str = "", source_room: str = "",
+                 parent_tile: str = "", **kwargs: Any) -> None:
         self.tile_id = tile_id
         self.room = room
         self.tile_type = tile_type
@@ -51,10 +55,14 @@ class _MockTrainingTile:
         self.base_model = base_model
         self.source_room = source_room
         self.parent_tile = parent_tile
-        self._payload: Dict[str, Any] = {}
+        self._payload: Dict[str, Any] = kwargs.get("payload", {})
+        self.lifecycle_events: List[Any] = kwargs.get("lifecycle_events", [])
 
     def transition(self, new_state: str, reason: str = "", lamport: int = 0) -> None:
         self.state = new_state
+
+    def is_active(self) -> bool:
+        return self.state == "active"
 
 
 _mock_plato_types.LifecycleEvent = type("LifecycleEvent", (), {})  # stub
