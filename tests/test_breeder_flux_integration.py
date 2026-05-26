@@ -118,6 +118,13 @@ def daemon(grid, thermal, vector_table, wal_file):
         wal_path=wal_file,
     )
     d.start()
+    # Seed vector-table agents as breedable so select_parents() uses
+    # diversity-aware paths instead of random room fallback.
+    from swarm.lifecycle_fsm import AgentLifecycleFSM, LifecycleState
+    for aid in range(1, 5):
+        d._fsm[aid] = AgentLifecycleFSM(
+            agent_id=aid, initial_state=LifecycleState.SURVIVE, strict=False
+        )
     yield d
     d.stop()
 
