@@ -11,7 +11,7 @@ Each room = 3.4K params. No training, no backprop."""
 from __future__ import annotations
 __all__ = ["RoomGrid", "JEPAGrid", "Fingerprint", "make_weights", "novelty", "batch_novelty"]
 
-import math, threading, logging, sys
+import math, os, threading, logging, sys
 from collections import deque
 from ctypes import CDLL, c_float, c_size_t, POINTER, c_void_p
 from dataclasses import dataclass
@@ -40,7 +40,9 @@ except OSError:
     _CUDA_LIB = None
 
 # Try Rust persistent FFI (fastest CPU path)
-if _BACKEND == "numpy":
+# Skip in CI — native .so may SIGILL on runners without required ISA extensions
+_CI_ENV = os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") or os.environ.get("SUNSET_NO_RUST")
+if _BACKEND == "numpy" and not _CI_ENV:
     try:
         _so = next(Path(__file__).parent.glob("target/release/libjepa_kernel.so"))
         _RUST_LIB = CDLL(str(_so))
@@ -67,7 +69,7 @@ if _BACKEND == "numpy":
         _RUST_LIB = None
 
 # If persistent API missing, try oneshot-only (FM's v1 .so has forward_batch only)
-if _BACKEND == "numpy":
+if _BACKEND == "numpy" and not _CI_ENV:
     try:
         _so = next(Path(__file__).parent.glob("target/release/libjepa_kernel.so"))
         _RUST_LIB = CDLL(str(_so))
