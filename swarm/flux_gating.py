@@ -71,6 +71,10 @@ class FluxCheckResult:
     score: float  # 0.0 = perfectly compliant, 1.0 = catastrophic
     violations: dict[str, float]  # {constraint_name: severity_value}
 
+    # Path B VM metadata (optional — only present when VM-backed)
+    proof_hash: bytes | None = None  # 32-byte SHA-256 root hash
+    vm_cycles: int = 0  # VM cycle count for this check
+
     @property
     def severity(self) -> float:
         """Alias for *score* (matches FLUX terminology)."""
