@@ -20,4 +20,4 @@ jobs:
             --ignore=tests/test_vision_encoder.py \
             --ignore=tests/test_world_model.py
         env:
-          NUMBA_DISABLE_JIT: "1"
+          NUMBA_LOOP_VECTORIZE: "0"
