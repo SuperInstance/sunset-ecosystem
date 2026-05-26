@@ -21,7 +21,7 @@ classifiers = [
 [project.optional-dependencies]
 gpu = ["torch", "numpy"]
 npu = ["onnx", "onnxruntime", "torch", "numpy"]
-dev = ["pytest>=7.0", "pytest-cov", "numpy", "cryptography", "requests"]
+dev = ["pytest>=7.0", "pytest-cov", "pytest-asyncio", "numpy", "cryptography", "requests", "numba", "psutil"]
 # ecosystem deps removed - local file:// URLs not allowed on PyPI
 vecsearch = ["turbovec>=0.1.0", "numpy"]
 
@@ -30,3 +30,4 @@ include = ["ethos*", "pathos*", "logos*", "sunset*", "swarm*", "nexus*", "gramma
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
