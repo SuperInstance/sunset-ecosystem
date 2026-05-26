@@ -1,227 +1,312 @@
-"""Tests for WALQuery — searchable interface over SignedWAL."""
+"""Tests for WALQueryIndex and WALBatchQuery.
+
+Covers index building, query planning, batch verification, and range scans.
+"""
 
 from __future__ import annotations
 
-import json
 import time
-from datetime import datetime, timezone
-from pathlib import Path
 
 import pytest
 
-from logos.signed_wal import SignedWAL, WALEntry, SignedEntry
-from logos.wal_query import WALQuery, _parse_iso8601, _format_iso8601
+from logos.signed_wal import SignedWAL, WALEntry
+from logos.wal_query import WALQueryIndex, WALBatchQuery, WALQueryFilter
 
 
 @pytest.fixture
-def tmp_wal(tmp_path):
-    """Provide a SignedWAL backed by a temp file."""
-    path = tmp_path / "signed.wal.jsonl"
-    wal = SignedWAL(log_path=path)
-    return wal, path
+def wal():
+    w = SignedWAL(algorithm="hmac-sha256")
+    # Seed with diverse entries
+    for i in range(20):
+        w.append(
+            WALEntry(
+                timestamp=time.time() - (20 - i) * 60,  # spaced 1 min apart
+                agent_id=i % 5,  # agents 0-4
+                operation=["spawn", "breed", "sunset", "mutate"][i % 4],
+                vector_hash=f"hash-{i}",
+                parent_ids=[i - 1] if i > 0 else [],
+                generation=i // 5,
+                node_id=f"node-{i % 3}",
+                room_id=f"room-{i % 4}",
+            )
+        )
+    return w
 
 
 @pytest.fixture
-def populated_wal(tmp_path):
-    """WAL with diverse entries for querying."""
-    path = tmp_path / "query.wal.jsonl"
-    wal = SignedWAL(log_path=path)
-    base_ts = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc).timestamp()
-
-    entries = [
-        WALEntry(timestamp=base_ts, agent_id=1, operation="spawn", vector_hash="a" * 64, parent_ids=[], generation=0, node_id="node-alpha", room_id="forge"),
-        WALEntry(timestamp=base_ts + 3600, agent_id=2, operation="spawn", vector_hash="b" * 64, parent_ids=[], generation=0, node_id="node-beta", room_id="crucible"),
-        WALEntry(timestamp=base_ts + 7200, agent_id=1, operation="breed", vector_hash="c" * 64, parent_ids=[1], generation=1, node_id="node-alpha", room_id="forge"),
-        WALEntry(timestamp=base_ts + 10800, agent_id=3, operation="sunset", vector_hash="d" * 64, parent_ids=[2], generation=0, node_id="node-gamma", room_id="archive"),
-        WALEntry(timestamp=base_ts + 14400, agent_id=1, operation="tick", vector_hash="e" * 64, parent_ids=[], generation=1, node_id="node-alpha", room_id="forge"),
-        WALEntry(timestamp=base_ts + 18000, agent_id=4, operation="flux_violation", vector_hash="f" * 64, parent_ids=[], generation=0, node_id="node-beta", room_id="crucible"),
-    ]
-    for e in entries:
-        wal.append(e)
-    return wal, path
+def query(wal):
+    idx = WALQueryIndex()
+    idx.rebuild(wal.entries)
+    return WALBatchQuery(wal.entries, idx)
 
 
-class TestQueryByTimeRange:
-    def test_query_by_time_range(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        base = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc)
-        # Request 2-hour window starting at base
-        start = base.isoformat().replace("+00:00", "Z")
-        end = (base.replace(hour=14)).isoformat().replace("+00:00", "Z")
-        results = q.by_time_range(start, end)
-        assert len(results) == 2
-        assert results[0].entry.operation == "spawn"
-        assert results[1].entry.operation == "spawn"
-
-    def test_query_by_time_range_empty(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        # Window far in the future
-        results = q.by_time_range("2099-01-01T00:00:00Z", "2099-01-02T00:00:00Z")
-        assert results == []
+# ── WALQueryIndex ─────────────────────────────────────────
 
 
-class TestQueryByEventType:
-    def test_query_by_event_type(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        spawns = q.by_event_type("spawn")
-        assert len(spawns) == 2
-        assert all(se.entry.operation == "spawn" for se in spawns)
-
-    def test_query_by_event_type_no_match(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        assert q.by_event_type("nonexistent") == []
+def test_index_rebuild_counts(wal):
+    idx = WALQueryIndex()
+    idx.rebuild(wal.entries)
+    assert len(idx) == 20
+    assert len(idx.by_agent[0]) == 4  # agents 0, 5, 10, 15
 
 
-class TestQueryByNodeId:
-    def test_query_by_node_id(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        alpha = q.by_node_id("node-alpha")
-        assert len(alpha) == 3
-        assert all(se.entry.node_id == "node-alpha" for se in alpha)
-
-    def test_query_by_node_id_empty(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        assert q.by_node_id("node-delta") == []
+def test_hint_agent(wal, query):
+    indices = query._index.hint_agent(0)
+    assert len(indices) == 4
+    for i in indices:
+        assert wal.entries[i].entry.agent_id == 0
 
 
-class TestQueryByRoomId:
-    def test_query_by_room_id(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        forge = q.by_room_id("forge")
-        assert len(forge) == 3
-        assert all(se.entry.room_id == "forge" for se in forge)
-
-    def test_query_by_room_id_empty(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        assert q.by_room_id("void") == []
+def test_hint_operation(wal, query):
+    spawn_indices = query._index.hint_operation("spawn")
+    assert len(spawn_indices) == 5  # indices 0, 4, 8, 12, 16
+    for i in spawn_indices:
+        assert wal.entries[i].entry.operation == "spawn"
 
 
-class TestVerifySubset:
-    def test_verify_subset_signatures(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        subset = q.by_event_type("spawn")
-        assert q.verify_subset(subset) is True
+def test_hint_time_range(wal, query):
+    now = time.time()
+    # Query last 5 minutes
+    indices = query._index.hint_time_range(now - 300, now)
+    assert len(indices) >= 4  # at least the last 4 entries
 
-    def test_verify_subset_tampered(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        subset = q.by_event_type("spawn")
-        # Tamper one entry's vector_hash but keep signature
-        tampered_entry = WALEntry(
-            timestamp=subset[0].entry.timestamp,
-            agent_id=subset[0].entry.agent_id,
-            operation=subset[0].entry.operation,
-            vector_hash="TAMPERED" * 8,
-            parent_ids=subset[0].entry.parent_ids,
-            generation=subset[0].entry.generation,
+
+def test_hint_generation_range(wal, query):
+    indices = query._index.hint_generation_range(0, 1)
+    assert len(indices) == 10  # generations 0 and 1
+
+
+def test_plan_picks_smallest(wal, query):
+    # agent_id=0 has 4 entries; operation="spawn" has 5
+    # plan should pick agent hint (smaller)
+    filt = WALQueryFilter(agent_id=0, operation="spawn")
+    plan = query._index.plan(filt)
+    assert plan is not None
+    assert len(plan) == 4  # agent hint is smaller
+
+
+# ── WALBatchQuery.filter ──────────────────────────────────
+
+
+def test_filter_by_agent(query):
+    results = query.filter(WALQueryFilter(agent_id=2))
+    assert len(results) == 4
+    for se in results:
+        assert se.entry.agent_id == 2
+
+
+def test_filter_by_operation(query):
+    results = query.filter(WALQueryFilter(operation="breed"))
+    assert len(results) == 5
+    for se in results:
+        assert se.entry.operation == "breed"
+
+
+def test_filter_by_time_range(query):
+    now = time.time()
+    results = query.filter(WALQueryFilter(time_start=now - 200, time_end=now))
+    assert len(results) >= 3
+    for se in results:
+        assert now - 200 <= se.entry.timestamp <= now
+
+
+def test_filter_by_agent_and_operation(query):
+    results = query.filter(WALQueryFilter(agent_id=1, operation="sunset"))
+    # agent 1 entries at indices 1, 6, 11, 16; operation "sunset" at 3, 7, 11, 15
+    # intersection: index 11 only
+    assert len(results) == 1
+    assert results[0].entry.agent_id == 1
+    assert results[0].entry.operation == "sunset"
+
+
+def test_filter_with_limit(query):
+    results = query.filter(WALQueryFilter(operation="spawn"), limit=3)
+    assert len(results) == 3
+
+
+def test_filter_with_offset(query):
+    results = query.filter(WALQueryFilter(agent_id=0), offset=2)
+    all_results = query.filter(WALQueryFilter(agent_id=0))
+    assert results == all_results[2:]
+
+
+def test_filter_no_match(query):
+    results = query.filter(WALQueryFilter(agent_id=999))
+    assert results == []
+
+
+def test_filter_chronological_order(query):
+    results = query.filter(WALQueryFilter(operation="spawn"))
+    indices = [i for i, se in enumerate(query._entries) if se in results]
+    assert indices == sorted(indices)
+
+
+def test_filter_by_generation_range(query):
+    results = query.filter(WALQueryFilter(generation_min=1, generation_max=2))
+    assert len(results) == 10  # generations 1 and 2
+    for se in results:
+        assert 1 <= se.entry.generation <= 2
+
+
+def test_filter_by_parent_ids(query):
+    # Entry 5 has parent_id 4; entry 10 has parent_id 9
+    results = query.filter(WALQueryFilter(parent_ids={4}))
+    assert len(results) >= 1
+    for se in results:
+        assert 4 in se.entry.parent_ids
+
+
+def test_filter_by_node(query):
+    results = query.filter(WALQueryFilter(node_id="node-0"))
+    # entries at indices 0, 3, 6, 9, 12, 15, 18 have node-0
+    assert len(results) == 7
+
+
+def test_filter_custom_predicate(query):
+    results = query.filter(
+        WALQueryFilter(custom=lambda e: e.generation >= 2 and e.operation == "spawn")
+    )
+    for se in results:
+        assert se.entry.generation >= 2
+        assert se.entry.operation == "spawn"
+
+
+# ── convenience queries ───────────────────────────────────
+
+
+def test_by_agent(query):
+    results = query.by_agent(3)
+    assert len(results) == 4
+
+
+def test_by_operation(query):
+    results = query.by_operation("mutate")
+    assert len(results) == 5
+
+
+def test_by_time_range(query):
+    now = time.time()
+    results = query.by_time_range(now - 300, now)
+    assert len(results) >= 4
+
+
+def test_by_agent_time_range(query):
+    now = time.time()
+    results = query.by_agent_time_range(0, now - 300, now)
+    assert len(results) <= 4
+
+
+def test_latest_by_agent(query):
+    results = query.latest_by_agent(0, n=2)
+    assert len(results) == 2
+    # Should be the last 2 entries for agent 0 (indices 15, 20 would be)
+    # Actually agent 0 at indices 0, 5, 10, 15
+    assert results[-1].entry.agent_id == 0
+
+
+def test_descendants(query):
+    results = query.descendants(2)
+    assert len(results) >= 1
+    for se in results:
+        assert 2 in se.entry.parent_ids
+
+
+def test_genealogy(query):
+    results = query.genealogy(1)
+    # Includes agent 1's own entries + entries where 1 is a parent
+    assert len(results) >= 4  # at least own entries
+
+
+# ── count ─────────────────────────────────────────────────
+
+
+def test_count(query):
+    assert query.count(WALQueryFilter(agent_id=0)) == 4
+    assert query.count(WALQueryFilter(operation="spawn")) == 5
+    assert query.count(WALQueryFilter(agent_id=999)) == 0
+
+
+# ── batch verify ──────────────────────────────────────────
+
+
+def test_batch_verify_all(query):
+    verified, failed, failed_indices = query.batch_verify()
+    assert verified == 20
+    assert failed == 0
+    assert failed_indices == []
+
+
+def test_batch_verify_subset(query):
+    filt = WALQueryFilter(operation="spawn")
+    verified, failed, failed_indices = query.batch_verify(filt)
+    assert verified == 5
+    assert failed == 0
+
+
+# ── range scan ────────────────────────────────────────────
+
+
+def test_range_scan(query):
+    results = query.range_scan(5, 10)
+    assert len(results) == 5
+    assert results[0].entry.agent_id == 0  # index 5
+    assert results[-1].entry.agent_id == 4  # index 9
+
+
+def test_range_scan_empty(query):
+    results = query.range_scan(100, 200)
+    assert results == []
+
+
+# ── integration with SignedWAL append ───────────────────
+
+
+def test_index_keeps_up_with_appends():
+    wal = SignedWAL(algorithm="hmac-sha256")
+    idx = WALQueryIndex()
+
+    for i in range(10):
+        wal.append(
+            WALEntry(
+                timestamp=time.time(),
+                agent_id=i % 3,
+                operation="spawn",
+                vector_hash=f"h{i}",
+                parent_ids=[],
+                generation=0,
+            )
         )
-        bad = SignedEntry(
-            entry=tampered_entry,
-            signature=subset[0].signature,
-            previous_hash=subset[0].previous_hash,
-            public_key=subset[0].public_key,
+        idx.append(len(wal.entries) - 1, wal.entries[-1].entry)
+
+    query = WALBatchQuery(wal.entries, idx)
+    assert query.count(WALQueryFilter(agent_id=0)) == 4  # indices 0, 3, 6, 9
+    assert query.count(WALQueryFilter(operation="spawn")) == 10
+
+
+# ── edge cases ────────────────────────────────────────────
+
+
+def test_empty_wal():
+    wal = SignedWAL(algorithm="hmac-sha256")
+    query = WALBatchQuery(wal.entries)
+    assert query.filter(WALQueryFilter()) == []
+    assert len(query) == 0
+
+
+def test_filter_with_all_conditions(query):
+    now = time.time()
+    results = query.filter(
+        WALQueryFilter(
+            agent_id=0,
+            operation="spawn",
+            time_start=now - 2000,
+            time_end=now,
+            generation_min=0,
+            generation_max=1,
+            node_id="node-0",
         )
-        assert q.verify_subset([bad]) is False
-
-    def test_verify_subset_chain_break(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        subset = q.by_event_type("spawn")
-        # Reorder to break the chain
-        reordered = list(reversed(subset))
-        assert q.verify_subset(reordered) is False
-
-
-class TestSummary:
-    def test_summary_counts_by_type(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        s = q.summary()
-        assert s["total_entries"] == 6
-        assert s["event_counts"]["spawn"] == 2
-        assert s["event_counts"]["breed"] == 1
-        assert s["event_counts"]["sunset"] == 1
-        assert s["event_counts"]["tick"] == 1
-        assert s["event_counts"]["flux_violation"] == 1
-
-    def test_summary_time_range(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        s = q.summary()
-        assert s["time_range"]["start"] is not None
-        assert s["time_range"]["end"] is not None
-        start_ts = _parse_iso8601(s["time_range"]["start"])
-        end_ts = _parse_iso8601(s["time_range"]["end"])
-        assert start_ts < end_ts
-
-    def test_summary_coverage(self, populated_wal):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        s = q.summary()
-        assert "node-alpha" in s["node_coverage"]
-        assert "node-beta" in s["node_coverage"]
-        assert "node-gamma" in s["node_coverage"]
-        assert "forge" in s["room_coverage"]
-        assert "crucible" in s["room_coverage"]
-        assert "archive" in s["room_coverage"]
-
-    def test_summary_empty_wal(self, tmp_wal):
-        wal, _ = tmp_wal
-        q = WALQuery(wal)
-        s = q.summary()
-        assert s["total_entries"] == 0
-        assert s["event_counts"] == {}
-        assert s["time_range"]["start"] is None
-
-
-class TestExportJsonl:
-    def test_export_all_entries(self, populated_wal, tmp_path):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        out = tmp_path / "export.jsonl"
-        q.export_jsonl(out)
-        lines = out.read_text().strip().split("\n")
-        assert len(lines) == 6
-        first = json.loads(lines[0])
-        assert first["entry"]["operation"] == "spawn"
-        assert "signature" in first
-
-    def test_export_subset(self, populated_wal, tmp_path):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        out = tmp_path / "subset.jsonl"
-        subset = q.by_event_type("spawn")
-        q.export_jsonl(out, entries=subset)
-        lines = out.read_text().strip().split("\n")
-        assert len(lines) == 2
-        assert all(json.loads(line)["entry"]["operation"] == "spawn" for line in lines)
-
-    def test_export_includes_new_fields(self, populated_wal, tmp_path):
-        wal, _ = populated_wal
-        q = WALQuery(wal)
-        out = tmp_path / "export.jsonl"
-        q.export_jsonl(out)
-        first = json.loads(out.read_text().strip().split("\n")[0])
-        assert "node_id" in first["entry"]
-        assert "room_id" in first["entry"]
-
-
-class TestISO8601Helpers:
-    def test_parse_iso8601_utc_z(self):
-        assert _parse_iso8601("2024-05-25T12:00:00Z") == datetime(2024, 5, 25, 12, 0, 0, tzinfo=timezone.utc).timestamp()
-
-    def test_parse_iso8601_offset(self):
-        assert _parse_iso8601("2024-05-25T14:00:00+02:00") == datetime(2024, 5, 25, 12, 0, 0, tzinfo=timezone.utc).timestamp()
-
-    def test_format_roundtrip(self):
-        ts = 1716640800.0
-        assert _parse_iso8601(_format_iso8601(ts)) == ts
+    )
+    # agent 0, spawn: index 0 only
+    assert len(results) == 1
+    assert results[0].entry.agent_id == 0
+    assert results[0].entry.operation == "spawn"

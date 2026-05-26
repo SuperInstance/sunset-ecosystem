@@ -707,6 +707,18 @@ class BreederDaemonV2:
             vector_table=self._vector_table,
             n_children=n_children,
         )
+
+        # FLUX-gate all vector-selected pairs
+        flux_passed_pairs: list[tuple[int, int]] = []
+        for a, b in pairs:
+            plan = {"parents": (a, b)}
+            result = self._check_flux(a, plan)
+            if self._flux_passed(result):
+                flux_passed_pairs.append((a, b))
+            else:
+                logger.debug("FLUX blocked vector pair (%d, %d)", a, b)
+        pairs = flux_passed_pairs
+
         # Pad with random if we didn't get enough — but respect FLUX gating
         attempts = 0
         max_attempts = n_children * 10

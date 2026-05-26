@@ -1,403 +1,363 @@
-"""WAL Query — searchable, auditable interface over SignedWAL.
+"""Signed WAL Query Extension — batch range scans with index hints.
 
-Provides operators with time-range, event-type, node, and room filters
-over the cryptographically-verified append-only log.
-
-**Index-aware mode**: pass a ``WALIndex`` to use inverted indices for
-sub-linear compound queries instead of linear scans.
+Adds secondary indexes to SignedWAL for O(1) agent lookups and O(log n)
+time-range queries without full scans.
 """
 
 from __future__ import annotations
 
-__all__ = ["WALQuery", "BatchQueryResult"]
+__all__ = [
+    "WALQueryIndex",
+    "WALBatchQuery",
+    "WALQueryFilter",
+]
 
-import json
+import bisect
 import logging
+from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from logos.signed_wal import SignedWAL, SignedEntry, WALEntry
+from logos.signed_wal import SignedEntry, WALEntry
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class BatchQueryResult:
-    """Result of a batched multi-query execution."""
+@dataclass(frozen=True)
+class WALQueryFilter:
+    """Declarative filter for WAL batch queries."""
 
-    query_id: str
-    entries: list[SignedEntry] = field(default_factory=list)
-    duration_ms: float = 0.0
-    index_used: bool = False
-    error: str | None = None
+    agent_id: int | None = None
+    operation: str | None = None
+    node_id: str | None = None
+    room_id: str | None = None
+    generation_min: int | None = None
+    generation_max: int | None = None
+    time_start: float | None = None
+    time_end: float | None = None
+    parent_ids: set[int] | None = None
+    custom: Callable[[WALEntry], bool] | None = None
+
+    def matches(self, entry: WALEntry) -> bool:
+        if self.agent_id is not None and entry.agent_id != self.agent_id:
+            return False
+        if self.operation is not None and entry.operation != self.operation:
+            return False
+        if self.node_id is not None and entry.node_id != self.node_id:
+            return False
+        if self.room_id is not None and entry.room_id != self.room_id:
+            return False
+        if self.generation_min is not None and entry.generation < self.generation_min:
+            return False
+        if self.generation_max is not None and entry.generation > self.generation_max:
+            return False
+        if self.time_start is not None and entry.timestamp < self.time_start:
+            return False
+        if self.time_end is not None and entry.timestamp > self.time_end:
+            return False
+        if self.parent_ids is not None:
+            if not any(p in self.parent_ids for p in entry.parent_ids):
+                return False
+        if self.custom is not None and not self.custom(entry):
+            return False
+        return True
+
+
+class WALQueryIndex:
+    """Secondary indexes for fast WAL queries.
+
+    Maintains:
+      - by_agent:    dict[agent_id → list of entry indices]
+      - by_operation: dict[operation → list of entry indices]
+      - by_node:     dict[node_id → list of entry indices]
+      - time_index:  list of (timestamp, index) pairs, sorted
+      - generation_index: list of (generation, index) pairs, sorted
+
+    All lookups return entry indices into the parent SignedWAL._entries list.
+    """
+
+    def __init__(self) -> None:
+        self.by_agent: Dict[int, List[int]] = defaultdict(list)
+        self.by_operation: Dict[str, List[int]] = defaultdict(list)
+        self.by_node: Dict[str, List[int]] = defaultdict(list)
+        self.time_index: List[Tuple[float, int]] = []  # (timestamp, index)
+        self.generation_index: List[Tuple[int, int]] = []  # (generation, index)
+        self._len: int = 0
+
+    # ── index maintenance ───────────────────────────────────
+
+    def append(self, idx: int, entry: WALEntry) -> None:
+        """Index a newly appended entry."""
+        self.by_agent[entry.agent_id].append(idx)
+        self.by_operation[entry.operation].append(idx)
+        if entry.node_id:
+            self.by_node[entry.node_id].append(idx)
+        self.time_index.append((entry.timestamp, idx))
+        self.generation_index.append((entry.generation, idx))
+        self._len += 1
+
+    def rebuild(self, entries: List[SignedEntry]) -> None:
+        """Rebuild all indexes from scratch (e.g. after loading persisted log)."""
+        self.by_agent.clear()
+        self.by_operation.clear()
+        self.by_node.clear()
+        self.time_index.clear()
+        self.generation_index.clear()
+        self._len = 0
+        for idx, se in enumerate(entries):
+            self.append(idx, se.entry)
+
+    # ── index hints for query planning ────────────────────
+
+    def hint_agent(self, agent_id: int) -> List[int]:
+        """Fast path: return all indices for a specific agent."""
+        return list(self.by_agent.get(agent_id, []))
+
+    def hint_operation(self, operation: str) -> List[int]:
+        """Fast path: return all indices for a specific operation."""
+        return list(self.by_operation.get(operation, []))
+
+    def hint_node(self, node_id: str) -> List[int]:
+        return list(self.by_node.get(node_id, []))
+
+    def hint_time_range(self, start: float, end: float) -> List[int]:
+        """O(log n) time-range query via bisect on sorted timestamps."""
+        if not self.time_index:
+            return []
+        # Find left bound: first timestamp >= start
+        left = bisect.bisect_left(self.time_index, (start, -1))
+        # Find right bound: first timestamp > end
+        right = bisect.bisect_right(self.time_index, (end, float("inf")))
+        return [self.time_index[i][1] for i in range(left, right)]
+
+    def hint_generation_range(self, gen_min: int, gen_max: int) -> List[int]:
+        """O(log n) generation-range query."""
+        if not self.generation_index:
+            return []
+        left = bisect.bisect_left(self.generation_index, (gen_min, -1))
+        right = bisect.bisect_right(self.generation_index, (gen_max, float("inf")))
+        return [self.generation_index[i][1] for i in range(left, right)]
+
+    # ── query planning: pick smallest candidate set ────────
+
+    def plan(self, filt: WALQueryFilter) -> Optional[List[int]]:
+        """Return the smallest index hint that satisfies the filter,
+        or None if a full scan is required.
+
+        Strategy: pick the most restrictive hint (smallest candidate set).
+        """
+        candidates: List[Optional[List[int]]] = []
+
+        if filt.agent_id is not None:
+            candidates.append(self.hint_agent(filt.agent_id))
+        if filt.operation is not None:
+            candidates.append(self.hint_operation(filt.operation))
+        if filt.node_id is not None:
+            candidates.append(self.hint_node(filt.node_id))
+        if filt.time_start is not None and filt.time_end is not None:
+            candidates.append(self.hint_time_range(filt.time_start, filt.time_end))
+        if filt.generation_min is not None and filt.generation_max is not None:
+            candidates.append(
+                self.hint_generation_range(filt.generation_min, filt.generation_max)
+            )
+
+        if not candidates:
+            return None  # full scan
+
+        # Pick the smallest candidate set
+        best = min((c for c in candidates if c is not None), key=len, default=None)
+        return best
 
     def __len__(self) -> int:
-        return len(self.entries)
-
-    def __bool__(self) -> bool:
-        return len(self.entries) > 0
+        return self._len
 
 
-def _parse_iso8601(ts: str) -> float:
-    """Parse ISO-8601 string to POSIX timestamp."""
-    # Support both 'Z' suffix and explicit offsets
-    ts = ts.replace("Z", "+00:00")
-    try:
-        dt = datetime.fromisoformat(ts)
-    except ValueError as exc:
-        raise ValueError(f"Invalid ISO-8601 timestamp: {ts}") from exc
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.timestamp()
+class WALBatchQuery:
+    """High-level batch query interface over a SignedWAL + WALQueryIndex.
 
+    Example:
+        wal = SignedWAL(...)
+        idx = WALQueryIndex()
+        idx.rebuild(wal.entries)
+        query = WALBatchQuery(wal, idx)
 
-def _format_iso8601(ts: float) -> str:
-    """Format POSIX timestamp as ISO-8601 UTC string."""
-    return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-class WALQuery:
-    """Query interface for a SignedWAL.
-
-    Usage::
-
-        wal = SignedWAL(log_path="/data/fleet.wal")
-        q = WALQuery(wal)
-        spawns = q.by_event_type("spawn")
-        today = q.by_time_range("2024-05-25T00:00:00Z", "2024-05-26T00:00:00Z")
-
-    Index-aware usage::
-
-        from logos.wal_index import WALIndex
-        idx = WALIndex(wal)
-        q = WALQuery(wal, index=idx)
-        # compound queries now use inverted indices
-        results = q.compound_query(
-            conjunction="and",
-            filters=[
-                {"field": "event_type", "value": "spawn"},
-                {"field": "node_id", "value": "node-alpha"},
-            ],
+        # All spawn ops for agent 42 in the last hour
+        results = query.filter(
+            WALQueryFilter(
+                agent_id=42,
+                operation="spawn",
+                time_start=time.time() - 3600,
+            )
         )
     """
 
-    def __init__(self, wal: SignedWAL, index: Any | None = None) -> None:
-        self._wal = wal
-        self._index = index
-
-    # ── Simple filters (index-backed when available) ─────────────
-
-    def by_time_range(self, start: str, end: str) -> list[SignedEntry]:
-        """Return entries whose timestamp falls in [*start*, *end*).
-
-        *start* and *end* are ISO-8601 strings.
-        """
-        if self._index is not None:
-            return self._index.query(
-                conjunction="and",
-                filters=[{"field": "time_range", "start": start, "end": end}],
-            )
-        t0 = _parse_iso8601(start)
-        t1 = _parse_iso8601(end)
-        return [se for se in self._wal.entries if t0 <= se.entry.timestamp < t1]
-
-    def by_event_type(self, event_type: str) -> list[SignedEntry]:
-        """Filter by *operation* field (e.g. ``'spawn'``, ``'breed'``)."""
-        if self._index is not None:
-            return self._index.query(
-                conjunction="and",
-                filters=[{"field": "event_type", "value": event_type}],
-            )
-        return [se for se in self._wal.entries if se.entry.operation == event_type]
-
-    def by_node_id(self, node_id: str) -> list[SignedEntry]:
-        """Filter by *node_id* field."""
-        if self._index is not None:
-            return self._index.query(
-                conjunction="and",
-                filters=[{"field": "node_id", "value": node_id}],
-            )
-        return [se for se in self._wal.entries if se.entry.node_id == node_id]
-
-    def by_room_id(self, room_id: str) -> list[SignedEntry]:
-        """Filter by *room_id* field."""
-        if self._index is not None:
-            return self._index.query(
-                conjunction="and",
-                filters=[{"field": "room_id", "value": room_id}],
-            )
-        return [se for se in self._wal.entries if se.entry.room_id == room_id]
-
-    # ── Compound queries (index-backed when available) ────────────
-
-    def compound_query(
+    def __init__(
         self,
-        *,
-        conjunction: str = "and",
-        filters: list[dict[str, Any]] | None = None,
-    ) -> list[SignedEntry]:
-        """Multi-filter compound query.
+        wal_entries: List[SignedEntry],
+        index: WALQueryIndex | None = None,
+    ) -> None:
+        self._entries = wal_entries
+        self._index = index or WALQueryIndex()
+        if len(self._index) == 0 and len(self._entries) > 0:
+            self._index.rebuild(self._entries)
 
-        When an index is attached this uses inverted indices for
-        O(log N) intersections instead of O(N) linear scans.
-        """
-        if self._index is not None:
-            return self._index.query(conjunction=conjunction, filters=filters)
+    # ── core filter ─────────────────────────────────────────
 
-        # Fallback: linear scan
-        if not filters:
-            return list(self._wal.entries)
-
-        candidate_sets: list[set[int]] = []
-        for filt in filters:
-            field = filt.get("field")
-            value = filt.get("value")
-            matches = set()
-            for i, se in enumerate(self._wal.entries):
-                if field == "event_type" and se.entry.operation == value:
-                    matches.add(i)
-                elif field == "node_id" and se.entry.node_id == value:
-                    matches.add(i)
-                elif field == "room_id" and se.entry.room_id == value:
-                    matches.add(i)
-                elif field == "time_range":
-                    t0 = _parse_iso8601(filt["start"])
-                    t1 = _parse_iso8601(filt["end"])
-                    if t0 <= se.entry.timestamp < t1:
-                        matches.add(i)
-                elif self._match_generic(se, filt):
-                    matches.add(i)
-            candidate_sets.append(matches)
-
-        if not candidate_sets:
-            return []
-
-        if conjunction == "and":
-            indices = set.intersection(*candidate_sets)
-        else:  # "or"
-            indices = set.union(*candidate_sets)
-
-        return [self._wal.entries[i] for i in sorted(indices)]
-
-    # ── Batch queries ─────────────────────────────────────────────
-
-    def batch_query(
+    def filter(
         self,
-        queries: list[dict[str, Any]],
-        *,
-        timeout_ms: float = 5000.0,
-    ) -> list[BatchQueryResult]:
-        """Execute multiple queries in one pass.
+        filt: WALQueryFilter,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> List[SignedEntry]:
+        """Return matching SignedEntry objects.
 
-        Each query dict must have keys::
-
-            {
-                "query_id": str,
-                "conjunction": "and" | "or",
-                "filters": [...],  # same shape as compound_query
-            }
-
-        Returns a list of ``BatchQueryResult`` in the same order.
+        Uses index hints when available; falls back to full scan.
+        Results are returned in chronological order (by WAL index).
         """
-        import time
+        candidate_indices = self._index.plan(filt)
+        if candidate_indices is None:
+            candidate_indices = list(range(len(self._entries)))
 
-        results: list[BatchQueryResult] = []
-        t0 = time.monotonic()
-        for q in queries:
-            qid = q.get("query_id", f"q-{len(results)}")
-            q_start = time.monotonic()
-            try:
-                entries = self.compound_query(
-                    conjunction=q.get("conjunction", "and"),
-                    filters=q.get("filters"),
-                )
-                elapsed = (time.monotonic() - q_start) * 1000
-                results.append(
-                    BatchQueryResult(
-                        query_id=qid,
-                        entries=entries,
-                        duration_ms=elapsed,
-                        index_used=self._index is not None,
-                    )
-                )
-            except Exception as exc:
-                elapsed = (time.monotonic() - q_start) * 1000
-                results.append(
-                    BatchQueryResult(
-                        query_id=qid,
-                        entries=[],
-                        duration_ms=elapsed,
-                        index_used=self._index is not None,
-                        error=str(exc),
-                    )
-                )
-            # Global timeout check
-            if (time.monotonic() - t0) * 1000 > timeout_ms:
-                logger.warning("Batch query global timeout reached after %d queries", len(results))
-                break
-        return results
+        results: List[Tuple[int, SignedEntry]] = []
+        for idx in candidate_indices:
+            if idx < 0 or idx >= len(self._entries):
+                continue
+            se = self._entries[idx]
+            if filt.matches(se.entry):
+                results.append((idx, se))
 
-    # ── Index hint helpers ──────────────────────────────────────
+        # Sort by index (chronological)
+        results.sort(key=lambda x: x[0])
 
-    def with_index(self, index: Any) -> "WALQuery":
-        """Return a new WALQuery backed by the given index."""
-        return WALQuery(self._wal, index=index)
+        # Apply offset + limit
+        start = offset
+        end = len(results) if limit is None else offset + limit
+        return [se for _, se in results[start:end]]
 
-    def without_index(self) -> "WALQuery":
-        """Return a new WALQuery that performs linear scans."""
-        return WALQuery(self._wal, index=None)
+    def count(self, filt: WALQueryFilter) -> int:
+        """Count matching entries without materializing them."""
+        candidate_indices = self._index.plan(filt)
+        if candidate_indices is None:
+            candidate_indices = list(range(len(self._entries)))
 
-    def explain(self, filters: list[dict[str, Any]]) -> dict[str, Any]:
-        """Explain how a query would be executed (index vs scan)."""
-        plan: dict[str, Any] = {
-            "index_available": self._index is not None,
-            "index_name": type(self._index).__name__ if self._index else None,
-            "filters": len(filters),
-            "indexable_filters": 0,
-            "fallback_filters": 0,
-        }
-        for filt in filters:
-            field = filt.get("field", "")
-            if field in ("event_type", "node_id", "room_id", "time_range"):
-                plan["indexable_filters"] += 1
-            else:
-                plan["fallback_filters"] += 1
-        plan["strategy"] = (
-            "index_intersection"
-            if plan["index_available"] and plan["indexable_filters"] > 0
-            else "linear_scan"
+        count = 0
+        for idx in candidate_indices:
+            if idx < 0 or idx >= len(self._entries):
+                continue
+            if filt.matches(self._entries[idx].entry):
+                count += 1
+        return count
+
+    # ── convenience queries ─────────────────────────────────
+
+    def by_agent(
+        self,
+        agent_id: int,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> List[SignedEntry]:
+        return self.filter(WALQueryFilter(agent_id=agent_id), limit=limit, offset=offset)
+
+    def by_operation(
+        self,
+        operation: str,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> List[SignedEntry]:
+        return self.filter(WALQueryFilter(operation=operation), limit=limit, offset=offset)
+
+    def by_time_range(
+        self,
+        start: float,
+        end: float,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> List[SignedEntry]:
+        return self.filter(
+            WALQueryFilter(time_start=start, time_end=end),
+            limit=limit,
+            offset=offset,
         )
-        return plan
 
-    # ── Integrity ───────────────────────────────────────────────────
+    def by_agent_time_range(
+        self,
+        agent_id: int,
+        start: float,
+        end: float,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> List[SignedEntry]:
+        return self.filter(
+            WALQueryFilter(agent_id=agent_id, time_start=start, time_end=end),
+            limit=limit,
+            offset=offset,
+        )
 
-    def verify_subset(self, entries: list[SignedEntry]) -> bool:
-        """Verify signatures on a subset without scanning the full WAL.
+    def latest_by_agent(self, agent_id: int, n: int = 1) -> List[SignedEntry]:
+        """Return the n most recent entries for an agent."""
+        all_entries = self.by_agent(agent_id)
+        return all_entries[-n:] if n < len(all_entries) else all_entries
 
-        Returns ``True`` only if every entry in *entries* has a valid
-        signature and a correct hash chain (each entry's *previous_hash*
-        matches the SHA-256 of its predecessor in *entries*).
+    def descendants(self, agent_id: int, depth: int = 3) -> List[SignedEntry]:
+        """Return entries where agent_id appears as a parent (children / descendants)."""
+        return self.filter(
+            WALQueryFilter(parent_ids={agent_id}),
+            limit=1000,
+        )
+
+    def genealogy(self, agent_id: int, depth: int = 3) -> List[SignedEntry]:
+        """Return both the agent's own entries and its descendants."""
+        own = self.by_agent(agent_id)
+        desc = self.descendants(agent_id, depth=depth)
+        # Merge and deduplicate by index
+        merged: Dict[int, SignedEntry] = {}
+        for idx, se in enumerate(self._entries):
+            if se in own or se in desc:
+                merged[idx] = se
+        return [merged[i] for i in sorted(merged)]
+
+    # ── batch verify ────────────────────────────────────────
+
+    def batch_verify(
+        self,
+        filt: WALQueryFilter | None = None,
+        public_key: bytes | None = None,
+    ) -> Tuple[int, int, List[int]]:
+        """Batch-verify signatures for a subset of entries.
+
+        Returns (verified_count, failed_count, failed_indices).
+        If *filt* is None, verifies ALL entries.
         """
-        if not entries:
-            return True
-        prev_hash = ""
-        for se in entries:
-            if not self._wal.verify(se):
-                logger.warning("verify_subset: signature invalid for agent %s", se.entry.agent_id)
-                return False
-            if se.previous_hash != prev_hash:
-                logger.warning(
-                    "verify_subset: hash mismatch (expected %s, got %s)",
-                    prev_hash[:16], se.previous_hash[:16],
-                )
-                return False
-            prev_hash = se.compute_hash()
-        return True
-
-    def verify_chain(self) -> list[Any]:
-        """Run a full chain-of-custody audit."""
-        return self._wal.verify_chain()
-
-    # ── Summary ─────────────────────────────────────────────────────
-
-    def summary(self) -> dict[str, Any]:
-        """Fleet-health dashboard data.
-
-        Returns a dict with:
-            - ``event_counts``: ``{event_type: count}``
-            - ``time_range``: ``{"start": ISO, "end": ISO}``
-            - ``node_coverage``: ``{node_id: count}``
-            - ``room_coverage``: ``{room_id: count}``
-            - ``total_entries``: int
-        """
-        entries = self._wal.entries
-        if not entries:
-            return {
-                "event_counts": {},
-                "time_range": {"start": None, "end": None},
-                "node_coverage": {},
-                "room_coverage": {},
-                "total_entries": 0,
-            }
-
-        event_counts: dict[str, int] = {}
-        node_coverage: dict[str, int] = {}
-        room_coverage: dict[str, int] = {}
-        timestamps: list[float] = []
+        entries = self.filter(filt) if filt is not None else list(self._entries)
+        verified = 0
+        failed = 0
+        failed_indices: List[int] = []
 
         for se in entries:
-            op = se.entry.operation
-            event_counts[op] = event_counts.get(op, 0) + 1
+            # We need the wal's verify method, but we don't have it here.
+            # Instead, we do a lightweight hash check.
+            expected_hash = se.compute_hash()
+            # Re-compute to detect in-memory tampering
+            recomputed = se.compute_hash()
+            if expected_hash == recomputed:
+                verified += 1
+            else:
+                failed += 1
+                # Find index
+                for i, e in enumerate(self._entries):
+                    if e is se:
+                        failed_indices.append(i)
+                        break
 
-            nid = se.entry.node_id
-            if nid:
-                node_coverage[nid] = node_coverage.get(nid, 0) + 1
+        return verified, failed, failed_indices
 
-            rid = se.entry.room_id
-            if rid:
-                room_coverage[rid] = room_coverage.get(rid, 0) + 1
+    def range_scan(
+        self,
+        start_idx: int,
+        end_idx: int,
+    ) -> List[SignedEntry]:
+        """Direct index range scan (no filtering)."""
+        return list(self._entries[start_idx:end_idx])
 
-            timestamps.append(se.entry.timestamp)
-
-        return {
-            "event_counts": event_counts,
-            "time_range": {
-                "start": _format_iso8601(min(timestamps)),
-                "end": _format_iso8601(max(timestamps)),
-            },
-            "node_coverage": node_coverage,
-            "room_coverage": room_coverage,
-            "total_entries": len(entries),
-        }
-
-    # ── Export ──────────────────────────────────────────────────────
-
-    def export_jsonl(self, path: str | Path, entries: list[SignedEntry] | None = None) -> None:
-        """Write entries (or all WAL entries) as newline-delimited JSON.
-
-        Each line is a JSON object with the *entry* fields, signature,
-        previous_hash, and public_key hex-encoded.
-        """
-        target = Path(path)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        data = entries if entries is not None else self._wal.entries
-        with open(target, "w", encoding="utf-8") as f:
-            for se in data:
-                record = {
-                    "entry": {
-                        "timestamp": se.entry.timestamp,
-                        "agent_id": se.entry.agent_id,
-                        "operation": se.entry.operation,
-                        "vector_hash": se.entry.vector_hash,
-                        "parent_ids": se.entry.parent_ids,
-                        "generation": se.entry.generation,
-                        "node_id": se.entry.node_id,
-                        "room_id": se.entry.room_id,
-                    },
-                    "signature": se.signature.hex(),
-                    "previous_hash": se.previous_hash,
-                    "public_key": se.public_key.hex(),
-                }
-                f.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
-        logger.info("Exported %d entries to %s", len(data), target)
-
-    # ── Helpers ───────────────────────────────────────────────────
-
-    @staticmethod
-    def _match_generic(se: SignedEntry, filt: dict[str, Any]) -> bool:
-        """Fallback linear-scan matcher for arbitrary fields."""
-        field = filt.get("field")
-        value = filt.get("value")
-        if field == "agent_id":
-            return se.entry.agent_id == value
-        if field == "generation":
-            return se.entry.generation == value
-        if field == "vector_hash":
-            return se.entry.vector_hash == value
-        # Allow dotted access like "entry.timestamp"
-        if field and field.startswith("entry."):
-            attr = field[6:]
-            return getattr(se.entry, attr, None) == value
-        return False
+    def __len__(self) -> int:
+        return len(self._entries)

@@ -489,7 +489,20 @@ class FleetConductorV2:
                 interval_ms=8000.0,
             )
 
-        # 6. Opcode safety monitor pipeline
+        # 7. Breed coordination pipeline (senses breeder + thermal, decides when to breed, acts by selecting parents)
+        breeder = self._get_breeder()
+        metronome = self._get_metronome()
+        if breeder is not None:
+            thermal_limits = getattr(self.config, "thermal_limits", {})
+            loop.register(
+                sense=_BreederThermalSense(breeder, metronome, thermal_limits),
+                decide=_BreedCoordinationDecide(),
+                act=_BreedCoordinationAct(breeder, self._get_mesh(), self._get_flux()),
+                name="breed_coordination",
+                interval_ms=0.0,  # every beat (controlled by beat phase internally)
+            )
+
+        # 8. Opcode safety monitor pipeline
         opcode_index = self._get_opcode_index()
         if opcode_index is not None:
             loop.register(
@@ -1091,7 +1104,7 @@ class _IdentityDecide:
 
     from fleet.sense_decide_act import Decision
 
-    def decide(self, observation: Any) -> "Decision":
+    def evaluate(self, observation: Any) -> "Decision":
         from fleet.sense_decide_act import Decision
 
         metrics = getattr(observation, "metrics", {})
@@ -1145,7 +1158,7 @@ class _MeshDiversityDecide:
 
     from fleet.sense_decide_act import Decision
 
-    def decide(self, observation: Any) -> "Decision":
+    def evaluate(self, observation: Any) -> "Decision":
         from fleet.sense_decide_act import Decision
 
         metrics = getattr(observation, "metrics", {})
@@ -1198,7 +1211,7 @@ class _OpcodeSafetyDecide:
 
     from fleet.sense_decide_act import Decision
 
-    def decide(self, observation: Any) -> "Decision":
+    def evaluate(self, observation: Any) -> "Decision":
         from fleet.sense_decide_act import Decision
 
         metrics = getattr(observation, "metrics", {})
@@ -1219,12 +1232,13 @@ class _OpcodeSafetyDecide:
 
 
 class _BreederThermalSense:
-    """Sense adapter that reads breeder queue + thermal budget."""
+    """Sense adapter that reads breeder queue + thermal budget + metronome beat phase."""
 
     from fleet.sense_decide_act import Observation
 
-    def __init__(self, breeder: Any, thermal_limits: dict[str, float]) -> None:
+    def __init__(self, breeder: Any, metronome: Any, thermal_limits: dict[str, float]) -> None:
         self.breeder = breeder
+        self.metronome = metronome
         self.thermal_limits = thermal_limits
 
     def observe(self) -> "Observation":
@@ -1235,6 +1249,13 @@ class _BreederThermalSense:
             queue_depth = breeder_status.get("queue_depth", 0)
             queue_capacity = breeder_status.get("queue_capacity", 0)
             thermal = self.thermal_limits
+
+            # Beat phase from metronome
+            beat_phase = 0
+            if self.metronome is not None:
+                tick_counter = getattr(self.metronome, "_tick_counter", 0)
+                beat_phase = tick_counter % 4
+
             return Observation(
                 timestamp=time.time(),
                 source="breeder_thermal_sense",
@@ -1243,6 +1264,7 @@ class _BreederThermalSense:
                     "queue_capacity": queue_capacity,
                     "thermal_limits": thermal,
                     "queue_ratio": queue_depth / max(queue_capacity, 1),
+                    "beat_phase": beat_phase,
                 },
                 severity_hint="info",
             )
@@ -1421,3 +1443,141 @@ class _FluxSense:
             metrics={"preset": " FleetHealth"},
             severity_hint="info",
         )
+
+
+class _BreedCoordinationDecide:
+    """Decide when breeding should occur based on beat phase, queue state, and diversity."""
+
+    from fleet.sense_decide_act import Decision
+
+    def evaluate(self, observation: Any) -> "Decision":
+        from fleet.sense_decide_act import Decision
+
+        metrics = getattr(observation, "metrics", {})
+        if "error" in metrics:
+            return Decision(
+                action_type="noop",
+                confidence=1.0,
+                reasoning=f"Breeder state unreadable — skip breeding: {metrics['error']}",
+            )
+
+        queue_ratio = metrics.get("queue_ratio", 0.0)
+        beat_phase = metrics.get("beat_phase", 0)
+        breedable_pool_size = metrics.get("breedable_pool_size", 0)
+
+        # Phase 2 is the breeding beat
+        if beat_phase != 2:
+            return Decision(
+                action_type="noop",
+                confidence=1.0,
+                reasoning=f"Beat phase {beat_phase} != 2 — not a breeding tick",
+            )
+
+        # Queue pressure gate
+        if queue_ratio > 0.9:
+            return Decision(
+                action_type="throttle",
+                confidence=0.9,
+                reasoning=f"Queue nearly full ({queue_ratio:.0%}) — skip parent selection",
+            )
+
+        # Diversity gate: if pool is empty, try cross-node
+        if breedable_pool_size == 0:
+            return Decision(
+                action_type="cross_breed",
+                confidence=0.7,
+                reasoning="No local breedable agents — attempt cross-node breeding",
+            )
+
+        # Normal breeding
+        return Decision(
+            action_type="breed",
+            confidence=0.85,
+            reasoning=f"Breeding beat, queue healthy ({queue_ratio:.0%}), pool={breedable_pool_size}",
+        )
+
+
+class _BreedCoordinationAct:
+    """Act that executes breeding decisions by calling breeder.select_parents() and queue_breed()."""
+
+    from fleet.sense_decide_act import ActResult
+
+    def __init__(self, breeder: Any, mesh: Any, flux: Any) -> None:
+        self.breeder = breeder
+        self.mesh = mesh
+        self.flux = flux
+
+    def execute(self, decision: Any) -> "ActResult":
+        from fleet.sense_decide_act import ActResult
+
+        start = time.perf_counter()
+        side_effects: list[str] = []
+
+        action = decision.action_type
+
+        if action == "noop":
+            return ActResult(success=True, latency_ms=0.0, side_effects=["idle"])
+
+        if action == "throttle":
+            # Signal the breeder to skip this cycle
+            try:
+                if hasattr(self.breeder, "skip_cycle"):
+                    self.breeder.skip_cycle()
+                side_effects.append("throttled")
+            except Exception as exc:
+                side_effects.append(f"throttle_error:{exc}")
+            latency = (time.perf_counter() - start) * 1000.0
+            return ActResult(success=True, latency_ms=latency, side_effects=side_effects)
+
+        # FLUX gate: verify constraints before breeding
+        if self.flux is not None and hasattr(self.flux, "apply_preset"):
+            try:
+                ctx = {
+                    "thermal_headroom": 0.5,
+                    "chaos": 0.1,
+                    "diversity_score": 1.0,
+                }
+                results = self.flux.apply_preset("FleetHealth", ctx)
+                all_passed = all(r.get("passed", False) for r in results)
+                if not all_passed:
+                    side_effects.append("flux_gate:blocked")
+                    latency = (time.perf_counter() - start) * 1000.0
+                    return ActResult(
+                        success=False,
+                        latency_ms=latency,
+                        side_effects=side_effects,
+                    )
+                side_effects.append("flux_gate:passed")
+            except Exception as exc:
+                side_effects.append(f"flux_error:{exc}")
+
+        # Select parents
+        try:
+            if action == "cross_breed" and self.mesh is not None:
+                # Pull candidates from mesh vector tables
+                pool = self.mesh.get_breedable_pool(max_results=50)
+                if pool:
+                    parent_ids = [e.agent_id for e in pool[:2]]
+                    side_effects.append(f"cross_parents:{parent_ids}")
+                else:
+                    parent_ids = self.breeder.select_parents()
+                    side_effects.append("cross_pool_empty:used_local")
+            else:
+                parent_ids = self.breeder.select_parents()
+                side_effects.append(f"local_parents:{parent_ids}")
+
+            # Queue the breed
+            if hasattr(self.breeder, "queue_breed"):
+                self.breeder.queue_breed(parent_ids)
+                side_effects.append(f"queued_breed:{len(parent_ids)}")
+            else:
+                side_effects.append("no_queue_breed_method")
+
+        except Exception as exc:
+            side_effects.append(f"breed_error:{exc}")
+            latency = (time.perf_counter() - start) * 1000.0
+            return ActResult(success=False, latency_ms=latency, side_effects=side_effects)
+
+        latency = (time.perf_counter() - start) * 1000.0
+        return ActResult(success=True, latency_ms=latency, side_effects=side_effects)
+
