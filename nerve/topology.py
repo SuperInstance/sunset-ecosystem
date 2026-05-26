@@ -119,6 +119,25 @@ class NerveTopology:
             f"tick={self.tick_count})"
         )
 
+    @property
+    def stats(self) -> dict[str, Any]:
+        compiled_fibers = sum(
+            1 for f in self.fibers.values()
+            if f.state == FiberState.COMPILED
+        )
+        return {
+            "tick": self.tick_count,
+            "fibers": self.n_fibers,
+            "rooms": self.n_rooms,
+            "rooms_active": int((self.grid.activity > 0).sum()),
+            "rooms_cold": len(self.grid.cold()),
+            "fibers_compiled": compiled_fibers,
+            "fibers_perceiving": self.n_fibers - compiled_fibers,
+            "routes": len(self.routing._routes),
+            "channels": len(self.routing._channels),
+            "chaos": self.routing.chaos,
+        }
+
     def enable_compiler(self, auto_compile_interval: int = 50) -> None:
         """Enable the agentic compiler for runtime auto-optimization.
 
