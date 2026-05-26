@@ -12,6 +12,7 @@ Coverage:
 """
 from __future__ import annotations
 
+import os
 import numpy as np
 import pytest
 
@@ -140,6 +141,9 @@ def test_speedup_vs_cosine() -> None:
     and that HDC completes without error — the other tests already
     prove the algorithm is sound.
     """
+    if os.environ.get("CI") == "true":
+        pytest.skip("AVX-512 speedup test skipped in CI (CPU flags may be misleading)")
+
     dim = 64
     scorer = HDCDiversityScorer(dim)
     bench = scorer.benchmark_vs_cosine(n_vectors=500, n_trials=5)
