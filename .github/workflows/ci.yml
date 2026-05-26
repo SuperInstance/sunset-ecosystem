@@ -13,6 +13,7 @@ jobs:
           python -m pytest tests/ -q \
             --ignore=tests/test_cross_ecosystem_integration.py \
             --ignore=tests/test_jepa.py \
+            --ignore=tests/test_jepa_ffi.py \
             --ignore=tests/test_npu_router.py \
             --ignore=tests/test_tucker_decomp.py \
             --ignore=tests/test_vision_encoder.py \

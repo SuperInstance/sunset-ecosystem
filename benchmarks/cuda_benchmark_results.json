@@ -4,9 +4,18 @@
       "backend": "numpy",
       "rooms": 1000,
       "ticks": 50,
-      "total_ms": 353.8878499530256,
-      "ms_per_tick": 7.077756999060512,
-      "rooms_per_sec": 141287.69893240728
+      "total_ms": 20.406478999575484,
+      "ms_per_tick": 0.4081295799915097,
+      "rooms_per_sec": 2450202.2127893865
+    },
+    "cuda": {
+      "backend": "cuda",
+      "rooms": 1000,
+      "ticks": 50,
+      "total_ms": 0.0,
+      "ms_per_tick": 0.0,
+      "rooms_per_sec": 0.0,
+      "note": "Python bindings pending \u2014 see nerve/jepa_rust.py for FFI pattern"
     }
   },
   {
@@ -14,9 +23,18 @@
       "backend": "numpy",
       "rooms": 5000,
       "ticks": 50,
-      "total_ms": 1542.3098444007337,
-      "ms_per_tick": 30.846196888014674,
-      "rooms_per_sec": 162094.53691008358
+      "total_ms": 12.929341000017303,
+      "ms_per_tick": 0.25858682000034605,
+      "rooms_per_sec": 19335865.609830033
+    },
+    "cuda": {
+      "backend": "cuda",
+      "rooms": 5000,
+      "ticks": 50,
+      "total_ms": 0.0,
+      "ms_per_tick": 0.0,
+      "rooms_per_sec": 0.0,
+      "note": "Python bindings pending \u2014 see nerve/jepa_rust.py for FFI pattern"
     }
   },
   {
@@ -24,9 +42,18 @@
       "backend": "numpy",
       "rooms": 10000,
       "ticks": 50,
-      "total_ms": 4123.0810158886015,
-      "ms_per_tick": 82.46162031777203,
-      "rooms_per_sec": 121268.53633804734
+      "total_ms": 21.365016999880027,
+      "ms_per_tick": 0.42730033999760053,
+      "rooms_per_sec": 23402742.904571887
+    },
+    "cuda": {
+      "backend": "cuda",
+      "rooms": 10000,
+      "ticks": 50,
+      "total_ms": 0.0,
+      "ms_per_tick": 0.0,
+      "rooms_per_sec": 0.0,
+      "note": "Python bindings pending \u2014 see nerve/jepa_rust.py for FFI pattern"
     }
   }
 ]

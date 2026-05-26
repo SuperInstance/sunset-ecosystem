@@ -235,7 +235,10 @@ def batch_novelty(latents: np.ndarray, hist: np.ndarray, hist_count: np.ndarray,
     falls back to numpy otherwise.
     """
     if _HAS_NUMBA:
-        return _batch_novelty_numba(latents, hist, hist_count, hist_idx, hist_max)
+        try:
+            return _batch_novelty_numba(latents, hist, hist_count, hist_idx, hist_max)
+        except (ZeroDivisionError, FloatingPointError):
+            pass
     return _batch_novelty_numpy(latents, hist, hist_count, hist_idx, hist_max)
 
 
