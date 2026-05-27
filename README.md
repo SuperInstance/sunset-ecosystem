@@ -63,6 +63,40 @@ Every retiring agent writes three documents:
 
 The seed bank stores these documents in a searchable archive. Future generations can query them: "Has anyone tried approach X before? What happened?"
 
+## Deploy it
+
+```bash
+# Docker
+docker-compose up --build
+
+# Or manually
+docker build -t sunset-ecosystem .
+docker run -p 8080:8080 -e NEXUS_IP=localhost sunset-ecosystem
+
+# Health check
+curl http://localhost:8080/health
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NEXUS_IP` | `147.224.38.131` | Fleet nexus host |
+| `NEXUS_PORT` | `4047` | Fleet nexus port |
+
+## Develop it
+
+```bash
+pip install -e ".[dev]"
+make dev        # install + lint + type-check + test
+make test       # run test suite
+make coverage   # run with coverage threshold
+make lint       # ruff check
+make security   # bandit + pip-audit
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full developer guide.
+
 ## Use it
 
 ```bash

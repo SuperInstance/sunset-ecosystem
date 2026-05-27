@@ -1,0 +1,15 @@
+services:
+  sunset-ecosystem:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - NEXUS_IP=${NEXUS_IP:-147.224.38.131}
+      - NEXUS_PORT=${NEXUS_PORT:-4047}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
