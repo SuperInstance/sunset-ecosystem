@@ -28,7 +28,11 @@ logger = logging.getLogger(__name__)
 
 # ── constants ───────────────────────────────────────────────────
 
-DEFAULT_NEXUS_IP: str = "147.224.38.131"
+import os
+
+# Default nexus IP — override with NEXUS_IP env var for non-fleet deployments
+DEFAULT_NEXUS_IP: str = os.getenv("NEXUS_IP", "147.224.38.131")
+DEFAULT_NEXUS_PORT: int = int(os.getenv("NEXUS_PORT", "4047"))
 DEFAULT_NEXUS_PORT: int = 4047
 FEDERATION_PATH: str = "/v1/federation/register"
 HEARTBEAT_PATH: str = "/v1/federation/heartbeat"

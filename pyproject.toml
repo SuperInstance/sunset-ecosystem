@@ -10,7 +10,7 @@ requires-python = ">=3.10"
 license = {text = "MIT"}
 keywords = ["ai", "agents", "evolution", "trinity", "sunset", "micro-models"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -21,7 +21,20 @@ classifiers = [
 [project.optional-dependencies]
 gpu = ["torch", "numpy"]
 npu = ["onnx", "onnxruntime", "torch", "numpy"]
-dev = ["pytest>=7.0", "pytest-cov", "pytest-asyncio", "numpy", "cryptography", "requests", "numba", "psutil"]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "pytest-asyncio",
+    "numpy",
+    "cryptography",
+    "requests",
+    "numba",
+    "psutil",
+    "mypy",
+    "ruff>=0.4.0",
+    "bandit[toml]",
+    "pip-audit",
+]
 # ecosystem deps removed - local file:// URLs not allowed on PyPI
 vecsearch = ["turbovec>=0.1.0", "numpy"]
 

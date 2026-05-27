@@ -53,7 +53,14 @@ class A2AServer:
                 self.wfile.write(payload)
 
             def do_GET(self):
-                """Serve static agent cards at /.well-known/agent-{name}.json"""
+                """Serve static agent cards and health check."""
+                if self.path == "/health":
+                    self._send_json(200, {
+                        "status": "ok",
+                        "service": "a2a-server",
+                        "agents": len(server.agents),
+                    })
+                    return
                 if not self.path.startswith("/.well-known/agent-"):
                     self._send_json(404, {"error": "Not found"})
                     return

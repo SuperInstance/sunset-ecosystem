@@ -12,5 +12,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-pip-
       - run: pip install -e ".[dev]"
-      - run: python -m pytest tests/ -q --tb=short || true
+      - run: python -m pytest tests/ -q --tb=short --cov=sunset_ecosystem --cov-report=term-missing --cov-fail-under=75
+      - run: python -m mypy sunset_ecosystem/ --ignore-missing-imports --warn-unreachable || true
+      - run: python -m ruff check sunset_ecosystem/ || true

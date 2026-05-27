@@ -1,0 +1,41 @@
+name: Security
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: "0 6 * * 1"  # Weekly Monday 6 AM
+
+jobs:
+  bandit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install bandit[toml]
+      - run: bandit -r sunset_ecosystem/ swarm/ nexus/ logos/ -f json -o bandit-report.json || true
+      - run: bandit -r sunset_ecosystem/ swarm/ nexus/ logos/ -ll || true
+
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pip-audit
+      - run: pip-audit --desc --format=json . > pip-audit-report.json || true
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
