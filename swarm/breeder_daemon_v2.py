@@ -77,27 +77,23 @@ from logos.decision_journal import log_spawn, log_sunset, log_breed
 try:
     from swarm.flux_gating import FluxGatingChecker, FluxGatingConfig
 except ImportError:
-    # Graceful fallback: no-op gating
     class FluxGatingConfig:  # type: ignore[no-redef]
         """No-op fallback when swarm.flux_gating is not available."""
         pass
-
     class FluxGatingChecker:  # type: ignore[no-redef]
         """No-op fallback when swarm.flux_gating is not available."""
         def __init__(self, *args, **kwargs):
             pass
 
-# FLUX Path A gating — optional, graceful degrade when unavailable
+# FLUX Path B gating — optional, graceful degrade when unavailable
 try:
-    from swarm.flux_gating import FluxGatingChecker, FluxGatingConfig
+    from swarm.flux_vm_gating import FluxVMGatingChecker, FluxVMConfig
 except ImportError:
-    # Graceful fallback: no-op gating
-    class FluxGatingConfig:  # type: ignore[no-redef]
-        """No-op fallback when swarm.flux_gating is not available."""
+    class FluxVMConfig:  # type: ignore[no-redef]
+        """No-op fallback when swarm.flux_vm_gating is not available."""
         pass
-
-    class FluxGatingChecker:  # type: ignore[no-redef]
-        """No-op fallback when swarm.flux_gating is not available."""
+    class FluxVMGatingChecker:  # type: ignore[no-redef]
+        """No-op fallback when swarm.flux_vm_gating is not available."""
         def __init__(self, *args, **kwargs):
             pass
 
@@ -557,31 +553,31 @@ class BreederDaemonV2:
         self._flux_checker = FluxGatingChecker(config=cfg)
         logger.info("FLUX gating checker attached (config=%s)", cfg)
 
-        # FLUX Path A gating — initialized on first attach_flux_gating() call
-        self._flux_checker: FluxGatingChecker | None = None
-
-    def attach_flux_gating(
+    def attach_flux_vm_gating(
         self,
-        checker: FluxGatingChecker | None = None,
-        config: FluxGatingConfig | None = None,
+        checker: FluxVMGatingChecker | None = None,
+        vm_config: FluxVMConfig | None = None,
     ) -> None:
-        """Attach or replace the FLUX constraint gating checker.
+        """Attach or replace the FLUX VM (Path B) constraint gating checker.
 
         Args:
-            checker: Pre-built FluxGatingChecker instance.  If None, one is
-                created from *config* (or from ``self._flux_config``).
-            config: Override configuration.  Only used when *checker* is None.
+            checker: Pre-built FluxVMGatingChecker instance. If None, one is
+                created from *vm_config* (or defaults).
+            vm_config: VM-specific configuration (scale, max_cycles, etc.).
         """
         if checker is not None:
-            self._flux_checker = checker
-            logger.info("FLUX gating checker attached (external instance)")
+            self._compiled_checker = checker
+            logger.info("FLUX VM gating checker attached (external instance)")
             return
 
-        cfg = config or self._flux_config
-        if cfg is None:
-            cfg = FluxGatingConfig()
-        self._flux_checker = FluxGatingChecker(config=cfg)
-        logger.info("FLUX gating checker attached (config=%s)", cfg)
+        vm_cfg = vm_config or FluxVMConfig()
+        flux_cfg = self._flux_config or FluxGatingConfig()
+        self._compiled_checker = FluxVMGatingChecker(
+            flux_config=flux_cfg,
+            vm_config=vm_cfg,
+        )
+        logger.info("FLUX VM gating checker attached (scale=%d, max_cycles=%d)",
+                    vm_cfg.scale, vm_cfg.max_cycles)
 
     # ── public API ──────────────────────────────────────────
 
