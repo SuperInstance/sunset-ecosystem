@@ -10,17 +10,29 @@ __all__ = [
     "WALQueryIndex",
     "WALBatchQuery",
     "WALQueryFilter",
+    "_parse_iso8601",
 ]
 
 import bisect
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from logos.signed_wal import SignedEntry, WALEntry
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_iso8601(s: str) -> float:
+    """Parse ISO 8601 / RFC 3339 timestamp to Unix float seconds.
+    Handles 'Z' suffix and '+00:00' offset.
+    """
+    s = s.strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    return datetime.fromisoformat(s).timestamp()
 
 
 @dataclass(frozen=True)
@@ -93,7 +105,8 @@ class WALQueryIndex:
         if entry.node_id:
             self.by_node[entry.node_id].append(idx)
         self.time_index.append((entry.timestamp, idx))
-        self.generation_index.append((entry.generation, idx))
+        # generation is not monotonic — keep sorted for bisect queries
+        bisect.insort(self.generation_index, (entry.generation, idx))
         self._len += 1
 
     def rebuild(self, entries: List[SignedEntry]) -> None:
@@ -106,6 +119,8 @@ class WALQueryIndex:
         self._len = 0
         for idx, se in enumerate(entries):
             self.append(idx, se.entry)
+        # Ensure generation_index is strictly sorted (bisect safety)
+        self.generation_index.sort(key=lambda x: x[0])
 
     # ── index hints for query planning ────────────────────
 

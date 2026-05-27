@@ -1,4 +1,4 @@
-"""Tests for WALQuery index-aware mode, batch queries, and explain."""
+"""Tests for WALIndex compound queries and WALBatchQuery filter-based queries."""
 
 from __future__ import annotations
 
@@ -9,7 +9,8 @@ from pathlib import Path
 import pytest
 
 from logos.signed_wal import SignedWAL, WALEntry
-from logos.wal_query import WALQuery, BatchQueryResult
+from logos.wal_index import WALIndex
+from logos.wal_query import WALBatchQuery, WALQueryFilter, WALQueryIndex
 
 
 @pytest.fixture
@@ -29,77 +30,42 @@ def wal_with_entries(tmp_path):
     ]
     for e in entries:
         wal.append(e)
-    return wal, path
+    return wal
 
 
-# ── Simple filter tests (linear scan) ─────────────────────────────
+# ── WALIndex compound queries ───────────────────────────────
 
-class TestLinearScan:
-    def test_by_time_range(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-        base = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc)
-        results = q.by_time_range(
-            base.isoformat().replace("+00:00", "Z"),
-            (base.replace(hour=14)).isoformat().replace("+00:00", "Z"),
-        )
+class TestWALIndex:
+    def test_rebuild_indexes_all(self, wal_with_entries):
+        wal = wal_with_entries
+        idx = WALIndex(wal)
+        assert len(idx.by_type) == 5  # spawn, breed, sunset, tick, flux_violation
+        assert idx.by_type["spawn"] == [0, 1]
+        assert idx.by_type["breed"] == [2]
+
+    def test_query_by_event_type(self, wal_with_entries):
+        wal = wal_with_entries
+        idx = WALIndex(wal)
+        results = idx.query(filters=[{"field": "event_type", "value": "spawn"}])
         assert len(results) == 2
         assert results[0].entry.operation == "spawn"
 
-    def test_by_event_type(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-        results = q.by_event_type("spawn")
-        assert len(results) == 2
-
-    def test_by_node_id(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-        results = q.by_node_id("node-alpha")
+    def test_query_by_node_id(self, wal_with_entries):
+        wal = wal_with_entries
+        idx = WALIndex(wal)
+        results = idx.query(filters=[{"field": "node_id", "value": "node-alpha"}])
         assert len(results) == 3
 
-    def test_by_room_id(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-        results = q.by_room_id("forge")
+    def test_query_by_room_id(self, wal_with_entries):
+        wal = wal_with_entries
+        idx = WALIndex(wal)
+        results = idx.query(filters=[{"field": "room_id", "value": "forge"}])
         assert len(results) == 3
 
-
-# ── Index-aware tests ───────────────────────────────────────────
-
-class TestIndexAware:
-    def test_with_index_uses_inverted_index(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        from logos.wal_index import WALIndex
+    def test_compound_and(self, wal_with_entries):
+        wal = wal_with_entries
         idx = WALIndex(wal)
-        q = WALQuery(wal, index=idx)
-
-        results = q.by_event_type("spawn")
-        assert len(results) == 2
-        # Should be index-backed
-        explain = q.explain([{"field": "event_type", "value": "spawn"}])
-        assert explain["strategy"] == "index_intersection"
-        assert explain["index_available"] is True
-
-    def test_without_index_falls_back_to_scan(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        from logos.wal_index import WALIndex
-        idx = WALIndex(wal)
-        q = WALQuery(wal, index=idx).without_index()
-
-        results = q.by_event_type("spawn")
-        assert len(results) == 2
-        explain = q.explain([{"field": "event_type", "value": "spawn"}])
-        assert explain["strategy"] == "linear_scan"
-        assert explain["index_available"] is False
-
-    def test_compound_query_with_index(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        from logos.wal_index import WALIndex
-        idx = WALIndex(wal)
-        q = WALQuery(wal, index=idx)
-
-        results = q.compound_query(
+        results = idx.query(
             conjunction="and",
             filters=[
                 {"field": "event_type", "value": "spawn"},
@@ -109,13 +75,10 @@ class TestIndexAware:
         assert len(results) == 1
         assert results[0].entry.agent_id == 2
 
-    def test_compound_query_or_with_index(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        from logos.wal_index import WALIndex
+    def test_compound_or(self, wal_with_entries):
+        wal = wal_with_entries
         idx = WALIndex(wal)
-        q = WALQuery(wal, index=idx)
-
-        results = q.compound_query(
+        results = idx.query(
             conjunction="or",
             filters=[
                 {"field": "event_type", "value": "spawn"},
@@ -124,153 +87,260 @@ class TestIndexAware:
         )
         assert len(results) == 3
 
-
-# ── Batch query tests ───────────────────────────────────────────
-
-class TestBatchQuery:
-    def test_batch_two_queries(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-
-        results = q.batch_query([
-            {
-                "query_id": "spawns",
-                "conjunction": "and",
-                "filters": [{"field": "event_type", "value": "spawn"}],
-            },
-            {
-                "query_id": "alpha-events",
-                "conjunction": "and",
-                "filters": [{"field": "node_id", "value": "node-alpha"}],
-            },
-        ])
-
+    def test_time_range(self, wal_with_entries):
+        wal = wal_with_entries
+        idx = WALIndex(wal)
+        base = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc)
+        results = idx.query(
+            filters=[{
+                "field": "time_range",
+                "start": base.isoformat().replace("+00:00", "Z"),
+                "end": base.replace(hour=14).isoformat().replace("+00:00", "Z"),
+            }]
+        )
         assert len(results) == 2
-        assert results[0].query_id == "spawns"
-        assert len(results[0].entries) == 2
-        assert results[0].index_used is False
 
-        assert results[1].query_id == "alpha-events"
-        assert len(results[1].entries) == 3
-        assert results[1].error is None
-
-    def test_batch_with_index(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        from logos.wal_index import WALIndex
+    def test_update_increments_index(self, wal_with_entries):
+        wal = wal_with_entries
         idx = WALIndex(wal)
-        q = WALQuery(wal, index=idx)
+        new_entry = WALEntry(timestamp=time.time(), agent_id=5, operation="spawn", vector_hash="g" * 64, parent_ids=[], generation=0, node_id="node-delta", room_id="pool")
+        wal.append(new_entry)
+        idx.update(wal.entries[-1])
+        assert "node-delta" in idx.by_node
+        assert len(idx.by_type["spawn"]) == 3
 
-        results = q.batch_query([
-            {
-                "query_id": "q1",
-                "conjunction": "and",
-                "filters": [{"field": "event_type", "value": "spawn"}],
-            },
-        ])
-        assert results[0].index_used is True
-
-    def test_batch_empty_queries(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-        results = q.batch_query([])
-        assert len(results) == 0
-
-    def test_batch_timeout(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-        # Many queries with tiny timeout — should stop early
-        many = [
-            {"query_id": f"q{i}", "conjunction": "and", "filters": [{"field": "event_type", "value": "spawn"}]}
-            for i in range(1000)
-        ]
-        results = q.batch_query(many, timeout_ms=1.0)
-        # Should have cut off early
-        assert len(results) < 1000
-
-
-# ── Explain tests ───────────────────────────────────────────────
-
-class TestExplain:
-    def test_explain_with_index(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        from logos.wal_index import WALIndex
+    def test_all_accessors(self, wal_with_entries):
+        wal = wal_with_entries
         idx = WALIndex(wal)
-        q = WALQuery(wal, index=idx)
+        assert set(idx.all_event_types()) == {"spawn", "breed", "sunset", "tick", "flux_violation"}
+        assert set(idx.all_nodes()) == {"node-alpha", "node-beta", "node-gamma"}
+        assert set(idx.all_rooms()) == {"forge", "crucible", "archive"}
 
-        plan = q.explain([
-            {"field": "event_type", "value": "spawn"},
-            {"field": "node_id", "value": "node-alpha"},
-        ])
-        assert plan["index_available"] is True
-        assert plan["indexable_filters"] == 2
-        assert plan["fallback_filters"] == 0
-        assert plan["strategy"] == "index_intersection"
-
-    def test_explain_mixed_filters(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        from logos.wal_index import WALIndex
+    def test_repr(self, wal_with_entries):
+        wal = wal_with_entries
         idx = WALIndex(wal)
-        q = WALQuery(wal, index=idx)
-
-        plan = q.explain([
-            {"field": "event_type", "value": "spawn"},
-            {"field": "agent_id", "value": 1},  # not in index
-        ])
-        assert plan["indexable_filters"] == 1
-        assert plan["fallback_filters"] == 1
-        # Still uses index because at least one filter is indexable
-        assert plan["strategy"] == "index_intersection"
-
-    def test_explain_no_index(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-        plan = q.explain([{"field": "event_type", "value": "spawn"}])
-        assert plan["index_available"] is False
-        assert plan["strategy"] == "linear_scan"
+        assert "entries=6" in repr(idx)
 
 
-# ── BatchQueryResult tests ──────────────────────────────────────
+# ── WALQueryIndex (secondary indexes) ───────────────────────
 
-class TestBatchQueryResult:
-    def test_result_len(self):
-        r = BatchQueryResult(query_id="test", entries=[])
-        assert len(r) == 0
-        assert not r
+class TestWALQueryIndex:
+    def test_hint_agent(self, wal_with_entries):
+        wal = wal_with_entries
+        qidx = WALQueryIndex()
+        qidx.rebuild(wal.entries)
+        assert qidx.hint_agent(1) == [0, 2, 4]
+        assert qidx.hint_agent(99) == []
 
-    def test_result_bool(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-        results = q.batch_query([
-            {"query_id": "spawns", "conjunction": "and", "filters": [{"field": "event_type", "value": "spawn"}]}
-        ])
-        assert results[0]
-        assert len(results[0]) == 2
+    def test_hint_operation(self, wal_with_entries):
+        wal = wal_with_entries
+        qidx = WALQueryIndex()
+        qidx.rebuild(wal.entries)
+        assert sorted(qidx.hint_operation("spawn")) == [0, 1]
+
+    def test_hint_time_range(self, wal_with_entries):
+        wal = wal_with_entries
+        qidx = WALQueryIndex()
+        qidx.rebuild(wal.entries)
+        base_ts = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc).timestamp()
+        results = qidx.hint_time_range(base_ts, base_ts + 4000)
+        assert results == [0, 1]
+
+    def test_hint_generation_range(self, wal_with_entries):
+        wal = wal_with_entries
+        qidx = WALQueryIndex()
+        qidx.rebuild(wal.entries)
+        assert qidx.hint_generation_range(0, 0) == [0, 1, 3, 5]
+        assert qidx.hint_generation_range(1, 1) == [2, 4]
+
+    def test_plan_picks_smallest(self, wal_with_entries):
+        wal = wal_with_entries
+        qidx = WALQueryIndex()
+        qidx.rebuild(wal.entries)
+        # agent 3 only has 1 entry vs agent 1 has 3
+        filt = WALQueryFilter(agent_id=3, operation="sunset")
+        plan = qidx.plan(filt)
+        # Should pick the smallest candidate set
+        assert plan is not None
+        assert len(plan) <= 3
+
+    def test_plan_none_for_empty_filter(self, wal_with_entries):
+        wal = wal_with_entries
+        qidx = WALQueryIndex()
+        qidx.rebuild(wal.entries)
+        filt = WALQueryFilter()
+        assert qidx.plan(filt) is None
 
 
-# ── Regression: existing tests must still pass ──────────────────
+# ── WALBatchQuery filter-based queries ──────────────────────
 
-class TestRegression:
-    def test_verify_subset(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-        subset = wal.entries[:3]
-        assert q.verify_subset(subset) is True
+class TestWALBatchQuery:
+    def test_filter_by_agent(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        results = bq.filter(WALQueryFilter(agent_id=1))
+        assert len(results) == 3
+        assert results[0].entry.operation == "spawn"
 
-    def test_summary(self, wal_with_entries):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-        s = q.summary()
-        assert s["total_entries"] == 6
-        assert s["event_counts"]["spawn"] == 2
-        assert "node-alpha" in s["node_coverage"]
+    def test_filter_by_operation(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        results = bq.filter(WALQueryFilter(operation="spawn"))
+        assert len(results) == 2
 
-    def test_export_jsonl(self, wal_with_entries, tmp_path):
-        wal, _ = wal_with_entries
-        q = WALQuery(wal)
-        out = tmp_path / "exported.jsonl"
-        q.export_jsonl(out)
-        lines = out.read_text().strip().split("\n")
-        assert len(lines) == 6
-        import json
-        first = json.loads(lines[0])
-        assert first["entry"]["operation"] == "spawn"
+    def test_filter_by_node(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        results = bq.filter(WALQueryFilter(node_id="node-alpha"))
+        assert len(results) == 3
+
+    def test_filter_by_room(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        results = bq.filter(WALQueryFilter(room_id="forge"))
+        assert len(results) == 3
+
+    def test_filter_compound(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        filt = WALQueryFilter(agent_id=1, operation="breed")
+        results = bq.filter(filt)
+        assert len(results) == 1
+        assert results[0].entry.operation == "breed"
+
+    def test_filter_time_range(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        base_ts = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc).timestamp()
+        filt = WALQueryFilter(time_start=base_ts, time_end=base_ts + 4000)
+        results = bq.filter(filt)
+        assert len(results) == 2
+
+    def test_filter_generation_range(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        filt = WALQueryFilter(generation_min=1, generation_max=1)
+        results = bq.filter(filt)
+        assert len(results) == 2
+        assert all(se.entry.generation == 1 for se in results)
+
+    def test_filter_parent_ids(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        filt = WALQueryFilter(parent_ids={1})
+        results = bq.filter(filt)
+        assert len(results) == 1
+        assert results[0].entry.operation == "breed"
+
+    def test_filter_custom_callback(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        filt = WALQueryFilter(custom=lambda e: e.agent_id > 2)
+        results = bq.filter(filt)
+        assert len(results) == 2  # agent 3 and 4
+
+    def test_filter_limit_offset(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        results = bq.filter(WALQueryFilter(), limit=2, offset=1)
+        assert len(results) == 2
+        # chronological order, offset 1 means skip first entry
+        assert results[0].entry.agent_id == 2  # second entry
+
+    def test_count(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        assert bq.count(WALQueryFilter(operation="spawn")) == 2
+        assert bq.count(WALQueryFilter()) == 6
+
+    def test_by_agent(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        assert len(bq.by_agent(1)) == 3
+        assert len(bq.by_agent(99)) == 0
+
+    def test_by_operation(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        assert len(bq.by_operation("spawn")) == 2
+
+    def test_by_time_range(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        base_ts = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc).timestamp()
+        assert len(bq.by_time_range(base_ts, base_ts + 4000)) == 2
+
+    def test_by_agent_time_range(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        base_ts = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc).timestamp()
+        results = bq.by_agent_time_range(1, base_ts, base_ts + 8000)
+        assert len(results) == 2  # spawn + breed
+
+    def test_latest_by_agent(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        results = bq.latest_by_agent(1, n=1)
+        assert len(results) == 1
+        assert results[0].entry.operation == "tick"
+
+    def test_descendants(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        results = bq.descendants(1)
+        assert len(results) == 1
+        assert results[0].entry.operation == "breed"
+        assert results[0].entry.parent_ids == [1]
+
+    def test_genealogy(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        results = bq.genealogy(1)
+        # own: spawn, breed, tick (3) + descendants: breed (already counted)
+        assert len(results) == 3
+        ops = [se.entry.operation for se in results]
+        assert "spawn" in ops
+        assert "breed" in ops
+        assert "tick" in ops
+    def test_batch_verify(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        verified, failed, failed_idx = bq.batch_verify()
+        assert verified == 6
+        assert failed == 0
+        assert failed_idx == []
+
+    def test_batch_verify_subset(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        filt = WALQueryFilter(operation="spawn")
+        verified, failed, failed_idx = bq.batch_verify(filt)
+        assert verified == 2
+        assert failed == 0
+
+    def test_range_scan(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        results = bq.range_scan(1, 4)
+        assert len(results) == 3
+        assert results[0].entry.agent_id == 2
+
+    def test_len(self, wal_with_entries):
+        wal = wal_with_entries
+        bq = WALBatchQuery(wal.entries)
+        assert len(bq) == 6
+
+    def test_auto_rebuild_index(self, wal_with_entries):
+        wal = wal_with_entries
+        # Pass entries with no pre-built index
+        bq = WALBatchQuery(wal.entries)
+        # Internal index should have been auto-rebuilt
+        assert len(bq._index) == 6
+
+    def test_filter_with_index_hints(self, wal_with_entries):
+        wal = wal_with_entries
+        qidx = WALQueryIndex()
+        qidx.rebuild(wal.entries)
+        bq = WALBatchQuery(wal.entries, qidx)
+        results = bq.filter(WALQueryFilter(agent_id=1))
+        assert len(results) == 3

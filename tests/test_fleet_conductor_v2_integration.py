@@ -354,7 +354,7 @@ def test_identity_decide_re_register_when_empty():
     decider = _IdentityDecide()
     obs = MagicMock()
     obs.metrics = {"agent_count": 0}
-    decision = decider.decide(obs)
+    decision = decider.evaluate(obs)
     assert decision.action_type == "re_register"
     assert decision.confidence == 0.7
 
@@ -363,7 +363,7 @@ def test_identity_decide_noop_when_healthy():
     decider = _IdentityDecide()
     obs = MagicMock()
     obs.metrics = {"agent_count": 5}
-    decision = decider.decide(obs)
+    decision = decider.evaluate(obs)
     assert decision.action_type == "noop"
     assert decision.confidence == 1.0
 
@@ -372,7 +372,7 @@ def test_mesh_diversity_decide_cross_breed_when_low():
     decider = _MeshDiversityDecide()
     obs = MagicMock()
     obs.metrics = {"diversity": 2}
-    decision = decider.decide(obs)
+    decision = decider.evaluate(obs)
     assert decision.action_type == "cross_breed"
     assert decision.confidence == 0.8
 
@@ -381,7 +381,7 @@ def test_mesh_diversity_decide_noop_when_adequate():
     decider = _MeshDiversityDecide()
     obs = MagicMock()
     obs.metrics = {"diversity": 10}
-    decision = decider.decide(obs)
+    decision = decider.evaluate(obs)
     assert decision.action_type == "noop"
     assert decision.confidence == 1.0
 
@@ -390,7 +390,7 @@ def test_opcode_safety_decide_flag_unsafe_when_untested():
     decider = _OpcodeSafetyDecide()
     obs = MagicMock()
     obs.metrics = {"untested_count": 5}
-    decision = decider.decide(obs)
+    decision = decider.evaluate(obs)
     assert decision.action_type == "flag_unsafe"
     assert decision.confidence == 0.8
 
@@ -399,7 +399,7 @@ def test_opcode_safety_decide_noop_when_safe():
     decider = _OpcodeSafetyDecide()
     obs = MagicMock()
     obs.metrics = {"untested_count": 0}
-    decision = decider.decide(obs)
+    decision = decider.evaluate(obs)
     assert decision.action_type == "noop"
     assert decision.confidence == 1.0
 
