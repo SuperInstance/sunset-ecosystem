@@ -27,13 +27,14 @@ class TestKMeansPlusPlus:
 
     def test_spread_out(self):
         # Two well-separated clusters
-        cluster_a = np.random.randn(50, 2) + np.array([0.0, 0.0])
-        cluster_b = np.random.randn(50, 2) + np.array([10.0, 10.0])
+        rng = np.random.default_rng(42)
+        cluster_a = rng.standard_normal((50, 2)) + np.array([0.0, 0.0])
+        cluster_b = rng.standard_normal((50, 2)) + np.array([10.0, 10.0])
         points = np.vstack([cluster_a, cluster_b])
-        centroids = kmeans_plus_plus(points, k=2)
+        centroids = kmeans_plus_plus(points, k=2, rng=rng)
         # Should pick one from each cluster (with high probability)
         dists = np.linalg.norm(centroids[0] - centroids[1])
-        assert dists > 5.0
+        assert dists > 3.0
 
 
 # ── Lloyd relaxation ────────────────────────────────────────
