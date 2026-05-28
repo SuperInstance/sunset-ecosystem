@@ -97,6 +97,13 @@ except ImportError:
         def __init__(self, *args, **kwargs):
             pass
 
+try:
+    from swarm.breeder_bft_qd_integration import BreederBFTIntegration
+except ImportError:
+    class BreederBFTIntegration:  # type: ignore[no-redef]
+        """No-op fallback when BFT-QD integration is not available."""
+        pass
+
 logger = logging.getLogger(__name__)
 
 
@@ -431,8 +438,10 @@ class BreederDaemonV2:
         flux_checker: Optional[Any] = None,
         compiled_checker: Optional[Any] = None,
         flux_config: FluxGatingConfig | None = None,
+        consensus: Optional[BreederBFTIntegration] = None,
         **kwargs: Any,
     ) -> None:
+        self._consensus = consensus
         self.grid = grid
         self.thermal = thermal
         self._vector_table = vector_table
@@ -697,6 +706,34 @@ class BreederDaemonV2:
 
         # Merge and deduplicate (local first, then fleet)
         merged = list(dict.fromkeys(local_candidates + fleet_candidates))
+
+        # -- BFT-QD consensus gate --
+        if self._consensus is not None:
+            candidates = [
+                {"id": f"agent_{aid}", "chaos": 0.3}
+                for aid in merged
+            ]
+            consensus_pairs = self._consensus.propose_parents(
+                candidates, batch_size=n_children
+            )
+            if consensus_pairs is not None:
+                logger.info(
+                    "BFT consensus approved %d parent pairs (batch=%s)",
+                    len(consensus_pairs),
+                    getattr(self._consensus.consensus.bft, "seq_num", 0),
+                )
+                # FLUX-gate the consensus-approved pairs (defense in depth)
+                flux_passed: list[tuple[int, int]] = []
+                for a, b in consensus_pairs:
+                    plan = {"parents": (a, b)}
+                    result = self._check_flux(a, plan)
+                    if self._flux_passed(result):
+                        flux_passed.append((a, b))
+                    else:
+                        logger.debug("FLUX blocked consensus pair (%d, %d)", a, b)
+                if flux_passed:
+                    return flux_passed[:n_children]
+            logger.warning("BFT consensus failed or returned no pairs; falling back")
 
         pairs = self._select_parents_vector(
             population=merged,
