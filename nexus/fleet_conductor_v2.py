@@ -61,6 +61,7 @@ class ConductorConfig:
     enable_opcode_index: bool = False
     enable_hebbian_mesh: bool = False
     enable_decision_journal: bool = False
+    enable_bernstein_scheduler: bool = False
     sda_interval_ms: float = 1000.0
     max_drift_ms: float = 10.0
     auto_restart: bool = True
@@ -402,6 +403,24 @@ class FleetConductorV2:
                 enabled=True,
             )
 
+        # 13. FleetBernsteinScheduler (optional)
+        if cfg.enable_bernstein_scheduler:
+            def _make_bernstein_scheduler() -> Any:
+                from fleet.fleet_bernstein_scheduler import (
+                    BernsteinScheduleConfig,
+                    FleetBernsteinScheduler,
+                )
+
+                return FleetBernsteinScheduler(
+                    BernsteinScheduleConfig(node_id=cfg.node_id)
+                )
+
+            self._subsystems["bernstein_scheduler"] = SubsystemWrapper(
+                name="bernstein_scheduler",
+                factory=_make_bernstein_scheduler,
+                enabled=True,
+            )
+
     def _init_dispatch_router(self) -> None:
         """Create a lightweight DispatchRouter if available."""
         try:
@@ -555,6 +574,9 @@ class FleetConductorV2:
     def _get_hebbian_mesh(self) -> Any | None:
         return self._get_subsystem("hebbian_mesh")
 
+    def _get_bernstein_scheduler(self) -> Any | None:
+        return self._get_subsystem("bernstein_scheduler")
+
     def _get_identity(self) -> Any | None:
         """Return an AgentIdentity if available, else None."""
         try:
@@ -626,6 +648,20 @@ class FleetConductorV2:
                 logger.warning("Metronome tick failed: %s", exc)
                 tick_results["metronome"] = {"error": str(exc)}
                 self._maybe_auto_restart("metronome")
+
+        # 1b. Bernstein scheduler tick
+        scheduler = self._get_bernstein_scheduler()
+        if scheduler is not None:
+            try:
+                sched_result = scheduler.tick()
+                tick_results["bernstein_scheduler"] = {
+                    "fires_dispatched": sched_result.get("fires_dispatched", 0),
+                    "receipts": len(sched_result.get("receipts", [])),
+                }
+            except Exception as exc:
+                logger.warning("Bernstein scheduler tick failed: %s", exc)
+                tick_results["bernstein_scheduler"] = {"error": str(exc)}
+                self._maybe_auto_restart("bernstein_scheduler")
 
         # 2. SDA loop
         sda = self._get_sda()
