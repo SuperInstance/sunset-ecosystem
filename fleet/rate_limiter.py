@@ -42,7 +42,11 @@ class TokenBucket:
     def __post_init__(self) -> None:
         if self.last_update == 0.0:
             self.last_update = time.time()
-        self.tokens = min(self.burst, self.tokens)
+        # Start full if tokens was at default 0.0
+        if self.tokens == 0.0:
+            self.tokens = self.burst
+        else:
+            self.tokens = min(self.burst, self.tokens)
 
     def _refill(self) -> None:
         now = time.time()
