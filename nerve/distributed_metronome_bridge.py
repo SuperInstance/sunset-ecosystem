@@ -142,17 +142,19 @@ class DriftCorrection:
     """
 
     threshold_ms: float = 10.0
-    kp: float = 0.01
+    kp: float = 0.04
     ki: float = 0.001
     kd: float = 0.005
     min_factor: float = 0.95
     max_factor: float = 1.05
     integral_window_ms: float = 500.0
+    overshoot_damping: float = 0.5
 
     # Mutable state
     _integral: float = field(default=0.0, repr=False)
     _last_drift: float = field(default=0.0, repr=False)
     _last_time: float = field(default_factory=time.perf_counter, repr=False)
+    _overshoot_guard: bool = field(default=False, repr=False)
 
     def should_correct(self, drift_ms: float) -> bool:
         """True if ``abs(drift_ms) > threshold_ms``."""
@@ -185,6 +187,17 @@ class DriftCorrection:
 
         # Derivative
         d_term = self.kd * (drift_ms - self._last_drift) / dt
+
+        # Overshoot guard: if drift sign flipped, dampen correction
+        # to prevent oscillation around the target.
+        if self._last_drift != 0.0:
+            if (drift_ms > 0 and self._last_drift < 0) or (drift_ms < 0 and self._last_drift > 0):
+                p_term *= self.overshoot_damping
+                i_term *= self.overshoot_damping
+                d_term *= self.overshoot_damping
+                self._overshoot_guard = True
+            else:
+                self._overshoot_guard = False
 
         # Update state
         self._last_drift = drift_ms

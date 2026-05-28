@@ -145,6 +145,33 @@ class TestDriftCorrection:
         assert dc._integral == 0.0
         assert dc._last_drift == 0.0
 
+    def test_default_kp_is_tuned_for_faster_convergence(self):
+        """Phase 1 hardening: default kp changed from 0.01 to 0.04."""
+        dc = DriftCorrection()
+        assert dc.kp == 0.04, f"Expected kp=0.04 for Phase 1 tuning, got {dc.kp}"
+
+    def test_overshoot_guard_dampens_oscillation(self):
+        """When drift sign flips, overshoot guard reduces correction magnitude."""
+        dc = DriftCorrection(kp=0.04, overshoot_damping=0.5)
+        dc.correction_factor(20.0)  # positive drift
+        # Flip sign -> overshoot condition
+        f1 = dc.correction_factor(-10.0)
+        # Without overshoot damping, factor would be 1.0 + 0.04*(-10) = 0.6
+        # With damping: 1.0 + 0.04*(-10)*0.5 = 0.8
+        assert f1 > 0.75, f"Expected gentler correction after overshoot, got {f1}"
+        assert dc._overshoot_guard is True
+
+    def test_overshoot_guard_dampens_oscillation(self):
+        """When drift sign flips, overshoot guard reduces correction magnitude."""
+        dc = DriftCorrection(kp=0.04, overshoot_damping=0.5)
+        dc.correction_factor(20.0)  # positive drift
+        # Flip sign -> overshoot condition
+        f1 = dc.correction_factor(-10.0)
+        # Without overshoot damping, factor would be 1.0 + 0.04*(-10) = 0.6
+        # With damping: 1.0 + 0.04*(-10)*0.5 = 0.8
+        assert f1 > 0.75, f"Expected gentler correction after overshoot, got {f1}"
+        assert dc._overshoot_guard is True
+
 
 # ── MetronomeBridge.tick ────────────────────────────────────
 
