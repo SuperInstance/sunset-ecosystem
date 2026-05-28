@@ -59,6 +59,9 @@ class _MockIdMapIndex:
     def contains(self, agent_id: int) -> bool:
         return agent_id in self._vectors
 
+    def prepare(self) -> None:
+        pass
+
     def write(self, path: str) -> None:
         pass
 
