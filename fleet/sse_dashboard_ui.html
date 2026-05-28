@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fleet Dashboard — Cocapn</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --bg-panel: #111820;
+    --bg-card: #0d131a;
+    --border: #1a2330;
+    --text: #c8d1dc;
+    --text-dim: #5a6a7a;
+    --accent: #00d4aa;
+    --accent-dim: #008f6e;
+    --error: #ff4d4f;
+    --warn: #ff9f43;
+    --info: #54a0ff;
+    --beat: #ff6b6b;
+    --breed: #f368e0;
+    --flux-pass: #2ed573;
+    --flux-fail: #ff4757;
+    --thermal-cool: #54a0ff;
+    --thermal-warm: #ff9f43;
+    --thermal-hot: #ff4757;
+    --spawn: #a29bfe;
+    --font-mono: "SF Mono", "Fira Code", "JetBrains Mono", monospace;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    line-height: 1.5;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ─────────────────────────────────────────── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo { font-weight: 700; font-size: 14px; letter-spacing: 0.5px; color: var(--accent); }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-dim);
+    transition: background 0.3s;
+  }
+  .status-dot.connected { background: var(--flux-pass); box-shadow: 0 0 6px var(--flux-pass); }
+  .status-dot.connecting { background: var(--warn); animation: pulse 1s infinite; }
+  .status-dot.disconnected { background: var(--flux-fail); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .status-text { color: var(--text-dim); font-size: 11px; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .counter {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    min-width: 80px;
+    text-align: center;
+  }
+  .counter-label { display: block; color: var(--text-dim); font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .counter-value { display: block; color: var(--accent); font-weight: 600; font-size: 14px; }
+  .counter-value.error { color: var(--error); }
+  .counter-value.ok { color: var(--flux-pass); }
+
+  /* ── Main Layout ────────────────────────────────────── */
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Event Log ───────────────────────────────────────── */
+  .log-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .log-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .log-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .log-scroll.paused { border-left: 2px solid var(--warn); }
+  .log-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 3px 0;
+    border-left: 2px solid transparent;
+    padding-left: 6px;
+    margin-left: -8px;
+    opacity: 0;
+    animation: fadeIn 0.2s forwards;
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+  .log-entry:hover { background: rgba(255,255,255,0.02); }
+  .log-time { color: var(--text-dim); min-width: 60px; flex-shrink: 0; }
+  .log-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+    min-width: 90px;
+    text-align: center;
+  }
+  .log-badge.beat { background: rgba(255,107,107,0.12); color: var(--beat); border: 1px solid rgba(255,107,107,0.2); }
+  .log-badge.parent { background: rgba(243,104,224,0.12); color: var(--breed); border: 1px solid rgba(243,104,224,0.2); }
+  .log-badge.mutation { background: rgba(162,155,254,0.12); color: var(--spawn); border: 1px solid rgba(162,155,254,0.2); }
+  .log-badge.flux { background: rgba(46,213,115,0.12); color: var(--flux-pass); border: 1px solid rgba(46,213,115,0.2); }
+  .log-badge.flux.fail { background: rgba(255,71,87,0.12); color: var(--flux-fail); border: 1px solid rgba(255,71,87,0.2); }
+  .log-badge.thermal-cool { background: rgba(84,160,255,0.12); color: var(--thermal-cool); border: 1px solid rgba(84,160,255,0.2); }
+  .log-badge.thermal-warm { background: rgba(255,159,67,0.12); color: var(--thermal-warm); border: 1px solid rgba(255,159,67,0.2); }
+  .log-badge.thermal-hot { background: rgba(255,71,87,0.12); color: var(--thermal-hot); border: 1px solid rgba(255,71,87,0.2); }
+  .log-badge.fleet { background: rgba(0,212,170,0.12); color: var(--accent); border: 1px solid rgba(0,212,170,0.2); }
+  .log-badge.spawn { background: rgba(162,155,254,0.12); color: var(--spawn); border: 1px solid rgba(162,155,254,0.2); }
+  .log-badge.error { background: rgba(255,77,79,0.12); color: var(--error); border: 1px solid rgba(255,77,79,0.2); }
+  .log-badge.info { background: rgba(90,106,122,0.15); color: var(--text-dim); border: 1px solid var(--border); }
+  .log-msg { color: var(--text); word-break: break-word; }
+  .log-msg.dim { color: var(--text-dim); }
+  .log-entry.error .log-msg { color: var(--error); }
+
+  /* ── Right Panel: Gauges ────────────────────────────── */
+  .right-panel {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    gap: 12px;
+    overflow-y: auto;
+  }
+  .panel-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .gauge-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+  }
+  .gauge-value {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .gauge-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .gauge-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease, background 0.3s;
+  }
+  .gauge-bar-fill.cool { background: var(--thermal-cool); }
+  .gauge-bar-fill.warm { background: var(--thermal-warm); }
+  .gauge-bar-fill.hot { background: var(--thermal-hot); }
+
+  /* ── Thermal specific ───────────────────────────────── */
+  .thermal-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* ── Pause overlay ────────────────────────────────────── */
+  .pause-hint {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    background: var(--warn);
+    color: #000;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .log-container:hover .pause-hint { opacity: 1; }
+
+  /* ── Scrollbar ────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #2a3a4a; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <span class="logo">🦞 COCAPN FLEET</span>
+    <div class="status-dot" id="conn-dot"></div>
+    <span class="status-text" id="conn-text">connecting...</span>
+  </div>
+  <div class="header-right">
+    <div class="counter">
+      <span class="counter-label">Breeds</span>
+      <span class="counter-value" id="cnt-breed">0</span>
+    </div>
+    <div class="counter">
+      <span class="counter-label">FLUX ✓</span>
+      <span class="counter-value ok" id="cnt-flux-pass">0</span>
+    </div>
+    <div class="counter">
+      <span class="counter-label">FLUX ✗</span>
+      <span class="counter-value error" id="cnt-flux-fail">0</span>
+    </div>
+    <div class="counter">
+      <span class="counter-label">Agents</span>
+      <span class="counter-value" id="cnt-spawn">0</span>
+    </div>
+    <div class="counter">
+      <span class="counter-label">Errors</span>
+      <span class="counter-value error" id="cnt-error">0</span>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="log-container">
+    <div class="log-header">
+      <span>Event Stream</span>
+      <span id="event-rate">0 evt/s</span>
+    </div>
+    <div class="log-scroll" id="log">
+      <!-- events go here -->
+    </div>
+    <div class="pause-hint">scroll to pause</div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-title">Thermal</div>
+    <div class="gauge-card">
+      <div class="gauge-value" id="thermal-val">—</div>
+      <div class="gauge-bar"><div class="gauge-bar-fill cool" id="thermal-bar" style="width:0%"></div></div>
+      <div class="thermal-label"><span>cool</span><span>hot</span></div>
+    </div>
+
+    <div class="panel-title">Fleet</div>
+    <div class="gauge-card">
+      <div class="gauge-value" id="fleet-nodes">—</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:2px">nodes</div>
+    </div>
+    <div class="gauge-card">
+      <div class="gauge-value" id="fleet-peers">—</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:2px">peers</div>
+    </div>
+
+    <div class="panel-title">Latest Beat</div>
+    <div class="gauge-card">
+      <div class="gauge-value" id="beat-num">—</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:2px">beat #</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const logEl = document.getElementById('log');
+  const connDot = document.getElementById('conn-dot');
+  const connText = document.getElementById('conn-text');
+  const rateEl = document.getElementById('event-rate');
+
+  const counters = {
+    breed: document.getElementById('cnt-breed'),
+    fluxPass: document.getElementById('cnt-flux-pass'),
+    fluxFail: document.getElementById('cnt-flux-fail'),
+    spawn: document.getElementById('cnt-spawn'),
+    error: document.getElementById('cnt-error'),
+  };
+
+  const gauges = {
+    thermalVal: document.getElementById('thermal-val'),
+    thermalBar: document.getElementById('thermal-bar'),
+    fleetNodes: document.getElementById('fleet-nodes'),
+    fleetPeers: document.getElementById('fleet-peers'),
+    beatNum: document.getElementById('beat-num'),
+  };
+
+  let paused = false;
+  let evtCount = 0;
+  let lastRateTime = performance.now();
+
+  // Pause on scroll up
+  logEl.addEventListener('scroll', () => {
+    const nearBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
+    paused = !nearBottom;
+    logEl.classList.toggle('paused', paused);
+  });
+
+  function setConn(status) {
+    connDot.className = 'status-dot ' + status;
+    connText.textContent = status;
+  }
+
+  function formatTime(ts) {
+    const d = new Date(ts * 1000);
+    return d.toTimeString().slice(0, 8);
+  }
+
+  function badgeClass(type, payload) {
+    switch(type) {
+      case 'BEAT': return 'beat';
+      case 'PARENT_SELECT': return 'parent';
+      case 'MUTATION': return 'mutation';
+      case 'FLUX_GATE':
+        return (payload.passed !== false) ? 'flux' : 'flux fail';
+      case 'THERMAL': {
+        const t = payload.temperature || 0;
+        if (t > 80) return 'thermal-hot';
+        if (t > 50) return 'thermal-warm';
+        return 'thermal-cool';
+      }
+      case 'FLEET_STATUS': return 'fleet';
+      case 'AGENT_SPAWN': return 'spawn';
+      case 'ERROR': return 'error';
+      case 'INFO': return 'info';
+      default: return 'info';
+    }
+  }
+
+  function badgeText(type) {
+    return type.replace(/_/g, ' ');
+  }
+
+  function msgText(type, payload) {
+    if (type === 'BEAT') return `beat #${payload.beat_number || '?'}`;
+    if (type === 'PARENT_SELECT') return `selected ${payload.winners || '?'} parents`;
+    if (type === 'MUTATION') return payload.mutation || 'mutation applied';
+    if (type === 'FLUX_GATE') return payload.passed !== false ? 'constraint passed' : `constraint failed: ${payload.reason || ''}`;
+    if (type === 'THERMAL') return `${payload.temperature || '?'}°C ${payload.device || ''}`;
+    if (type === 'FLEET_STATUS') return `${payload.nodes || '?'} nodes, ${payload.peers || '?'} peers`;
+    if (type === 'AGENT_SPAWN') return `agent ${payload.agent_id || '?'} born in ${payload.room || '?'}`;
+    if (type === 'ERROR') return payload.message || 'unknown error';
+    if (type === 'INFO') return payload.message || '—';
+    return JSON.stringify(payload).slice(0, 120);
+  }
+
+  function updateCounters(type, payload) {
+    if (type === 'PARENT_SELECT') {
+      counters.breed.textContent = parseInt(counters.breed.textContent) + (payload.winners || 1);
+    }
+    if (type === 'FLUX_GATE') {
+      if (payload.passed !== false) {
+        counters.fluxPass.textContent = parseInt(counters.fluxPass.textContent) + 1;
+      } else {
+        counters.fluxFail.textContent = parseInt(counters.fluxFail.textContent) + 1;
+      }
+    }
+    if (type === 'AGENT_SPAWN') {
+      counters.spawn.textContent = parseInt(counters.spawn.textContent) + 1;
+    }
+    if (type === 'ERROR') {
+      counters.error.textContent = parseInt(counters.error.textContent) + 1;
+    }
+  }
+
+  function updateGauges(type, payload) {
+    if (type === 'THERMAL') {
+      const t = payload.temperature || 0;
+      gauges.thermalVal.textContent = t + '°C';
+      gauges.thermalVal.style.color = t > 80 ? 'var(--thermal-hot)' : t > 50 ? 'var(--thermal-warm)' : 'var(--thermal-cool)';
+      gauges.thermalBar.style.width = Math.min(t, 100) + '%';
+      gauges.thermalBar.className = 'gauge-bar-fill ' + (t > 80 ? 'hot' : t > 50 ? 'warm' : 'cool');
+    }
+    if (type === 'FLEET_STATUS') {
+      gauges.fleetNodes.textContent = payload.nodes || '—';
+      gauges.fleetPeers.textContent = payload.peers || '—';
+    }
+    if (type === 'BEAT') {
+      gauges.beatNum.textContent = payload.beat_number || '—';
+    }
+  }
+
+  function appendEvent(data) {
+    const type = data.type || 'INFO';
+    const payload = data.payload || {};
+    const ts = data.timestamp || Date.now() / 1000;
+
+    const entry = document.createElement('div');
+    entry.className = 'log-entry' + (type === 'ERROR' ? ' error' : '');
+    entry.innerHTML = `
+      <span class="log-time">${formatTime(ts)}</span>
+      <span class="log-badge ${badgeClass(type, payload)}">${badgeText(type)}</span>
+      <span class="log-msg ${type === 'INFO' ? 'dim' : ''}">${escapeHtml(msgText(type, payload))}</span>
+    `;
+    logEl.appendChild(entry);
+
+    updateCounters(type, payload);
+    updateGauges(type, payload);
+
+    // Rate
+    evtCount++;
+    const now = performance.now();
+    if (now - lastRateTime > 2000) {
+      const r = (evtCount / ((now - lastRateTime) / 1000)).toFixed(1);
+      rateEl.textContent = r + ' evt/s';
+      evtCount = 0;
+      lastRateTime = now;
+    }
+
+    // Auto-scroll if not paused and not hovering
+    if (!paused) {
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // Prune old entries (keep ~500)
+    while (logEl.children.length > 500) {
+      logEl.removeChild(logEl.firstChild);
+    }
+  }
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  // ── SSE Connection ───────────────────────────────────
+  function connect() {
+    setConn('connecting');
+    const source = new EventSource('/events');
+
+    source.onopen = () => setConn('connected');
+
+    source.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        appendEvent(data);
+      } catch (e) {
+        appendEvent({ type: 'ERROR', payload: { message: 'parse error: ' + ev.data.slice(0, 80) }, timestamp: Date.now() / 1000 });
+      }
+    };
+
+    source.onerror = () => {
+      setConn('disconnected');
+      source.close();
+      setTimeout(connect, 3000);
+    };
+  }
+
+  connect();
+})();
+</script>
+</body>
+</html>

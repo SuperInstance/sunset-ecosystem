@@ -19,15 +19,20 @@ __all__ = [
     "StreamEvent",
     "EventType",
     "DashboardConfig",
+    "serve_dashboard_ui",
+    "DashboardServer",
 ]
 
 import json
 import logging
+import os
 import queue
 import threading
 import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
@@ -288,3 +293,124 @@ def wire_to_breeder(
         return results
 
     breeder.cycle = _instrumented_cycle  # type: ignore[method-assign]
+
+
+# ── HTTP server for dashboard UI ────────────────────────────────
+
+
+class DashboardServer:
+    """Threaded HTTP server that serves the SSE event stream + static HTML dashboard."""
+
+    def __init__(
+        self,
+        dashboard: SSEStreamDashboard,
+        host: str = "0.0.0.0",
+        port: int = 8849,
+    ) -> None:
+        self.dashboard = dashboard
+        self.host = host
+        self.port = port
+        self._server: ThreadingHTTPServer | None = None
+        self._thread: threading.Thread | None = None
+        self._html_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "sse_dashboard_ui.html"
+        )
+
+    def _make_handler(self) -> type[BaseHTTPRequestHandler]:
+        dashboard = self.dashboard
+        html_path = self._html_path
+
+        class _Handler(BaseHTTPRequestHandler):
+            def log_message(self, format: str, *args: Any) -> None:
+                pass  # silence default logging
+
+            def do_GET(self) -> None:
+                if self.path == "/dashboard" or self.path == "/":
+                    self._serve_dashboard()
+                elif self.path == "/events":
+                    self._serve_events()
+                else:
+                    self.send_error(404)
+
+            def _serve_dashboard(self) -> None:
+                try:
+                    with open(html_path, "r", encoding="utf-8") as f:
+                        body = f.read().encode("utf-8")
+                except OSError:
+                    self.send_error(500, "Dashboard HTML not found")
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def _serve_events(self) -> None:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Connection", "keep-alive")
+                self.end_headers()
+                q = dashboard.subscribe()
+                try:
+                    while True:
+                        event = q.get(timeout=30.0)
+                        self.wfile.write(event.to_sse().encode("utf-8"))
+                        self.wfile.flush()
+                except queue.Empty:
+                    # heartbeat
+                    self.wfile.write(b"data: {\"type\":\"HEARTBEAT\"}\n\n")
+                    self.wfile.flush()
+                finally:
+                    dashboard.unsubscribe(q)
+
+        return _Handler
+
+    def start(self) -> None:
+        """Start the server in a background thread."""
+        handler = self._make_handler()
+        self._server = ThreadingHTTPServer((self.host, self.port), handler)
+        self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+        self._thread.start()
+        logger.info("Dashboard server started on http://%s:%s", self.host, self.port)
+
+    def stop(self) -> None:
+        """Stop the server."""
+        if self._server is not None:
+            self._server.shutdown()
+            self._server.server_close()
+            self._server = None
+        if self._thread is not None:
+            self._thread.join(timeout=5.0)
+            self._thread = None
+
+    @property
+    def url(self) -> str:
+        if self._server is not None:
+            host, port = self._server.server_address
+            return f"http://{host}:{port}"
+        return f"http://{self.host}:{self.port}"
+
+
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    """Thread-per-request HTTP server."""
+    allow_reuse_address = True
+    daemon_threads = True
+
+
+def serve_dashboard_ui(
+    dashboard: SSEStreamDashboard,
+    host: str = "0.0.0.0",
+    port: int = 8849,
+) -> DashboardServer:
+    """Convenience: create and start a DashboardServer.
+
+    Usage::
+        dash = SSEStreamDashboard()
+        server = serve_dashboard_ui(dash, port=8849)
+        # dashboard available at http://localhost:8849/dashboard
+        # SSE stream at http://localhost:8849/events
+    """
+    server = DashboardServer(dashboard, host=host, port=port)
+    server.start()
+    return server

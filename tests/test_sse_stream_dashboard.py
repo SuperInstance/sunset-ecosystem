@@ -21,9 +21,11 @@ import pytest
 
 from fleet.sse_stream_dashboard import (
     DashboardConfig,
+    DashboardServer,
     EventType,
     SSEStreamDashboard,
     StreamEvent,
+    serve_dashboard_ui,
     wire_to_breeder,
     wire_to_fleet_conductor,
 )
@@ -242,3 +244,53 @@ class TestIntegrationWiring:
         ev1 = sub.get(timeout=1.0)
         ev2 = sub.get(timeout=1.0)
         assert {ev1.event_type, ev2.event_type} == {EventType.BEAT, EventType.PARENT_SELECT}
+
+
+# ── 9. Dashboard Server ───────────────────────────────────
+
+class TestDashboardServer:
+    def test_server_serves_dashboard_html(self):
+        dash = SSEStreamDashboard()
+        server = DashboardServer(dash, host="127.0.0.1", port=0)  # 0 = auto-assign
+        server.start()
+        try:
+            # Find the actual port
+            actual_port = server._server.server_address[1]
+            import urllib.request
+            url = f"http://127.0.0.1:{actual_port}/dashboard"
+            with urllib.request.urlopen(url, timeout=5.0) as resp:
+                body = resp.read().decode("utf-8")
+                assert resp.status == 200
+                assert "COCAPN FLEET" in body
+                assert "EventSource" in body
+                assert "/events" in body
+        finally:
+            server.stop()
+
+    def test_server_returns_404_for_unknown_paths(self):
+        dash = SSEStreamDashboard()
+        server = DashboardServer(dash, host="127.0.0.1", port=0)
+        server.start()
+        try:
+            actual_port = server._server.server_address[1]
+            import urllib.request
+            url = f"http://127.0.0.1:{actual_port}/notfound"
+            with pytest.raises(urllib.error.HTTPError) as exc_info:
+                urllib.request.urlopen(url, timeout=5.0)
+            assert exc_info.value.code == 404
+        finally:
+            server.stop()
+
+    def test_serve_dashboard_ui_convenience(self):
+        dash = SSEStreamDashboard()
+        server = serve_dashboard_ui(dash, host="127.0.0.1", port=0)
+        try:
+            actual_port = server._server.server_address[1]
+            assert server.url == f"http://127.0.0.1:{actual_port}"
+            import urllib.request
+            url = f"http://127.0.0.1:{actual_port}/"
+            with urllib.request.urlopen(url, timeout=5.0) as resp:
+                body = resp.read().decode("utf-8")
+                assert "COCAPN FLEET" in body
+        finally:
+            server.stop()
