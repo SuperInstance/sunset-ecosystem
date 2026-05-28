@@ -1,0 +1,9 @@
+{
+  "counterfactual": false,
+  "dispatched": true,
+  "fire_time": 1779995400,
+  "misfire_policy": "catch_up",
+  "projection_hash": "e2f57ab45b2acbfb782ff020d8728bc2",
+  "schedule_id": "s1",
+  "skipped_windows": []
+}
