@@ -141,6 +141,11 @@ class HebbianMeshLayer:
         self._affinities: dict[str, HebbianAffinity] = {}
         self._lock = threading.Lock()
 
+        self._cached_peer_ids: tuple[str, ...] = ()
+        self._cached_weights: np.ndarray = np.array([], dtype=np.float32)
+        self._cached_blacklisted_mask: np.ndarray = np.array([], dtype=bool)
+        self._cached_valid_mask: np.ndarray = np.array([], dtype=bool)
+
         # Chaos calibration
         self._chaos_min = chaos_min
         self._chaos_max = chaos_max
@@ -157,6 +162,33 @@ class HebbianMeshLayer:
             "HebbianMeshLayer initialised (chaos %.2f–%.2f, diversity %.2f–%.2f)",
             chaos_min, chaos_max, diversity_low, diversity_high,
         )
+
+    # ── cache rebuild (write path only) ─────────────────────
+
+    def _rebuild_cache_locked(self) -> None:
+        """Rebuild cached routing arrays. Must be called with self._lock held."""
+        if not self._affinities:
+            self._cached_peer_ids = ()
+            self._cached_weights = np.array([], dtype=np.float32)
+            self._cached_blacklisted_mask = np.array([], dtype=bool)
+            self._cached_valid_mask = np.array([], dtype=bool)
+            return
+
+        peer_ids = list(self._affinities.keys())
+        n = len(peer_ids)
+
+        strengths = np.empty(n, dtype=np.float32)
+        blacklisted = np.empty(n, dtype=bool)
+
+        for i, pid in enumerate(peer_ids):
+            aff = self._affinities[pid]
+            strengths[i] = 0.0 if aff.blacklisted else max(0.01, aff.strength)
+            blacklisted[i] = aff.blacklisted
+
+        self._cached_peer_ids = tuple(peer_ids)
+        self._cached_weights = strengths
+        self._cached_blacklisted_mask = blacklisted
+        self._cached_valid_mask = ~blacklisted
 
     # ── affinity management ─────────────────────────────────
 
@@ -214,29 +246,40 @@ class HebbianMeshLayer:
                 aff.blacklisted = False
                 logger.info("Peer %s un-blacklisted by NOVELTY", peer_id)
 
+            self._rebuild_cache_locked()
+
     def get_affinity(self, peer_id: str) -> HebbianAffinity:
         """Return the current affinity record for a peer."""
+        import dataclasses
         with self._lock:
-            return self._affinities.get(
+            aff = self._affinities.get(
                 peer_id,
                 HebbianAffinity(peer_id=peer_id),
             )
+            return dataclasses.replace(aff)
 
     def is_blacklisted(self, peer_id: str) -> bool:
         """Check whether a peer is currently blacklisted."""
-        with self._lock:
-            aff = self._affinities.get(peer_id)
-            return aff.blacklisted if aff is not None else False
+        peer_ids = self._cached_peer_ids
+        mask = self._cached_blacklisted_mask
+        try:
+            idx = peer_ids.index(peer_id)
+        except ValueError:
+            return False  # Unknown peer = not blacklisted
+        return bool(mask[idx])
 
     def list_blacklisted(self) -> list[str]:
         """Return all currently blacklisted peer IDs."""
-        with self._lock:
-            return [aff.peer_id for aff in self._affinities.values() if aff.blacklisted]
+        peer_ids = self._cached_peer_ids
+        mask = self._cached_blacklisted_mask
+        indices = np.where(mask)[0]
+        return [peer_ids[i] for i in indices]
 
     def reset_affinity(self, peer_id: str) -> None:
         """Reset a peer to default affinity (useful for manual recovery)."""
         with self._lock:
             self._affinities[peer_id] = HebbianAffinity(peer_id=peer_id)
+            self._rebuild_cache_locked()
 
     # ── diversity & chaos ─────────────────────────────────────
 
@@ -293,9 +336,8 @@ class HebbianMeshLayer:
         except DiversityError:
             diversity = 0.0  # no data = assume collapse, max chaos
 
-        with self._lock:
-            self._chaos_factor = self._compute_chaos(diversity)
-            return self._chaos_factor
+        self._chaos_factor = self._compute_chaos(diversity)
+        return self._chaos_factor
 
     def _compute_chaos(self, diversity: float) -> float:
         """Map diversity score to chaos factor (linear interpolation)."""
@@ -317,59 +359,58 @@ class HebbianMeshLayer:
         2. Chaos injection: with probability ``chaos_factor``, replace the
            selected peer with a uniformly random peer from the pool.
 
-        Parameters
-        ----------
-        peer_pool : list[str]
-            Candidate peer IDs.
-        n_routes : int
-            Number of peers to select.
-
-        Returns
-        -------
-        list[str]
-            Selected peer IDs (no duplicates).
+        This read path is lock-free — it snapshots cached routing arrays
+        that are atomically replaced after every write.
         """
-        if not peer_pool:
+        if not peer_pool or n_routes <= 0:
             return []
 
         n_routes = min(n_routes, len(peer_pool))
         chaos = self.chaos_factor
 
-        # Stage 1: affinity-weighted selection (without blacklisted peers)
-        eligible = [p for p in peer_pool if not self.is_blacklisted(p)]
+        # Snapshot cached arrays (atomic pointer copy — no lock)
+        peer_ids = self._cached_peer_ids
+        weights_arr = self._cached_weights
+        valid_mask = self._cached_valid_mask
+
+        # Build eligible pool using cache (lock-free)
+        known_index = {pid: i for i, pid in enumerate(peer_ids)}
+        eligible: list[str] = []
+        eligible_weights: list[float] = []
+
+        for pid in peer_pool:
+            if pid in known_index:
+                idx = known_index[pid]
+                if valid_mask[idx]:
+                    eligible.append(pid)
+                    eligible_weights.append(float(weights_arr[idx]))
+            else:
+                # Unknown peer — not blacklisted, default weight
+                eligible.append(pid)
+                eligible_weights.append(0.5)
+
         if not eligible:
             # All peers blacklisted — fall back to random from full pool
             logger.warning("All peers blacklisted; routing randomly")
-            eligible = peer_pool
+            eligible = list(peer_pool)
+            eligible_weights = [0.5] * len(eligible)
 
-        weights = self._affinity_weights(eligible)
         selected: list[str] = []
+        temp_ids = list(eligible)
+        temp_weights = np.array(eligible_weights, dtype=np.float32)
 
-        # Weighted random sampling without replacement
-        pool_copy = list(eligible)
-        weight_copy = list(weights)
-        while len(selected) < n_routes and pool_copy:
-            total = sum(weight_copy)
-            if total <= 0:
-                # All weights zero → uniform random
-                idx = random.randrange(len(pool_copy))
+        while len(selected) < n_routes and temp_ids:
+            if temp_weights.sum() <= 0:
+                idx = random.randrange(len(temp_ids))
             else:
-                r = random.uniform(0, total)
-                cumulative = 0.0
-                for i, w in enumerate(weight_copy):
-                    cumulative += w
-                    if r <= cumulative:
-                        idx = i
-                        break
-                else:
-                    idx = len(pool_copy) - 1
+                probs = temp_weights / temp_weights.sum()
+                idx = int(np.random.choice(len(temp_ids), p=probs))
 
-            picked = pool_copy.pop(idx)
-            weight_copy.pop(idx)
+            picked = temp_ids.pop(idx)
+            temp_weights = np.delete(temp_weights, idx)
 
             # Stage 2: chaos injection
             if random.random() < chaos:
-                # Replace with random peer from eligible pool (never blacklisted)
                 picked = random.choice(eligible)
                 logger.debug("Chaos injection: replaced with %s", picked)
 

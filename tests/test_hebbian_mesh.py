@@ -336,6 +336,80 @@ class TestConcurrency:
         assert all(0 <= r <= 2 for r in results)
         assert len(results) == 50
 
+    def test_route_with_chaos_concurrent(self, mesh_layer: HebbianMeshLayer):
+        """Concurrent routing from many threads must not crash and must respect blacklist."""
+        # Seed 1000 peers with varied affinities; blacklist ~10%
+        pool = [f"peer_{i}" for i in range(1000)]
+        blacklisted = set()
+        for i, pid in enumerate(pool):
+            if i % 10 == 0:
+                # Blacklist this peer
+                mesh_layer.update_affinity(pid, HebbianOutcome.VIOLATION)
+                mesh_layer.update_affinity(pid, HebbianOutcome.VIOLATION)
+                blacklisted.add(pid)
+            elif i % 3 == 0:
+                mesh_layer.update_affinity(pid, HebbianOutcome.SUCCESS)
+            else:
+                mesh_layer.update_affinity(pid, HebbianOutcome.TIMEOUT)
+
+        errors = []
+        selected_counts: list[int] = []
+        all_selected: list[list[str]] = []
+
+        def router() -> None:
+            for _ in range(1000):
+                try:
+                    selected = mesh_layer.route_with_chaos(pool, n_routes=10)
+                    selected_counts.append(len(selected))
+                    all_selected.append(selected)
+                except Exception as exc:
+                    errors.append(exc)
+
+        threads = [threading.Thread(target=router) for _ in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, f"Routing crashed: {errors[:3]}"
+        assert len(selected_counts) == 10_000
+        assert all(0 <= c <= 10 for c in selected_counts)
+
+        # Verify blacklist was respected across all selections
+        for selected in all_selected:
+            for pid in selected:
+                assert pid not in blacklisted, f"Blacklisted peer {pid} was selected"
+
+    def test_lock_free_read_path(self, mesh_layer: HebbianMeshLayer):
+        """route_with_chaos() must not acquire self._lock on the read path.
+
+        We hold the lock in the main thread and spawn a thread that calls
+        route_with_chaos().  If the read path were not lock-free, the
+        spawned thread would deadlock waiting for the lock.
+        """
+        # Pre-populate some affinities so the cache is non-empty
+        for i in range(10):
+            mesh_layer.update_affinity(f"peer_{i}", HebbianOutcome.SUCCESS)
+
+        result: list[Any] = [None]
+
+        def target():
+            pool = [f"peer_{i}" for i in range(10)]
+            result[0] = mesh_layer.route_with_chaos(pool, n_routes=3)
+
+        # Hold the lock — a non-lock-free read would deadlock here
+        with mesh_layer._lock:
+            t = threading.Thread(target=target)
+            t.start()
+            t.join(timeout=1.0)
+
+        assert not t.is_alive(), (
+            "route_with_chaos() deadlocked — it is NOT lock-free"
+        )
+        assert result[0] is not None
+        assert len(result[0]) == 3
+        assert all(p in [f"peer_{i}" for i in range(10)] for p in result[0])
+
 
 # ── Integration / wrapper tests ─────────────────────────────────
 
