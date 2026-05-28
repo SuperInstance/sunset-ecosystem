@@ -14,3 +14,4 @@ nerve/libjepa_cuda.so
 *.sqlite
 breeder.wal.sqlite
 benchmarks/cuda_benchmark_results.json
+vendor/
