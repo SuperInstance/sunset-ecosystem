@@ -71,7 +71,7 @@ class TestCausalGraph:
         g = CausalGraph()
         g.add_edge("X", "Y", weight=0.5, confidence=0.9)
         d = g.to_dict()
-        assert d["nodes"] == ["X", "Y"]
+        assert set(d["nodes"]) == {"X", "Y"}  # Sets are unordered
         assert d["edges"][0]["source"] == "X"
         assert d["edges"][0]["weight"] == 0.5
 
