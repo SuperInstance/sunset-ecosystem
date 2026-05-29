@@ -1,114 +1,82 @@
-"""Tests for event_bus.py — Fleet pub/sub event bus.
-
-Run: python3 -m pytest tests/test_event_bus.py -v --tb=short
-"""
-from __future__ import annotations
-
 import pytest
+from fleet.event_bus import Event, EventBus
 
-from nexus.event_bus import EventBus, Event
+
+class TestEvent:
+    def test_to_dict(self):
+        e = Event(
+            event_type="test",
+            payload={"x": 1},
+            timestamp=0.0,
+            source="node1",
+        )
+        d = e.to_dict()
+        assert d["event_type"] == "test"
+        assert d["payload"]["x"] == 1
 
 
-class TestEventBusBasics:
-    def test_create(self):
+class TestEventBus:
+    def test_init(self):
         bus = EventBus()
-        assert bus.subscriber_count() == 0
+        assert bus.fleet_node_id == "default"
+        assert bus._subscribers == {}
 
     def test_subscribe_and_publish(self):
         bus = EventBus()
         received = []
-        bus.subscribe("test.*", lambda e: received.append(e.payload))
-        count = bus.publish("test.event", {"data": 42})
-        assert count == 1
+        bus.subscribe("test", lambda e: received.append(e))
+        bus.publish("test", {"x": 1})
         assert len(received) == 1
-        assert received[0]["data"] == 42
-
-    def test_wildcard_match(self):
-        bus = EventBus()
-        received = []
-        bus.subscribe("breeding.*", lambda e: received.append(e.topic))
-        bus.publish("breeding.spawn", {})
-        bus.publish("breeding.mutate", {})
-        bus.publish("mesh.update", {})
-        assert len(received) == 2
-
-    def test_multiple_subscribers(self):
-        bus = EventBus()
-        a, b = [], []
-        bus.subscribe("topic", lambda e: a.append(1))
-        bus.subscribe("topic", lambda e: b.append(1))
-        bus.publish("topic", {})
-        assert len(a) == 1
-        assert len(b) == 1
-
-    def test_no_subscribers(self):
-        bus = EventBus()
-        count = bus.publish("topic", {})
-        assert count == 0
+        assert received[0].payload["x"] == 1
 
     def test_unsubscribe(self):
         bus = EventBus()
-        sub = bus.subscribe("topic", lambda e: None)
-        assert bus.subscriber_count() == 1
-        bus.unsubscribe(sub)
-        assert bus.subscriber_count() == 0
+        handler = lambda e: None
+        bus.subscribe("test", handler)
+        assert bus.unsubscribe("test", handler) is True
+        assert bus.unsubscribe("test", handler) is False
 
-    def test_unsubscribe_invalid(self):
+    def test_wildcard_subscriber(self):
         bus = EventBus()
-        sub = bus.subscribe("topic", lambda e: None)
-        bus.unsubscribe(sub)
-        assert bus.unsubscribe(sub) is False
+        received = []
+        bus.subscribe("*", lambda e: received.append(e))
+        bus.publish("a", {"x": 1})
+        bus.publish("b", {"y": 2})
+        assert len(received) == 2
 
-    def test_safe_publish_no_crash(self):
+    def test_get_history(self):
         bus = EventBus()
-        bus.subscribe("topic", lambda e: (_ for _ in ()).throw(ValueError("boom")))
-        count = bus.publish_safe("topic", {})
-        # Subscriber was called but errored, so count is 0 (not counted as successful)
-        assert count == 0
+        bus.publish("test", {"x": 1})
+        bus.publish("test", {"x": 2})
+        bus.publish("other", {"y": 1})
+        history = bus.get_history("test")
+        assert len(history) == 2
+        assert history[0].payload["x"] == 1
 
-    def test_event_timestamp(self):
+    def test_get_history_limit(self):
         bus = EventBus()
-        event = None
-        def capture(e):
-            nonlocal event
-            event = e
-        bus.subscribe("topic", capture)
-        bus.publish("topic", {"x": 1})
-        assert event is not None
-        assert event.topic == "topic"
-        assert event.timestamp > 0
+        for i in range(10):
+            bus.publish("test", {"x": i})
+        history = bus.get_history("test", limit=5)
+        assert len(history) == 5
 
-    def test_metrics(self):
+    def test_get_stats(self):
         bus = EventBus()
-        bus.subscribe("a", lambda e: None)
-        bus.subscribe("b", lambda e: None)
-        bus.publish("a", {})
-        m = bus.metrics()
-        assert m["subscribers"] == 2
-        assert m["published"] == 1
+        bus.subscribe("test", lambda e: None)
+        bus.publish("test", {"x": 1})
+        stats = bus.get_stats()
+        assert stats["subscribers"]["test"] == 1
+        assert stats["history_size"] == 1
 
-    def test_health(self):
+    def test_export_json(self):
         bus = EventBus()
-        bus.subscribe("topic", lambda e: None, name="sub1")
-        bus.publish("topic", {})
-        h = bus.health()
-        assert "sub1" in h
-        assert h["sub1"]["count"] == 1
+        bus.publish("test", {"x": 1})
+        j = bus.export_json()
+        assert "test" in j
+        assert "history" in j
 
-    def test_reset(self):
+    def test_to_dict(self):
         bus = EventBus()
-        bus.subscribe("topic", lambda e: None)
-        bus.publish("topic", {})
-        bus.reset()
-        assert bus.subscriber_count() == 0
-        assert bus.metrics()["published"] == 0
-
-    def test_topics(self):
-        bus = EventBus()
-        bus.subscribe("a.*", lambda e: None)
-        bus.subscribe("b.*", lambda e: None)
-        assert bus.topics() == {"a.*", "b.*"}
-
-    def test_repr(self):
-        bus = EventBus()
-        assert "EventBus" in repr(bus)
+        bus.publish("test", {"x": 1})
+        d = bus.to_dict()
+        assert "stats" in d

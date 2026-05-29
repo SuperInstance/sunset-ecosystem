@@ -1,105 +1,96 @@
-"""Tests for distributed_cache.py — Distributed cache with TTL.
-
-Run: python3 -m pytest tests/test_distributed_cache.py -v --tb=short
-"""
-from __future__ import annotations
-
+import time
 import pytest
+from fleet.distributed_cache import CacheEntry, DistributedCache
 
-from fleet.distributed_cache import DistributedCache
+
+class TestCacheEntry:
+    def test_is_expired(self):
+        e = CacheEntry(key="k", value="v", timestamp=0.0, ttl=1.0)
+        assert e.is_expired() is True
+
+    def test_is_not_expired(self):
+        e = CacheEntry(key="k", value="v", timestamp=time.time(), ttl=60.0)
+        assert e.is_expired() is False
+
+    def test_to_dict(self):
+        e = CacheEntry(key="k", value="v", timestamp=0.0, ttl=1.0)
+        d = e.to_dict()
+        assert d["key"] == "k"
 
 
 class TestDistributedCache:
-    def test_create(self):
-        cache = DistributedCache(default_ttl_sec=300, clock=lambda: 0)
-        assert cache.stats()["size"] == 0
+    def test_init(self):
+        cache = DistributedCache()
+        assert cache.fleet_node_id == "default"
+        assert cache.keys() == []
 
-    def test_set_get(self):
-        cache = DistributedCache(clock=lambda: 0)
-        cache.set("key-1", "value-1")
-        assert cache.get("key-1") == "value-1"
+    def test_set_and_get(self):
+        cache = DistributedCache()
+        cache.set("k", "v")
+        assert cache.get("k") == "v"
 
     def test_get_missing(self):
-        cache = DistributedCache(clock=lambda: 0)
+        cache = DistributedCache()
         assert cache.get("missing") is None
-        assert cache.stats()["misses"] == 1
 
-    def test_ttl_expiration(self):
-        cache = DistributedCache(clock=lambda: 0)
-        cache.set("key-1", "value-1", ttl_sec=10)
-        assert cache.get("key-1") == "value-1"
-        cache._clock = lambda: 15
-        assert cache.get("key-1") is None
-        assert cache.stats()["misses"] == 1
+    def test_get_expired(self):
+        cache = DistributedCache(default_ttl=0.001)
+        cache.set("k", "v")
+        time.sleep(0.01)
+        assert cache.get("k") is None
 
     def test_delete(self):
-        cache = DistributedCache(clock=lambda: 0)
-        cache.set("key-1", "value-1")
-        assert cache.delete("key-1") is True
-        assert cache.get("key-1") is None
+        cache = DistributedCache()
+        cache.set("k", "v")
+        assert cache.delete("k") is True
+        assert cache.get("k") is None
+
+    def test_delete_missing(self):
+        cache = DistributedCache()
         assert cache.delete("missing") is False
 
-    def test_invalidate(self):
-        cache = DistributedCache(clock=lambda: 0)
-        cache.set("key-1", "value-1")
-        assert cache.invalidate("key-1") is True
-        assert cache.get("key-1") is None
-
-    def test_invalidate_pattern(self):
-        cache = DistributedCache(clock=lambda: 0)
-        cache.set("user:1", "a")
-        cache.set("user:2", "b")
-        cache.set("post:1", "c")
-        count = cache.invalidate_pattern("user:")
-        assert count == 2
-        assert cache.get("user:1") is None
-        assert cache.get("post:1") == "c"
-
     def test_clear(self):
-        cache = DistributedCache(clock=lambda: 0)
+        cache = DistributedCache()
         cache.set("a", 1)
         cache.set("b", 2)
         cache.clear()
-        assert cache.stats()["size"] == 0
+        assert cache.keys() == []
 
     def test_keys(self):
-        cache = DistributedCache(clock=lambda: 0)
+        cache = DistributedCache()
         cache.set("a", 1)
         cache.set("b", 2)
-        assert sorted(cache.keys()) == ["a", "b"]
+        keys = cache.keys()
+        assert sorted(keys) == ["a", "b"]
 
-    def test_has(self):
-        cache = DistributedCache(clock=lambda: 0)
-        cache.set("a", 1, ttl_sec=10)
-        assert cache.has("a") is True
-        cache._clock = lambda: 20
-        assert cache.has("a") is False
-
-    def test_ttl(self):
-        cache = DistributedCache(clock=lambda: 0)
-        cache.set("a", 1, ttl_sec=100)
-        assert cache.ttl("a") == 100
-        cache._clock = lambda: 50
-        assert cache.ttl("a") == 50
-
-    def test_ttl_expired(self):
-        cache = DistributedCache(clock=lambda: 0)
-        cache.set("a", 1, ttl_sec=10)
-        cache._clock = lambda: 20
-        assert cache.ttl("a") is None
-
-    def test_stats(self):
-        cache = DistributedCache(clock=lambda: 0)
+    def test_keys_cleanup_expired(self):
+        cache = DistributedCache(default_ttl=0.001)
         cache.set("a", 1)
-        cache.get("a")  # hit
-        cache.get("b")  # miss
-        stats = cache.stats()
-        assert stats["size"] == 1
-        assert stats["hits"] == 1
-        assert stats["misses"] == 1
-        assert stats["sets"] == 1
-        assert stats["hit_rate"] == 0.5
+        cache.set("b", 2)
+        time.sleep(0.01)
+        assert cache.keys() == []
 
-    def test_repr(self):
+    def test_get_stats(self):
         cache = DistributedCache()
-        assert "DistributedCache" in repr(cache)
+        cache.set("k", "v")
+        cache.get("k")
+        cache.get("k")
+        cache.get("missing")
+        stats = cache.get_stats()
+        assert stats["hits"] == 2
+        assert stats["misses"] == 1
+        assert stats["size"] == 1
+        assert stats["hit_rate"] == 2 / 3
+
+    def test_export_json(self):
+        cache = DistributedCache()
+        cache.set("k", "v")
+        j = cache.export_json()
+        assert "k" in j
+        assert "stats" in j
+
+    def test_to_dict(self):
+        cache = DistributedCache()
+        cache.set("k", "v")
+        d = cache.to_dict()
+        assert "stats" in d

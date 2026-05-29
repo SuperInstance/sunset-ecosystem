@@ -1,175 +1,185 @@
-"""Cron-like job scheduling with intervals and one-off jobs.
-
-Implements a lightweight job scheduler supporting one-off jobs, interval
-scheduling, and named recurring jobs. Used for fleet maintenance tasks,
-periodic health checks, and timed breeding operations.
-
-Usage:
-    scheduler = JobScheduler()
-    scheduler.schedule("backup", interval_sec=3600, fn=lambda: run_backup())
-    scheduler.schedule_once("alert", delay_sec=300, fn=lambda: send_alert())
-    due = scheduler.tick()  # Returns list of jobs ready to run
-"""
 from __future__ import annotations
 
+import hashlib
 import time
+from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
+
+import numpy as np
+
+
+class JobStatus(Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+@dataclass
+class Job:
+    """A scheduled job."""
+    job_id: str
+    name: str
+    func: Callable
+    args: tuple
+    kwargs: dict
+    scheduled_time: float
+    status: JobStatus = JobStatus.PENDING
+    created_at: float = field(default_factory=time.time)
+    completed_at: Optional[float] = None
+    result: Any = None
+    error: Optional[str] = None
+    priority: int = 0
+    retries: int = 0
+    max_retries: int = 3
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "job_id": self.job_id,
+            "name": self.name,
+            "scheduled_time": self.scheduled_time,
+            "status": self.status.value,
+            "created_at": self.created_at,
+            "completed_at": self.completed_at,
+            "result": self.result,
+            "error": self.error,
+            "priority": self.priority,
+            "retries": self.retries,
+        }
 
 
 class JobScheduler:
     """
-    Lightweight job scheduler.
+    Job scheduler for breeding campaigns and fleet tasks.
 
-    :param clock: Optional clock function for testing.
+    Supports priority queues, retries, and cron-like scheduling.
     """
 
-    def __init__(self, clock: Optional[callable] = None):
-        self._clock = clock or time.time
-        self._jobs: Dict[str, Dict[str, Any]] = {}
-        self._once_jobs: List[Dict[str, Any]] = []
-        self._executed: List[str] = []
-        self._skipped: List[str] = []
+    def __init__(self, fleet_node_id: str = "default"):
+        self.fleet_node_id = fleet_node_id
+        self.jobs: Dict[str, Job] = {}
+        self._queue: List[str] = []
+        self._completed: List[str] = []
+        self._failed: List[str] = []
 
-    # ------------------------------------------------------------------
-    # Scheduling
-    # ------------------------------------------------------------------
+    def schedule(self, name: str, func: Callable,
+                 args: tuple = (), kwargs: Optional[dict] = None,
+                 delay_seconds: float = 0.0, priority: int = 0) -> Job:
+        """Schedule a job to run after a delay."""
+        job_id = f"{name}_{int(time.time() * 1000000)}"
+        job = Job(
+            job_id=job_id,
+            name=name,
+            func=func,
+            args=args,
+            kwargs=kwargs or {},
+            scheduled_time=time.time() + delay_seconds,
+            priority=priority,
+        )
+        self.jobs[job_id] = job
+        self._queue.append(job_id)
+        self._sort_queue()
+        return job
 
-    def schedule(
-        self,
-        name: str,
-        interval_sec: float,
-        fn: Callable[[], Any],
-        start_at: Optional[float] = None,
-        max_runs: Optional[int] = None,
-    ) -> bool:
-        """
-        Schedule a recurring job.
+    def schedule_immediate(self, name: str, func: Callable,
+                           args: tuple = (), kwargs: Optional[dict] = None) -> Any:
+        """Schedule and immediately execute a job."""
+        job = self.schedule(name, func, args, kwargs, delay_seconds=0)
+        return self.run_job(job.job_id)
 
-        :param name: Job identifier.
-        :param interval_sec: Seconds between runs.
-        :param fn: Function to execute.
-        :param start_at: Absolute start time (now if None).
-        :param max_runs: Maximum number of executions (unlimited if None).
-        :returns: True if scheduled, False if name already exists.
-        """
-        if name in self._jobs:
-            return False
-        self._jobs[name] = {
-            "interval": interval_sec,
-            "fn": fn,
-            "next_run": start_at or self._clock(),
-            "runs": 0,
-            "max_runs": max_runs,
-        }
-        return True
+    def _sort_queue(self):
+        """Sort queue by scheduled time then priority."""
+        self._queue.sort(key=lambda jid: (
+            self.jobs[jid].scheduled_time,
+            -self.jobs[jid].priority,
+        ))
 
-    def schedule_once(
-        self,
-        name: str,
-        delay_sec: float,
-        fn: Callable[[], Any],
-    ) -> None:
-        """Schedule a one-off job."""
-        self._once_jobs.append({
-            "name": name,
-            "run_at": self._clock() + delay_sec,
-            "fn": fn,
-        })
+    def run_job(self, job_id: str) -> Any:
+        """Execute a specific job."""
+        job = self.jobs.get(job_id)
+        if not job:
+            raise ValueError(f"Job not found: {job_id}")
 
-    def unschedule(self, name: str) -> bool:
-        """Remove a recurring job."""
-        if name in self._jobs:
-            del self._jobs[name]
-            return True
-        # Check one-off jobs
-        before = len(self._once_jobs)
-        self._once_jobs = [j for j in self._once_jobs if j["name"] != name]
-        return len(self._once_jobs) < before
+        job.status = JobStatus.RUNNING
+        try:
+            result = job.func(*job.args, **job.kwargs)
+            job.result = result
+            job.status = JobStatus.COMPLETED
+            job.completed_at = time.time()
+            self._completed.append(job_id)
+            if job_id in self._queue:
+                self._queue.remove(job_id)
+            return result
+        except Exception as e:
+            job.error = str(e)
+            job.retries += 1
+            if job.retries >= job.max_retries:
+                job.status = JobStatus.FAILED
+                if job_id not in self._failed:
+                    self._failed.append(job_id)
+                if job_id in self._queue:
+                    self._queue.remove(job_id)
+                raise
+            else:
+                # Reschedule with backoff
+                job.scheduled_time = time.time() + (2 ** job.retries)
+                job.status = JobStatus.PENDING
+                self._sort_queue()
+                raise
 
-    # ------------------------------------------------------------------
-    # Execution
-    # ------------------------------------------------------------------
-
-    def tick(self) -> List[Dict[str, Any]]:
-        """
-        Check for due jobs and execute them.
-
-        :returns: List of execution results.
-        """
-        now = self._clock()
+    def run_pending(self) -> List[Dict[str, Any]]:
+        """Run all pending jobs whose scheduled time has passed."""
+        now = time.time()
         results = []
+        ready = [jid for jid in self._queue
+                 if self.jobs[jid].status == JobStatus.PENDING
+                 and self.jobs[jid].scheduled_time <= now]
 
-        # Recurring jobs
-        for name, job in list(self._jobs.items()):
-            if job["next_run"] <= now:
-                if job["max_runs"] is not None and job["runs"] >= job["max_runs"]:
-                    continue
-                try:
-                    result = job["fn"]()
-                    job["runs"] += 1
-                    job["next_run"] = now + job["interval"]
-                    self._executed.append(name)
-                    results.append({"name": name, "type": "recurring", "result": result})
-                except Exception as e:
-                    self._skipped.append(name)
-                    results.append({"name": name, "type": "recurring", "error": str(e)})
-
-        # One-off jobs
-        for job in list(self._once_jobs):
-            if job["run_at"] <= now:
-                try:
-                    result = job["fn"]()
-                    self._executed.append(job["name"])
-                    results.append({"name": job["name"], "type": "once", "result": result})
-                except Exception as e:
-                    self._skipped.append(job["name"])
-                    results.append({"name": job["name"], "type": "once", "error": str(e)})
-                self._once_jobs.remove(job)
+        for job_id in ready:
+            try:
+                result = self.run_job(job_id)
+                results.append({"job_id": job_id, "status": "completed", "result": result})
+            except Exception as e:
+                results.append({"job_id": job_id, "status": "error", "error": str(e)})
 
         return results
 
-    # ------------------------------------------------------------------
-    # Queries
-    # ------------------------------------------------------------------
+    def cancel(self, job_id: str) -> bool:
+        """Cancel a pending job."""
+        job = self.jobs.get(job_id)
+        if not job or job.status != JobStatus.PENDING:
+            return False
+        job.status = JobStatus.CANCELLED
+        if job_id in self._queue:
+            self._queue.remove(job_id)
+        return True
 
-    def due_jobs(self) -> List[str]:
-        """List jobs that are due now."""
-        now = self._clock()
-        due = []
-        for name, job in self._jobs.items():
-            if job["next_run"] <= now:
-                if job["max_runs"] is None or job["runs"] < job["max_runs"]:
-                    due.append(name)
-        for job in self._once_jobs:
-            if job["run_at"] <= now:
-                due.append(job["name"])
-        return due
+    def get_pending(self) -> List[Job]:
+        """Get all pending jobs."""
+        return [self.jobs[jid] for jid in self._queue
+                if self.jobs[jid].status == JobStatus.PENDING]
 
-    def job_names(self) -> List[str]:
-        """List all scheduled job names."""
-        return list(self._jobs.keys()) + [j["name"] for j in self._once_jobs]
+    def get_completed(self) -> List[Job]:
+        """Get all completed jobs."""
+        return [self.jobs[jid] for jid in self._completed]
 
-    def next_run(self, name: str) -> Optional[float]:
-        """Get next scheduled run time."""
-        job = self._jobs.get(name)
-        if job:
-            return job["next_run"]
-        for j in self._once_jobs:
-            if j["name"] == name:
-                return j["run_at"]
-        return None
+    def get_failed(self) -> List[Job]:
+        """Get all failed jobs."""
+        return [self.jobs[jid] for jid in self._failed]
 
-    # ------------------------------------------------------------------
-    # Stats
-    # ------------------------------------------------------------------
-
-    def stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> Dict[str, Any]:
+        """Get scheduler statistics."""
         return {
-            "recurring": len(self._jobs),
-            "one_off": len(self._once_jobs),
-            "executed": len(self._executed),
-            "skipped": len(self._skipped),
+            "total": len(self.jobs),
+            "pending": len(self.get_pending()),
+            "completed": len(self._completed),
+            "failed": len(self._failed),
         }
 
-    def __repr__(self) -> str:
-        return f"<JobScheduler recurring={len(self._jobs)} one_off={len(self._once_jobs)}>"
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "node": self.fleet_node_id,
+            "stats": self.get_stats(),
+        }
