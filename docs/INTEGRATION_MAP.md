@@ -349,5 +349,96 @@ nvcc -arch=sm_89 jepa_kernel.cu -o jepa_kernel.so --shared
 
 ---
 
-*"The map is not the territory, but without the map, the fleet is lost."*
-*- kimi1, Fleet Integrator | 2026-05-22*
+## Integration with Harnessing Systems (OpenConstruct)
+
+### Overview
+
+Sunset-ecosystem can operate as a **breeding backend** for any agent harnessing system
+(OpenConstruct, Overstory, Orkestr, etc.). The integration provides:
+
+1. **Construct Manifests** — Declarative breeding specifications
+2. **Validation Gates** — FLUX constraint checking as build gates  
+3. **Real-time Progress** — SSE/WebSocket streaming of breeding events
+4. **Multi-node Consensus** — BFT coordination for distributed breeding
+
+### Architecture
+
+```
+┌─────────────────┐     ┌─────────────────────┐     ┌──────────────────┐
+│  OpenConstruct  │────▶│  Harness Adapter    │────▶│  Pythagorean   │
+│  (Harness)      │     │  (fleet/openconstruct│     │  Breeder       │
+│                 │◀────│  _bridge.py)        │◀────│                 │
+└─────────────────┘     └─────────────────────┘     └──────────────────┘
+       │                                               │
+       │                       ┌─────────────────────┘
+       │                       │
+       │                       ▼
+       │              ┌─────────────────┐
+       │              │  Build Coordinator│
+       │              │  (BFT Consensus)  │
+       │              └─────────────────┘
+       │                       │
+       ▼                       ▼
+┌─────────────────────────────────────────────┐
+│          Progress Streamer (SSE)            │
+│     Real-time breeding event broadcast      │
+└─────────────────────────────────────────────┘
+```
+
+### Usage
+
+```python
+from fleet.openconstruct_bridge import ConstructManifest, HarnessAdapter
+
+# Define a breeding construct
+manifest = ConstructManifest(
+    name="robust-solver-v2",
+    breeder_type="pythagorean",
+    goal="Evolve robust PDE solver",
+    population_size=100,
+    generations=200,
+    constraints=["exact_arithmetic", "holonomic_consistency"],
+    qd_dimensions=[(3, 4, 5), (5, 12, 13)],
+    resources={"nodes": 4, "agents_per_node": 50},
+)
+
+# Connect and run
+adapter = HarnessAdapter(manifest)
+for event in adapter.run_breeding(task_fn, generations=100):
+    print(f"Gen {event.generation}: best={event.best_fitness:.4f}, "
+          f"coverage={event.qd_coverage:.2%}")
+
+# Harvest best
+best_genome, fitness = adapter.get_best()
+```
+
+### Breeder Types Available to Harness
+
+| Type | Module | Novelty |
+|------|--------|---------|
+| `pythagorean` | `swarm/pythagorean_evolution.py` | Exact rational arithmetic |
+| `spectral` | `swarm/spectral_breeding.py` | Fourier-domain evolution |
+| `adversarial` | `swarm/adversarial_arena.py` | Competitive co-evolution |
+| `standard` | `swarm/breeder_daemon_v2.py` | FLUX-constrained breeding |
+
+### Validation Gates
+
+| Gate | Checks |
+|------|--------|
+| `exact_arithmetic` | Genome uses Pythagorean triples |
+| `holonomic_consistency` | Constraints satisfied |
+| `spectral_real` | IFFT produces real phenotype |
+| `robustness` | Tested against adversarial conditions |
+
+### Multi-node Coordination
+
+When breeding across multiple nodes, `BuildCoordinator` ensures consensus:
+- Each node proposes generation results via PBFT
+- `2f+1` quorum required before accepting
+- Consensus best genome propagated to all nodes
+
+### Files
+
+- `fleet/openconstruct_bridge.py` — Bridge implementation
+- `tests/test_openconstruct_bridge.py` — 32 tests
+
