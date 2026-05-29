@@ -1,198 +1,165 @@
-"""state_machine.py — Finite state machine for agent and service lifecycle.
+"""FSM with transitions, guards, and entry/exit callbacks.
 
-Provides:
-1. States, transitions, and guards
-2. Entry/exit actions per state
-3. Transition triggers with arguments
-4. State history (previous states)
-5. Visualization-friendly transition table
+Implements a finite state machine with named states, guarded transitions,
+entry/exit callbacks, and event-driven state changes. Used for fleet
+entity lifecycle, breeding daemon states, and service orchestration.
 
 Usage:
     fsm = StateMachine(initial="idle")
-    fsm.add_state("idle", on_entry=notify_idle)
-    fsm.add_state("running", on_entry=start_agent)
-    fsm.add_transition("idle", "running", trigger="start", guard=can_start)
-    fsm.trigger("start", agent_id="a1")
-    assert fsm.current == "running"
+    fsm.add_state("idle", on_enter=lambda: print("entered idle"))
+    fsm.add_transition("idle", "running", event="start", guard=lambda: True)
+    fsm.trigger("start")
+    assert fsm.state() == "running"
 """
 from __future__ import annotations
 
-__all__ = [
-    "StateMachine",
-    "State",
-    "Transition",
-    "TransitionNotAllowed",
-]
-
-import logging
-from dataclasses import dataclass, field
-from typing import Any, Callable
-
-logger = logging.getLogger(__name__)
-
-
-class TransitionNotAllowed(Exception):
-    """Raised when a transition is not defined or guard rejects it."""
-
-
-@dataclass
-class State:
-    """A state with optional entry/exit actions."""
-    name: str
-    on_entry: Callable[..., Any] | None = None
-    on_exit: Callable[..., Any] | None = None
-    data: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class Transition:
-    """A transition between states."""
-    source: str
-    target: str
-    trigger: str
-    guard: Callable[..., bool] | None = None
-    action: Callable[..., Any] | None = None
+from typing import Any, Callable, Dict, List, Optional
 
 
 class StateMachine:
-    """Finite state machine for lifecycle management."""
+    """
+    Finite state machine with guarded transitions.
+    """
 
-    def __init__(self, initial: str) -> None:
-        self._initial = initial
-        self._current = initial
-        self._states: dict[str, State] = {initial: State(name=initial)}
-        self._transitions: list[Transition] = []
-        self._history: list[str] = [initial]
+    def __init__(self, initial: str = "idle"):
+        self._state = initial
+        self._states: Dict[str, Dict[str, Any]] = {}
+        self._transitions: Dict[str, List[Dict[str, Any]]] = {}  # from_state -> transitions
+        self._history: List[Dict[str, Any]] = []
         self._transition_count = 0
+
+    # ------------------------------------------------------------------
+    # State management
+    # ------------------------------------------------------------------
 
     def add_state(
         self,
         name: str,
-        on_entry: Callable[..., Any] | None = None,
-        on_exit: Callable[..., Any] | None = None,
-        data: dict[str, Any] | None = None,
+        on_enter: Optional[Callable[[], Any]] = None,
+        on_exit: Optional[Callable[[], Any]] = None,
     ) -> None:
-        """Add a state."""
-        self._states[name] = State(
-            name=name,
-            on_entry=on_entry,
-            on_exit=on_exit,
-            data=data or {},
-        )
+        """
+        Register a state with optional callbacks.
+
+        :param name: State identifier.
+        :param on_enter: Called when entering state.
+        :param on_exit: Called when leaving state.
+        """
+        self._states[name] = {
+            "on_enter": on_enter,
+            "on_exit": on_exit,
+        }
 
     def add_transition(
         self,
-        source: str,
-        target: str,
-        trigger: str,
-        guard: Callable[..., bool] | None = None,
-        action: Callable[..., Any] | None = None,
+        from_state: str,
+        to_state: str,
+        event: str,
+        guard: Optional[Callable[[], bool]] = None,
     ) -> None:
-        """Add a transition."""
-        self._transitions.append(Transition(
-            source=source,
-            target=target,
-            trigger=trigger,
-            guard=guard,
-            action=action,
-        ))
+        """
+        Register a state transition.
 
-    def trigger(self, trigger_name: str, **kwargs: Any) -> str:
-        """Trigger a transition."""
-        # Find matching transition
-        candidates = [
-            t for t in self._transitions
-            if t.source == self._current and t.trigger == trigger_name
-        ]
-        if not candidates:
-            raise TransitionNotAllowed(
-                f"No transition from '{self._current}' on trigger '{trigger_name}'"
-            )
+        :param from_state: Source state.
+        :param to_state: Destination state.
+        :param event: Trigger event name.
+        :param guard: Optional guard function (must return True).
+        """
+        if from_state not in self._transitions:
+            self._transitions[from_state] = []
+        self._transitions[from_state].append({
+            "to_state": to_state,
+            "event": event,
+            "guard": guard,
+        })
 
+    # ------------------------------------------------------------------
+    # Triggering
+    # ------------------------------------------------------------------
+
+    def trigger(self, event: str) -> bool:
+        """
+        Trigger an event to attempt a transition.
+
+        :param event: Event name.
+        :returns: True if transition succeeded.
+        """
+        candidates = self._transitions.get(self._state, [])
         for t in candidates:
-            if t.guard is not None and not t.guard(**kwargs):
-                continue
+            if t["event"] == event:
+                guard = t.get("guard")
+                if guard is not None and not guard():
+                    continue
+                # Execute transition
+                self._leave_state()
+                self._state = t["to_state"]
+                self._enter_state()
+                self._transition_count += 1
+                self._history.append({
+                    "from": self._state,
+                    "to": t["to_state"],
+                    "event": event,
+                })
+                return True
+        return False
 
-            # Execute exit action
-            old_state = self._states.get(self._current)
-            if old_state and old_state.on_exit:
-                try:
-                    old_state.on_exit(**kwargs)
-                except Exception as e:
-                    logger.warning(f"Exit action error for {self._current}: {e}")
+    def _leave_state(self) -> None:
+        callbacks = self._states.get(self._state, {})
+        on_exit = callbacks.get("on_exit")
+        if on_exit:
+            on_exit()
 
-            # Execute transition action
-            if t.action:
-                try:
-                    t.action(**kwargs)
-                except Exception as e:
-                    logger.warning(f"Transition action error: {e}")
+    def _enter_state(self) -> None:
+        callbacks = self._states.get(self._state, {})
+        on_enter = callbacks.get("on_enter")
+        if on_enter:
+            on_enter()
 
-            self._current = t.target
-            self._history.append(t.target)
-            self._transition_count += 1
+    def set_state(self, state: str) -> None:
+        """Forcefully set state (no transition checking)."""
+        self._leave_state()
+        self._state = state
+        self._enter_state()
 
-            # Execute entry action
-            new_state = self._states.get(t.target)
-            if new_state and new_state.on_entry:
-                try:
-                    new_state.on_entry(**kwargs)
-                except Exception as e:
-                    logger.warning(f"Entry action error for {t.target}: {e}")
+    # ------------------------------------------------------------------
+    # Queries
+    # ------------------------------------------------------------------
 
-            return t.target
+    def state(self) -> str:
+        return self._state
 
-        raise TransitionNotAllowed(
-            f"All guards rejected transition from '{self._current}' on '{trigger_name}'"
-        )
+    def states(self) -> List[str]:
+        return list(self._states.keys())
 
-    def can(self, trigger_name: str, **kwargs: Any) -> bool:
-        """Check if a trigger is currently valid (at least one transition + guard passes)."""
-        candidates = [
-            t for t in self._transitions
-            if t.source == self._current and t.trigger == trigger_name
-        ]
-        if not candidates:
-            return False
-        return any(t.guard is None or t.guard(**kwargs) for t in candidates)
+    def transitions_from(self, state: str) -> List[str]:
+        """List events that can trigger from a state."""
+        return [t["event"] for t in self._transitions.get(state, [])]
 
-    @property
-    def current(self) -> str:
-        return self._current
+    def can_trigger(self, event: str) -> bool:
+        """Check if event can trigger from current state."""
+        candidates = self._transitions.get(self._state, [])
+        for t in candidates:
+            if t["event"] == event:
+                guard = t.get("guard")
+                if guard is None or guard():
+                    return True
+        return False
 
-    @property
-    def history(self) -> list[str]:
+    def history(self) -> List[Dict[str, Any]]:
         return list(self._history)
 
-    def available_triggers(self) -> list[str]:
-        """List triggers valid from current state."""
-        return sorted({t.trigger for t in self._transitions if t.source == self._current})
+    # ------------------------------------------------------------------
+    # Stats
+    # ------------------------------------------------------------------
 
-    def transition_table(self) -> list[dict[str, Any]]:
-        """Get all transitions as dicts."""
-        return [
-            {
-                "source": t.source,
-                "target": t.target,
-                "trigger": t.trigger,
-                "has_guard": t.guard is not None,
-            }
-            for t in self._transitions
-        ]
-
-    def stats(self) -> dict[str, Any]:
+    def stats(self) -> Dict[str, Any]:
         return {
+            "state": self._state,
             "states": len(self._states),
-            "transitions": len(self._transitions),
-            "current": self._current,
+            "transitions": sum(len(t) for t in self._transitions.values()),
             "transition_count": self._transition_count,
+            "history_size": len(self._history),
         }
 
-    def reset(self) -> None:
-        """Reset to initial state."""
-        self._current = self._initial
-        self._history = [self._initial]
-        self._transition_count = 0
-
     def __repr__(self) -> str:
-        return f"StateMachine(current={self._current}, states={len(self._states)})"
+        return f"<StateMachine state={self._state} transitions={self.stats()['transitions']}>"
