@@ -1,4 +1,4 @@
-"""Tests for api_gateway.py — Unified API gateway.
+"""Tests for api_gateway.py — API gateway with routing and middleware.
 
 Run: python3 -m pytest tests/test_api_gateway.py -v --tb=short
 """
@@ -6,112 +6,93 @@ from __future__ import annotations
 
 import pytest
 
-from fleet.auth import FleetAuth
-from fleet.rate_limiter import TokenBucket
-from nexus.api_gateway import APIGateway, Request, Response
+from fleet.api_gateway import APIGateway
 
 
 class TestAPIGateway:
     def test_create(self):
         gw = APIGateway()
-        assert gw._routes == {}
+        assert gw.stats()["routes"] == 0
+        assert gw.stats()["middleware"] == 0
 
-    def test_add_route(self):
+    def test_route(self):
         gw = APIGateway()
-        gw.add_route("/test", lambda r: Response(200, body="ok"), methods=["GET"])
-        assert "/test" in gw._routes
+        gw.route("/users", "users-service")
+        assert "/users" in gw.routes()
+        assert gw.get_target("/users") == "users-service"
 
-    def test_handle_404(self):
+    def test_remove_route(self):
         gw = APIGateway()
-        resp = gw.handle_request(Request(path="/missing"))
-        assert resp.status == 404
+        gw.route("/users", "users-service")
+        assert gw.remove_route("/users") is True
+        assert gw.remove_route("/missing") is False
 
-    def test_handle_405(self):
+    def test_prefix_routing(self):
         gw = APIGateway()
-        gw.add_route("/test", lambda r: Response(200), methods=["POST"])
-        resp = gw.handle_request(Request(path="/test", method="GET"))
-        assert resp.status == 405
+        gw.route("/api/v1", "api-service")
+        assert gw.get_target("/api/v1/users") == "api-service"
 
-    def test_handle_success(self):
+    def test_exact_over_prefix(self):
         gw = APIGateway()
-        gw.add_route("/test", lambda r: Response(200, body={"ok": True}), methods=["GET"])
-        resp = gw.handle_request(Request(path="/test"))
-        assert resp.status == 200
-        assert resp.body == {"ok": True}
-
-    def test_handle_with_auth(self):
-        auth = FleetAuth(secret_key="test")
-        gw = APIGateway(auth=auth)
-        gw.add_route("/protected", lambda r: Response(200, body={"user": r.client_id}), methods=["GET"], require_auth=True)
-
-        # No auth
-        resp = gw.handle_request(Request(path="/protected"))
-        assert resp.status == 401
-
-        # Valid auth
-        token = auth.create_token("user-1", roles=["viewer"])
-        resp = gw.handle_request(Request(
-            path="/protected",
-            headers={"Authorization": f"Bearer {token}"},
-        ))
-        assert resp.status == 200
-        assert resp.body["user"] == "user-1"
-
-    def test_handle_invalid_auth(self):
-        auth = FleetAuth(secret_key="test")
-        gw = APIGateway(auth=auth)
-        gw.add_route("/protected", lambda r: Response(200), methods=["GET"], require_auth=True)
-        resp = gw.handle_request(Request(
-            path="/protected",
-            headers={"Authorization": "Bearer bad-token"},
-        ))
-        assert resp.status == 401
-
-    def test_rate_limiting(self):
-        rl = TokenBucket(rate=1.0, burst=1)
-        gw = APIGateway(rate_limiter=rl)
-        gw.add_route("/api", lambda r: Response(200), methods=["GET"], rate_limit=True)
-        resp = gw.handle_request(Request(path="/api", client_id="a"))
-        assert resp.status == 200
-        # Second request should be rate limited
-        resp = gw.handle_request(Request(path="/api", client_id="a"))
-        assert resp.status == 429
-
-    def test_rate_limiting_disabled(self):
-        rl = TokenBucket(rate=1.0, burst=1)
-        gw = APIGateway(rate_limiter=rl)
-        gw.add_route("/api", lambda r: Response(200), methods=["GET"], rate_limit=False)
-        resp1 = gw.handle_request(Request(path="/api", client_id="a"))
-        resp2 = gw.handle_request(Request(path="/api", client_id="a"))
-        assert resp1.status == 200
-        assert resp2.status == 200
-
-    def test_handler_error(self):
-        gw = APIGateway()
-        gw.add_route("/error", lambda r: (_ for _ in ()).throw(ValueError("boom")), methods=["GET"])
-        resp = gw.handle_request(Request(path="/error"))
-        assert resp.status == 500
-        assert "boom" in resp.body["error"]
+        gw.route("/api", "api-service")
+        gw.route("/api/v1", "v1-service")
+        assert gw.get_target("/api/v1/users") == "v1-service"
 
     def test_middleware(self):
         gw = APIGateway()
-        gw.add_middleware(lambda r: r if r.path != "/block" else Response(403, body={"error": "blocked"}))
-        gw.add_route("/block", lambda r: Response(200), methods=["GET"])
-        gw.add_route("/allow", lambda r: Response(200), methods=["GET"])
-        resp1 = gw.handle_request(Request(path="/block"))
-        resp2 = gw.handle_request(Request(path="/allow"))
-        assert resp1.status == 403
-        assert resp2.status == 200
+        gw.add_middleware("auth", lambda req: req.get("token") == "valid")
+        assert "auth" in gw.middleware_names()
+
+    def test_middleware_priority(self):
+        gw = APIGateway()
+        order = []
+        gw.add_middleware("b", lambda req: (order.append("b") or True), priority=1)
+        gw.add_middleware("a", lambda req: (order.append("a") or True), priority=0)
+        gw.process({"path": "/"})
+        assert order == ["a", "b"]
+
+    def test_middleware_rejection(self):
+        gw = APIGateway()
+        gw.add_middleware("auth", lambda req: False)
+        result = gw.process({"path": "/users"})
+        assert result["status"] == "rejected"
+        assert result["reason"] == "middleware:auth"
+
+    def test_remove_middleware(self):
+        gw = APIGateway()
+        gw.add_middleware("auth", lambda req: True)
+        assert gw.remove_middleware("auth") is True
+        assert gw.remove_middleware("missing") is False
+
+    def test_process_no_route(self):
+        gw = APIGateway()
+        result = gw.process({"path": "/missing"})
+        assert result["status"] == "not_found"
+
+    def test_process_with_handler(self):
+        gw = APIGateway()
+        gw.route("/users", "users")
+        gw.register_handler("users", lambda req: {"users": [1, 2, 3]})
+        result = gw.process({"path": "/users"})
+        assert result["status"] == "ok"
+        assert result["result"] == {"users": [1, 2, 3]}
+
+    def test_process_handler_error(self):
+        gw = APIGateway()
+        gw.route("/users", "users")
+        gw.register_handler("users", lambda req: 1 / 0)
+        result = gw.process({"path": "/users"})
+        assert result["status"] == "error"
 
     def test_stats(self):
         gw = APIGateway()
-        gw.add_route("/test", lambda r: Response(200), methods=["GET"])
-        gw.handle_request(Request(path="/test"))
-        gw.handle_request(Request(path="/missing"))
+        gw.route("/a", "svc-a")
+        gw.add_middleware("auth", lambda req: True)
+        gw.process({"path": "/a"})
         stats = gw.stats()
-        assert stats["requests"] == 2
-        assert stats["errors"] == 1
-        assert stats["error_rate"] == 0.5
+        assert stats["routes"] == 1
+        assert stats["middleware"] == 1
+        assert stats["requests"] == 1
 
     def test_repr(self):
         gw = APIGateway()

@@ -1,167 +1,147 @@
-"""health_aggregator.py — Aggregate health status across fleet nodes.
+"""Health status aggregation from multiple sources.
 
-Provides:
-1. Collect health reports from individual nodes
-2. Fleet-wide health summary (healthy, degraded, critical)
-3. Per-subsystem health tracking
-4. Alert on fleet-wide degradation
-5. Health trend analysis
+Collects health signals from multiple services or nodes, computes
+aggregate health states, and supports customizable aggregation strategies
+(healthiest, unhealthiest, threshold-based, quorum). Used for fleet-wide
+health dashboards, load balancer health decisions, and alerting.
 
 Usage:
-    ha = HealthAggregator()
-    ha.report("node-1", {"cpu": 0.8, "memory": 0.6, "disk": 0.9}, status="healthy")
-    ha.report("node-2", {"cpu": 0.95, "memory": 0.98}, status="critical")
-    summary = ha.summary()
-    # summary.status, summary.healthy_count, summary.critical_count
+    ha = HealthAggregator(strategy="quorum", threshold=0.5)
+    ha.report("svc-a", "healthy")
+    ha.report("svc-b", "degraded")
+    ha.report("svc-c", "healthy")
+    status = ha.status()  # "healthy" (2/3 meet threshold)
 """
 from __future__ import annotations
 
-__all__ = [
-    "HealthAggregator",
-    "HealthReport",
-    "FleetHealthSummary",
-]
-
-import logging
-import time
-from dataclasses import dataclass, field
-from typing import Any
-
-logger = logging.getLogger(__name__)
-
-
-@dataclass
-class HealthReport:
-    """Health report from a single node."""
-    node_id: str
-    status: str  # "healthy", "degraded", "critical"
-    metrics: dict[str, float]
-    timestamp: float
-    message: str = ""
-
-
-@dataclass
-class FleetHealthSummary:
-    """Aggregated fleet health summary."""
-    status: str
-    total_nodes: int
-    healthy_count: int
-    degraded_count: int
-    critical_count: int
-    avg_metrics: dict[str, float] = field(default_factory=dict)
-    worst_nodes: list[str] = field(default_factory=list)
+from typing import Any, Callable, Dict, List, Optional
 
 
 class HealthAggregator:
-    """Aggregate health across fleet nodes."""
+    """
+    Aggregate health from multiple sources.
 
-    def __init__(self, max_age: float = 300.0) -> None:
-        self._max_age = max_age
-        self._reports: dict[str, HealthReport] = {}
+    :param strategy: Aggregation strategy name.
+    :param threshold: Threshold for threshold/quorum strategies.
+    :param health_levels: Ordered health levels (worst to best).
+    """
 
-    def report(
+    HEALTH_LEVELS = ["critical", "unhealthy", "degraded", "healthy", "excellent"]
+
+    def __init__(
         self,
-        node_id: str,
-        metrics: dict[str, float],
-        status: str = "healthy",
-        message: str = "",
-    ) -> None:
-        """Submit a health report from a node."""
-        self._reports[node_id] = HealthReport(
-            node_id=node_id,
-            status=status,
-            metrics=metrics,
-            timestamp=time.time(),
-            message=message,
-        )
+        strategy: str = "unhealthiest",
+        threshold: float = 0.5,
+        health_levels: Optional[List[str]] = None,
+        custom_strategy: Optional[Callable[[List[str]], str]] = None,
+    ):
+        self._strategy = strategy
+        self._threshold = threshold
+        self._health_levels = health_levels or list(self.HEALTH_LEVELS)
+        self._custom_strategy = custom_strategy
+        self._reports: Dict[str, str] = {}
+        self._metadata: Dict[str, Dict[str, Any]] = {}
 
-    def get(self, node_id: str) -> HealthReport | None:
-        """Get the latest report for a node."""
-        return self._reports.get(node_id)
+    # ------------------------------------------------------------------
+    # Reporting
+    # ------------------------------------------------------------------
 
-    def summary(self) -> FleetHealthSummary:
-        """Generate fleet-wide health summary."""
-        now = time.time()
-        valid_reports = [
-            r for r in self._reports.values()
-            if now - r.timestamp <= self._max_age
-        ]
+    def report(self, source: str, health: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Report health status from a source.
 
-        if not valid_reports:
-            return FleetHealthSummary(
-                status="unknown",
-                total_nodes=0,
-                healthy_count=0,
-                degraded_count=0,
-                critical_count=0,
-            )
+        :param source: Source identifier.
+        :param health: Health level string.
+        :param metadata: Additional context.
+        """
+        self._reports[source] = health
+        if metadata:
+            self._metadata[source] = metadata
 
-        healthy = sum(1 for r in valid_reports if r.status == "healthy")
-        degraded = sum(1 for r in valid_reports if r.status == "degraded")
-        critical = sum(1 for r in valid_reports if r.status == "critical")
-        total = len(valid_reports)
-
-        # Overall status: critical if any critical, degraded if >20% degraded
-        if critical > 0:
-            overall = "critical"
-        elif degraded / total > 0.2:
-            overall = "degraded"
-        else:
-            overall = "healthy"
-
-        # Average metrics
-        all_metrics: dict[str, list[float]] = {}
-        for r in valid_reports:
-            for k, v in r.metrics.items():
-                all_metrics.setdefault(k, []).append(v)
-        avg_metrics = {k: sum(v) / len(v) for k, v in all_metrics.items()}
-
-        # Worst nodes (critical first, then highest load metric)
-        worst = sorted(
-            valid_reports,
-            key=lambda r: (
-                0 if r.status == "critical" else (1 if r.status == "degraded" else 2),
-                -max(r.metrics.values()) if r.metrics else 0,
-            ),
-        )
-
-        return FleetHealthSummary(
-            status=overall,
-            total_nodes=total,
-            healthy_count=healthy,
-            degraded_count=degraded,
-            critical_count=critical,
-            avg_metrics=avg_metrics,
-            worst_nodes=[r.node_id for r in worst[:3]],
-        )
-
-    def nodes_by_status(self, status: str) -> list[str]:
-        """Get node IDs with a specific status."""
-        now = time.time()
-        return [
-            r.node_id for r in self._reports.values()
-            if r.status == status and now - r.timestamp <= self._max_age
-        ]
-
-    def stale_nodes(self) -> list[str]:
-        """Get nodes with expired reports."""
-        now = time.time()
-        return [
-            r.node_id for r in self._reports.values()
-            if now - r.timestamp > self._max_age
-        ]
-
-    def all_nodes(self) -> list[str]:
-        """Get all known node IDs."""
-        return list(self._reports.keys())
+    def remove(self, source: str) -> bool:
+        """Remove a source's report."""
+        if source in self._reports:
+            del self._reports[source]
+            self._metadata.pop(source, None)
+            return True
+        return False
 
     def clear(self) -> None:
-        """Clear all health reports."""
+        """Clear all reports."""
         self._reports.clear()
+        self._metadata.clear()
 
-    def report_count(self) -> int:
-        """Total number of reports (including stale)."""
-        return len(self._reports)
+    # ------------------------------------------------------------------
+    # Aggregation
+    # ------------------------------------------------------------------
+
+    def status(self) -> str:
+        """
+        Compute aggregate health status.
+
+        :returns: Aggregate health string.
+        """
+        if not self._reports:
+            return "unknown"
+
+        if self._custom_strategy:
+            return self._custom_strategy(list(self._reports.values()))
+
+        levels = self._health_levels
+        values = [self._level_index(h) for h in self._reports.values()]
+
+        if self._strategy == "healthiest":
+            return levels[max(values)]
+        if self._strategy == "unhealthiest":
+            return levels[min(values)]
+        if self._strategy == "average":
+            avg = sum(values) / len(values)
+            return levels[int(avg)]
+        if self._strategy == "threshold":
+            healthy_count = sum(1 for v in values if v >= self._threshold * len(levels))
+            ratio = healthy_count / len(values)
+            return "healthy" if ratio >= self._threshold else "unhealthy"
+        if self._strategy == "quorum":
+            healthy_count = sum(1 for v in values if v >= levels.index("healthy"))
+            return "healthy" if healthy_count / len(values) >= self._threshold else "unhealthy"
+
+        return "unknown"
+
+    def _level_index(self, health: str) -> int:
+        try:
+            return self._health_levels.index(health)
+        except ValueError:
+            return 0  # Unknown = worst
+
+    # ------------------------------------------------------------------
+    # Queries
+    # ------------------------------------------------------------------
+
+    def sources(self) -> List[str]:
+        return list(self._reports.keys())
+
+    def get(self, source: str) -> Optional[str]:
+        return self._reports.get(source)
+
+    def counts(self) -> Dict[str, int]:
+        """Count of each health level."""
+        counts: Dict[str, int] = {}
+        for h in self._reports.values():
+            counts[h] = counts.get(h, 0) + 1
+        return counts
+
+    # ------------------------------------------------------------------
+    # Stats
+    # ------------------------------------------------------------------
+
+    def stats(self) -> Dict[str, Any]:
+        return {
+            "sources": len(self._reports),
+            "strategy": self._strategy,
+            "threshold": self._threshold,
+            "aggregate_status": self.status(),
+            "counts": self.counts(),
+        }
 
     def __repr__(self) -> str:
-        return f"HealthAggregator(nodes={len(self._reports)})"
+        return f"<HealthAggregator sources={len(self._reports)} status={self.status()}>"

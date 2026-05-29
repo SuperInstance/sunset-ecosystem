@@ -1,126 +1,113 @@
-"""Tests for health_aggregator.py — Aggregate health across fleet nodes.
+"""Tests for health_aggregator.py — Health status aggregation.
 
 Run: python3 -m pytest tests/test_health_aggregator.py -v --tb=short
 """
 from __future__ import annotations
 
-import time
-
 import pytest
 
-from fleet.health_aggregator import HealthAggregator, FleetHealthSummary
+from fleet.health_aggregator import HealthAggregator
 
 
 class TestHealthAggregator:
     def test_create(self):
         ha = HealthAggregator()
-        assert ha.report_count() == 0
+        assert ha.status() == "unknown"
 
     def test_report(self):
         ha = HealthAggregator()
-        ha.report("node-1", {"cpu": 0.5, "memory": 0.6}, status="healthy")
-        assert ha.report_count() == 1
+        ha.report("svc-a", "healthy")
+        assert ha.get("svc-a") == "healthy"
+        assert ha.sources() == ["svc-a"]
 
-    def test_get(self):
+    def test_remove(self):
         ha = HealthAggregator()
-        ha.report("node-1", {"cpu": 0.5}, status="healthy")
-        report = ha.get("node-1")
-        assert report is not None
-        assert report.node_id == "node-1"
-        assert report.status == "healthy"
-
-    def test_summary_healthy(self):
-        ha = HealthAggregator()
-        ha.report("a", {"cpu": 0.5}, status="healthy")
-        ha.report("b", {"cpu": 0.4}, status="healthy")
-        summary = ha.summary()
-        assert summary.status == "healthy"
-        assert summary.total_nodes == 2
-        assert summary.healthy_count == 2
-        assert summary.critical_count == 0
-
-    def test_summary_degraded(self):
-        ha = HealthAggregator()
-        ha.report("a", {"cpu": 0.5}, status="healthy")
-        ha.report("b", {"cpu": 0.9}, status="degraded")
-        summary = ha.summary()
-        assert summary.status == "degraded"  # 1/2 degraded = 50% > 20%
-        assert summary.degraded_count == 1
-
-    def test_summary_critical(self):
-        ha = HealthAggregator()
-        ha.report("a", {"cpu": 0.5}, status="healthy")
-        ha.report("b", {"cpu": 0.9}, status="critical")
-        summary = ha.summary()
-        assert summary.status == "critical"
-        assert summary.critical_count == 1
-
-    def test_summary_degraded_minority(self):
-        ha = HealthAggregator()
-        for i in range(9):
-            ha.report(f"node-{i}", {"cpu": 0.5}, status="healthy")
-        ha.report("node-9", {"cpu": 0.9}, status="degraded")
-        # 1/10 degraded = 10% <= 20%, so overall is healthy
-        summary = ha.summary()
-        assert summary.status == "healthy"
-        assert summary.degraded_count == 1
-
-    def test_summary_many_degraded(self):
-        ha = HealthAggregator()
-        for i in range(5):
-            ha.report(f"node-{i}", {"cpu": 0.9}, status="degraded")
-        ha.report("node-5", {"cpu": 0.5}, status="healthy")
-        summary = ha.summary()
-        # 5/6 degraded = 83% > 20% -> degraded
-        assert summary.status == "degraded"
-
-    def test_avg_metrics(self):
-        ha = HealthAggregator()
-        ha.report("a", {"cpu": 0.2, "memory": 0.4}, status="healthy")
-        ha.report("b", {"cpu": 0.4, "memory": 0.6}, status="healthy")
-        summary = ha.summary()
-        assert summary.avg_metrics["cpu"] == pytest.approx(0.3)
-        assert summary.avg_metrics["memory"] == pytest.approx(0.5)
-
-    def test_worst_nodes(self):
-        ha = HealthAggregator()
-        ha.report("a", {"cpu": 0.2}, status="healthy")
-        ha.report("b", {"cpu": 0.9}, status="critical")
-        ha.report("c", {"cpu": 0.5}, status="degraded")
-        summary = ha.summary()
-        assert summary.worst_nodes[0] == "b"
-
-    def test_nodes_by_status(self):
-        ha = HealthAggregator()
-        ha.report("a", {"cpu": 0.5}, status="healthy")
-        ha.report("b", {"cpu": 0.9}, status="critical")
-        assert ha.nodes_by_status("healthy") == ["a"]
-        assert ha.nodes_by_status("critical") == ["b"]
-
-    def test_stale_nodes(self):
-        ha = HealthAggregator(max_age=0.1)
-        ha.report("a", {"cpu": 0.5}, status="healthy")
-        time.sleep(0.15)
-        assert ha.stale_nodes() == ["a"]
-
-    def test_stale_excluded_from_summary(self):
-        ha = HealthAggregator(max_age=0.1)
-        ha.report("a", {"cpu": 0.5}, status="healthy")
-        time.sleep(0.15)
-        summary = ha.summary()
-        assert summary.total_nodes == 0
-
-    def test_all_nodes(self):
-        ha = HealthAggregator()
-        ha.report("a", {"cpu": 0.5}, status="healthy")
-        ha.report("b", {"cpu": 0.5}, status="healthy")
-        assert sorted(ha.all_nodes()) == ["a", "b"]
+        ha.report("svc-a", "healthy")
+        assert ha.remove("svc-a") is True
+        assert ha.status() == "unknown"
+        assert ha.remove("missing") is False
 
     def test_clear(self):
         ha = HealthAggregator()
-        ha.report("a", {"cpu": 0.5}, status="healthy")
+        ha.report("svc-a", "healthy")
+        ha.report("svc-b", "healthy")
         ha.clear()
-        assert ha.report_count() == 0
+        assert ha.status() == "unknown"
+
+    def test_unhealthiest_strategy(self):
+        ha = HealthAggregator(strategy="unhealthiest")
+        ha.report("svc-a", "healthy")
+        ha.report("svc-b", "degraded")
+        ha.report("svc-c", "healthy")
+        assert ha.status() == "degraded"
+
+    def test_healthiest_strategy(self):
+        ha = HealthAggregator(strategy="healthiest")
+        ha.report("svc-a", "healthy")
+        ha.report("svc-b", "degraded")
+        ha.report("svc-c", "critical")
+        assert ha.status() == "healthy"
+
+    def test_average_strategy(self):
+        ha = HealthAggregator(strategy="average")
+        # critical=0, unhealthy=1, degraded=2, healthy=3, excellent=4
+        ha.report("a", "degraded")  # 2
+        ha.report("b", "healthy")   # 3
+        assert ha.status() == "degraded"  # avg = 2.5 -> int -> 2
+
+    def test_threshold_strategy(self):
+        ha = HealthAggregator(strategy="threshold", threshold=0.5)
+        ha.report("a", "healthy")
+        ha.report("b", "healthy")
+        ha.report("c", "unhealthy")
+        assert ha.status() == "healthy"
+
+    def test_threshold_strategy_fail(self):
+        ha = HealthAggregator(strategy="threshold", threshold=0.6)
+        ha.report("a", "healthy")
+        ha.report("b", "unhealthy")
+        ha.report("c", "unhealthy")
+        assert ha.status() == "unhealthy"
+
+    def test_quorum_strategy(self):
+        ha = HealthAggregator(strategy="quorum", threshold=0.5)
+        ha.report("a", "healthy")
+        ha.report("b", "healthy")
+        ha.report("c", "degraded")
+        assert ha.status() == "healthy"
+
+    def test_quorum_strategy_fail(self):
+        ha = HealthAggregator(strategy="quorum", threshold=0.7)
+        ha.report("a", "healthy")
+        ha.report("b", "degraded")
+        ha.report("c", "unhealthy")
+        assert ha.status() == "unhealthy"
+
+    def test_custom_strategy(self):
+        ha = HealthAggregator(custom_strategy=lambda values: "custom")
+        ha.report("a", "healthy")
+        assert ha.status() == "custom"
+
+    def test_unknown_health_level(self):
+        ha = HealthAggregator(strategy="healthiest")
+        ha.report("a", "unknown-level")
+        assert ha.status() == "critical"  # Unknown maps to 0
+
+    def test_counts(self):
+        ha = HealthAggregator()
+        ha.report("a", "healthy")
+        ha.report("b", "degraded")
+        ha.report("c", "healthy")
+        assert ha.counts() == {"healthy": 2, "degraded": 1}
+
+    def test_stats(self):
+        ha = HealthAggregator(strategy="quorum", threshold=0.5)
+        ha.report("a", "healthy")
+        ha.report("b", "healthy")
+        stats = ha.stats()
+        assert stats["sources"] == 2
+        assert stats["strategy"] == "quorum"
+        assert stats["aggregate_status"] == "healthy"
 
     def test_repr(self):
         ha = HealthAggregator()
