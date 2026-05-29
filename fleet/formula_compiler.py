@@ -306,14 +306,26 @@ class FleetFormulaEnv:
     def _average(self, *values: float) -> float:
         if not values:
             return 0.0
+        if len(values) == 1 and isinstance(values[0], (list, tuple)):
+            values = values[0]
+        if not values:
+            return 0.0
         return sum(values) / len(values)
 
     def _max(self, *values: float) -> float:
         if not values:
             return 0.0
+        if len(values) == 1 and isinstance(values[0], (list, tuple)):
+            values = values[0]
+        if not values:
+            return 0.0
         return max(values)
 
     def _min(self, *values: float) -> float:
+        if not values:
+            return 0.0
+        if len(values) == 1 and isinstance(values[0], (list, tuple)):
+            values = values[0]
         if not values:
             return 0.0
         return min(values)
@@ -342,6 +354,7 @@ class FormulaCompiler:
 
     def __init__(self, env: FleetFormulaEnv):
         self.env = env
+        self.cell_resolver: Callable[[str], Any] | None = None
 
     def compile(self, source: str) -> Callable[[], Any]:
         parser = FormulaParser(source)
@@ -360,6 +373,10 @@ class FormulaCompiler:
             # Look up as a constant or function with no args
             try:
                 return self.env.lookup(node.name)()
+            except NameError:
+                if self.cell_resolver is not None:
+                    return self.cell_resolver(node.name)
+                return node.name
             except TypeError:
                 return node.name
         if isinstance(node, CallNode):
@@ -373,6 +390,11 @@ class FormulaCompiler:
         raise TypeError(f"Unknown node type: {type(node)}")
 
     def _eval_infix(self, op: str, left: Any, right: Any) -> Any:
+        # Propagate error tokens
+        if isinstance(left, str) and left.startswith("#"):
+            return left
+        if isinstance(right, str) and right.startswith("#"):
+            return right
         ops: Dict[str, Callable[[Any, Any], Any]] = {
             "+": lambda a, b: a + b,
             "-": lambda a, b: a - b,
