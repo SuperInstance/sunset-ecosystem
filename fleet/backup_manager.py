@@ -1,122 +1,99 @@
-"""Backup scheduling and rotation manager.
-
-Manages backup schedules, retention policies, and rotation. Used
-for fleet data protection, point-in-time recovery, and compliance.
-
-Usage:
-    mgr = BackupManager()
-    mgr.add_schedule("daily", interval_sec=86400, retention=7)
-    mgr.add_schedule("weekly", interval_sec=604800, retention=4)
-    due = mgr.due_schedules()
-    mgr.record_backup("daily", success=True)
-"""
 from __future__ import annotations
 
+import json
 import time
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
+import numpy as np
+
+
+@dataclass
+class Snapshot:
+    """A snapshot of fleet state."""
+    snapshot_id: str
+    timestamp: float
+    data: Dict[str, Any]
+    tags: Dict[str, str] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "snapshot_id": self.snapshot_id,
+            "timestamp": self.timestamp,
+            "data": self.data,
+            "tags": self.tags,
+        }
 
 
 class BackupManager:
     """
-    Backup schedule and rotation manager.
+    Backup and restore for fleet state.
 
-    :param clock: Optional clock function for testing.
+    Takes snapshots of key fleet state and supports restore.
     """
 
-    def __init__(self, clock: Optional[callable] = None):
-        self._schedules: Dict[str, Dict[str, Any]] = {}
-        self._backups: Dict[str, List[Dict[str, Any]]] = {}
-        self._clock = clock or time.time
+    def __init__(self, fleet_node_id: str = "default", max_snapshots: int = 50):
+        self.fleet_node_id = fleet_node_id
+        self._snapshots: List[Snapshot] = []
+        self._max_snapshots = max_snapshots
 
-    # ------------------------------------------------------------------
-    # Schedule management
-    # ------------------------------------------------------------------
+    def snapshot(self, data: Dict[str, Any], tags: Optional[Dict[str, str]] = None) -> Snapshot:
+        """Take a snapshot of fleet state."""
+        snap = Snapshot(
+            snapshot_id=f"snap_{int(time.time() * 1000000)}",
+            timestamp=time.time(),
+            data=data,
+            tags=tags or {},
+        )
+        self._snapshots.append(snap)
+        if len(self._snapshots) > self._max_snapshots:
+            self._snapshots = self._snapshots[-self._max_snapshots:]
+        return snap
 
-    def add_schedule(
-        self,
-        name: str,
-        interval_sec: float,
-        retention: int,
-    ) -> None:
-        """Register a backup schedule."""
-        self._schedules[name] = {
-            "interval_sec": interval_sec,
-            "retention": retention,
-            "last_run": 0,
-        }
-        if name not in self._backups:
-            self._backups[name] = []
+    def restore(self, snapshot_id: str) -> Optional[Dict[str, Any]]:
+        """Restore state from a snapshot."""
+        for snap in self._snapshots:
+            if snap.snapshot_id == snapshot_id:
+                return snap.data
+        return None
 
-    def remove_schedule(self, name: str) -> bool:
-        """Remove a schedule."""
-        if name not in self._schedules:
-            return False
-        del self._schedules[name]
-        del self._backups[name]
-        return True
+    def get_snapshots(self, tag_key: Optional[str] = None,
+                      tag_value: Optional[str] = None) -> List[Snapshot]:
+        """Get snapshots with optional tag filtering."""
+        snapshots = self._snapshots
+        if tag_key is not None:
+            snapshots = [s for s in snapshots if s.tags.get(tag_key) == tag_value]
+        return snapshots
 
-    # ------------------------------------------------------------------
-    # Backup tracking
-    # ------------------------------------------------------------------
+    def get_latest(self) -> Optional[Snapshot]:
+        """Get the most recent snapshot."""
+        if not self._snapshots:
+            return None
+        return self._snapshots[-1]
 
-    def record_backup(self, name: str, success: bool, metadata: Optional[Dict[str, Any]] = None) -> None:
-        """Record a completed backup."""
-        if name not in self._schedules:
-            raise ValueError(f"Unknown schedule: {name}")
-        self._backups[name].append({
-            "timestamp": self._clock(),
-            "success": success,
-            "metadata": metadata or {},
-        })
-        self._schedules[name]["last_run"] = self._clock()
-        self._rotate(name)
+    def delete(self, snapshot_id: str) -> bool:
+        """Delete a snapshot."""
+        for i, snap in enumerate(self._snapshots):
+            if snap.snapshot_id == snapshot_id:
+                del self._snapshots[i]
+                return True
+        return False
 
-    def _rotate(self, name: str) -> None:
-        """Enforce retention policy."""
-        retention = self._schedules[name]["retention"]
-        backups = self._backups[name]
-        if len(backups) > retention:
-            self._backups[name] = backups[-retention:]
-
-    # ------------------------------------------------------------------
-    # Queries
-    # ------------------------------------------------------------------
-
-    def due_schedules(self) -> List[str]:
-        """Get schedules that are due for backup."""
-        now = self._clock()
-        due: List[str] = []
-        for name, schedule in self._schedules.items():
-            if now - schedule["last_run"] >= schedule["interval_sec"]:
-                due.append(name)
-        return due
-
-    def last_backup(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get most recent backup for a schedule."""
-        backups = self._backups.get(name, [])
-        return backups[-1] if backups else None
-
-    def backup_history(self, name: str) -> List[Dict[str, Any]]:
-        """Get all retained backups for a schedule."""
-        return list(self._backups.get(name, []))
-
-    def success_rate(self, name: str) -> float:
-        """Calculate success rate for a schedule."""
-        backups = self._backups.get(name, [])
-        if not backups:
-            return 0.0
-        successes = sum(1 for b in backups if b["success"])
-        return successes / len(backups)
-
-    # ------------------------------------------------------------------
-    # Stats
-    # ------------------------------------------------------------------
-
-    def stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> Dict[str, Any]:
+        """Get backup statistics."""
         return {
-            "schedules": len(self._schedules),
-            "total_backups": sum(len(b) for b in self._backups.values()),
+            "total_snapshots": len(self._snapshots),
+            "latest_timestamp": self._snapshots[-1].timestamp if self._snapshots else None,
         }
 
-    def __repr__(self) -> str:
-        return f"<BackupManager schedules={len(self._schedules)}>"
+    def export_json(self) -> str:
+        """Export all snapshots as JSON."""
+        return json.dumps({
+            "node": self.fleet_node_id,
+            "snapshots": [s.to_dict() for s in self._snapshots],
+        }, indent=2)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "stats": self.get_stats(),
+        }
