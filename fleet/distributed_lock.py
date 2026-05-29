@@ -1,122 +1,150 @@
-"""Distributed lock with TTL and renewal.
-
-Implements a distributed mutual exclusion lock with time-to-live and
-automatic renewal. Used for fleet-wide resource coordination, singleton
-tasks, and critical section protection.
-
-Usage:
-    lock = DistributedLock(lock_id="task-1", ttl_sec=30)
-    lock.acquire("node-1")
-    lock.renew()  # Reset TTL
-    lock.release()
-"""
 from __future__ import annotations
 
+import hashlib
+import threading
 import time
-from typing import Any, Dict, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+
+
+@dataclass
+class LockToken:
+    """A distributed lock token."""
+    resource: str
+    holder: str
+    timestamp: float
+    ttl: float  # Time to live in seconds
+    token_id: str
+
+    def is_expired(self) -> bool:
+        return time.time() - self.timestamp > self.ttl
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "resource": self.resource,
+            "holder": self.holder,
+            "timestamp": self.timestamp,
+            "ttl": self.ttl,
+            "token_id": self.token_id,
+        }
 
 
 class DistributedLock:
     """
-    Distributed lock with TTL.
+    Distributed lock service for fleet coordination.
 
-    :param lock_id: Unique lock identifier.
-    :param ttl_sec: Lock time-to-live in seconds.
-    :param clock: Optional clock function for testing.
+    Provides exclusive access to resources across fleet nodes.
+    Locks have TTL and auto-expire if not renewed.
     """
 
-    def __init__(
-        self,
-        lock_id: str,
-        ttl_sec: float = 30.0,
-        clock: Optional[callable] = None,
-    ):
-        self.lock_id = lock_id
-        self.ttl_sec = ttl_sec
-        self._clock = clock or time.time
-        self._owner: Optional[str] = None
-        self._acquired_at: float = 0.0
+    def __init__(self, fleet_node_id: str = "default", default_ttl: float = 30.0):
+        self.fleet_node_id = fleet_node_id
+        self.default_ttl = default_ttl
+        self._locks: Dict[str, LockToken] = {}
+        self._lock = threading.Lock()
+        self._stats: Dict[str, int] = {"acquired": 0, "released": 0, "expired": 0, "failed": 0}
 
-    # ------------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------------
-
-    def acquire(self, owner: str, blocking: bool = False) -> bool:
+    def acquire(self, resource: str, holder: Optional[str] = None,
+                ttl: Optional[float] = None) -> Optional[LockToken]:
         """
-        Acquire the lock.
-
-        :param owner: Lock owner identifier.
-        :param blocking: Wait for lock (not implemented, returns False if held).
-        :returns: True if acquired.
+        Acquire a lock on a resource.
+        Returns token if successful, None if already locked.
         """
-        if self.is_locked() and self._owner != owner:
-            return False
-        self._owner = owner
-        self._acquired_at = self._clock()
-        return True
+        holder = holder or self.fleet_node_id
+        ttl = ttl or self.default_ttl
 
-    def release(self, owner: str) -> bool:
+        with self._lock:
+            # Check if lock exists and is not expired
+            if resource in self._locks:
+                existing = self._locks[resource]
+                if not existing.is_expired():
+                    self._stats["failed"] += 1
+                    return None
+                else:
+                    self._stats["expired"] += 1
+
+            token = LockToken(
+                resource=resource,
+                holder=holder,
+                timestamp=time.time(),
+                ttl=ttl,
+                token_id=hashlib.sha256(f"{resource}:{holder}:{time.time()}".encode()).hexdigest()[:16],
+            )
+            self._locks[resource] = token
+            self._stats["acquired"] += 1
+            return token
+
+    def release(self, resource: str, token_id: str) -> bool:
         """
-        Release the lock.
-
-        :param owner: Must match current owner.
-        :returns: True if released.
+        Release a lock. Must provide correct token_id.
+        Returns True if released, False if not found or mismatched.
         """
-        if self._owner != owner:
-            return False
-        self._owner = None
-        self._acquired_at = 0.0
-        return True
+        with self._lock:
+            if resource not in self._locks:
+                return False
+            existing = self._locks[resource]
+            if existing.token_id != token_id:
+                return False
+            del self._locks[resource]
+            self._stats["released"] += 1
+            return True
 
-    def renew(self, owner: str) -> bool:
-        """
-        Renew the lock TTL.
+    def renew(self, resource: str, token_id: str,
+              extension: Optional[float] = None) -> bool:
+        """Renew a lock's TTL."""
+        with self._lock:
+            if resource not in self._locks:
+                return False
+            existing = self._locks[resource]
+            if existing.token_id != token_id:
+                return False
+            existing.ttl += extension or self.default_ttl
+            existing.timestamp = time.time()
+            return True
 
-        :param owner: Must match current owner.
-        :returns: True if renewed.
-        """
-        if self._owner != owner:
-            return False
-        self._acquired_at = self._clock()
-        return True
+    def is_locked(self, resource: str) -> bool:
+        """Check if a resource is currently locked."""
+        with self._lock:
+            if resource not in self._locks:
+                return False
+            return not self._locks[resource].is_expired()
 
-    # ------------------------------------------------------------------
-    # Queries
-    # ------------------------------------------------------------------
+    def get_holder(self, resource: str) -> Optional[str]:
+        """Get the current holder of a lock."""
+        with self._lock:
+            if resource not in self._locks:
+                return None
+            token = self._locks[resource]
+            if token.is_expired():
+                return None
+            return token.holder
 
-    def is_locked(self) -> bool:
-        """Check if lock is currently held (and not expired)."""
-        if self._owner is None:
-            return False
-        elapsed = self._clock() - self._acquired_at
-        return elapsed < self.ttl_sec
+    def list_locks(self) -> List[LockToken]:
+        """List all active locks."""
+        with self._lock:
+            return [t for t in self._locks.values() if not t.is_expired()]
 
-    def owner(self) -> Optional[str]:
-        """Get current owner (or None if expired/unheld)."""
-        if self.is_locked():
-            return self._owner
-        return None
+    def cleanup_expired(self) -> int:
+        """Remove expired locks. Returns count removed."""
+        with self._lock:
+            expired = [r for r, t in self._locks.items() if t.is_expired()]
+            for r in expired:
+                del self._locks[r]
+                self._stats["expired"] += 1
+            return len(expired)
 
-    def time_remaining(self) -> float:
-        """Get seconds until lock expires (0 if not held)."""
-        if self._owner is None:
-            return 0.0
-        elapsed = self._clock() - self._acquired_at
-        remaining = self.ttl_sec - elapsed
-        return max(0.0, remaining)
-
-    # ------------------------------------------------------------------
-    # Stats
-    # ------------------------------------------------------------------
-
-    def stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> Dict[str, Any]:
+        """Get lock service statistics."""
         return {
-            "lock_id": self.lock_id,
-            "ttl_sec": self.ttl_sec,
-            "locked": self.is_locked(),
-            "owner": self.owner(),
-            "time_remaining": self.time_remaining(),
+            "active_locks": len(self.list_locks()),
+            "total_locks": len(self._locks),
+            **self._stats,
         }
 
-    def __repr__(self) -> str:
-        return f"<DistributedLock id={self.lock_id} owner={self._owner}>"
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "node": self.fleet_node_id,
+            "stats": self.get_stats(),
+        }
