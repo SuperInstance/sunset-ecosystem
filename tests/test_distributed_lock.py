@@ -1,130 +1,86 @@
-"""Tests for distributed_lock.py — Distributed locking.
+"""Tests for distributed_lock.py — Distributed lock with TTL.
 
 Run: python3 -m pytest tests/test_distributed_lock.py -v --tb=short
 """
 from __future__ import annotations
 
-import time
-
 import pytest
 
-from fleet.distributed_lock import DistributedLock, LockResult
+from fleet.distributed_lock import DistributedLock
 
 
 class TestDistributedLock:
     def test_create(self):
-        lock = DistributedLock(node_id="node-a")
-        assert lock._node_id == "node-a"
+        lock = DistributedLock("task-1", ttl_sec=30)
+        assert lock.lock_id == "task-1"
+        assert lock.ttl_sec == 30
 
     def test_acquire(self):
-        lock = DistributedLock(node_id="node-a")
-        result = lock.acquire("resource-x", ttl=10.0)
-        assert result.success is True
-        assert result.holder == "node-a"
+        lock = DistributedLock("task-1")
+        assert lock.acquire("node-1") is True
+        assert lock.is_locked() is True
+        assert lock.owner() == "node-1"
 
-    def test_acquire_conflict(self):
-        # Same lock instance for shared state
-        lock = DistributedLock(node_id="node-a")
-        lock.acquire("resource-x", ttl=10.0)
-        # Simulate another node by changing node_id temporarily
-        lock_b = DistributedLock(node_id="node-b")
-        # Copy lock state to lock_b for test
-        lock_b._locks = lock._locks
-        result = lock_b.acquire("resource-x", ttl=10.0)
-        assert result.success is False
-        assert result.holder == "node-a"
+    def test_acquire_blocked(self):
+        lock = DistributedLock("task-1")
+        lock.acquire("node-1")
+        assert lock.acquire("node-2") is False
 
     def test_release(self):
-        lock = DistributedLock(node_id="node-a")
-        lock.acquire("resource-x", ttl=10.0)
-        result = lock.release("resource-x")
-        assert result.success is True
-        assert not lock.is_held("resource-x")
+        lock = DistributedLock("task-1")
+        lock.acquire("node-1")
+        assert lock.release("node-1") is True
+        assert lock.is_locked() is False
+        assert lock.owner() is None
 
-    def test_release_not_holder(self):
-        lock_a = DistributedLock(node_id="node-a")
-        lock_b = DistributedLock(node_id="node-b")
-        lock_a.acquire("resource-x", ttl=10.0)
-        result = lock_b.release("resource-x")
-        assert result.success is False
-
-    def test_release_not_held(self):
-        lock = DistributedLock(node_id="node-a")
-        result = lock.release("missing")
-        assert result.success is False
+    def test_release_wrong_owner(self):
+        lock = DistributedLock("task-1")
+        lock.acquire("node-1")
+        assert lock.release("node-2") is False
+        assert lock.is_locked() is True
 
     def test_renew(self):
-        lock = DistributedLock(node_id="node-a")
-        lock.acquire("resource-x", ttl=1.0)
-        before = lock.time_remaining("resource-x")
-        time.sleep(0.1)
-        result = lock.renew("resource-x", ttl=5.0)
-        assert result.success is True
-        after = lock.time_remaining("resource-x")
-        assert after > before
+        lock = DistributedLock("task-1", ttl_sec=1, clock=lambda: 0)
+        lock.acquire("node-1")
+        # Expire
+        lock._clock = lambda: 2
+        assert lock.is_locked() is False
+        # Renew before expire
+        lock._clock = lambda: 0
+        lock.renew("node-1")
+        lock._clock = lambda: 0.5
+        assert lock.is_locked() is True
 
-    def test_renew_not_holder(self):
-        lock_a = DistributedLock(node_id="node-a")
-        lock_b = DistributedLock(node_id="node-b")
-        lock_a.acquire("resource-x", ttl=10.0)
-        result = lock_b.renew("resource-x", ttl=5.0)
-        assert result.success is False
-
-    def test_expiration(self):
-        lock = DistributedLock(node_id="node-a")
-        lock.acquire("resource-x", ttl=0.1)
-        assert lock.is_held("resource-x") is True
-        time.sleep(0.15)
-        assert lock.is_held("resource-x") is False
-
-    def test_expire_all(self):
-        lock = DistributedLock(node_id="node-a")
-        lock.acquire("a", ttl=0.05)
-        lock.acquire("b", ttl=10.0)
-        time.sleep(0.1)
-        removed = lock.expire_all()
-        assert removed == 1
-        assert not lock.is_held("a")
-        assert lock.is_held("b")
-
-    def test_double_acquire_same_node(self):
-        lock = DistributedLock(node_id="node-a")
-        r1 = lock.acquire("x", ttl=10.0)
-        r2 = lock.acquire("x", ttl=10.0)
-        assert r1.success is True
-        assert r2.success is True
-        assert "already held" in r2.message
-
-    def test_is_holder(self):
-        lock = DistributedLock(node_id="node-a")
-        lock.acquire("x", ttl=10.0)
-        assert lock.is_holder("x") is True
-
-    def test_holder_query(self):
-        lock_a = DistributedLock(node_id="node-a")
-        lock_a.acquire("x", ttl=10.0)
-        assert lock_a.holder("x") == "node-a"
+    def test_renew_wrong_owner(self):
+        lock = DistributedLock("task-1")
+        lock.acquire("node-1")
+        assert lock.renew("node-2") is False
 
     def test_time_remaining(self):
-        lock = DistributedLock(node_id="node-a")
-        lock.acquire("x", ttl=2.0)
-        tr = lock.time_remaining("x")
-        assert 1.0 < tr <= 2.0
+        lock = DistributedLock("task-1", ttl_sec=10, clock=lambda: 0)
+        lock.acquire("node-1")
+        lock._clock = lambda: 3
+        assert lock.time_remaining() == 7
+
+    def test_time_remaining_expired(self):
+        lock = DistributedLock("task-1", ttl_sec=10, clock=lambda: 0)
+        lock.acquire("node-1")
+        lock._clock = lambda: 15
+        assert lock.time_remaining() == 0
+
+    def test_acquire_after_expire(self):
+        lock = DistributedLock("task-1", ttl_sec=1, clock=lambda: 0)
+        lock.acquire("node-1")
+        lock._clock = lambda: 2
+        assert lock.acquire("node-2") is True
 
     def test_stats(self):
-        lock = DistributedLock(node_id="node-a")
-        lock.acquire("x", ttl=10.0)
-        s = lock.stats()
-        assert s["locks_held"] == 1
-
-    def test_stats_per_lock(self):
-        lock = DistributedLock(node_id="node-a")
-        lock.acquire("x", ttl=10.0)
-        lock.release("x")
-        s = lock.stats("x")
-        assert s.get("acquisitions", 0) == 1
-        assert s.get("releases", 0) == 1
+        lock = DistributedLock("task-1", ttl_sec=30)
+        lock.acquire("node-1")
+        stats = lock.stats()
+        assert stats["locked"] is True
+        assert stats["owner"] == "node-1"
 
     def test_repr(self):
-        lock = DistributedLock(node_id="a")
+        lock = DistributedLock("task-1")
         assert "DistributedLock" in repr(lock)

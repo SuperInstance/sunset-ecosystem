@@ -1,201 +1,122 @@
-"""distributed_lock.py — Distributed locking for fleet-wide coordination.
+"""Distributed lock with TTL and renewal.
 
-Provides:
-1. TTL-based distributed locks with automatic expiry
-2. Lock renewal (heartbeat) to prevent accidental release
-3. Lock contention metrics
-4. Fair queueing (FIFO) for lock acquisition
-5. Deadlock detection via lock dependency graph
+Implements a distributed mutual exclusion lock with time-to-live and
+automatic renewal. Used for fleet-wide resource coordination, singleton
+tasks, and critical section protection.
 
 Usage:
-    lock = DistributedLock(backend=redis_or_etcd_client)
-    if lock.acquire("breeding_coordinator", ttl=30):
-        try:
-            run_breeding_cycle()
-        finally:
-            lock.release("breeding_coordinator")
+    lock = DistributedLock(lock_id="task-1", ttl_sec=30)
+    lock.acquire("node-1")
+    lock.renew()  # Reset TTL
+    lock.release()
 """
 from __future__ import annotations
 
-__all__ = [
-    "DistributedLock",
-    "LockResult",
-    "LockEntry",
-]
-
-import logging
 import time
-import uuid
-from dataclasses import dataclass, field
-from typing import Any
-
-logger = logging.getLogger(__name__)
-
-
-@dataclass
-class LockEntry:
-    """A held lock record."""
-    holder_id: str
-    acquired_at: float
-    expires_at: float
-    renewals: int = 0
-
-
-@dataclass
-class LockResult:
-    """Result of a lock operation."""
-    success: bool
-    holder: str | None = None
-    expires_at: float | None = None
-    message: str = ""
+from typing import Any, Dict, Optional
 
 
 class DistributedLock:
-    """In-memory distributed lock manager (backend-agnostic interface).
+    """
+    Distributed lock with TTL.
 
-    In production: wire to Redis, etcd, or Consul backend.
+    :param lock_id: Unique lock identifier.
+    :param ttl_sec: Lock time-to-live in seconds.
+    :param clock: Optional clock function for testing.
     """
 
-    def __init__(self, node_id: str | None = None) -> None:
-        self._node_id = node_id or f"node_{uuid.uuid4().hex[:8]}"
-        self._locks: dict[str, LockEntry] = {}
-        self._queues: dict[str, list[str]] = {}  # lock_name -> [holder_ids waiting]
-        self._stats: dict[str, dict[str, Any]] = {}
+    def __init__(
+        self,
+        lock_id: str,
+        ttl_sec: float = 30.0,
+        clock: Optional[callable] = None,
+    ):
+        self.lock_id = lock_id
+        self.ttl_sec = ttl_sec
+        self._clock = clock or time.time
+        self._owner: Optional[str] = None
+        self._acquired_at: float = 0.0
 
-    # ── acquire ─────────────────────────────────────────
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
 
-    def acquire(self, name: str, ttl: float = 30.0) -> LockResult:
-        """Try to acquire a lock. Returns immediately."""
-        now = time.time()
-        self._expire_stale(name, now)
+    def acquire(self, owner: str, blocking: bool = False) -> bool:
+        """
+        Acquire the lock.
 
-        if name in self._locks:
-            entry = self._locks[name]
-            if entry.holder_id == self._node_id:
-                return LockResult(
-                    success=True,
-                    holder=entry.holder_id,
-                    expires_at=entry.expires_at,
-                    message="already held",
-                )
-            # Add to queue
-            if name not in self._queues:
-                self._queues[name] = []
-            if self._node_id not in self._queues[name]:
-                self._queues[name].append(self._node_id)
-            return LockResult(
-                success=False,
-                holder=entry.holder_id,
-                expires_at=entry.expires_at,
-                message="lock held by another",
-            )
+        :param owner: Lock owner identifier.
+        :param blocking: Wait for lock (not implemented, returns False if held).
+        :returns: True if acquired.
+        """
+        if self.is_locked() and self._owner != owner:
+            return False
+        self._owner = owner
+        self._acquired_at = self._clock()
+        return True
 
-        self._locks[name] = LockEntry(
-            holder_id=self._node_id,
-            acquired_at=now,
-            expires_at=now + ttl,
-        )
-        self._stats[name] = self._stats.get(name, {})
-        self._stats[name]["acquisitions"] = self._stats[name].get("acquisitions", 0) + 1
-        return LockResult(
-            success=True,
-            holder=self._node_id,
-            expires_at=now + ttl,
-        )
+    def release(self, owner: str) -> bool:
+        """
+        Release the lock.
 
-    def release(self, name: str) -> LockResult:
-        """Release a lock. Only the holder can release."""
-        now = time.time()
-        self._expire_stale(name, now)
+        :param owner: Must match current owner.
+        :returns: True if released.
+        """
+        if self._owner != owner:
+            return False
+        self._owner = None
+        self._acquired_at = 0.0
+        return True
 
-        if name not in self._locks:
-            return LockResult(success=False, message="lock not held")
+    def renew(self, owner: str) -> bool:
+        """
+        Renew the lock TTL.
 
-        entry = self._locks[name]
-        if entry.holder_id != self._node_id:
-            return LockResult(
-                success=False,
-                holder=entry.holder_id,
-                message="not the holder",
-            )
+        :param owner: Must match current owner.
+        :returns: True if renewed.
+        """
+        if self._owner != owner:
+            return False
+        self._acquired_at = self._clock()
+        return True
 
-        del self._locks[name]
+    # ------------------------------------------------------------------
+    # Queries
+    # ------------------------------------------------------------------
 
-        # Notify next waiter
-        if name in self._queues and self._queues[name]:
-            next_holder = self._queues[name].pop(0)
-            logger.info(f"Lock '{name}' passed to {next_holder}")
+    def is_locked(self) -> bool:
+        """Check if lock is currently held (and not expired)."""
+        if self._owner is None:
+            return False
+        elapsed = self._clock() - self._acquired_at
+        return elapsed < self.ttl_sec
 
-        self._stats[name]["releases"] = self._stats[name].get("releases", 0) + 1
-        return LockResult(success=True, holder=self._node_id)
+    def owner(self) -> Optional[str]:
+        """Get current owner (or None if expired/unheld)."""
+        if self.is_locked():
+            return self._owner
+        return None
 
-    def renew(self, name: str, ttl: float = 30.0) -> LockResult:
-        """Renew a held lock."""
-        now = time.time()
-        self._expire_stale(name, now)
-
-        if name not in self._locks:
-            return LockResult(success=False, message="lock not held")
-
-        entry = self._locks[name]
-        if entry.holder_id != self._node_id:
-            return LockResult(success=False, holder=entry.holder_id, message="not the holder")
-
-        entry.expires_at = now + ttl
-        entry.renewals += 1
-        return LockResult(success=True, holder=self._node_id, expires_at=entry.expires_at)
-
-    # ── query ──────────────────────────────────────────
-
-    def is_held(self, name: str) -> bool:
-        self._expire_stale(name, time.time())
-        return name in self._locks
-
-    def holder(self, name: str) -> str | None:
-        self._expire_stale(name, time.time())
-        entry = self._locks.get(name)
-        return entry.holder_id if entry else None
-
-    def time_remaining(self, name: str) -> float:
-        self._expire_stale(name, time.time())
-        entry = self._locks.get(name)
-        if entry is None:
+    def time_remaining(self) -> float:
+        """Get seconds until lock expires (0 if not held)."""
+        if self._owner is None:
             return 0.0
-        return max(0.0, entry.expires_at - time.time())
+        elapsed = self._clock() - self._acquired_at
+        remaining = self.ttl_sec - elapsed
+        return max(0.0, remaining)
 
-    def is_holder(self, name: str) -> bool:
-        return self.holder(name) == self._node_id
+    # ------------------------------------------------------------------
+    # Stats
+    # ------------------------------------------------------------------
 
-    # ── expiration ──────────────────────────────────────
-
-    def _expire_stale(self, name: str, now: float) -> None:
-        """Remove expired locks."""
-        entry = self._locks.get(name)
-        if entry and entry.expires_at < now:
-            logger.warning(f"Lock '{name}' expired (held by {entry.holder_id})")
-            del self._locks[name]
-
-    def expire_all(self) -> int:
-        """Expire all stale locks. Returns count removed."""
-        now = time.time()
-        stale = [
-            name for name, entry in self._locks.items()
-            if entry.expires_at < now
-        ]
-        for name in stale:
-            del self._locks[name]
-        return len(stale)
-
-    # ── stats ─────────────────────────────────────────
-
-    def stats(self, name: str | None = None) -> dict[str, Any]:
-        if name is not None:
-            return self._stats.get(name, {})
+    def stats(self) -> Dict[str, Any]:
         return {
-            "locks_held": len(self._locks),
-            "queues": {k: len(v) for k, v in self._queues.items()},
-            "per_lock": dict(self._stats),
+            "lock_id": self.lock_id,
+            "ttl_sec": self.ttl_sec,
+            "locked": self.is_locked(),
+            "owner": self.owner(),
+            "time_remaining": self.time_remaining(),
         }
 
     def __repr__(self) -> str:
-        return f"DistributedLock(node={self._node_id}, held={len(self._locks)})"
+        return f"<DistributedLock id={self.lock_id} owner={self._owner}>"
