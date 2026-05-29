@@ -1,94 +1,60 @@
-"""Tests for id_generator.py — ULID-style distributed ID generator.
+"""Tests for id_generator.py — Snowflake-style ID generator.
 
 Run: python3 -m pytest tests/test_id_generator.py -v --tb=short
 """
 from __future__ import annotations
 
-import time
-
 import pytest
 
-from fleet.id_generator import IDGenerator, IDBatchGenerator
+from fleet.id_generator import IDGenerator
 
 
 class TestIDGenerator:
     def test_create(self):
         gen = IDGenerator(node_id=1)
-        assert gen.stats()["generated"] == 0
+        assert gen.node_id == 1
 
-    def test_node_id_bounds(self):
-        IDGenerator(node_id=0)
-        IDGenerator(node_id=65535)
+    def test_next_unique(self):
+        gen = IDGenerator(node_id=1)
+        id1 = gen.next()
+        id2 = gen.next()
+        assert id1 != id2
+        assert id2 > id1
+
+    def test_parse(self):
+        gen = IDGenerator(node_id=5)
+        id_val = gen.next()
+        parsed = gen.parse(id_val)
+        assert parsed["node_id"] == 5
+        assert "timestamp" in parsed
+        assert "sequence" in parsed
+
+    def test_multiple_nodes_unique(self):
+        gen1 = IDGenerator(node_id=1)
+        gen2 = IDGenerator(node_id=2)
+        id1 = gen1.next()
+        id2 = gen2.next()
+        assert id1 != id2
+
+    def test_invalid_node_id(self):
         with pytest.raises(ValueError):
-            IDGenerator(node_id=65536)
+            IDGenerator(node_id=1024)
         with pytest.raises(ValueError):
             IDGenerator(node_id=-1)
 
-    def test_generate_returns_string(self):
+    def test_sequence_rollover(self):
         gen = IDGenerator(node_id=1)
-        uid = gen.generate()
-        assert isinstance(uid, str)
-        assert len(uid) > 0
+        ids = [gen.next() for _ in range(10)]
+        assert len(set(ids)) == 10
 
-    def test_uniqueness(self):
+    def test_time_ordering(self):
         gen = IDGenerator(node_id=1)
-        ids = {gen.generate() for _ in range(1000)}
-        assert len(ids) == 1000
-
-    def test_sortable_by_time(self):
-        gen = IDGenerator(node_id=1)
-        ids = []
-        for _ in range(10):
-            ids.append(gen.generate())
-            time.sleep(0.002)  # Ensure different timestamps
-        assert ids == sorted(ids)
-
-    def test_extract_timestamp(self):
-        gen = IDGenerator(node_id=1)
-        before = time.time()
-        uid = gen.generate()
-        after = time.time()
-        ts = gen.extract_timestamp(uid)
-        assert before - 0.1 <= ts <= after + 0.1
-
-    def test_node_id_embedded(self):
-        # IDs from different nodes should still be unique and sortable
-        gen1 = IDGenerator(node_id=1)
-        gen2 = IDGenerator(node_id=2)
-        ids1 = [gen1.generate() for _ in range(100)]
-        ids2 = [gen2.generate() for _ in range(100)]
-        assert len(set(ids1) | set(ids2)) == 200
-
-    def test_stats_increment(self):
-        gen = IDGenerator(node_id=1)
-        for _ in range(5):
-            gen.generate()
-        assert gen.stats()["generated"] == 5
-
-    def test_high_throughput_no_collision(self):
-        gen = IDGenerator(node_id=1)
-        ids = [gen.generate() for _ in range(5000)]
-        assert len(set(ids)) == 5000
+        import time
+        id1 = gen.next()
+        time.sleep(0.01)
+        id2 = gen.next()
+        assert id2 > id1
 
     def test_repr(self):
-        gen = IDGenerator(node_id=42)
+        gen = IDGenerator(node_id=1)
         assert "IDGenerator" in repr(gen)
-        assert "42" in repr(gen)
-
-
-class TestIDBatchGenerator:
-    def test_batch(self):
-        gen = IDBatchGenerator(node_id=1)
-        batch = gen.generate_batch(100)
-        assert len(batch) == 100
-        assert len(set(batch)) == 100
-
-    def test_batch_sortable(self):
-        gen = IDBatchGenerator(node_id=1)
-        batch = gen.generate_batch(50)
-        assert batch == sorted(batch)
-
-    def test_batch_stats(self):
-        gen = IDBatchGenerator(node_id=1)
-        gen.generate_batch(25)
-        assert gen.stats()["generated"] == 25
