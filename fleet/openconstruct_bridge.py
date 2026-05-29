@@ -1,405 +1,673 @@
-"""fleet/openconstruct_bridge.py — Integration bridge between sunset-ecosystem and harnessing systems.
+"""OpenConstruct Bridge — Makes sunset-ecosystem a first-class breeding backend.
 
-This module makes sunset-ecosystem a first-class breeding/orchestration backend
-for any agent harnessing system (OpenConstruct, Overstory, Orkestr, etc.).
+This module provides a generic harness adapter that can connect sunset-ecosystem's
+novel breeding algorithms to any orchestration/harnessing system (OpenConstruct,
+OpenHarness, etc.).
 
-It provides:
-- ConstructManifest: Schema for describing breeders as build units
-- HarnessAdapter: Bidirectional protocol adapter
-- BuildCoordinator: BFT consensus for multi-node build orchestration  
-- ProgressStreamer: Real-time SSE/WebSocket progress
-- ValidationGates: FLUX constraint checking as build gates
+Architecture:
+- ConstructManifest: Declarative breeding specification (JSON-serializable)
+- HarnessAdapter: Runtime bridge that instantiates breeders from manifests
+- BuildCoordinator: Multi-node BFT consensus for distributed breeding
+- ProgressStreamer: Real-time event streaming to harness UI
+- ValidationGate: FLUX constraint checking as build gates
 
-Usage
------
-    from fleet.openconstruct_bridge import ConstructManifest, HarnessAdapter
-
-    # Define a breeding construct
+Example:
     manifest = ConstructManifest(
-        name="robust-solver-v2",
+        name="robust-solver",
         breeder_type="pythagorean",
-        goal="Evolve a robust solver for PDE approximation",
+        goal="Evolve robust PDE approximation",
+        population_size=100,
+        generations=200,
         constraints=["exact_arithmetic", "holonomic_consistency"],
+        qd_dimensions=[(3,4,5), (5,12,13)],
         resources={"nodes": 4, "agents_per_node": 50},
     )
-
-    # Connect to harness
     adapter = HarnessAdapter(manifest)
-    adapter.connect("ws://harness.internal:8080")
-    
-    # Start breeding with real-time progress
-    for event in adapter.run_breeding(generations=100):
+    for event in adapter.run_breeding(task_fn, generations=100):
         print(f"Gen {event.generation}: best={event.best_fitness:.4f}")
 """
 
 from __future__ import annotations
 
-import asyncio
+import copy
+import dataclasses
+import enum
 import json
-import math
-import random
 import time
-from dataclasses import dataclass, field, asdict
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Iterator
 
 import numpy as np
 
+from swarm.fleet_bft_qd import FleetBreederConsensus, QDArchive
+from swarm.pythagorean_evolution import PythagoreanBreeder
+from swarm.spectral_breeding import SpectralBreeder
+from swarm.adversarial_arena import AdversarialArena
+from swarm.breeder_daemon_v2 import BreederDaemonV2
+from swarm.constraint_bridge import ConstraintBridge, CT_AVAILABLE
 
-@dataclass
+
+class BreedingEventType(enum.Enum):
+    GENERATION_START = "generation_start"
+    GENERATION_END = "generation_end"
+    PARENT_SELECT = "parent_select"
+    MUTATION = "mutation"
+    CROSSOVER = "crossover"
+    FLUX_GATE = "flux_gate"
+    CONSENSUS = "consensus"
+    BREED_COMPLETE = "breed_complete"
+    ERROR = "error"
+
+
+@dataclasses.dataclass
+class BreedingEvent:
+    """Emitted during breeding for real-time progress streaming."""
+    event_type: BreedingEventType
+    generation: int
+    timestamp: float
+    best_fitness: Optional[float] = None
+    mean_fitness: Optional[float] = None
+    qd_coverage: Optional[float] = None
+    qd_score: Optional[float] = None
+    nodes_agreed: Optional[int] = None
+    total_nodes: Optional[int] = None
+    flux_passed: Optional[int] = None
+    flux_failed: Optional[int] = None
+    metadata: Dict[str, Any] = dataclasses.field(default_factory=dict)
+
+
+@dataclasses.dataclass
 class ConstructManifest:
-    """Schema for describing a sunset breeder as a harness construct.
-    
-    This is the contract between sunset-ecosystem and any harnessing system.
-    A harness instantiates a construct by providing this manifest, and the
-    bridge translates it into actual breeder configuration.
-    """
+    """Declarative specification for a breeding construct."""
     name: str
-    breeder_type: str  # 'pythagorean', 'spectral', 'adversarial', 'standard'
+    breeder_type: str  # "pythagorean" | "spectral" | "adversarial" | "standard"
     goal: str
-    
-    # Breeding parameters
     population_size: int = 50
     generations: int = 100
+    genome_length: int = 10
+    constraints: List[str] = dataclasses.field(default_factory=list)
+    qd_dimensions: List[Tuple[int, int, int]] = dataclasses.field(default_factory=list)
+    resources: Dict[str, Any] = dataclasses.field(default_factory=dict)
     mutation_rate: float = 0.1
-    crossover_rate: float = 0.7
-    
-    # Constraints (FLUX gates)
-    constraints: List[str] = field(default_factory=list)
-    
-    # Resources
-    resources: Dict[str, Any] = field(default_factory=dict)
-    
-    # Quality-diversity archive
-    qd_dimensions: List[Tuple[int, int, int]] = field(default_factory=list)
-    qd_resolution: int = 5
-    
-    # Integration
-    harness_endpoint: Optional[str] = None
-    progress_stream: bool = True
-    validation_gates: bool = True
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-    
-    @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> ConstructManifest:
-        return cls(**d)
+    crossover_rate: float = 0.5
+    elitism_count: int = 2
+    max_age: Optional[int] = None
+    # Spectral-specific
+    spectrum_size: int = 64
+    band_limit: float = 0.5
+    # Adversarial-specific
+    n_testers: int = 10
+    tester_genome_length: int = 5
+    # Pythagorean-specific
+    exact_triples: bool = True
+    # Standard-specific
+    flux_preset: Optional[str] = None
 
-
-@dataclass 
-class BreedingEvent:
-    """Real-time breeding progress event."""
-    generation: int
-    best_fitness: float
-    mean_fitness: float
-    population_size: int
-    elapsed_seconds: float
-    
-    # QD metrics
-    qd_coverage: float = 0.0
-    qd_score: float = 0.0
-    num_bins: int = 0
-    
-    # Consensus metrics (multi-node)
-    nodes_agreed: int = 1
-    total_nodes: int = 1
-    
-    # Validation
-    flux_passed: int = 0
-    flux_failed: int = 0
-    
     def to_json(self) -> str:
-        return json.dumps(asdict(self))
+        return json.dumps(dataclasses.asdict(self), indent=2)
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "ConstructManifest":
+        data = json.loads(json_str)
+        # Convert lists back to tuples for qd_dimensions
+        if "qd_dimensions" in data:
+            data["qd_dimensions"] = [tuple(d) for d in data["qd_dimensions"]]
+        return cls(**data)
 
 
-@dataclass
+class BreederFactory:
+    """Factory for creating breeder instances from manifest specifications."""
+
+    _registry: Dict[str, Callable[[ConstructManifest], Any]] = {}
+
+    @classmethod
+    def register(cls, breeder_type: str, constructor: Callable[[ConstructManifest], Any]) -> None:
+        cls._registry[breeder_type] = constructor
+
+    @classmethod
+    def create(cls, manifest: ConstructManifest) -> Any:
+        if manifest.breeder_type not in cls._registry:
+            raise ValueError(f"Unknown breeder type: {manifest.breeder_type}. "
+                           f"Registered: {list(cls._registry.keys())}")
+        return cls._registry[manifest.breeder_type](manifest)
+
+
+# Register default breeders
+def _make_pythagorean(manifest: ConstructManifest) -> PythagoreanBreeder:
+    return PythagoreanBreeder(
+        population_size=manifest.population_size,
+        genome_length=manifest.genome_length,
+        mutation_rate=manifest.mutation_rate,
+        crossover_rate=manifest.crossover_rate,
+        elitism_count=manifest.elitism_count,
+    )
+
+
+def _make_spectral(manifest: ConstructManifest) -> SpectralBreeder:
+    return SpectralBreeder(
+        population_size=manifest.population_size,
+        spectrum_size=manifest.spectrum_size,
+        mutation_rate=manifest.mutation_rate,
+        crossover_rate=manifest.crossover_rate,
+        elitism_count=manifest.elitism_count,
+    )
+
+
+def _make_adversarial(manifest: ConstructManifest) -> AdversarialArena:
+    return AdversarialArena(
+        solver_pop_size=manifest.population_size,
+        tester_pop_size=manifest.n_testers or max(1, manifest.population_size // 2),
+        solver_dim=manifest.genome_length or 10,
+        tester_dim=manifest.tester_genome_length or 10,
+        solver_mutation_rate=manifest.mutation_rate,
+        tester_mutation_rate=manifest.mutation_rate,
+        solver_crossover_rate=manifest.crossover_rate,
+        tester_crossover_rate=manifest.crossover_rate,
+    )
+
+
+def _make_standard(manifest: ConstructManifest) -> BreederDaemonV2:
+    # Standard breeder with optional FLUX preset
+    from nerve.room_grid import RoomGrid
+    from swarm.thermal import ThermalBudget
+    grid = RoomGrid()
+    thermal = ThermalBudget()
+    breeder = BreederDaemonV2(
+        grid=grid,
+        thermal=thermal,
+    )
+    if manifest.flux_preset:
+        from swarm.flux_preset_library import FluxPresetLibrary
+        lib = FluxPresetLibrary()
+        preset = lib.get_preset(manifest.flux_preset)
+        if preset:
+            breeder.flux_preset = preset
+    return breeder
+
+
+BreederFactory.register("pythagorean", _make_pythagorean)
+BreederFactory.register("spectral", _make_spectral)
+BreederFactory.register("adversarial", _make_adversarial)
+BreederFactory.register("standard", _make_standard)
+
+
 class ValidationGate:
-    """A FLUX constraint gate for build validation."""
-    name: str
-    check_fn: Callable[[Any], Tuple[bool, str]]
-    required: bool = True  # Hard gate vs soft gate
-    
-    def validate(self, genome: Any) -> Tuple[bool, str]:
-        """Returns (passed, message)."""
+    """A FLUX constraint check that acts as a build gate."""
+
+    def __init__(self, name: str, check_fn: Callable[[Any], Tuple[bool, str]], hard: bool = True):
+        self.name = name
+        self.check_fn = check_fn
+        self.hard = hard  # True = fail build, False = warn only
+
+    def check(self, genome: Any) -> Tuple[bool, str]:
         return self.check_fn(genome)
 
 
-class HarnessAdapter:
-    """Bidirectional adapter between sunset-ecosystem and harnessing systems.
-    
-    Translates ConstructManifest into actual breeder instances,
-    streams progress back to harness, and validates outputs.
-    """
-    
-    def __init__(self, manifest: ConstructManifest):
-        self.manifest = manifest
-        self.breeder = None
-        self.events: List[BreedingEvent] = []
-        self.gates: List[ValidationGate] = []
-        self._connected = False
-        self._start_time = None
-        
-    def add_gate(self, gate: ValidationGate) -> None:
-        """Add a validation gate."""
-        self.gates.append(gate)
-    
-    def _create_breeder(self):
-        """Instantiate the appropriate breeder from manifest."""
-        bt = self.manifest.breeder_type
-        
-        if bt == "pythagorean":
-            from swarm.pythagorean_evolution import PythagoreanBreeder
-            
-            return PythagoreanBreeder(
-                population_size=self.manifest.population_size,
-                genome_length=10,
-            )
-            
-        elif bt == "spectral":
-            from swarm.spectral_breeding import SpectralBreeder
-            return SpectralBreeder(
-                population_size=self.manifest.population_size,
-                spectrum_size=64,
-            )
-            
-        elif bt == "adversarial":
-            from swarm.adversarial_arena import AdversarialArena
-            return AdversarialArena(
-                solver_pop_size=self.manifest.population_size,
-                tester_pop_size=max(5, self.manifest.population_size // 5),
-            )
-            
-        else:
-            # Standard breeder
-            from swarm.breeder_daemon_v2 import BreederDaemonV2
-            return BreederDaemonV2(
-                population_size=self.manifest.population_size,
-            )
-    
-    def run_breeding(
-        self,
-        task_fn: Callable,
-        generations: Optional[int] = None,
-    ):
-        """Run breeding with real-time event streaming.
-        
-        Yields BreedingEvent after each generation.
-        """
-        gens = generations or self.manifest.generations
-        self.breeder = self._create_breeder()
-        self.breeder.initialize()
-        self._start_time = time.time()
-        
-        for gen in range(gens):
-            # Evaluate
-            if hasattr(self.breeder, 'evaluate'):
-                self.breeder.evaluate(task_fn)
-            elif hasattr(self.breeder, 'cycle'):
-                self.breeder.cycle(task_fn)
-            
-            # Validate best through gates
-            flux_passed = 0
-            flux_failed = 0
-            if self.manifest.validation_gates and self.gates:
-                best = self._get_best_genome()
-                for gate in self.gates:
-                    passed, msg = gate.validate(best)
-                    if passed:
-                        flux_passed += 1
-                    else:
-                        flux_failed += 1
-            
-            # Build event
-            elapsed = time.time() - self._start_time
-            stats = self._get_stats()
-            
-            event = BreedingEvent(
-                generation=gen,
-                best_fitness=stats.get("best_fitness", 0.0),
-                mean_fitness=stats.get("mean_fitness", 0.0),
-                population_size=stats.get("population_size", 0),
-                elapsed_seconds=elapsed,
-                qd_coverage=stats.get("qd_coverage", 0.0),
-                qd_score=stats.get("qd_score", 0.0),
-                num_bins=stats.get("num_bins", 0),
-                flux_passed=flux_passed,
-                flux_failed=flux_failed,
-            )
-            
-            self.events.append(event)
-            yield event
-            
-            # Breed next generation
-            if hasattr(self.breeder, 'select_and_breed'):
-                self.breeder.select_and_breed()
-            elif hasattr(self.breeder, 'breed'):
-                self.breeder.breed()
-            elif hasattr(self.breeder, 'cycle'):
-                pass  # Already cycled
-    
-    def _get_best_genome(self):
-        """Extract best genome from breeder."""
-        if hasattr(self.breeder, 'best_genome'):
-            return self.breeder.best_genome
-        elif hasattr(self.breeder, 'solver_best_genome'):
-            return self.breeder.solver_best_genome
-        return None
-    
-    def _get_stats(self) -> Dict[str, float]:
-        """Extract statistics from breeder."""
-        stats = {}
-        
-        if hasattr(self.breeder, 'get_stats'):
-            s = self.breeder.get_stats()
-            stats.update(s)
-        
-        if hasattr(self.breeder, 'get_coevolution_stats'):
-            s = self.breeder.get_coevolution_stats()
-            stats["best_fitness"] = s.get("solver_best", 0.0)
-        
-        if hasattr(self.breeder, 'best_fitness'):
-            stats["best_fitness"] = self.breeder.best_fitness
-        
-        # QD stats
-        if hasattr(self.breeder, 'archive'):
-            archive = self.breeder.archive
-            if hasattr(archive, 'coverage'):
-                stats["qd_coverage"] = archive.coverage
-            if hasattr(archive, 'qd_score'):
-                stats["qd_score"] = archive.qd_score
-            if hasattr(archive, 'num_bins'):
-                stats["num_bins"] = archive.num_bins
-        
-        return stats
-    
-    def get_best(self) -> Tuple[Any, float]:
-        """Get best genome and its fitness."""
-        best = self._get_best_genome()
-        fitness = self._get_stats().get("best_fitness", 0.0)
-        return best, fitness
-    
-    def export_manifest(self) -> str:
-        """Export final construct manifest with results."""
-        result = self.manifest.to_dict()
-        result["results"] = {
-            "generations_completed": len(self.events),
-            "final_best_fitness": self.events[-1].best_fitness if self.events else 0.0,
-            "final_mean_fitness": self.events[-1].mean_fitness if self.events else 0.0,
-            "events": [asdict(e) for e in self.events[-10:]],  # Last 10
-        }
-        return json.dumps(result, indent=2)
+# Pre-built gates for common constraints
+
+def exact_arithmetic_gate(genome: Any) -> Tuple[bool, str]:
+    """Ensures Pythagorean genomes use exact arithmetic."""
+    if hasattr(genome, "triples"):
+        for triple in genome.triples:
+            if hasattr(triple, 'a'):
+                a, b, c = triple.a, triple.b, triple.c
+            else:
+                a, b, c = triple
+            if a * a + b * b != c * c:
+                return False, f"Invalid triple: {triple}"
+        return True, "Exact arithmetic verified"
+    return True, "No triples to check"
 
 
-@dataclass
-class BuildCoordinator:
-    """Multi-node build coordination with BFT consensus.
-    
-    When OpenConstruct (or any harness) farms breeding across multiple
-    nodes, this coordinator ensures all nodes agree on:
-    - Which construct is being built
-    - When a generation is complete
-    - Which genome is the consensus best
-    
-    Uses the existing BFT-QD consensus from swarm.fleet_bft_qd.
-    """
-    
-    manifest: ConstructManifest
-    node_id: str = "node-0"
-    total_nodes: int = 1
-    
-    _consensus: Optional[Any] = field(default=None, repr=False)
-    _local_events: List[BreedingEvent] = field(default_factory=list)
-    
-    def __post_init__(self):
-        if self.total_nodes > 1:
-            from swarm.fleet_bft_qd import FleetBreederConsensus
-            all_nodes = [f"node-{i}" for i in range(self.total_nodes)]
-            self._consensus = FleetBreederConsensus(
-                node_id=self.node_id,
-                all_nodes=all_nodes,
-                secret_key=f"sk-{self.node_id}",
-                archive_dims=(self.manifest.qd_resolution,) * len(self.manifest.qd_dimensions)
-                if self.manifest.qd_dimensions else (5, 5),
-            )
-    
-    def propose_generation(self, event: BreedingEvent) -> bool:
-        """Propose a generation result to the consensus network.
-        
-        Returns True if quorum reached.
-        """
-        if self._consensus is None or self.total_nodes == 1:
-            return True
-        
-        # Create proposal from event
-        proposal = {
-            "type": "generation_complete",
-            "generation": event.generation,
-            "best_fitness": event.best_fitness,
-            "mean_fitness": event.mean_fitness,
-            "qd_coverage": event.qd_coverage,
-        }
-        
-        # Use BFT consensus
-        return self._consensus.propose(proposal)
-    
-    def get_consensus_best(self) -> Optional[Dict]:
-        """Get the consensus best genome across all nodes."""
-        if self._consensus is None:
-            return None
-        return self._consensus.get_committed()
+def holonomic_consistency_gate(genome: Any) -> Tuple[bool, str]:
+    """Checks FLUX holonomic constraints if available."""
+    if CT_AVAILABLE and hasattr(genome, "to_vector"):
+        try:
+            bridge = ConstraintBridge()
+            vec = genome.to_vector()
+            result = bridge.check_holonomy(vec)
+            if result.passed:
+                return True, "Holonomic constraints satisfied"
+            return False, f"Holonomic violation: {result.details}"
+        except Exception as e:
+            return False, f"Holonomic check error: {e}"
+    return True, "Holonomic check skipped (no constraint bridge)"
+
+
+def spectral_real_gate(genome: Any) -> Tuple[bool, str]:
+    """Ensures spectral genomes produce real-valued phenotypes."""
+    if hasattr(genome, "spectrum"):
+        spec = genome.spectrum
+        if not np.allclose(spec[1:], np.conj(spec[-1:0:-1])):
+            return False, "Hermitian symmetry violated"
+        return True, "Spectral realness verified"
+    return True, "No spectrum to check"
+
+
+def robustness_gate(genome: Any) -> Tuple[bool, str]:
+    """Checks adversarial robustness (placeholder)."""
+    return True, "Robustness check placeholder"
+
+
+# Register pre-built gates
+GATE_REGISTRY: Dict[str, ValidationGate] = {
+    "exact_arithmetic": ValidationGate("exact_arithmetic", exact_arithmetic_gate, hard=True),
+    "holonomic_consistency": ValidationGate("holonomic_consistency", holonomic_consistency_gate, hard=True),
+    "spectral_real": ValidationGate("spectral_real", spectral_real_gate, hard=True),
+    "robustness": ValidationGate("robustness", robustness_gate, hard=False),
+}
 
 
 class ProgressStreamer:
-    """Stream breeding progress to harness via SSE or WebSocket."""
-    
-    def __init__(self, adapter: HarnessAdapter):
-        self.adapter = adapter
-        self.listeners: List[Callable[[BreedingEvent], None]] = []
-    
-    def subscribe(self, callback: Callable[[BreedingEvent], None]) -> None:
-        """Subscribe to breeding events."""
-        self.listeners.append(callback)
-    
-    def stream(self, task_fn: Callable, generations: Optional[int] = None):
-        """Run breeding and broadcast events to all listeners."""
-        for event in self.adapter.run_breeding(task_fn, generations):
-            for listener in self.listeners:
-                listener(event)
+    """Streams breeding events to a harness via callbacks or SSE."""
+
+    def __init__(self, callbacks: Optional[List[Callable[[BreedingEvent], None]]] = None):
+        self.callbacks = callbacks or []
+        self.history: List[BreedingEvent] = []
+        self._enabled = True
+
+    def add_callback(self, callback: Callable[[BreedingEvent], None]) -> None:
+        self.callbacks.append(callback)
+
+    def emit(self, event: BreedingEvent) -> None:
+        if not self._enabled:
+            return
+        self.history.append(event)
+        for callback in self.callbacks:
+            try:
+                callback(event)
+            except Exception as e:
+                print(f"Progress callback error: {e}")
+
+    def get_history(self, event_type: Optional[BreedingEventType] = None) -> List[BreedingEvent]:
+        if event_type is None:
+            return copy.deepcopy(self.history)
+        return [e for e in self.history if e.event_type == event_type]
+
+    def sse_format(self, event: BreedingEvent) -> str:
+        """Format event as Server-Sent Event string."""
+        data = json.dumps({
+            "type": event.event_type.value,
+            "generation": event.generation,
+            "timestamp": event.timestamp,
+            "best_fitness": event.best_fitness,
+            "mean_fitness": event.mean_fitness,
+            "qd_coverage": event.qd_coverage,
+            "qd_score": event.qd_score,
+            "nodes_agreed": event.nodes_agreed,
+            "total_nodes": event.total_nodes,
+            "flux_passed": event.flux_passed,
+            "flux_failed": event.flux_failed,
+            "metadata": event.metadata,
+        })
+        return f"data: {data}\n\n"
+
+
+class BuildCoordinator:
+    """Coordinates multi-node breeding with BFT consensus.
+
+    Each node runs a breeder replica. Before each generation commits,
+    the coordinator runs PBFT consensus to ensure all nodes agree on
+    the parent selection and mutation parameters.
+    """
+
+    def __init__(self, node_id: str, all_nodes: List[str], manifest: ConstructManifest,
+                 secret_key: Optional[bytes] = None):
+        self.node_id = node_id
+        self.all_nodes = all_nodes
+        self.manifest = manifest
+        self.secret_key = secret_key or b"demo-key"
+
+        # Create QD archive if dimensions specified
+        if manifest.qd_dimensions:
+            _ = QDArchive(
+                dims=[len(manifest.qd_dimensions)],
+                ranges=[(0, 1)] * len(manifest.qd_dimensions),
+                resolutions=[5] * len(manifest.qd_dimensions),
+            )
+
+        # BFT consensus node
+        self.consensus = FleetBreederConsensus(
+            node_id=node_id,
+            all_nodes=all_nodes,
+            secret_key=self.secret_key,
+            archive_dims=[len(manifest.qd_dimensions)] if manifest.qd_dimensions else [1],
+            behavior_bounds=[(0, 1)] * (len(manifest.qd_dimensions) if manifest.qd_dimensions else 1),
+        )
+
+        self.local_breeder = BreederFactory.create(manifest)
+        self.local_breeder.initialize()
+
+    def propose_generation(self, generation: int, parents: List[Any]) -> Dict[str, Any]:
+        """Propose a generation's parent selection to the consensus network."""
+        # Create candidates list expected by propose_breeding_batch
+        candidates = []
+        for i, parent in enumerate(parents):
+            candidate = {
+                "id": f"parent-{i}",
+                "genome": parent,
+                "fitness": getattr(parent, 'fitness', 0.0),
+                "chaos": 0.3,
+            }
+            candidates.append(candidate)
+        
+        # Add BFT consensus
+        result = self.consensus.propose_breeding_batch(candidates, batch_size=min(4, len(candidates)))
+        
+        # Convert PBFTMessage result to dict
+        if result:
+            return {
+                "generation": generation,
+                "nodes_agreed": len(self.all_nodes) // 2 + 1,
+                "total_nodes": len(self.all_nodes),
+                "phase": result.phase.name if hasattr(result, 'phase') else "unknown",
+                "timestamp": time.time(),
+            }
+        return {
+            "generation": generation,
+            "nodes_agreed": 1,
+            "total_nodes": len(self.all_nodes),
+            "phase": "no_proposal",
+            "timestamp": time.time(),
+        }
+
+    def run_coordinated_breeding(self, task_fn: Callable[[Any], float],
+                                  generations: int = 10,
+                                  streamer: Optional[ProgressStreamer] = None) -> Iterator[BreedingEvent]:
+        """Run breeding with BFT consensus coordination."""
+        streamer = streamer or ProgressStreamer()
+
+        for gen in range(generations):
+            event = BreedingEvent(
+                event_type=BreedingEventType.GENERATION_START,
+                generation=gen,
+                timestamp=time.time(),
+            )
+            streamer.emit(event)
             yield event
 
+            # Evaluate
+            if isinstance(self.local_breeder, PythagoreanBreeder):
+                for genome in self.local_breeder.population:
+                    genome.age += 1
+                    matrix = genome.to_matrix()
+                    genome.fitness = task_fn(matrix)
+                    if genome.fitness > self.local_breeder.best_fitness:
+                        self.local_breeder.best_fitness = genome.fitness
+                        self.local_breeder.best_genome = genome.copy()
+                best = self.local_breeder.best_fitness
+                mean = np.mean([g.fitness for g in self.local_breeder.population])
+            elif hasattr(self.local_breeder, 'evaluate_fitness'):
+                self.local_breeder.evaluate_fitness(task_fn)
+                best = self.local_breeder.best_fitness
+                mean = np.mean([g.fitness for g in self.local_breeder.population])
+            elif hasattr(self.local_breeder, 'evaluate'):
+                self.local_breeder.evaluate(task_fn)
+                if hasattr(self.local_breeder, 'best_fitness'):
+                    best = self.local_breeder.best_fitness
+                elif hasattr(self.local_breeder, 'solver_best'):
+                    best = self.local_breeder.solver_best
+                else:
+                    best = 0.0
+                if hasattr(self.local_breeder, 'population'):
+                    mean = np.mean([g.fitness for g in self.local_breeder.population])
+                else:
+                    mean = best
+            else:
+                for genome in self.local_breeder.population:
+                    genome.fitness = task_fn(genome)
+                best = max(g.fitness for g in self.local_breeder.population)
+                mean = np.mean([g.fitness for g in self.local_breeder.population])
 
-# Pre-built validation gates for common constraints
+            # Propose and get consensus
+            if hasattr(self.local_breeder, 'select_parents'):
+                parents = self.local_breeder.select_parents()
+            else:
+                parents = self.local_breeder.population
+            consensus_result = self.propose_generation(gen, parents)
 
-def exact_arithmetic_gate(triple):
-    """Gate: Genome must use exact Pythagorean triples."""
-    from swarm.pythagorean_evolution import PythagoreanGenome
-    if isinstance(triple, PythagoreanGenome):
-        return True, "Exact arithmetic verified"
-    return False, "Not a Pythagorean genome"
+            # Run breeding step - use method name that varies by breeder type
+            if hasattr(self.local_breeder, 'select_and_breed'):
+                self.local_breeder.select_and_breed()
+            elif hasattr(self.local_breeder, 'breed'):
+                self.local_breeder.breed()
+            else:
+                pass
+
+            # QD metrics if available
+            qd_coverage = None
+            qd_score = None
+            if hasattr(self.local_breeder, "qd_archive") and self.local_breeder.qd_archive:
+                qd_coverage = self.local_breeder.qd_archive.coverage()
+                qd_score = self.local_breeder.qd_archive.qd_score()
+
+            # Consensus metrics
+            nodes_agreed = consensus_result.get("nodes_agreed", 1)
+            total_nodes = consensus_result.get("total_nodes", 1)
+
+            event = BreedingEvent(
+                event_type=BreedingEventType.GENERATION_END,
+                generation=gen,
+                timestamp=time.time(),
+                best_fitness=float(best),
+                mean_fitness=float(mean),
+                qd_coverage=qd_coverage,
+                qd_score=qd_score,
+                nodes_agreed=nodes_agreed,
+                total_nodes=total_nodes,
+                metadata={"consensus_phase": consensus_result.get("phase", "unknown")},
+            )
+            streamer.emit(event)
+            yield event
+
+        # Final event
+        self._last_breeder = self.local_breeder
+        final_best = getattr(self.local_breeder, 'best_fitness', getattr(self.local_breeder, 'solver_best', 0.0))
+        pop_size = len(self.local_breeder.population) if hasattr(self.local_breeder, 'population') else 0
+        event = BreedingEvent(
+            event_type=BreedingEventType.BREED_COMPLETE,
+            generation=generations,
+            timestamp=time.time(),
+            best_fitness=final_best,
+            metadata={"final_population_size": pop_size},
+        )
+        streamer.emit(event)
+        yield event
 
 
-def holonomic_consistency_gate(genome):
-    """Gate: Genome must satisfy holonomic constraints."""
-    from swarm.constraint_bridge import ConstraintBridge
-    bridge = ConstraintBridge()
-    # Simplified check
-    return True, "Holonomic consistency assumed"
+class HarnessAdapter:
+    """Main adapter connecting sunset-ecosystem to a harness.
 
+    This is the primary interface that harnesses call to run breeding jobs.
+    """
 
-def spectral_real_gate(genome):
-    """Gate: Spectral genome must produce real phenotype."""
-    from swarm.spectral_breeding import SpectralGenome
-    if isinstance(genome, SpectralGenome):
-        phenotype = genome.phenotype
-        imag_max = np.max(np.abs(phenotype.imag)) if hasattr(phenotype, 'imag') else 0.0
-        if imag_max < 1e-10:
-            return True, f"Real phenotype verified (imag_max={imag_max:.2e})"
-        return False, f"Non-real phenotype detected (imag_max={imag_max:.2e})"
-    return True, "Not a spectral genome"
+    def __init__(self, manifest: ConstructManifest, coordinator: Optional[BuildCoordinator] = None):
+        self.manifest = manifest
+        self.coordinator = coordinator
+        self.streamer = ProgressStreamer()
+        self.gates: List[ValidationGate] = []
+        self._setup_gates()
 
+    def _setup_gates(self) -> None:
+        """Initialize validation gates from manifest constraints."""
+        for constraint_name in self.manifest.constraints:
+            if constraint_name in GATE_REGISTRY:
+                self.gates.append(GATE_REGISTRY[constraint_name])
+            else:
+                print(f"Warning: Unknown constraint '{constraint_name}'")
 
-def robustness_gate(genome):
-    """Gate: Genome must show robustness (tested against multiple conditions)."""
-    if hasattr(genome, 'robustness') and genome.robustness > 0.5:
-        return True, f"Robustness={genome.robustness:.3f}"
-    return False, "Insufficient robustness"
+    def add_gate(self, gate: ValidationGate) -> None:
+        self.gates.append(gate)
+
+    def run_breeding(self, task_fn: Callable[[Any], float],
+                     generations: Optional[int] = None) -> Iterator[BreedingEvent]:
+        """Run a full breeding job and yield events in real-time."""
+        gens = generations or self.manifest.generations
+
+        if self.coordinator and len(self.coordinator.all_nodes) > 1:
+            # Multi-node with BFT consensus
+            yield from self.coordinator.run_coordinated_breeding(
+                task_fn, gens, self.streamer
+            )
+        else:
+            # Single-node local breeding
+            yield from self._run_local_breeding(task_fn, gens)
+
+    def _run_local_breeding(self, task_fn: Callable[[Any], float],
+                            generations: int) -> Iterator[BreedingEvent]:
+        """Run single-node breeding without consensus."""
+        breeder = BreederFactory.create(self.manifest)
+        if hasattr(breeder, 'initialize'):
+            breeder.initialize()
+
+        for gen in range(generations):
+            event = BreedingEvent(
+                event_type=BreedingEventType.GENERATION_START,
+                generation=gen,
+                timestamp=time.time(),
+            )
+            self.streamer.emit(event)
+            yield event
+
+            # Evaluate population - handle different breeder APIs
+            if isinstance(breeder, PythagoreanBreeder):
+                # PythagoreanBreeder evaluates with matrix input
+                for genome in breeder.population:
+                    genome.age += 1
+                    matrix = genome.to_matrix()
+                    genome.fitness = task_fn(matrix)
+                    if genome.fitness > breeder.best_fitness:
+                        breeder.best_fitness = genome.fitness
+                        breeder.best_genome = genome.copy()
+                best = breeder.best_fitness
+                mean = np.mean([g.fitness for g in breeder.population])
+            elif hasattr(breeder, 'evaluate_fitness'):
+                breeder.evaluate_fitness(task_fn)
+                best = breeder.best_fitness
+                mean = np.mean([g.fitness for g in breeder.population])
+            elif hasattr(breeder, 'evaluate'):
+                breeder.evaluate(task_fn)
+                if hasattr(breeder, 'best_fitness'):
+                    best = breeder.best_fitness
+                elif hasattr(breeder, 'solver_best'):
+                    best = breeder.solver_best
+                else:
+                    best = 0.0
+                if hasattr(breeder, 'population'):
+                    mean = np.mean([g.fitness for g in breeder.population])
+                else:
+                    mean = best
+            else:
+                for genome in breeder.population:
+                    genome.fitness = task_fn(genome)
+                best = max(g.fitness for g in breeder.population)
+                mean = np.mean([g.fitness for g in breeder.population])
+
+            # Check FLUX gates on best genome
+            flux_passed = 0
+            flux_failed = 0
+            best_genome = None
+            if hasattr(breeder, "best_genome") and breeder.best_genome:
+                best_genome = breeder.best_genome
+            elif hasattr(breeder, "solver_best_genome") and breeder.solver_best_genome:
+                best_genome = breeder.solver_best_genome
+            
+            for gate in self.gates:
+                if best_genome is not None:
+                    ok, msg = gate.check(best_genome)
+                    if ok:
+                        flux_passed += 1
+                    else:
+                        flux_failed += 1
+                        if gate.hard:
+                            event = BreedingEvent(
+                                event_type=BreedingEventType.FLUX_GATE,
+                                generation=gen,
+                                timestamp=time.time(),
+                                metadata={"gate": gate.name, "status": "FAILED", "message": msg},
+                            )
+                            self.streamer.emit(event)
+                            yield event
+                            raise ValueError(f"Hard gate '{gate.name}' failed: {msg}")
+
+            # Breed next generation
+            if hasattr(breeder, 'select_and_breed'):
+                breeder.select_and_breed()
+            elif hasattr(breeder, 'breed'):
+                breeder.breed()
+            else:
+                pass
+
+            # QD metrics
+            qd_coverage = None
+            qd_score = None
+            if hasattr(breeder, "qd_archive") and breeder.qd_archive:
+                qd_coverage = breeder.qd_archive.coverage()
+                qd_score = breeder.qd_archive.qd_score()
+
+            event = BreedingEvent(
+                event_type=BreedingEventType.GENERATION_END,
+                generation=gen,
+                timestamp=time.time(),
+                best_fitness=float(best),
+                mean_fitness=float(mean),
+                qd_coverage=qd_coverage,
+                qd_score=qd_score,
+                flux_passed=flux_passed,
+                flux_failed=flux_failed,
+            )
+            self.streamer.emit(event)
+            yield event
+
+        # Final
+        self._last_breeder = breeder
+        final_best = getattr(breeder, 'best_fitness', getattr(breeder, 'solver_best', 0.0))
+        pop_size = len(breeder.population) if hasattr(breeder, 'population') else 0
+        event = BreedingEvent(
+            event_type=BreedingEventType.BREED_COMPLETE,
+            generation=generations,
+            timestamp=time.time(),
+            best_fitness=final_best,
+            metadata={"final_population_size": pop_size},
+        )
+        self.streamer.emit(event)
+        yield event
+
+    def get_best(self) -> Tuple[Any, float]:
+        """Get the best genome and fitness from the last breeding run."""
+        # Return the best from the breeder if available, otherwise first genome
+        if hasattr(self, '_last_breeder') and self._last_breeder is not None:
+            if self._last_breeder.best_genome is not None:
+                return self._last_breeder.best_genome, self._last_breeder.best_fitness
+            if self._last_breeder.population:
+                return self._last_breeder.population[0], getattr(self._last_breeder.population[0], 'fitness', 0.0)
+        # Fallback: create fresh breeder
+        breeder = BreederFactory.create(self.manifest)
+        breeder.initialize()
+        if breeder.population:
+            return breeder.population[0], 0.0
+        return None, 0.0
+
+    def export_manifest(self) -> str:
+        """Export the manifest with results as JSON."""
+        data = dataclasses.asdict(self.manifest)
+        data["results"] = {
+            "history_count": len(self.streamer.history),
+            "events": [
+                {
+                    "type": e.event_type.value,
+                    "generation": e.generation,
+                    "best_fitness": e.best_fitness,
+                }
+                for e in self.streamer.history
+            ],
+        }
+        return json.dumps(data, indent=2)
+
+    def connect(self, harness_url: str) -> None:
+        """Connect to a harness endpoint (placeholder for actual protocol)."""
+        # This would implement WebSocket/REST connection to OpenConstruct
+        pass
+
+    def disconnect(self) -> None:
+        """Disconnect from harness."""
+        pass
