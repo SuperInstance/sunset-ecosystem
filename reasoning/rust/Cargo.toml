@@ -1,0 +1,14 @@
+[package]
+name = "plato-reasoner"
+version = "0.1.0"
+edition = "2021"
+authors = ["Cocapn Fleet <fleet@cocapn.ai>"]
+description = "High-performance tile reasoner for Plato rooms"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+
+[dev-dependencies]
