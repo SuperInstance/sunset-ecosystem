@@ -445,6 +445,60 @@ class OpenConstructShell:
                 return None, 0.0
             return run["adapter"].get_best()
 
+    def run_parallel(
+        self,
+        campaigns: List[Dict[str, Any]],
+        generations: int = 10,
+        repo_path: str = ".",
+    ) -> Dict[str, Any]:
+        """Run multiple breeding campaigns in parallel across fleet nodes.
+
+        Each campaign is a dict with keys:
+            - name: str
+            - attachment: str (pythagorean, spectral, nca, etc.)
+            - params: dict (optional)
+            - task_fn: callable (optional)
+            - constraints: list[str] (optional)
+            - node_id: str (optional, for specific node assignment)
+
+        Returns:
+            ParallelResult serialized as dict with best_campaign, success_rate, etc.
+
+        Example:
+            campaigns = [
+                {"name": "exact", "attachment": "pythagorean", "params": {"population_size": 20}},
+                {"name": "fourier", "attachment": "spectral", "params": {"population_size": 20}},
+            ]
+            result = shell.run_parallel(campaigns, generations=5)
+            print(result["best_campaign"]["name"])
+        """
+        from fleet.parallel_breeding_orchestrator import (
+            ParallelBreedingOrchestrator,
+            Campaign,
+        )
+
+        # Build Campaign objects from dicts
+        campaign_objs = []
+        for c in campaigns:
+            campaign_objs.append(Campaign(
+                name=c["name"],
+                attachment=c["attachment"],
+                params=c.get("params", {}),
+                task_fn=c.get("task_fn"),
+                constraints=c.get("constraints", []),
+                node_id=c.get("node_id"),
+            ))
+
+        orch = ParallelBreedingOrchestrator(
+            repo_path=repo_path,
+            nodes=self.all_nodes,
+            max_workers=min(len(campaign_objs), 4),
+            default_generations=generations,
+        )
+
+        result = orch.run_parallel(campaign_objs, generations=generations)
+        return result.to_dict()
+
     def to_skill_manual(self) -> str:
         """Generate a skill manual that teaches the agent how to operate.
         
@@ -522,6 +576,7 @@ class OpenConstructShell:
             "| `shell.health_check()` | Read sensor history |",
             "| `shell.terminate()` | Stop a run |",
             "| `shell.get_best()` | Get best result |",
+            "| `shell.run_parallel()` | Run multiple campaigns in parallel |",
         ])
         
         return "\n".join(lines)

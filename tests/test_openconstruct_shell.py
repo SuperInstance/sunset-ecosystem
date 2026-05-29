@@ -460,3 +460,32 @@ class TestIntegrationFlow:
         # Should contain all attachments
         for name, _ in shell.list_attachments():
             assert name in manual, f"Missing attachment in manual: {name}"
+
+    def test_shell_parallel_command(self):
+        """Agent runs multiple campaigns in parallel via shell."""
+        shell = OpenConstructShell(
+            node_id="node-1",
+            all_nodes=["node-1"],
+        )
+        
+        campaigns = [
+            {
+                "name": "exact-rational",
+                "attachment": "pythagorean",
+                "params": {"population_size": 5, "genome_length": 3},
+            },
+            {
+                "name": "fourier-evolution",
+                "attachment": "spectral",
+                "params": {"population_size": 5, "spectrum_size": 32},
+            },
+        ]
+        
+        result = shell.run_parallel(campaigns, generations=1, repo_path="/tmp/test-repo")
+        
+        # Verify structure
+        assert "campaign_count" in result
+        assert result["campaign_count"] == 2
+        assert "best_campaign" in result
+        assert "success_rate" in result
+        assert result["total_duration"] >= 0
