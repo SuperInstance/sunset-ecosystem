@@ -1,125 +1,98 @@
-"""Tests for ring_buffer.c via ctypes bindings.
+"""Tests for ring_buffer.py — Circular ring buffer.
 
-Compile first: gcc -shared -fPIC -O3 -o nerve/ring_buffer.so nerve/ring_buffer.c
 Run: python3 -m pytest tests/test_ring_buffer.py -v --tb=short
 """
 from __future__ import annotations
 
 import pytest
 
-from nerve.ring_buffer_wrapper import RingBuffer
+from fleet.ring_buffer import RingBuffer
 
 
-class TestRingBufferBasics:
-    def test_create_and_capacity(self):
-        rb = RingBuffer(capacity=64, elem_size=8)
-        assert rb.capacity == 64  # power of 2
-        assert rb.size == 0
-        assert rb.free == 64
-        assert rb.is_empty
-        assert not rb.is_full
+class TestRingBuffer:
+    def test_create(self):
+        buf = RingBuffer(capacity=10)
+        assert len(buf) == 0
+        assert buf.capacity == 10
 
-    def test_push_pop_u64(self):
-        rb = RingBuffer(capacity=16, elem_size=8)
-        assert rb.push_u64(42)
-        assert rb.size == 1
-        assert rb.pop_u64() == 42
-        assert rb.is_empty
+    def test_append_and_len(self):
+        buf = RingBuffer(capacity=3)
+        buf.append("a")
+        buf.append("b")
+        assert len(buf) == 2
 
-    def test_push_pop_f64(self):
-        rb = RingBuffer(capacity=8, elem_size=8)
-        assert rb.push_f64(3.14159)
-        val = rb.pop_f64()
-        assert val == pytest.approx(3.14159)
-
-    def test_push_pop_i64(self):
-        rb = RingBuffer(capacity=8, elem_size=8)
-        assert rb.push_i64(-999)
-        assert rb.pop_i64() == -999
-
-    def test_fifo_order(self):
-        rb = RingBuffer(capacity=32, elem_size=8)
-        for i in range(10):
-            assert rb.push_u64(i)
-        for i in range(10):
-            assert rb.pop_u64() == i
-
-    def test_full_rejection(self):
-        rb = RingBuffer(capacity=4, elem_size=8)
-        for i in range(4):
-            assert rb.push_u64(i)
-        assert rb.is_full
-        assert not rb.push_u64(99)  # should reject
-        assert rb.size == 4
-
-    def test_empty_pop(self):
-        rb = RingBuffer(capacity=8, elem_size=8)
-        assert rb.pop_u64() is None
-        assert rb.pop_bytes() is None
+    def test_capacity_eviction(self):
+        buf = RingBuffer(capacity=3)
+        buf.append("a")
+        buf.append("b")
+        buf.append("c")
+        buf.append("d")
+        assert len(buf) == 3
+        assert buf[0] == "b"
 
     def test_peek(self):
-        rb = RingBuffer(capacity=8, elem_size=8)
-        rb.push_u64(123)
-        assert rb.peek_bytes() is not None
-        assert rb.size == 1  # not consumed
-        assert rb.pop_u64() == 123
+        buf = RingBuffer(capacity=3)
+        assert buf.peek() is None
+        buf.append("a")
+        assert buf.peek() == "a"
 
-    def test_wraparound(self):
-        rb = RingBuffer(capacity=8, elem_size=8)
-        # Fill
-        for i in range(8):
-            rb.push_u64(i)
-        # Drain half
-        for i in range(4):
-            assert rb.pop_u64() == i
-        # Fill again — wraps around
-        for i in range(8, 12):
-            rb.push_u64(i)
-        # FIFO order: remaining old items, then new items
-        for expected in [4, 5, 6, 7, 8, 9, 10, 11]:
-            assert rb.pop_u64() == expected
+    def test_pop(self):
+        buf = RingBuffer(capacity=3)
+        buf.append("a")
+        buf.append("b")
+        assert buf.pop() == "a"
+        assert len(buf) == 1
 
-    def test_bulk_push_pop(self):
-        rb = RingBuffer(capacity=64, elem_size=8)
-        vals = list(range(20))
-        pushed = rb.push_bulk_u64(vals)
-        assert pushed == 20
-        popped = rb.pop_bulk_u64(20)
-        assert popped == vals
+    def test_pop_empty(self):
+        buf = RingBuffer(capacity=3)
+        assert buf.pop() is None
 
-    def test_bulk_partial(self):
-        rb = RingBuffer(capacity=4, elem_size=8)
-        pushed = rb.push_bulk_u64([1, 2, 3, 4, 5])
-        assert pushed == 4  # only 4 fit
-        popped = rb.pop_bulk_u64(10)
-        assert popped == [1, 2, 3, 4]
+    def test_extend(self):
+        buf = RingBuffer(capacity=5)
+        buf.extend(["a", "b", "c"])
+        assert len(buf) == 3
 
-    def test_capacity_is_power_of_two(self):
-        rb = RingBuffer(capacity=100, elem_size=8)
-        cap = rb.capacity
-        assert cap >= 100
-        assert (cap & (cap - 1)) == 0  # power of 2
+    def test_clear(self):
+        buf = RingBuffer(capacity=5)
+        buf.append("a")
+        buf.clear()
+        assert len(buf) == 0
+
+    def test_getitem(self):
+        buf = RingBuffer(capacity=5)
+        buf.append("a")
+        buf.append("b")
+        assert buf[0] == "a"
+        assert buf[1] == "b"
+
+    def test_iteration(self):
+        buf = RingBuffer(capacity=5)
+        buf.extend(["a", "b", "c"])
+        assert list(buf) == ["a", "b", "c"]
+
+    def test_contains(self):
+        buf = RingBuffer(capacity=5)
+        buf.append("a")
+        assert "a" in buf
+        assert "b" not in buf
+
+    def test_is_full(self):
+        buf = RingBuffer(capacity=2)
+        assert not buf.is_full()
+        buf.append("a")
+        buf.append("b")
+        assert buf.is_full()
+
+    def test_to_list(self):
+        buf = RingBuffer(capacity=3)
+        buf.extend(["a", "b"])
+        assert buf.to_list() == ["a", "b"]
+
+    def test_invalid_capacity(self):
+        with pytest.raises(ValueError):
+            RingBuffer(capacity=0)
 
     def test_repr(self):
-        rb = RingBuffer(capacity=8, elem_size=8)
-        assert "RingBuffer" in repr(rb)
-        assert "cap=8" in repr(rb)
-
-
-class TestRingBufferStress:
-    def test_fill_and_empty(self):
-        rb = RingBuffer(capacity=1024, elem_size=8)
-        for i in range(1024):
-            assert rb.push_u64(i)
-        assert rb.is_full
-        for i in range(1024):
-            assert rb.pop_u64() == i
-        assert rb.is_empty
-
-    def test_alternating_push_pop(self):
-        rb = RingBuffer(capacity=16, elem_size=8)
-        for _ in range(100):
-            for i in range(8):
-                rb.push_u64(i)
-            for i in range(8):
-                assert rb.pop_u64() == i
+        buf = RingBuffer(capacity=10)
+        buf.append("a")
+        assert "RingBuffer" in repr(buf)
