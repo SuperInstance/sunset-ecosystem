@@ -1,110 +1,75 @@
-"""Tests for data_pipeline.py — Streaming ETL pipeline.
-
-Run: python3 -m pytest tests/test_data_pipeline.py -v --tb=short
-"""
-from __future__ import annotations
-
 import pytest
+from fleet.data_pipeline import DataPipeline, DataRecord
 
-from fleet.data_pipeline import DataPipeline
+
+class TestDataRecord:
+    def test_to_dict(self):
+        r = DataRecord("r1", {"x": 1}, 0.0, "src")
+        d = r.to_dict()
+        assert d["record_id"] == "r1"
+        assert d["data"]["x"] == 1
 
 
 class TestDataPipeline:
-    def test_create(self):
-        pl = DataPipeline()
-        assert pl._stages == []
+    def test_init(self):
+        dp = DataPipeline()
+        assert dp.fleet_node_id == "default"
 
-    def test_source_only(self):
-        pl = DataPipeline()
-        items = [1, 2, 3]
-        pl.add_source(lambda: items.pop(0) if items else None)
-        stats = pl.run(max_items=3)
-        assert stats.items_processed == 3
+    def test_ingest(self):
+        dp = DataPipeline()
+        r = dp.ingest({"x": 1}, source="test")
+        assert r.source == "test"
+        assert r.data["x"] == 1
 
-    def test_transform(self):
-        pl = DataPipeline()
-        items = [1, 2, 3]
-        pl.add_source(lambda: items.pop(0) if items else None)
-        pl.add_transform(lambda x: x * 2)
-        stats = pl.run(max_items=3)
-        assert stats.items_processed == 3
+    def test_add_transform(self):
+        dp = DataPipeline()
+        dp.add_transform(lambda d: {**d, "y": 2})
+        r = dp.ingest({"x": 1})
+        processed = dp.process(r)
+        assert processed.data["y"] == 2
 
-    def test_filter(self):
-        pl = DataPipeline()
-        items = [1, 2, 3, 4, 5]
-        pl.add_source(lambda: items.pop(0) if items else None)
-        pl.add_filter(lambda x: x > 2)
-        stats = pl.run(max_items=5)
-        assert stats.items_processed == 3  # 3, 4, 5
-        assert stats.items_dropped == 2  # 1, 2
+    def test_add_destination(self):
+        dp = DataPipeline()
+        received = []
+        dp.add_destination(lambda r: received.append(r))
+        r = dp.ingest({"x": 1})
+        dp.route(r)
+        assert len(received) == 1
 
-    def test_sink(self):
-        pl = DataPipeline()
-        items = [1, 2, 3]
-        sink_data = []
-        pl.add_source(lambda: items.pop(0) if items else None)
-        pl.add_sink(lambda batch: sink_data.extend(batch))
-        pl.run(max_items=3)
-        assert len(sink_data) == 3
-        assert sink_data == [1, 2, 3]
+    def test_process_all(self):
+        dp = DataPipeline()
+        dp.add_transform(lambda d: {**d, "processed": True})
+        dp.ingest({"x": 1})
+        dp.ingest({"x": 2})
+        results = dp.process_all()
+        assert len(results) == 2
+        assert all(r.data["processed"] for r in results)
 
-    def test_batching(self):
-        pl = DataPipeline(max_batch=2)
-        items = [1, 2, 3, 4]
-        batches = []
-        pl.add_source(lambda: items.pop(0) if items else None)
-        pl.add_sink(lambda batch: batches.append(list(batch)))
-        pl.run(max_items=4)
-        assert len(batches) == 2
-        assert batches[0] == [1, 2]
-        assert batches[1] == [3, 4]
+    def test_get_records(self):
+        dp = DataPipeline()
+        dp.ingest({"x": 1}, source="a")
+        dp.ingest({"x": 2}, source="b")
+        records = dp.get_records(source="a")
+        assert len(records) == 1
+        assert records[0].source == "a"
 
-    def test_transform_error(self):
-        pl = DataPipeline()
-        items = [1, 2, 3]
-        pl.add_source(lambda: items.pop(0) if items else None)
-        pl.add_transform(lambda x: (_ for _ in ()).throw(ValueError("bad")) if x == 2 else x)
-        stats = pl.run(max_items=3)
-        assert stats.items_processed == 2  # 1 and 3
-        assert stats.errors == 1
+    def test_get_stats(self):
+        dp = DataPipeline()
+        dp.ingest({"x": 1})
+        dp.process_all()
+        stats = dp.get_stats()
+        assert stats["records"] == 1
+        assert stats["stats"]["ingested"] == 1
 
-    def test_empty_pipeline(self):
-        pl = DataPipeline()
-        stats = pl.run()
-        assert stats.items_processed == 0
+    def test_export_json(self):
+        dp = DataPipeline()
+        dp.ingest({"x": 1})
+        j = dp.export_json()
+        assert "x" in j
+        assert "stats" in j
 
-    def test_backpressure(self):
-        pl = DataPipeline(max_batch=100, backpressure_limit=2)
-        items = list(range(10))
-        pl.add_source(lambda: items.pop(0) if items else None)
-        stats = pl.run()
-        # Should stop at backpressure limit
-        assert stats.items_processed <= 2
-
-    def test_max_items(self):
-        pl = DataPipeline()
-        items = list(range(100))
-        pl.add_source(lambda: items.pop(0) if items else None)
-        stats = pl.run(max_items=5)
-        assert stats.items_processed == 5
-
-    def test_stop(self):
-        pl = DataPipeline()
-        items = list(range(100))
-        pl.add_source(lambda: items.pop(0) if items else None)
-        # Stop before run to test early exit
-        pl._stopped = True
-        stats = pl.run()
-        assert stats.items_processed == 0
-
-    def test_reset(self):
-        pl = DataPipeline()
-        items = [1]
-        pl.add_source(lambda: items.pop(0) if items else None)
-        pl.run(max_items=1)
-        pl.reset()
-        assert pl.stats.items_processed == 0
-
-    def test_repr(self):
-        pl = DataPipeline()
-        assert "DataPipeline" in repr(pl)
+    def test_to_dict(self):
+        dp = DataPipeline()
+        dp.ingest({"x": 1})
+        d = dp.to_dict()
+        assert d["stats"]["records"] == 1

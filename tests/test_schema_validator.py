@@ -1,129 +1,95 @@
-"""Tests for schema_validator.py — JSON-like schema validation.
-
-Run: python3 -m pytest tests/test_schema_validator.py -v --tb=short
-"""
-from __future__ import annotations
-
 import pytest
-
 from fleet.schema_validator import SchemaValidator, ValidationError
 
 
+class TestValidationError:
+    def test_to_dict(self):
+        e = ValidationError("field", "message", "warning")
+        d = e.to_dict()
+        assert d["field"] == "field"
+        assert d["severity"] == "warning"
+
+
 class TestSchemaValidator:
-    def test_valid_data(self):
-        schema = {
-            "name": {"type": str, "required": True},
-            "age": {"type": int, "min": 0, "max": 150},
-        }
-        v = SchemaValidator(schema)
-        errors = v.validate({"name": "Alice", "age": 30})
-        assert errors == []
+    def test_init(self):
+        v = SchemaValidator()
+        assert v.get_registered_schemas() == []
 
-    def test_missing_required(self):
-        schema = {"name": {"type": str, "required": True}}
-        v = SchemaValidator(schema)
-        errors = v.validate({})
+    def test_register(self):
+        v = SchemaValidator()
+        v.register("test", {"name": {"type": "string", "required": True}})
+        assert "test" in v.get_registered_schemas()
+
+    def test_validate_valid(self):
+        v = SchemaValidator()
+        v.register("test", {"name": {"type": "string", "required": True}})
+        errors = v.validate({"name": "hello"}, "test")
+        assert len(errors) == 0
+
+    def test_validate_missing_required(self):
+        v = SchemaValidator()
+        v.register("test", {"name": {"type": "string", "required": True}})
+        errors = v.validate({}, "test")
         assert len(errors) == 1
-        assert errors[0].path == "name"
-        assert "Required" in errors[0].message
+        assert errors[0].field == "name"
 
-    def test_wrong_type(self):
-        schema = {"age": {"type": int}}
-        v = SchemaValidator(schema)
-        errors = v.validate({"age": "thirty"})
+    def test_validate_wrong_type(self):
+        v = SchemaValidator()
+        v.register("test", {"age": {"type": "integer"}})
+        errors = v.validate({"age": "twenty"}, "test")
         assert len(errors) == 1
-        assert "Expected int" in errors[0].message
+        assert "Expected integer" in errors[0].message
 
-    def test_min_max(self):
-        schema = {"score": {"type": int, "min": 0, "max": 100}}
-        v = SchemaValidator(schema)
-        assert len(v.validate({"score": -1})) == 1
-        assert len(v.validate({"score": 101})) == 1
-        assert len(v.validate({"score": 50})) == 0
+    def test_validate_number_range(self):
+        v = SchemaValidator()
+        v.register("test", {"age": {"type": "number", "min": 0, "max": 120}})
+        errors = v.validate({"age": -5}, "test")
+        assert len(errors) == 1
+        assert "minimum" in errors[0].message
 
-    def test_string_length(self):
-        schema = {"label": {"type": str, "min_len": 2, "max_len": 10}}
-        v = SchemaValidator(schema)
-        assert len(v.validate({"label": "A"})) == 1
-        assert len(v.validate({"label": "A" * 11})) == 1
-        assert len(v.validate({"label": "Hello"})) == 0
+    def test_validate_string_pattern(self):
+        v = SchemaValidator()
+        v.register("test", {"email": {"type": "string", "pattern": r"^.*@.*$"}})
+        errors = v.validate({"email": "not-email"}, "test")
+        assert len(errors) == 1
+        assert "pattern" in errors[0].message
 
-    def test_pattern(self):
-        schema = {"email": {"type": str, "pattern": r"^\S+@\S+\.\S+$"}}
-        v = SchemaValidator(schema)
-        assert len(v.validate({"email": "alice@example.com"})) == 0
-        assert len(v.validate({"email": "not-an-email"})) == 1
-
-    def test_list_validation(self):
-        schema = {
-            "tags": {"type": list, "item_type": str, "min_len": 1, "max_len": 3},
-        }
-        v = SchemaValidator(schema)
-        assert len(v.validate({"tags": ["a", "b"]})) == 0
-        assert len(v.validate({"tags": []})) == 1
-        assert len(v.validate({"tags": ["a", "b", "c", "d"]})) == 1
-        assert len(v.validate({"tags": [1, 2]})) == 2  # Wrong item type
-
-    def test_nested_schema(self):
-        schema = {
+    def test_validate_nested_object(self):
+        v = SchemaValidator()
+        v.register("test", {
             "user": {
-                "type": dict,
-                "schema": {
-                    "name": {"type": str, "required": True},
-                },
-            },
-        }
-        v = SchemaValidator(schema)
-        assert len(v.validate({"user": {"name": "Alice"}})) == 0
-        assert len(v.validate({"user": {}})) == 1
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "required": True}
+                }
+            }
+        })
+        errors = v.validate({"user": {"name": "hello"}}, "test")
+        assert len(errors) == 0
 
-    def test_list_item_schema(self):
-        schema = {
-            "items": {
-                "type": list,
-                "item_schema": {
-                    "id": {"type": int, "required": True},
-                },
-            },
-        }
-        v = SchemaValidator(schema)
-        assert len(v.validate({"items": [{"id": 1}, {"id": 2}]})) == 0
-        assert len(v.validate({"items": [{"id": "x"}]})) == 1
-
-    def test_custom_validator(self):
-        schema = {
-            "even": {"type": int, "validator": lambda x: x % 2 == 0},
-        }
-        v = SchemaValidator(schema)
-        assert len(v.validate({"even": 4})) == 0
-        assert len(v.validate({"even": 3})) == 1
-
-    def test_custom_validator_exception(self):
-        schema = {
-            "field": {"validator": lambda x: 1 / x},
-        }
-        v = SchemaValidator(schema)
-        errors = v.validate({"field": 0})
+    def test_validate_array_items(self):
+        v = SchemaValidator()
+        v.register("test", {
+            "scores": {"type": "array", "items": {"type": "number"}}
+        })
+        errors = v.validate({"scores": [1, 2, "three"]}, "test")
         assert len(errors) == 1
-        assert "Custom validator error" in errors[0].message
-
-    def test_unknown_field(self):
-        schema = {"name": {"type": str}}
-        v = SchemaValidator(schema)
-        errors = v.validate({"name": "Alice", "extra": 1})
-        assert any(e.path == "extra" for e in errors)
+        assert "scores[2]" in errors[0].field
 
     def test_is_valid(self):
-        schema = {"name": {"type": str, "required": True}}
-        v = SchemaValidator(schema)
-        assert v.is_valid({"name": "Alice"}) is True
-        assert v.is_valid({}) is False
+        v = SchemaValidator()
+        v.register("test", {"name": {"type": "string", "required": True}})
+        assert v.is_valid({"name": "hello"}, "test") is True
+        assert v.is_valid({}, "test") is False
 
-    def test_optional_field(self):
-        schema = {"name": {"type": str, "required": False}}
-        v = SchemaValidator(schema)
-        assert v.validate({}) == []
+    def test_validate_missing_schema(self):
+        v = SchemaValidator()
+        errors = v.validate({}, "missing")
+        assert len(errors) == 1
+        assert "not found" in errors[0].message
 
-    def test_repr(self):
-        v = SchemaValidator({"a": {"type": str}})
-        assert "SchemaValidator" in repr(v)
+    def test_to_dict(self):
+        v = SchemaValidator()
+        v.register("a", {})
+        d = v.to_dict()
+        assert d["schemas"] == 1

@@ -1,146 +1,119 @@
-"""schema_validator.py — JSON-like schema validation.
-
-Provides:
-1. Type checking (str, int, float, bool, list, dict)
-2. Required vs optional fields
-3. Nested schema validation
-4. Custom validators
-5. Coercion hints
-
-Usage:
-    schema = {
-        "name": {"type": str, "required": True},
-        "age": {"type": int, "min": 0, "max": 150},
-        "tags": {"type": list, "item_type": str},
-    }
-    validator = SchemaValidator(schema)
-    errors = validator.validate({"name": "Alice", "age": 30})
-    assert errors == []
-"""
 from __future__ import annotations
 
-__all__ = [
-    "SchemaValidator",
-    "ValidationError",
-]
+import re
+import json
+import time
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
-import logging
-from typing import Any, Callable
-
-logger = logging.getLogger(__name__)
+import numpy as np
 
 
+@dataclass
 class ValidationError:
-    """A single validation error."""
+    """A validation error."""
+    field: str
+    message: str
+    severity: str = "error"
 
-    def __init__(self, path: str, message: str) -> None:
-        self.path = path
-        self.message = message
-
-    def __repr__(self) -> str:
-        return f"ValidationError({self.path}: {self.message})"
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "field": self.field,
+            "message": self.message,
+            "severity": self.severity,
+        }
 
 
 class SchemaValidator:
-    """Validate dicts against a schema definition."""
+    """
+    Schema validator for breeding configurations and fleet state.
 
-    def __init__(self, schema: dict[str, Any]) -> None:
-        self._schema = schema
+    Validates dicts against JSON-like schemas with type checking.
+    """
 
-    def validate(self, data: dict[str, Any]) -> list[ValidationError]:
-        """Validate data against schema, return list of errors."""
-        errors: list[ValidationError] = []
-        self._validate_dict(data, self._schema, "", errors)
-        return errors
+    def __init__(self):
+        self._schemas: Dict[str, Dict[str, Any]] = {}
 
-    def is_valid(self, data: dict[str, Any]) -> bool:
-        """Quick check: True if no errors."""
-        return len(self.validate(data)) == 0
+    def register(self, schema_name: str, schema: Dict[str, Any]):
+        """Register a schema."""
+        self._schemas[schema_name] = schema
 
-    def _validate_dict(
-        self,
-        data: dict[str, Any],
-        schema: dict[str, Any],
-        path: str,
-        errors: list[ValidationError],
-    ) -> None:
-        # Check for extra keys
-        for key in data:
-            if key not in schema:
-                errors.append(ValidationError(f"{path}.{key}" if path else key, "Unknown field"))
+    def validate(self, data: Dict[str, Any], schema_name: str) -> List[ValidationError]:
+        """Validate data against a named schema."""
+        if schema_name not in self._schemas:
+            return [ValidationError("_schema", f"Schema '{schema_name}' not found")]
+        schema = self._schemas[schema_name]
+        return self._validate_object(data, schema, "")
 
+    def _validate_object(self, data: Dict[str, Any], schema: Dict[str, Any],
+                         path: str) -> List[ValidationError]:
+        errors = []
         for key, spec in schema.items():
             current_path = f"{path}.{key}" if path else key
-            required = spec.get("required", False)
-            if key not in data or data[key] is None:
-                if required:
-                    errors.append(ValidationError(current_path, "Required field missing"))
+            if key not in data:
+                if spec.get("required", False):
+                    errors.append(ValidationError(current_path, f"Missing required field: {key}"))
                 continue
 
             value = data[key]
-            self._validate_value(value, spec, current_path, errors)
+            errors.extend(self._validate_value(value, spec, current_path))
+        return errors
 
-    def _validate_value(
-        self,
-        value: Any,
-        spec: dict[str, Any],
-        path: str,
-        errors: list[ValidationError],
-    ) -> None:
+    def _validate_value(self, value: Any, spec: Dict[str, Any],
+                        path: str) -> List[ValidationError]:
+        errors = []
         expected_type = spec.get("type")
-        if expected_type is not None and not isinstance(value, expected_type):
-            errors.append(
-                ValidationError(path, f"Expected {expected_type.__name__}, got {type(value).__name__}")
-            )
-            return
 
-        # Range checks for numbers
-        if isinstance(value, (int, float)):
+        if expected_type == "string" and not isinstance(value, str):
+            errors.append(ValidationError(path, f"Expected string, got {type(value).__name__}"))
+        elif expected_type == "number" and not isinstance(value, (int, float)):
+            errors.append(ValidationError(path, f"Expected number, got {type(value).__name__}"))
+        elif expected_type == "integer" and not isinstance(value, int):
+            errors.append(ValidationError(path, f"Expected integer, got {type(value).__name__}"))
+        elif expected_type == "boolean" and not isinstance(value, bool):
+            errors.append(ValidationError(path, f"Expected boolean, got {type(value).__name__}"))
+        elif expected_type == "array" and not isinstance(value, list):
+            errors.append(ValidationError(path, f"Expected array, got {type(value).__name__}"))
+        elif expected_type == "object" and not isinstance(value, dict):
+            errors.append(ValidationError(path, f"Expected object, got {type(value).__name__}"))
+
+        # Range validation
+        if expected_type in ("number", "integer") and isinstance(value, (int, float)):
             if "min" in spec and value < spec["min"]:
                 errors.append(ValidationError(path, f"Value {value} < minimum {spec['min']}"))
             if "max" in spec and value > spec["max"]:
                 errors.append(ValidationError(path, f"Value {value} > maximum {spec['max']}"))
 
-        # String checks
-        if isinstance(value, str):
-            if "min_len" in spec and len(value) < spec["min_len"]:
-                errors.append(ValidationError(path, f"Length {len(value)} < minimum {spec['min_len']}"))
-            if "max_len" in spec and len(value) > spec["max_len"]:
-                errors.append(ValidationError(path, f"Length {len(value)} > maximum {spec['max_len']}"))
-            if "pattern" in spec:
-                import re
-                if not re.match(spec["pattern"], value):
-                    errors.append(ValidationError(path, f"Value does not match pattern {spec['pattern']}"))
+        # String pattern validation
+        if expected_type == "string" and isinstance(value, str):
+            if "pattern" in spec and not re.match(spec["pattern"], value):
+                errors.append(ValidationError(path, f"Value does not match pattern {spec['pattern']}"))
+            if "min_length" in spec and len(value) < spec["min_length"]:
+                errors.append(ValidationError(path, f"String too short: {len(value)} < {spec['min_length']}"))
 
-        # List checks
-        if isinstance(value, list):
-            if "min_len" in spec and len(value) < spec["min_len"]:
-                errors.append(ValidationError(path, f"Length {len(value)} < minimum {spec['min_len']}"))
-            if "max_len" in spec and len(value) > spec["max_len"]:
-                errors.append(ValidationError(path, f"Length {len(value)} > maximum {spec['max_len']}"))
-            item_type = spec.get("item_type")
-            item_schema = spec.get("item_schema")
-            for i, item in enumerate(value):
-                item_path = f"{path}[{i}]"
-                if item_type is not None and not isinstance(item, item_type):
-                    errors.append(
-                        ValidationError(item_path, f"Expected {item_type.__name__}, got {type(item).__name__}")
-                    )
-                if item_schema is not None and isinstance(item, dict):
-                    self._validate_dict(item, item_schema, item_path, errors)
+        # Nested object validation
+        if expected_type == "object" and isinstance(value, dict):
+            if "properties" in spec:
+                errors.extend(self._validate_object(value, spec["properties"], path))
 
-        # Dict / nested schema
-        if isinstance(value, dict) and "schema" in spec:
-            self._validate_dict(value, spec["schema"], path, errors)
+        # Array item validation
+        if expected_type == "array" and isinstance(value, list):
+            if "items" in spec:
+                for i, item in enumerate(value):
+                    item_path = f"{path}[{i}]"
+                    errors.extend(self._validate_value(item, spec["items"], item_path))
 
-        # Custom validator
-        custom = spec.get("validator")
-        if custom is not None and callable(custom):
-            try:
-                if not custom(value):
-                    errors.append(ValidationError(path, "Custom validator failed"))
-            except Exception as e:
-                errors.append(ValidationError(path, f"Custom validator error: {e}"))
+        return errors
 
-    def __repr__(self) -> str:
-        return f"SchemaValidator(fields={len(self._schema)})"
+    def is_valid(self, data: Dict[str, Any], schema_name: str) -> bool:
+        """Check if data is valid."""
+        return len(self.validate(data, schema_name)) == 0
+
+    def get_registered_schemas(self) -> List[str]:
+        """Get list of registered schema names."""
+        return list(self._schemas.keys())
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "schemas": len(self._schemas),
+        }
