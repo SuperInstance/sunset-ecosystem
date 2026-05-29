@@ -1,149 +1,150 @@
-"""Threshold-based alert system with deduplication.
+"""Alert routing, deduplication, and suppression manager.
 
-Monitors values against thresholds and emits alerts with deduplication
-to prevent alert spam. Used for fleet health monitoring and anomaly
-detection.
+Routes alerts to appropriate channels, deduplicates by fingerprint, and
+supports suppression windows. Used for fleet monitoring, incident
+management, and on-call rotation.
 
 Usage:
-    alerts = AlertManager(cooldown_sec=60)
-    alerts.add_rule("cpu_high", threshold=90, op="gt")
-    alerts.check("cpu_high", 95)  # triggers alert
-    alerts.check("cpu_high", 95)  # suppressed (cooldown)
+    alerts = AlertManager()
+    alerts.register_channel("slack", lambda msg: print(msg))
+    alerts.send("CPU high", severity="warning", channel="slack")
+    assert alerts.stats()["sent"] == 1
 """
 from __future__ import annotations
 
+import hashlib
 import time
-from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
-
-
-@dataclass
-class AlertRule:
-    """An alert rule definition."""
-
-    name: str
-    threshold: float
-    op: str  # gt, lt, gte, lte, eq
-    cooldown_sec: float
-    last_alert: float = 0.0
-    alert_count: int = 0
 
 
 class AlertManager:
     """
-    Alert manager with threshold rules and cooldown deduplication.
+    Alert manager with deduplication and suppression.
 
-    :param default_cooldown: Default cooldown between repeated alerts.
+    :param suppression_sec: Default suppression window for duplicates.
     """
 
-    OPS: Dict[str, Callable[[float, float], bool]] = {
-        "gt": lambda v, t: v > t,
-        "lt": lambda v, t: v < t,
-        "gte": lambda v, t: v >= t,
-        "lte": lambda v, t: v <= t,
-        "eq": lambda v, t: v == t,
-    }
-
-    def __init__(self, default_cooldown: float = 300.0):
-        self._default_cooldown = default_cooldown
-        self._rules: Dict[str, AlertRule] = {}
-        self._alerts: List[Dict[str, Any]] = []
+    def __init__(self, suppression_sec: float = 300.0):
+        self._suppression = suppression_sec
+        self._channels: Dict[str, Callable[[Dict[str, Any]], None]] = {}
+        self._recent: Dict[str, float] = {}  # fingerprint -> last sent time
+        self._sent = 0
+        self._suppressed = 0
 
     # ------------------------------------------------------------------
-    # Rule management
+    # Channel management
     # ------------------------------------------------------------------
 
-    def add_rule(
-        self,
-        name: str,
-        threshold: float,
-        op: str = "gt",
-        cooldown_sec: Optional[float] = None,
-    ) -> None:
-        """Add an alert rule."""
-        if op not in self.OPS:
-            raise ValueError(f"Unknown op: {op}. Use: {list(self.OPS.keys())}")
-        self._rules[name] = AlertRule(
-            name=name,
-            threshold=threshold,
-            op=op,
-            cooldown_sec=cooldown_sec or self._default_cooldown,
-        )
+    def register_channel(self, name: str, handler: Callable[[Dict[str, Any]], None]) -> None:
+        """Register an alert channel."""
+        self._channels[name] = handler
 
-    def remove_rule(self, name: str) -> bool:
-        """Remove a rule."""
-        if name in self._rules:
-            del self._rules[name]
+    def unregister_channel(self, name: str) -> bool:
+        """Unregister an alert channel."""
+        if name in self._channels:
+            del self._channels[name]
             return True
         return False
 
     # ------------------------------------------------------------------
-    # Checking
+    # Alert sending
     # ------------------------------------------------------------------
 
-    def check(self, name: str, value: float, context: Optional[Dict[str, Any]] = None) -> bool:
+    def send(
+        self,
+        message: str,
+        severity: str = "info",
+        channel: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        suppression_sec: Optional[float] = None,
+    ) -> bool:
         """
-        Check a value against a rule.
+        Send an alert.
 
-        :returns: True if alert was triggered.
+        :param message: Alert message.
+        :param severity: Alert severity (info, warning, critical).
+        :param channel: Target channel (defaults to all registered).
+        :param metadata: Additional alert metadata.
+        :param suppression_sec: Override suppression window.
+        :returns: True if alert was sent (not suppressed).
         """
-        rule = self._rules.get(name)
-        if not rule:
-            return False
-        op_fn = self.OPS[rule.op]
-        if not op_fn(value, rule.threshold):
-            return False
+        fingerprint = self._fingerprint(message, severity)
+        window = suppression_sec or self._suppression
         now = time.time()
-        if now - rule.last_alert < rule.cooldown_sec:
-            return False
-        rule.last_alert = now
-        rule.alert_count += 1
-        alert = {
-            "rule": name,
-            "value": value,
-            "threshold": rule.threshold,
+
+        # Check suppression
+        if fingerprint in self._recent:
+            elapsed = now - self._recent[fingerprint]
+            if elapsed < window:
+                self._suppressed += 1
+                return False
+
+        payload = {
+            "message": message,
+            "severity": severity,
             "timestamp": now,
-            "context": context or {},
+            "metadata": metadata or {},
         }
-        self._alerts.append(alert)
+
+        if channel:
+            handler = self._channels.get(channel)
+            if handler:
+                handler(payload)
+                self._sent += 1
+        else:
+            for handler in self._channels.values():
+                handler(payload)
+            self._sent += 1
+
+        self._recent[fingerprint] = now
         return True
 
-    def check_all(self, values: Dict[str, float]) -> List[str]:
-        """
-        Check multiple values against their rules.
+    def _fingerprint(self, message: str, severity: str) -> str:
+        """Generate alert fingerprint for deduplication."""
+        return hashlib.md5(f"{severity}:{message}".encode()).hexdigest()
 
-        :returns: List of triggered rule names.
-        """
-        triggered: List[str] = []
-        for name, value in values.items():
-            if self.check(name, value):
-                triggered.append(name)
-        return triggered
+    # ------------------------------------------------------------------
+    # Suppression management
+    # ------------------------------------------------------------------
+
+    def clear_suppression(self, message: str, severity: str = "info") -> bool:
+        """Clear suppression for a specific alert."""
+        fingerprint = self._fingerprint(message, severity)
+        if fingerprint in self._recent:
+            del self._recent[fingerprint]
+            return True
+        return False
+
+    def clear_all_suppression(self) -> None:
+        """Clear all suppression state."""
+        self._recent.clear()
 
     # ------------------------------------------------------------------
     # Queries
     # ------------------------------------------------------------------
 
-    def list_rules(self) -> List[str]:
-        return list(self._rules.keys())
+    def channels(self) -> List[str]:
+        return list(self._channels.keys())
 
-    def get_rule(self, name: str) -> Optional[AlertRule]:
-        return self._rules.get(name)
+    def is_suppressed(self, message: str, severity: str = "info") -> bool:
+        """Check if an alert is currently suppressed."""
+        fingerprint = self._fingerprint(message, severity)
+        if fingerprint not in self._recent:
+            return False
+        elapsed = time.time() - self._recent[fingerprint]
+        return elapsed < self._suppression
 
-    def alert_history(self) -> List[Dict[str, Any]]:
-        return list(self._alerts)
-
-    def clear_history(self) -> None:
-        self._alerts.clear()
+    # ------------------------------------------------------------------
+    # Stats
+    # ------------------------------------------------------------------
 
     def stats(self) -> Dict[str, Any]:
         return {
-            "rules": len(self._rules),
-            "total_alerts": len(self._alerts),
-            "alerts_by_rule": {
-                name: rule.alert_count for name, rule in self._rules.items()
-            },
+            "channels": len(self._channels),
+            "sent": self._sent,
+            "suppressed": self._suppressed,
+            "active_suppressions": len(self._recent),
         }
 
     def __repr__(self) -> str:
-        return f"<AlertManager rules={len(self._rules)} alerts={len(self._alerts)}>"
+        return f"<AlertManager channels={len(self._channels)} sent={self._sent}>"

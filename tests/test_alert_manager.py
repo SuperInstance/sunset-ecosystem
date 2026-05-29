@@ -1,10 +1,8 @@
-"""Tests for alert_manager.py — Threshold-based alerts.
+"""Tests for alert_manager.py — Alert routing, deduplication, suppression.
 
 Run: python3 -m pytest tests/test_alert_manager.py -v --tb=short
 """
 from __future__ import annotations
-
-import time
 
 import pytest
 
@@ -13,80 +11,89 @@ from fleet.alert_manager import AlertManager
 
 class TestAlertManager:
     def test_create(self):
-        mgr = AlertManager()
-        assert len(mgr.list_rules()) == 0
+        alerts = AlertManager()
+        assert alerts.stats()["channels"] == 0
 
-    def test_add_and_check(self):
-        mgr = AlertManager()
-        mgr.add_rule("cpu_high", threshold=90)
-        assert mgr.check("cpu_high", 95) is True
+    def test_register_channel(self):
+        alerts = AlertManager()
+        received = []
+        alerts.register_channel("slack", lambda msg: received.append(msg))
+        assert "slack" in alerts.channels()
 
-    def test_check_no_alert(self):
-        mgr = AlertManager()
-        mgr.add_rule("cpu_high", threshold=90)
-        assert mgr.check("cpu_high", 85) is False
+    def test_unregister_channel(self):
+        alerts = AlertManager()
+        alerts.register_channel("slack", lambda msg: None)
+        assert alerts.unregister_channel("slack") is True
+        assert alerts.unregister_channel("missing") is False
 
-    def test_cooldown_dedup(self):
-        mgr = AlertManager(default_cooldown=0.5)
-        mgr.add_rule("cpu_high", threshold=90)
-        assert mgr.check("cpu_high", 95) is True
-        assert mgr.check("cpu_high", 95) is False
-        time.sleep(0.51)
-        assert mgr.check("cpu_high", 95) is True
+    def test_send(self):
+        alerts = AlertManager()
+        received = []
+        alerts.register_channel("slack", lambda msg: received.append(msg))
+        assert alerts.send("CPU high", severity="warning", channel="slack") is True
+        assert len(received) == 1
+        assert received[0]["message"] == "CPU high"
+        assert received[0]["severity"] == "warning"
 
-    def test_different_ops(self):
-        mgr = AlertManager()
-        mgr.add_rule("low_mem", threshold=10, op="lt")
-        assert mgr.check("low_mem", 5) is True
-        assert mgr.check("low_mem", 15) is False
+    def test_send_all_channels(self):
+        alerts = AlertManager()
+        count = [0]
+        alerts.register_channel("a", lambda msg: count.__setitem__(0, count[0] + 1))
+        alerts.register_channel("b", lambda msg: count.__setitem__(0, count[0] + 1))
+        alerts.send("test")
+        assert count[0] == 2
 
-        mgr.add_rule("exact", threshold=42, op="eq")
-        assert mgr.check("exact", 42) is True
-        assert mgr.check("exact", 43) is False
+    def test_deduplication(self):
+        alerts = AlertManager(suppression_sec=60)
+        received = []
+        alerts.register_channel("slack", lambda msg: received.append(msg))
+        assert alerts.send("CPU high", severity="warning", channel="slack") is True
+        assert alerts.send("CPU high", severity="warning", channel="slack") is False
+        assert len(received) == 1
 
-    def test_check_all(self):
-        mgr = AlertManager()
-        mgr.add_rule("a", threshold=10)
-        mgr.add_rule("b", threshold=20)
-        triggered = mgr.check_all({"a": 15, "b": 25})
-        assert "a" in triggered
-        assert "b" in triggered
+    def test_dedup_cleared(self):
+        alerts = AlertManager(suppression_sec=0)
+        received = []
+        alerts.register_channel("slack", lambda msg: received.append(msg))
+        assert alerts.send("CPU high", channel="slack") is True
+        assert alerts.send("CPU high", channel="slack") is True
+        assert len(received) == 2
 
-    def test_remove_rule(self):
-        mgr = AlertManager()
-        mgr.add_rule("x", threshold=1)
-        assert mgr.remove_rule("x") is True
-        assert mgr.remove_rule("missing") is False
+    def test_clear_suppression(self):
+        alerts = AlertManager(suppression_sec=60)
+        alerts.send("CPU high", severity="warning")
+        assert alerts.send("CPU high", severity="warning") is False
+        alerts.clear_suppression("CPU high", severity="warning")
+        assert alerts.send("CPU high", severity="warning") is True
 
-    def test_invalid_op(self):
-        mgr = AlertManager()
-        with pytest.raises(ValueError):
-            mgr.add_rule("x", threshold=1, op="invalid")
+    def test_clear_all_suppression(self):
+        alerts = AlertManager(suppression_sec=60)
+        alerts.send("a")
+        alerts.send("b")
+        assert alerts.stats()["active_suppressions"] == 2
+        alerts.clear_all_suppression()
+        assert alerts.stats()["active_suppressions"] == 0
 
-    def test_alert_history(self):
-        mgr = AlertManager()
-        mgr.add_rule("cpu", threshold=90)
-        mgr.check("cpu", 95)
-        history = mgr.alert_history()
-        assert len(history) == 1
-        assert history[0]["rule"] == "cpu"
+    def test_is_suppressed(self):
+        alerts = AlertManager(suppression_sec=60)
+        alerts.send("CPU high", severity="warning")
+        assert alerts.is_suppressed("CPU high", severity="warning") is True
+        assert alerts.is_suppressed("Memory high", severity="warning") is False
+
+    def test_send_no_channel(self):
+        alerts = AlertManager()
+        # No channels registered
+        assert alerts.send("test") is True
+        assert alerts.stats()["sent"] == 1
 
     def test_stats(self):
-        mgr = AlertManager()
-        mgr.add_rule("cpu", threshold=90)
-        mgr.check("cpu", 95)
-        stats = mgr.stats()
-        assert stats["rules"] == 1
-        assert stats["total_alerts"] == 1
-
-    def test_clear_history(self):
-        mgr = AlertManager()
-        mgr.add_rule("x", threshold=1)
-        mgr.check("x", 2)
-        mgr.clear_history()
-        assert len(mgr.alert_history()) == 0
+        alerts = AlertManager()
+        alerts.send("a")
+        alerts.send("a")  # dedup
+        stats = alerts.stats()
+        assert stats["sent"] == 1
+        assert stats["suppressed"] == 1
 
     def test_repr(self):
-        mgr = AlertManager()
-        mgr.add_rule("x", threshold=1)
-        assert "AlertManager" in repr(mgr)
+        alerts = AlertManager()
+        assert "AlertManager" in repr(alerts)
