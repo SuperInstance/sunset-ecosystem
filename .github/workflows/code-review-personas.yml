@@ -1,0 +1,62 @@
+name: Fleet Code Review Personas
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    name: Multi-Persona Code Review
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest ast-unparse pyarrow numpy
+
+      - name: Run fleet code review personas
+        id: review
+        run: |
+          python -m fleet.review_code_ci --pr-files --output markdown --comment-file review_comment.md --fail-on-severity critical
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        continue-on-error: true
+
+      - name: Post review comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const commentPath = 'review_comment.md';
+            if (!fs.existsSync(commentPath)) {
+              console.log('No review comment file found');
+              return;
+            }
+            const body = fs.readFileSync(commentPath, 'utf8');
+            if (!body.trim()) {
+              console.log('Empty review comment');
+              return;
+            }
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Fail on critical findings
+        if: steps.review.outcome == 'failure'
+        run: |
+          echo "Critical findings detected. Failing CI."
+          exit 1
