@@ -233,6 +233,27 @@ class SpatialProjector:
         self._prediction_history: Dict[str, List[Prediction]] = {}
         self._a2a_callbacks: List[Callable[[Prediction], None]] = []
 
+    # ── Agent Management ──
+
+    def register_agent(self, agent_id: str, position: tuple):
+        """Register a new agent at a position."""
+        state = WorldState(position=position, agent_id=agent_id)
+        self.project_state(agent_id, "default", state)
+
+    def update_agent(self, agent_id: str, position: tuple):
+        """Update an agent's position."""
+        state = WorldState(position=position, agent_id=agent_id)
+        self.project_state(agent_id, "default", state)
+
+    def update_world(self, room_id: str, position: list, entity_type: str):
+        """Register a world entity (room, obstacle, etc.) in the spatial index."""
+        state = WorldState(
+            position=tuple(position),
+            room_id=room_id,
+            semantics={"type": entity_type},
+        )
+        self.project_state(f"world:{room_id}:{entity_type}", room_id, state)
+
     # ── State Projection ──
 
     def project_state(self, agent_id: str, room_id: str,
