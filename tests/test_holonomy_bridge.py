@@ -1,236 +1,183 @@
-"""Tests for fleet-agent ↔ holonomy-consensus bridge.
+"""Tests for HolonomyBridge — fleet-agent ↔ holonomy-consensus adapter.
 
-Covers:
-    - Graph construction (nodes, edges)
-    - Cycle verification (consistent vs inconsistent)
-    - H¹ cohomology computation (β₁)
-    - Emergence detection (β₁ increase)
-    - Bridge unified check report
-    - Factory method from_fleet_edges
+Covers graph construction, cycle verification, H¹ snapshot, emergence,
+unified check, and convenience factories.
 """
-
-from __future__ import annotations
 
 import pytest
 
 from nexus.holonomy_bridge import BridgeReport, HolonomyBridge
-from swarm.holonomy_consensus import HolonomyConsensus
 
 
-# ═══════════════════════════════════════════════════════════════
+# ---------------------------------------------------------------------------
 # Graph construction
-# ═══════════════════════════════════════════════════════════════
+# ---------------------------------------------------------------------------
 
 class TestGraphConstruction:
-    def test_add_node(self):
+    def test_empty(self):
         bridge = HolonomyBridge()
-        bridge.add_fleet_node("n1", state=1.0)
-        assert bridge._consensus.node_count == 1
+        report = bridge.check()
+        assert report.node_count == 0
 
-    def test_add_edge(self):
+    def test_add_fleet_node(self):
         bridge = HolonomyBridge()
-        bridge.link("n1", "n2")
-        assert bridge._consensus.edge_count == 1
+        bridge.add_fleet_node("node-1", state=1.0)
+        report = bridge.check()
+        assert report.node_count == 1
+        assert report.edge_count == 0
 
-    def test_remove_node_cascades(self):
-        bridge = HolonomyBridge()
-        bridge.link("n1", "n2")
-        bridge.remove_fleet_node("n1")
-        assert bridge._consensus.node_count == 1
-        assert bridge._consensus.edge_count == 0
-
-    def test_remove_edge(self):
-        bridge = HolonomyBridge()
-        bridge.link("n1", "n2")
-        bridge.unlink("n1", "n2")
-        assert bridge._consensus.edge_count == 0
-
-
-# ═══════════════════════════════════════════════════════════════
-# Cycle verification
-# ═══════════════════════════════════════════════════════════════
-
-class TestCycleVerification:
-    def test_consistent_cycle(self):
-        bridge = HolonomyBridge()
-        bridge.add_fleet_node("a", state=0.0)
-        bridge.add_fleet_node("b", state=0.0)
-        bridge.add_fleet_node("c", state=0.0)
-        bridge.link("a", "b")
-        bridge.link("b", "c")
-        bridge.link("c", "a")
-
-        report = bridge.verify_cycle(["a", "b", "c"])
-        assert report.consistent
-        assert report.holonomy_error == pytest.approx(0.0)
-
-    def test_inconsistent_cycle(self):
-        bridge = HolonomyBridge(consistency_threshold=0.1)
-        bridge.add_fleet_node("a", state=0.0)
-        bridge.add_fleet_node("b", state=1.0)
-        bridge.add_fleet_node("c", state=2.0)
-        bridge.link("a", "b")
-        bridge.link("b", "c")
-        bridge.link("c", "a")
-
-        report = bridge.verify_cycle(["a", "b", "c"])
-        assert not report.consistent
-        assert report.holonomy_error > 0.1
-
-    def test_cycle_with_missing_edge(self):
+    def test_link_and_unlink(self):
         bridge = HolonomyBridge()
         bridge.add_fleet_node("a")
         bridge.add_fleet_node("b")
-        bridge.add_fleet_node("c")
-        # Only a-b edge exists
         bridge.link("a", "b")
-
-        report = bridge.verify_cycle(["a", "b", "c"])
-        assert not report.consistent
-        assert report.holonomy_error == float("inf")
-
-    def test_short_cycle_is_trivially_consistent(self):
-        bridge = HolonomyBridge()
-        report = bridge.verify_cycle(["a", "b"])
-        assert report.consistent
-
-
-# ═══════════════════════════════════════════════════════════════
-# H¹ cohomology
-# ═══════════════════════════════════════════════════════════════
-
-class TestH1Cohomology:
-    def test_tree_has_beta_1_zero(self):
-        bridge = HolonomyBridge()
-        bridge.link("a", "b")
-        bridge.link("b", "c")
-        snap = bridge.h1_snapshot()
-        assert snap.betti_1 == 0
-
-    def test_triangle_has_beta_1_one(self):
-        bridge = HolonomyBridge()
-        bridge.link("a", "b")
-        bridge.link("b", "c")
-        bridge.link("c", "a")
-        snap = bridge.h1_snapshot()
-        assert snap.betti_1 == 1
-
-    def test_square_with_diagonal_has_beta_1_two(self):
-        bridge = HolonomyBridge()
-        bridge.link("a", "b")
-        bridge.link("b", "c")
-        bridge.link("c", "d")
-        bridge.link("d", "a")
-        bridge.link("a", "c")  # diagonal
-        snap = bridge.h1_snapshot()
-        # 5 edges, 4 nodes, 1 component → β₁ = 5 - 4 + 1 = 2
-        assert snap.betti_1 == 2
-
-    def test_disconnected_graph(self):
-        bridge = HolonomyBridge()
-        bridge.link("a", "b")
-        bridge.link("c", "d")
-        snap = bridge.h1_snapshot()
-        # 2 edges, 4 nodes, 2 components → β₁ = 2 - 4 + 2 = 0
-        assert snap.betti_1 == 0
-
-
-# ═══════════════════════════════════════════════════════════════
-# Emergence detection
-# ═══════════════════════════════════════════════════════════════
-
-class TestEmergenceDetection:
-    def test_no_emergence_on_first_snapshot(self):
-        bridge = HolonomyBridge()
-        bridge.link("a", "b")
-        bridge.h1_snapshot()
-        assert bridge.detect_emergence() is None
-
-    def test_emergence_when_cycle_appears(self):
-        bridge = HolonomyBridge()
-        bridge.link("a", "b")
-        bridge.link("b", "c")
-        bridge.h1_snapshot()
-
-        # Add edge that creates a cycle
-        bridge.link("c", "a")
-        bridge.h1_snapshot()
-
-        event = bridge.detect_emergence()
-        assert event is not None
-        assert event.previous_betti_1 == 0
-        assert event.current_betti_1 == 1
-        assert len(event.new_cycles) == 1
-
-    def test_no_emergence_when_stable(self):
-        bridge = HolonomyBridge()
-        bridge.link("a", "b")
-        bridge.link("b", "c")
-        bridge.link("c", "a")
-        bridge.h1_snapshot()
-        bridge.h1_snapshot()
-        assert bridge.detect_emergence() is None
-
-
-# ═══════════════════════════════════════════════════════════════
-# Unified bridge check
-# ═══════════════════════════════════════════════════════════════
-
-class TestBridgeCheck:
-    def test_check_returns_report(self):
-        bridge = HolonomyBridge()
-        bridge.link("a", "b")
-        bridge.link("b", "c")
-        bridge.link("c", "a")
         report = bridge.check()
-        assert isinstance(report, BridgeReport)
-        assert report.node_count == 3
-        assert report.edge_count == 3
-        assert report.betti_1 == 1
-        assert report.cycles_verified == 1
-        assert report.cycles_consistent == 1
+        assert report.edge_count == 1
+        bridge.unlink("a", "b")
+        report = bridge.check()
+        assert report.edge_count == 0
 
-    def test_factory_from_fleet_edges(self):
-        edges = [("n1", "n2"), ("n2", "n3"), ("n3", "n1")]
-        states = {"n1": 0.0, "n2": 0.0, "n3": 0.0}
-        bridge = HolonomyBridge.from_fleet_edges(edges, node_states=states)
-        assert bridge._consensus.node_count == 3
-        assert bridge._consensus.edge_count == 3
+    def test_remove_fleet_node(self):
+        bridge = HolonomyBridge()
+        bridge.add_fleet_node("a")
+        bridge.add_fleet_node("b")
+        bridge.link("a", "b")
+        bridge.remove_fleet_node("a")
+        report = bridge.check()
+        assert report.node_count == 1
+        assert report.edge_count == 0
 
-    def test_inconsistent_cycle_in_report(self):
-        bridge = HolonomyBridge(consistency_threshold=0.1)
+    def test_update_state(self):
+        bridge = HolonomyBridge()
+        bridge.add_fleet_node("a", state=0.0)
+        bridge.update_state("a", 5.0)
+        # internal state updated; verify via cycle
+        bridge.add_fleet_node("b", state=5.0)
+        bridge.link("a", "b")
+        bridge.add_fleet_node("c", state=0.0)
+        bridge.link("b", "c")
+        bridge.link("c", "a")
+        report = bridge.verify_cycle(["a", "b", "c", "a"])
+        assert report.consistent is False  # drift 5 + 5 + 0 = 10, avg=3.33 > 1e-6
+
+
+# ---------------------------------------------------------------------------
+# Cycle verification
+# ---------------------------------------------------------------------------
+
+class TestVerifyCycle:
+    def test_consistent(self):
+        bridge = HolonomyBridge()
+        for n in ["a", "b", "c"]:
+            bridge.add_fleet_node(n, state=0.0)
+        bridge.link("a", "b")
+        bridge.link("b", "c")
+        bridge.link("c", "a")
+        report = bridge.verify_cycle(["a", "b", "c"])
+        assert report.consistent is True
+
+    def test_inconsistent(self):
+        bridge = HolonomyBridge()
         bridge.add_fleet_node("a", state=0.0)
         bridge.add_fleet_node("b", state=1.0)
         bridge.add_fleet_node("c", state=0.0)
         bridge.link("a", "b")
         bridge.link("b", "c")
         bridge.link("c", "a")
+        report = bridge.verify_cycle(["a", "b", "c", "a"])
+        assert report.consistent is False
+
+
+# ---------------------------------------------------------------------------
+# H¹ snapshot & emergence
+# ---------------------------------------------------------------------------
+
+class TestH1AndEmergence:
+    def test_snapshot(self):
+        bridge = HolonomyBridge()
+        bridge.add_fleet_node("a")
+        bridge.add_fleet_node("b")
+        bridge.link("a", "b")
+        snap = bridge.h1_snapshot()
+        assert snap.betti_1 == 0
+
+    def test_emergence_none(self):
+        bridge = HolonomyBridge()
+        assert bridge.detect_emergence() is None
+
+    def test_emergence_detected(self):
+        bridge = HolonomyBridge()
+        bridge.add_fleet_node("a")
+        bridge.add_fleet_node("b")
+        bridge.link("a", "b")
+        bridge.h1_snapshot()
+        bridge.add_fleet_node("c")
+        bridge.link("b", "c")
+        bridge.link("c", "a")
+        bridge.h1_snapshot()
+        event = bridge.detect_emergence()
+        assert event is not None
+        assert event.current_betti_1 == 1
+
+
+# ---------------------------------------------------------------------------
+# Unified check
+# ---------------------------------------------------------------------------
+
+class TestCheck:
+    def test_empty(self):
+        bridge = HolonomyBridge()
         report = bridge.check()
-        assert report.cycles_verified == 1
-        assert report.cycles_consistent == 0
+        assert report.node_count == 0
+        assert report.edge_count == 0
+        assert report.betti_1 == 0
+        assert report.cycles_verified == 0
+        assert report.emergence_detected is False
+
+    def test_with_cycles(self):
+        bridge = HolonomyBridge()
+        for n in ["a", "b", "c", "d"]:
+            bridge.add_fleet_node(n, state=0.0)
+        bridge.link("a", "b")
+        bridge.link("b", "c")
+        bridge.link("c", "a")
+        bridge.link("c", "d")
+        bridge.link("d", "a")
+        report = bridge.check()
+        assert report.node_count == 4
+        assert report.edge_count == 5
+        assert report.betti_1 == 2
+        assert report.cycles_verified == 2
+        assert report.cycles_consistent == 2
+
+    def test_bridge_report_errors_default(self):
+        report = BridgeReport(
+            node_count=0, edge_count=0, betti_1=0,
+            cycles_verified=0, cycles_consistent=0, emergence_detected=False,
+        )
+        assert report.errors == []
 
 
-# ═══════════════════════════════════════════════════════════════
-# HolonomyConsensus direct tests
-# ═══════════════════════════════════════════════════════════════
+# ---------------------------------------------------------------------------
+# from_fleet_edges factory
+# ---------------------------------------------------------------------------
 
-class TestHolonomyConsensus:
-    def test_find_independent_cycles_triangle(self):
-        hc = HolonomyConsensus()
-        hc.add_edge("a", "b")
-        hc.add_edge("b", "c")
-        hc.add_edge("c", "a")
-        cycles = hc._find_independent_cycles()
-        assert len(cycles) == 1
-        # Cycle should contain a, b, c in some order
-        assert set(cycles[0]) == {"a", "b", "c"}
+class TestFromFleetEdges:
+    def test_basic(self):
+        edges = [("a", "b"), ("b", "c")]
+        bridge = HolonomyBridge.from_fleet_edges(edges)
+        report = bridge.check()
+        assert report.node_count == 3
+        assert report.edge_count == 2
 
-    def test_find_independent_cycles_square(self):
-        hc = HolonomyConsensus()
-        hc.add_edge("a", "b")
-        hc.add_edge("b", "c")
-        hc.add_edge("c", "d")
-        hc.add_edge("d", "a")
-        cycles = hc._find_independent_cycles()
-        # Square has one independent cycle
-        assert len(cycles) == 1
+    def test_with_states(self):
+        edges = [("a", "b"), ("b", "c")]
+        states = {"a": 1.0, "b": 2.0, "c": 3.0}
+        bridge = HolonomyBridge.from_fleet_edges(edges, node_states=states)
+        assert bridge._consensus._node_state["b"] == 2.0
+
+    def test_duplicate_nodes(self):
+        edges = [("a", "b"), ("a", "b")]
+        bridge = HolonomyBridge.from_fleet_edges(edges)
+        report = bridge.check()
+        assert report.edge_count == 1

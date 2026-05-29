@@ -1,9 +1,0 @@
-{
-  "counterfactual": false,
-  "dispatched": true,
-  "fire_time": 1780038540,
-  "misfire_policy": "skip",
-  "projection_hash": "b3b9dd1ee3e4e90cc8c06972ba26ef25",
-  "schedule_id": "s1",
-  "skipped_windows": []
-}

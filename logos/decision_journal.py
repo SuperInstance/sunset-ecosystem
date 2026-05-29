@@ -149,6 +149,12 @@ class DecisionJournal:
             self._entries = []
 
 
+def _default_journal_path() -> Path:
+    """Return the default journal path: data/decisions/YYYY-MM-DD.jsonl."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return Path("data") / "decisions" / f"{today}.jsonl"
+
+
 def _resolve_journal_path(journal_path: Optional[str]) -> Path:
     """Return the concrete JSONL file path.
 
