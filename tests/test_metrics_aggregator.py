@@ -1,77 +1,94 @@
-"""Tests for metrics_aggregator.py — Metrics aggregation with rollup windows.
-
-Run: python3 -m pytest tests/test_metrics_aggregator.py -v --tb=short
-"""
-from __future__ import annotations
-
+import time
 import pytest
+from fleet.metrics_aggregator import MetricPoint, MetricsAggregator
 
-from fleet.metrics_aggregator import MetricsAggregator
+
+class TestMetricPoint:
+    def test_to_dict(self):
+        p = MetricPoint("cpu", 0.5, 0.0, {"host": "a"})
+        d = p.to_dict()
+        assert d["metric_name"] == "cpu"
+        assert d["value"] == 0.5
 
 
 class TestMetricsAggregator:
-    def test_create(self):
-        agg = MetricsAggregator(window_sec=60)
-        assert agg.stats()["window_sec"] == 60
+    def test_init(self):
+        m = MetricsAggregator()
+        assert m.fleet_node_id == "default"
+        assert m.get_all_stats() == {}
 
     def test_record(self):
-        agg = MetricsAggregator()
-        agg.record("cpu", 45.0)
-        assert agg.count("cpu") == 1
+        m = MetricsAggregator()
+        m.record("cpu", 0.5)
+        stats = m.get_stats("cpu")
+        assert stats["count"] == 1
+        assert stats["last"] == 0.5
 
-    def test_rollup(self):
-        agg = MetricsAggregator(window_sec=60, clock=lambda: 100)
-        agg.record("cpu", 40.0)
-        agg.record("cpu", 60.0)
-        rollup = agg.rollup("cpu")
-        assert rollup is not None
-        assert rollup["sum"] == 100.0
-        assert rollup["avg"] == 50.0
-        assert rollup["min"] == 40.0
-        assert rollup["max"] == 60.0
-        assert rollup["count"] == 2
+    def test_record_multiple(self):
+        m = MetricsAggregator()
+        for i in range(10):
+            m.record("cpu", i)
+        stats = m.get_stats("cpu")
+        assert stats["count"] == 10
+        assert stats["mean"] == 4.5
 
-    def test_rollup_empty(self):
-        agg = MetricsAggregator()
-        assert agg.rollup("missing") is None
+    def test_record_with_tags(self):
+        m = MetricsAggregator()
+        m.record("cpu", 0.5, {"host": "a"})
+        points = m.get_series("cpu")
+        assert len(points) == 1
+        assert points[0].tags["host"] == "a"
 
-    def test_rollup_outside_window(self):
-        agg = MetricsAggregator(window_sec=10, clock=lambda: 0)
-        agg.record("cpu", 40.0)
-        agg._clock = lambda: 100
-        assert agg.rollup("cpu") is None
+    def test_get_series_since(self):
+        m = MetricsAggregator()
+        m.record("cpu", 0.5)
+        time.sleep(0.01)
+        now = time.time()
+        m.record("cpu", 0.6)
+        points = m.get_series("cpu", since=now)
+        assert len(points) == 1
+        assert points[0].value == 0.6
 
-    def test_prune(self):
-        agg = MetricsAggregator(window_sec=10, clock=lambda: 100)
-        agg.record("cpu", 40.0)
-        agg.record("cpu", 60.0)
-        agg._clock = lambda: 200
-        pruned = agg.prune("cpu", max_age_sec=50)
-        assert pruned == 2
-        assert agg.count("cpu") == 0
+    def test_buffer_trim(self):
+        m = MetricsAggregator(buffer_size=5)
+        for i in range(10):
+            m.record("cpu", i)
+        stats = m.get_stats("cpu")
+        assert stats["count"] == 5
+        assert stats["last"] == 9.0
 
-    def test_prune_all(self):
-        agg = MetricsAggregator(window_sec=10, clock=lambda: 100)
-        agg.record("cpu", 40.0)
-        agg.record("memory", 80.0)
-        agg._clock = lambda: 200
-        pruned = agg.prune_all(max_age_sec=50)
-        assert pruned == 2
+    def test_increment(self):
+        m = MetricsAggregator()
+        m.increment("requests", 1.0)
+        m.increment("requests", 2.0)
+        assert m.get_counters()["requests"] == 3.0
 
-    def test_metrics(self):
-        agg = MetricsAggregator()
-        agg.record("cpu", 40.0)
-        agg.record("memory", 80.0)
-        assert sorted(agg.metrics()) == ["cpu", "memory"]
+    def test_gauge(self):
+        m = MetricsAggregator()
+        m.gauge("temperature", 98.6)
+        assert m.get_gauges()["temperature"] == 98.6
 
-    def test_stats(self):
-        agg = MetricsAggregator()
-        agg.record("cpu", 40.0)
-        agg.record("cpu", 60.0)
-        stats = agg.stats()
-        assert stats["metrics"] == 1
-        assert stats["total_points"] == 2
+    def test_get_all_stats(self):
+        m = MetricsAggregator()
+        m.record("cpu", 0.5)
+        m.record("mem", 0.8)
+        all_stats = m.get_all_stats()
+        assert "cpu" in all_stats
+        assert "mem" in all_stats
 
-    def test_repr(self):
-        agg = MetricsAggregator()
-        assert "MetricsAggregator" in repr(agg)
+    def test_export_json(self):
+        m = MetricsAggregator()
+        m.record("cpu", 0.5)
+        m.increment("requests", 1.0)
+        j = m.export_json()
+        assert "cpu" in j
+        assert "requests" in j
+
+    def test_to_dict(self):
+        m = MetricsAggregator()
+        m.record("cpu", 0.5)
+        m.gauge("temp", 100.0)
+        d = m.to_dict()
+        assert d["counters"] == 0
+        assert d["gauges"] == 1
+        assert "cpu" in d["stats"]

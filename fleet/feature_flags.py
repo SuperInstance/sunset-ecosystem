@@ -1,162 +1,135 @@
-"""feature_flags.py — Dynamic feature toggle system.
-
-Provides:
-1. Boolean feature flags with default values
-2. Percentage-based rollouts (e.g., 10% of agents)
-3. Agent-specific overrides
-4. Flag change notifications
-5. Persist/restore flag state
-
-Usage:
-    flags = FeatureFlags()
-    flags.define("new_breeder", default=False)
-    if flags.is_enabled("new_breeder", agent_id="agent-1"):
-        run_new_breeder()
-"""
 from __future__ import annotations
 
-__all__ = [
-    "FeatureFlags",
-    "FlagDefinition",
-]
-
-import hashlib
-import logging
+import json
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+import numpy as np
 
 
 @dataclass
-class FlagDefinition:
-    """Definition of a feature flag."""
+class FeatureFlag:
+    """A feature flag with rollout rules."""
     name: str
-    default: bool = False
-    rollout_percent: float = 0.0  # 0-100
-    overrides: dict[str, bool] = field(default_factory=dict)
-    description: str = ""
+    enabled: bool
+    rollout_percentage: float = 100.0
+    targeting: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
-
-class FeatureFlags:
-    """Dynamic feature toggle system."""
-
-    def __init__(self) -> None:
-        self._flags: dict[str, FlagDefinition] = {}
-        self._callbacks: list[Callable[[str, bool], None]] = []
-
-    def define(
-        self,
-        name: str,
-        default: bool = False,
-        rollout_percent: float = 0.0,
-        description: str = "",
-    ) -> FlagDefinition:
-        """Define a new feature flag."""
-        flag = FlagDefinition(
-            name=name,
-            default=default,
-            rollout_percent=rollout_percent,
-            description=description,
-        )
-        self._flags[name] = flag
-        logger.info(f"Defined flag '{name}' (default={default})")
-        return flag
-
-    def is_enabled(self, name: str, agent_id: str = "") -> bool:
-        """Check if a feature is enabled for an agent."""
-        if name not in self._flags:
+    def is_enabled_for(self, context: Dict[str, Any]) -> bool:
+        """Check if flag is enabled for a specific context."""
+        if not self.enabled:
             return False
 
-        flag = self._flags[name]
+        # Check targeting rules
+        for key, value in self.targeting.items():
+            if key not in context or context[key] != value:
+                return False
 
-        # Check agent-specific override
-        if agent_id in flag.overrides:
-            return flag.overrides[agent_id]
+        # Percentage rollout
+        if self.rollout_percentage < 100.0:
+            # Deterministic hash-based rollout
+            import hashlib
+            context_str = json.dumps(context, sort_keys=True)
+            hash_val = int(hashlib.sha256(f"{self.name}:{context_str}".encode()).hexdigest(), 16)
+            return (hash_val % 100) < self.rollout_percentage
 
-        # Check rollout percentage
-        if flag.rollout_percent > 0.0 and agent_id:
-            hash_val = int(hashlib.md5(f"{name}:{agent_id}".encode()).hexdigest(), 16)
-            percent = (hash_val % 10000) / 100.0
-            return percent < flag.rollout_percent
+        return True
 
-        return flag.default
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "enabled": self.enabled,
+            "rollout_percentage": self.rollout_percentage,
+            "targeting": self.targeting,
+            "metadata": self.metadata,
+        }
 
-    def set_override(self, name: str, agent_id: str, value: bool) -> None:
-        """Set an agent-specific override."""
-        if name not in self._flags:
-            raise ValueError(f"Flag '{name}' not defined")
-        self._flags[name].overrides[agent_id] = value
 
-    def remove_override(self, name: str, agent_id: str) -> None:
-        if name in self._flags and agent_id in self._flags[name].overrides:
-            del self._flags[name].overrides[agent_id]
+class FeatureFlagManager:
+    """
+    Feature flag system for gradual rollouts.
 
-    def set_default(self, name: str, value: bool) -> None:
-        """Change the default value of a flag."""
-        if name not in self._flags:
-            raise ValueError(f"Flag '{name}' not defined")
-        old = self._flags[name].default
-        self._flags[name].default = value
-        if old != value:
-            for cb in self._callbacks:
-                try:
-                    cb(name, value)
-                except Exception as e:
-                    logger.warning(f"Flag callback error: {e}")
+    Supports percentage rollouts, targeting, and A/B testing.
+    """
 
-    def set_rollout(self, name: str, percent: float) -> None:
+    def __init__(self, fleet_node_id: str = "default"):
+        self.fleet_node_id = fleet_node_id
+        self.flags: Dict[str, FeatureFlag] = {}
+        self._evaluations: Dict[str, int] = {"enabled": 0, "disabled": 0}
+
+    def create(self, name: str, enabled: bool = False,
+               rollout_percentage: float = 100.0,
+               targeting: Optional[Dict[str, Any]] = None) -> FeatureFlag:
+        """Create a feature flag."""
+        flag = FeatureFlag(
+            name=name,
+            enabled=enabled,
+            rollout_percentage=rollout_percentage,
+            targeting=targeting or {},
+        )
+        self.flags[name] = flag
+        return flag
+
+    def enable(self, name: str) -> bool:
+        """Enable a feature flag."""
+        if name not in self.flags:
+            return False
+        self.flags[name].enabled = True
+        return True
+
+    def disable(self, name: str) -> bool:
+        """Disable a feature flag."""
+        if name not in self.flags:
+            return False
+        self.flags[name].enabled = False
+        return True
+
+    def set_rollout(self, name: str, percentage: float) -> bool:
         """Set rollout percentage."""
-        if name not in self._flags:
-            raise ValueError(f"Flag '{name}' not defined")
-        self._flags[name].rollout_percent = max(0.0, min(100.0, percent))
+        if name not in self.flags:
+            return False
+        self.flags[name].rollout_percentage = max(0.0, min(100.0, percentage))
+        return True
 
-    def on_change(self, callback: Callable[[str, bool], None]) -> None:
-        """Register a callback for flag changes."""
-        self._callbacks.append(callback)
+    def check(self, name: str, context: Optional[Dict[str, Any]] = None) -> bool:
+        """Check if a feature is enabled for a context."""
+        if name not in self.flags:
+            return False
+        context = context or {}
+        result = self.flags[name].is_enabled_for(context)
+        if result:
+            self._evaluations["enabled"] += 1
+        else:
+            self._evaluations["disabled"] += 1
+        return result
 
-    # ── query ──────────────────────────────────────────
+    def get(self, name: str) -> Optional[FeatureFlag]:
+        """Get a feature flag."""
+        return self.flags.get(name)
 
-    def all_flags(self) -> dict[str, FlagDefinition]:
-        return dict(self._flags)
+    def list_flags(self) -> List[FeatureFlag]:
+        """List all feature flags."""
+        return list(self.flags.values())
 
-    def enabled_flags(self, agent_id: str = "") -> list[str]:
-        return [name for name in self._flags if self.is_enabled(name, agent_id)]
-
-    def report(self) -> dict[str, Any]:
+    def get_stats(self) -> Dict[str, Any]:
+        """Get feature flag statistics."""
         return {
-            name: {
-                "default": flag.default,
-                "rollout": flag.rollout_percent,
-                "overrides": len(flag.overrides),
-            }
-            for name, flag in self._flags.items()
+            "total_flags": len(self.flags),
+            "enabled_flags": sum(1 for f in self.flags.values() if f.enabled),
+            "evaluations": self._evaluations.copy(),
         }
 
-    def to_dict(self) -> dict[str, Any]:
+    def export_json(self) -> str:
+        """Export all flags as JSON."""
+        return json.dumps({
+            "node": self.fleet_node_id,
+            "flags": [f.to_dict() for f in self.flags.values()],
+            "stats": self.get_stats(),
+        }, indent=2)
+
+    def to_dict(self) -> Dict[str, Any]:
         return {
-            name: {
-                "default": flag.default,
-                "rollout_percent": flag.rollout_percent,
-                "overrides": dict(flag.overrides),
-                "description": flag.description,
-            }
-            for name, flag in self._flags.items()
+            "stats": self.get_stats(),
         }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "FeatureFlags":
-        ff = cls()
-        for name, flag_data in data.items():
-            ff.define(
-                name=name,
-                default=flag_data.get("default", False),
-                rollout_percent=flag_data.get("rollout_percent", 0.0),
-                description=flag_data.get("description", ""),
-            )
-            ff._flags[name].overrides = dict(flag_data.get("overrides", {}))
-        return ff
-
-    def __repr__(self) -> str:
-        return f"FeatureFlags(flags={len(self._flags)})"

@@ -193,3 +193,157 @@ class FleetHealthChecker:
             return 0.0
         penalties = [r.pressure_penalty() for r in results]
         return sum(penalties) / len(penalties)
+
+
+# ---------------------------------------------------------------------------
+# Health Check System (dependency-chain aware) — added 2026-05-30
+# ---------------------------------------------------------------------------
+
+from enum import Enum
+
+
+class HealthStatus(Enum):
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
+    UNKNOWN = "unknown"
+
+
+@dataclass
+class HealthCheck:
+    """A health check result."""
+    name: str
+    status: HealthStatus
+    response_time_ms: float
+    message: str
+    timestamp: float
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "status": self.status.value,
+            "response_time_ms": self.response_time_ms,
+            "message": self.message,
+            "timestamp": self.timestamp,
+            "metadata": self.metadata,
+        }
+
+
+class HealthCheckSystem:
+    """
+    Health check system with dependency chains.
+
+    Checks services and their dependencies, reports overall health.
+    """
+
+    def __init__(self, fleet_node_id: str = "default"):
+        self.fleet_node_id = fleet_node_id
+        self._checks: Dict[str, callable] = {}
+        self._dependencies: Dict[str, List[str]] = {}
+        self._results: Dict[str, HealthCheck] = {}
+
+    def register(self, name: str, check_func: callable,
+                 dependencies: Optional[List[str]] = None):
+        """Register a health check."""
+        self._checks[name] = check_func
+        self._dependencies[name] = dependencies or []
+
+    def check(self, name: str) -> HealthCheck:
+        """Run a single health check."""
+        start = time.time()
+        try:
+            func = self._checks[name]
+            result = func()
+            if isinstance(result, tuple):
+                status, message = result
+            else:
+                status, message = result, "OK"
+            elapsed = (time.time() - start) * 1000
+            check = HealthCheck(
+                name=name,
+                status=HealthStatus(status),
+                response_time_ms=elapsed,
+                message=message,
+                timestamp=time.time(),
+            )
+        except Exception as e:
+            elapsed = (time.time() - start) * 1000
+            check = HealthCheck(
+                name=name,
+                status=HealthStatus.UNHEALTHY,
+                response_time_ms=elapsed,
+                message=str(e),
+                timestamp=time.time(),
+            )
+        self._results[name] = check
+        return check
+
+    def check_all(self) -> Dict[str, HealthCheck]:
+        """Run all health checks in dependency order."""
+        visited = set()
+        results = {}
+
+        def visit(name):
+            if name in visited:
+                return
+            visited.add(name)
+            for dep in self._dependencies.get(name, []):
+                visit(dep)
+            results[name] = self.check(name)
+
+        for name in self._checks:
+            visit(name)
+
+        self._results = results
+        return results
+
+    def get_overall_status(self) -> HealthStatus:
+        """Get overall health status."""
+        if not self._results:
+            return HealthStatus.UNKNOWN
+
+        statuses = [r.status for r in self._results.values()]
+        if any(s == HealthStatus.UNHEALTHY for s in statuses):
+            return HealthStatus.UNHEALTHY
+        if any(s == HealthStatus.DEGRADED for s in statuses):
+            return HealthStatus.DEGRADED
+        return HealthStatus.HEALTHY
+
+    def get_dependents(self, name: str) -> List[str]:
+        """Get services that depend on a given service."""
+        dependents = []
+        for service, deps in self._dependencies.items():
+            if name in deps:
+                dependents.append(service)
+        return dependents
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get health check statistics."""
+        if not self._results:
+            return {"status": "unknown", "checks": 0}
+
+        statuses = [r.status for r in self._results.values()]
+        return {
+            "overall": self.get_overall_status().value,
+            "checks": len(self._results),
+            "healthy": sum(1 for s in statuses if s == HealthStatus.HEALTHY),
+            "degraded": sum(1 for s in statuses if s == HealthStatus.DEGRADED),
+            "unhealthy": sum(1 for s in statuses if s == HealthStatus.UNHEALTHY),
+            "avg_response_time_ms": sum(r.response_time_ms for r in self._results.values()) / len(self._results.values()) if self._results else 0.0,
+        }
+
+    def export_json(self) -> str:
+        """Export health status as JSON."""
+        return json.dumps({
+            "node": self.fleet_node_id,
+            "overall": self.get_overall_status().value,
+            "checks": {k: v.to_dict() for k, v in self._results.items()},
+            "stats": self.get_stats(),
+        }, indent=2)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "node": self.fleet_node_id,
+            "stats": self.get_stats(),
+        }
