@@ -87,7 +87,7 @@ def build_arrow_schema() -> Any:
     pa = _arrow()
     return pa.schema([
         ("timestamp", pa.timestamp("us")),
-        ("event_type", pa.dictionary(pa.int8(), pa.string())),
+        ("event_type", pa.string()),
         ("agent_id", pa.string()),
         ("room_id", pa.string()),
         ("payload_json", pa.string()),
@@ -112,7 +112,7 @@ def event_to_arrow_record(event: TelemetryEvent, schema: Any) -> Any:
             pa.array([float(event.metrics.get("thermal_level", 0.0))]),
             pa.array([float(event.metrics.get("latency_ms", 0.0))]),
         ],
-        schema=schema.names,
+        names=schema.names,
     )
 
 
@@ -121,7 +121,7 @@ def events_to_arrow_record(events: List[TelemetryEvent], schema: Any) -> Any:
     pa = _arrow()
     if not events:
         return pa.RecordBatch.from_arrays(
-            [pa.array([], t) for t in schema.types], schema=schema.names
+            [pa.array([], t) for t in schema.types], names=schema.names
         )
     return pa.RecordBatch.from_arrays(
         [
@@ -134,7 +134,7 @@ def events_to_arrow_record(events: List[TelemetryEvent], schema: Any) -> Any:
             pa.array([float(e.metrics.get("thermal_level", 0.0)) for e in events]),
             pa.array([float(e.metrics.get("latency_ms", 0.0)) for e in events]),
         ],
-        schema=schema.names,
+        names=schema.names,
     )
 
 
@@ -330,9 +330,7 @@ class FleetAnalyticsSink:
         pq = _arrow().parquet
         if not self._parquet_buffer:
             return
-        combined = _arrow().Table.from_batches(
-            [t.to_batches() for t in self._parquet_buffer]
-        )
+        combined = _arrow().Table.from_batches(self._parquet_buffer)
         path = self._output_dir / f"telemetry_{self._parquet_counter:06d}.parquet"
         pq.write_table(combined, path)
         self._parquet_buffer = []
@@ -350,8 +348,12 @@ class FleetAnalyticsSink:
 
     def export_ipc(self, table: Any, path: Path) -> None:
         """Export table to Arrow IPC file (zero-copy mmap)."""
-        with _arrow().ipc.new_file(path, schema=table.schema) as writer:
-            writer.write_table(table)
+        pa = _arrow()
+        with pa.ipc.new_file(path, schema=table.schema) as writer:
+            if isinstance(table, pa.RecordBatch):
+                writer.write_batch(table)
+            else:
+                writer.write_table(table)
 
     def read_ipc(self, path: Path) -> Any:
         """Read Arrow IPC file (memory-mapped)."""

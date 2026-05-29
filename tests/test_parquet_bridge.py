@@ -98,9 +98,9 @@ class TestParquetLoad:
             result = bridge.load_parquet(path)
             assert result["rows_loaded"] == 3
             assert result["cols_loaded"] == 2
-            assert bridge.grid.cells["A1"] == "a"
-            assert bridge.grid.cells["A2"] == "1"
-            assert bridge.grid.cells["B2"] == "4.5"
+            assert bridge.grid.cells["A1"].formula == "a"
+            assert bridge.grid.cells["A2"].formula == "1"
+            assert bridge.grid.cells["B2"].formula == "4.5"
         finally:
             os.unlink(path)
 
@@ -115,8 +115,8 @@ class TestParquetLoad:
         try:
             pq.write_table(table, path)
             bridge.load_parquet(path)
-            assert bridge.grid.cells["A2"] == "alice"
-            assert bridge.grid.cells["B2"] == "100"
+            assert bridge.grid.cells["A2"].formula == "alice"
+            assert bridge.grid.cells["B2"].formula == "100"
         finally:
             os.unlink(path)
 

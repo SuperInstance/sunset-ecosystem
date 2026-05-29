@@ -68,8 +68,12 @@ class ParquetBridge:
         """Load a CSV file into the deckboss grid."""
         self._sheet_name = sheet_name
         if HAS_PYARROW:
-            table = pcsv.read_csv(str(path))
-            return self._load_arrow_table(table)
+            try:
+                table = pcsv.read_csv(str(path))
+                return self._load_arrow_table(table)
+            except Exception:
+                # Fallback to pure Python on pyarrow parse failure (e.g. empty file)
+                pass
         # Pure Python fallback
         with open(path, "r", newline="", encoding="utf-8") as f:
             reader = csv.reader(f)
@@ -90,16 +94,18 @@ class ParquetBridge:
             cell_ref = f"{self._col_letter(col_idx)}1"
             self.grid.set_cell(cell_ref, str(name))
 
-        # Data rows
-        for row_idx, batch in enumerate(table.to_batches(), start=2):
+        # Data rows — track current_row across batches to avoid overlap
+        current_row = 2
+        for batch in table.to_batches():
+            batch_len = len(batch)
             for col_idx, col_name in enumerate(self._col_names, start=1):
                 col_data = batch.column(col_name)
-                # Convert to Python types
-                for i in range(len(col_data)):
+                for i in range(batch_len):
                     val = col_data[i].as_py()
-                    cell_ref = f"{self._col_letter(col_idx)}{row_idx + i}"
+                    cell_ref = f"{self._col_letter(col_idx)}{current_row + i}"
                     self.grid.set_cell(cell_ref, self._value_to_string(val))
-                rows_loaded += len(col_data)
+            current_row += batch_len
+            rows_loaded += batch_len
 
         return {
             "rows_loaded": rows_loaded,
