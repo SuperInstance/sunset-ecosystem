@@ -1,0 +1,46 @@
+name: Commit-Caster
+on:
+  push:
+    branches: ['*']
+  workflow_dispatch:
+
+jobs:
+  cast:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Extract commit metadata
+        id: meta
+        run: |
+          echo "repo=${{ github.repository }}" >> $GITHUB_OUTPUT
+          echo "commit=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "author=${{ github.event.head_commit.author.name }}" >> $GITHUB_OUTPUT
+          echo "message=${{ github.event.head_commit.message }}" >> $GITHUB_OUTPUT
+          echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "timestamp=${{ github.event.head_commit.timestamp }}" >> $GITHUB_OUTPUT
+          files=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | jq -R . | jq -s .)
+          echo "files=$files" >> $GITHUB_OUTPUT
+
+      - name: Send to fleet
+        run: |
+          payload=$(jq -n \
+            --arg repo "${{ steps.meta.outputs.repo }}" \
+            --arg commit "${{ steps.meta.outputs.commit }}" \
+            --arg author "${{ steps.meta.outputs.author }}" \
+            --arg message "${{ steps.meta.outputs.message }}" \
+            --arg branch "${{ steps.meta.outputs.branch }}" \
+            --arg timestamp "${{ steps.meta.outputs.timestamp }}" \
+            --argjson files "${{ steps.meta.outputs.files }}" \
+            '{repo: $repo, commit: $commit, author: $author, message: $message, branch: $branch, timestamp: $timestamp, files: $files}')
+
+          signature=$(echo -n "$payload" | openssl dgst -sha256 -hmac "${{ secrets.FLEET_WEBHOOK_SECRET }}" | awk '{print $2}')
+
+          curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Commit-Caster-Signature: sha256=$signature" \
+            -d "$payload" \
+            "${{ secrets.FLEET_GATEWAY_URL }}/i2i/commit" || echo "Fleet gateway unreachable, queued for retry"

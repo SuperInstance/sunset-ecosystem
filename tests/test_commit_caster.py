@@ -1,219 +1,141 @@
-"""
-Tests for Commit-Caster I2I Router.
+"""Tests for the Commit-Caster I2I Router."""
 
-Covers: FleetCast, CommitCaster.
-"""
-
+import hashlib
+import hmac
+import json
+import time
 import pytest
 
-from fleet.commit_caster import FleetCast, CommitCaster
-from fleet.vessel_handshake import NetworkTopology
+from fleet.commit_caster import CommitCaster, CommitEvent
 
 
-class TestFleetCast:
-    def test_init(self):
-        cast = FleetCast(
-            source_vessel="alpha",
-            target_vessel="beta",
-            payload={"msg": "hello"},
-            timestamp=1000.0,
-        )
-        assert cast.source_vessel == "alpha"
-        assert cast.target_vessel == "beta"
-        assert cast.cast_hash != ""
+class TestCommitEvent:
+    def test_from_dict(self):
+        d = {
+            "repo": "SuperInstance/sunset-ecosystem",
+            "commit": "abc123",
+            "author": "Casey",
+            "message": "Fix bug",
+            "branch": "main",
+            "timestamp": "2024-01-01T00:00:00Z",
+            "files": ["a.py"],
+        }
+        ev = CommitEvent.from_dict(d)
+        assert ev.repo == "SuperInstance/sunset-ecosystem"
+        assert ev.commit == "abc123"
 
-    def test_hash_computation(self):
-        cast1 = FleetCast(
-            source_vessel="alpha", target_vessel="beta",
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        cast2 = FleetCast(
-            source_vessel="alpha", target_vessel="beta",
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        assert cast1.cast_hash == cast2.cast_hash
+    def test_fingerprint(self):
+        ev = CommitEvent("r", "c", "a", "m", "b", "t")
+        assert ev.fingerprint() == "r:c"
 
-    def test_hash_different(self):
-        cast1 = FleetCast(
-            source_vessel="alpha", target_vessel="beta",
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        cast2 = FleetCast(
-            source_vessel="alpha", target_vessel="gamma",
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        assert cast1.cast_hash != cast2.cast_hash
-
-    def test_to_commit_message(self):
-        cast = FleetCast(
-            source_vessel="alpha", target_vessel="beta",
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        msg = cast.to_commit_message()
-        assert "[FLEET-CAST]" in msg
-        assert "alpha -> beta" in msg
-        assert "hello" in msg
-
-    def test_to_commit_message_broadcast(self):
-        cast = FleetCast(
-            source_vessel="alpha", target_vessel=None,
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        msg = cast.to_commit_message()
-        assert "BROADCAST" in msg
-
-    def test_from_commit_message(self):
-        cast = FleetCast(
-            source_vessel="alpha", target_vessel="beta",
-            payload={"msg": "hello"}, timestamp=1000.0, sequence=1
-        )
-        msg = cast.to_commit_message()
-        parsed = FleetCast.from_commit_message(msg)
-        assert parsed is not None
-        assert parsed.source_vessel == "alpha"
-        assert parsed.target_vessel == "beta"
-        assert parsed.payload == {"msg": "hello"}
-        assert parsed.sequence == 1
-
-    def test_from_commit_message_invalid(self):
-        parsed = FleetCast.from_commit_message("not a fleet cast")
-        assert parsed is None
-
-    def test_to_dict(self):
-        cast = FleetCast(
-            source_vessel="alpha", target_vessel="beta",
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        d = cast.to_dict()
-        assert d["source"] == "alpha"
-        assert d["target"] == "beta"
-        assert d["payload"] == {"msg": "hello"}
+    def test_to_dict_roundtrip(self):
+        ev = CommitEvent("r", "c", "a", "m", "b", "t", ["f"])
+        d = ev.to_dict()
+        ev2 = CommitEvent.from_dict(d)
+        assert ev2.fingerprint() == ev.fingerprint()
 
 
 class TestCommitCaster:
     def test_init(self):
-        caster = CommitCaster("alpha")
-        assert caster.vessel_id == "alpha"
-        assert caster.sequence == 0
+        cc = CommitCaster("secret")
+        assert cc.get_stats()["received"] == 0
 
-    def test_cast(self):
-        caster = CommitCaster("alpha")
-        cast = caster.cast("beta", {"msg": "hello"})
-        assert cast.source_vessel == "alpha"
-        assert cast.target_vessel == "beta"
-        assert cast.payload == {"msg": "hello"}
-        assert caster.sequence == 1
-        assert cast in caster.pending_casts
+    def test_validate_good(self):
+        cc = CommitCaster("secret")
+        payload = b'{"repo":"r"}'
+        sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
+        assert cc.validate(payload, sig) is True
+
+    def test_validate_bad_secret(self):
+        cc = CommitCaster("secret")
+        payload = b'{"repo":"r"}'
+        sig = "sha256=" + hmac.new(b"wrong", payload, hashlib.sha256).hexdigest()
+        assert cc.validate(payload, sig) is False
+
+    def test_validate_bad_prefix(self):
+        cc = CommitCaster("secret")
+        assert cc.validate(b"x", "badprefix") is False
+
+    def test_receive_good(self):
+        cc = CommitCaster("secret")
+        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
+        ev = cc.receive(payload, sig)
+        assert ev is not None
+        assert cc.get_stats()["accepted"] == 1
+
+    def test_receive_bad_signature(self):
+        cc = CommitCaster("secret")
+        payload = b'{"repo":"r"}'
+        ev = cc.receive(payload, "sha256=bad")
+        assert ev is None
+        assert cc.get_stats()["rejected"] == 1
+
+    def test_receive_bad_json(self):
+        cc = CommitCaster("secret")
+        payload = b"not json"
+        sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
+        ev = cc.receive(payload, sig)
+        assert ev is None
+
+    def test_deduplication(self):
+        cc = CommitCaster("secret")
+        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
+        cc.receive(payload, sig)
+        ev2 = cc.receive(payload, sig)
+        assert ev2 is None
+        assert cc.get_stats()["accepted"] == 1
+        assert cc.get_stats()["rejected"] == 1
+
+    def test_deduplication_window_expires(self):
+        cc = CommitCaster("secret", window_sec=0.01)
+        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
+        cc.receive(payload, sig)
+        time.sleep(0.02)
+        ev2 = cc.receive(payload, sig)
+        assert ev2 is not None
 
     def test_broadcast(self):
-        caster = CommitCaster("alpha")
-        cast = caster.broadcast({"alert": "test"})
-        assert cast.target_vessel is None
-        assert caster.sequence == 1
+        calls = []
+        cc = CommitCaster("secret", mesh_broadcast=lambda d: calls.append(d))
+        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
+        cc.receive(payload, sig)
+        assert len(calls) == 1
 
-    def test_receive_direct(self):
-        caster = CommitCaster("beta")
-        cast = FleetCast(
-            source_vessel="alpha", target_vessel="beta",
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        result = caster.receive(cast)
-        assert result is True
-        assert cast in caster.delivered_casts
+    def test_broadcast_failure_queues(self):
+        cc = CommitCaster("secret", mesh_broadcast=lambda d: (_ for _ in ()).throw(RuntimeError("fail")))
+        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
+        cc.receive(payload, sig)
+        assert cc.get_stats()["queued"] == 1
+        assert len(cc.get_queue()) == 1
 
-    def test_receive_broadcast(self):
-        caster = CommitCaster("beta")
-        cast = FleetCast(
-            source_vessel="alpha", target_vessel=None,
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        result = caster.receive(cast)
-        assert result is True
-
-    def test_receive_deduplication(self):
-        caster = CommitCaster("beta")
-        cast = FleetCast(
-            source_vessel="alpha", target_vessel="beta",
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        caster.receive(cast)
-        result = caster.receive(cast)
-        assert result is False
-
-    def test_receive_wrong_target(self):
-        caster = CommitCaster("beta")
-        cast = FleetCast(
-            source_vessel="alpha", target_vessel="gamma",
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        result = caster.receive(cast)
-        assert result is False
-
-    def test_get_route(self):
-        topo = NetworkTopology()
-        topo.add_edge("alpha", "beta")
-        topo.add_edge("beta", "gamma")
-        caster = CommitCaster("alpha", network=topo)
-        route = caster.get_route("gamma")
-        assert route == ["alpha", "beta", "gamma"]
-
-    def test_get_route_no_network(self):
-        caster = CommitCaster("alpha")
-        route = caster.get_route("beta")
-        assert route == ["alpha", "beta"]
-
-    def test_find_next_hop(self):
-        topo = NetworkTopology()
-        topo.add_edge("alpha", "beta")
-        topo.add_edge("beta", "gamma")
-        caster = CommitCaster("alpha", network=topo)
-        hop = caster._find_next_hop("gamma")
-        assert hop == "beta"
-
-    def test_get_pending(self):
-        caster = CommitCaster("alpha")
-        caster.cast("beta", {"msg": "hello"})
-        pending = caster.get_pending()
-        assert len(pending) == 1
-
-    def test_get_delivered(self):
-        caster = CommitCaster("beta")
-        cast = FleetCast(
-            source_vessel="alpha", target_vessel="beta",
-            payload={"msg": "hello"}, timestamp=1000.0
-        )
-        caster.receive(cast)
-        delivered = caster.get_delivered()
-        assert len(delivered) == 1
-
-    def test_clear_pending(self):
-        caster = CommitCaster("alpha")
-        caster.cast("beta", {"msg": "hello"})
-        caster.clear_pending()
-        assert len(caster.pending_casts) == 0
-
-    def test_get_stats(self):
-        caster = CommitCaster("alpha")
-        caster.cast("beta", {"msg": "hello"})
-        stats = caster.get_stats()
-        assert stats["vessel_id"] == "alpha"
-        assert stats["sequence"] == 1
-        assert stats["pending"] == 1
+    def test_flush_queue(self):
+        calls = []
+        cc = CommitCaster("secret")
+        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
+        cc.receive(payload, sig)
+        assert len(cc.get_queue()) == 1
+        cc.mesh_broadcast = lambda d: calls.append(d)
+        sent = cc.flush_queue()
+        assert sent == 1
+        assert len(cc.get_queue()) == 0
 
     def test_to_dict(self):
-        caster = CommitCaster("alpha")
-        caster.cast("beta", {"msg": "hello"})
-        d = caster.to_dict()
-        assert d["vessel_id"] == "alpha"
-        assert len(d["pending"]) == 1
+        cc = CommitCaster("secret")
+        d = cc.to_dict()
+        assert d["secret_set"] is True
+        assert d["broadcast_set"] is False
 
-    def test_sequence_increment(self):
-        caster = CommitCaster("alpha")
-        caster.cast("beta", {"msg": "1"})
-        caster.cast("beta", {"msg": "2"})
-        caster.broadcast({"msg": "3"})
-        assert caster.sequence == 3
-
-    def test_max_hops(self):
-        caster = CommitCaster("alpha")
-        assert caster.max_hops == 10
+    def test_stats(self):
+        cc = CommitCaster("secret")
+        s = cc.get_stats()
+        assert "received" in s
+        assert "accepted" in s
+        assert "rejected" in s
+        assert "queued" in s
+        assert "queue_size" in s
