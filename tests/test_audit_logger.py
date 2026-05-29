@@ -1,103 +1,78 @@
-"""Tests for audit_logger.py — Immutable audit trail.
+"""Tests for audit_logger.py — Structured audit logging with HMAC.
 
 Run: python3 -m pytest tests/test_audit_logger.py -v --tb=short
 """
 from __future__ import annotations
 
-import time
-
 import pytest
 
-from fleet.audit_logger import AuditLogger, AuditTamperError
+from fleet.audit_logger import AuditLogger
 
 
 class TestAuditLogger:
     def test_create(self):
-        logger = AuditLogger(secret=b"secret")
+        logger = AuditLogger(secret="key")
         assert logger.count() == 0
 
     def test_record(self):
-        logger = AuditLogger(secret=b"secret")
-        event = logger.record("breed", agent="a1", score=0.95)
-        assert event.seq == 1
-        assert event.category == "breed"
-        assert event.payload == {"agent": "a1", "score": 0.95}
+        logger = AuditLogger(secret="key")
+        logger.record("user.login", {"user": "alice"})
+        assert logger.count() == 1
 
-    def test_sequence_increments(self):
-        logger = AuditLogger(secret=b"secret")
-        e1 = logger.record("a")
-        e2 = logger.record("b")
-        assert e2.seq == e1.seq + 1
+    def test_query_by_action(self):
+        logger = AuditLogger(secret="key")
+        logger.record("user.login")
+        logger.record("user.logout")
+        results = logger.query(action="user.login")
+        assert len(results) == 1
 
-    def test_tail(self):
-        logger = AuditLogger(secret=b"secret")
-        for i in range(5):
-            logger.record("evt", n=i)
-        tail = logger.tail(3)
-        assert len(tail) == 3
-        assert tail[-1].payload["n"] == 4
-
-    def test_by_category(self):
-        logger = AuditLogger(secret=b"secret")
-        logger.record("breed", x=1)
-        logger.record("trap", x=2)
-        logger.record("breed", x=3)
-        assert len(logger.by_category("breed")) == 2
-
-    def test_since(self):
-        logger = AuditLogger(secret=b"secret")
+    def test_query_by_time(self):
+        import time
+        logger = AuditLogger(secret="key")
         before = time.time()
+        logger.record("user.login")
+        after = time.time()
+        results = logger.query(since=before)
+        assert len(results) == 1
+        results = logger.query(until=before)
+        assert len(results) == 0
+
+    def test_hmac_integrity(self):
+        logger = AuditLogger(secret="key")
+        logger.record("user.login")
+        entry = logger.query()[0]
+        assert logger.verify(entry) is True
+
+    def test_tamper_detection(self):
+        logger = AuditLogger(secret="key")
+        logger.record("user.login")
+        entry = logger.query()[0]
+        entry["action"] = "tampered"
+        assert logger.verify(entry) is False
+
+    def test_capacity_eviction(self):
+        logger = AuditLogger(secret="key", capacity=2)
         logger.record("a")
         logger.record("b")
-        after = time.time()
-        assert len(logger.since(before)) == 2
-        assert len(logger.since(after + 1)) == 0
+        logger.record("c")
+        assert logger.count() == 2
+        assert logger.query(action="a") == []
 
-    def test_verify_clean(self):
-        logger = AuditLogger(secret=b"secret")
-        for i in range(10):
-            logger.record("evt", i=i)
-        logger.verify()
+    def test_stats(self):
+        logger = AuditLogger(secret="key")
+        logger.record("user.login")
+        logger.record("user.login")
+        logger.record("user.logout")
+        stats = logger.stats()
+        assert stats["total"] == 3
+        assert stats["by_action"]["user.login"] == 2
 
-    def test_verify_tampered(self):
-        logger = AuditLogger(secret=b"secret")
-        for i in range(5):
-            logger.record("evt", i=i)
-        logger._events[2].payload["i"] = 999
-        with pytest.raises(AuditTamperError):
-            logger.verify()
-
-    def test_verify_range(self):
-        logger = AuditLogger(secret=b"secret")
-        for i in range(10):
-            logger.record("evt", i=i)
-        assert logger.verify_range(1, 5) is True
-
-    def test_verify_range_tampered(self):
-        logger = AuditLogger(secret=b"secret")
-        for i in range(10):
-            logger.record("evt", i=i)
-        logger._events[5].payload["i"] = 999
-        assert logger.verify_range(1, 5) is True
-        assert logger.verify_range(5, 7) is False
-
-    def test_export_import_roundtrip(self):
-        logger = AuditLogger(secret=b"secret")
-        for i in range(5):
-            logger.record("evt", i=i)
-        data = logger.export_json()
-        logger2 = AuditLogger(secret=b"secret")
-        logger2.import_json(data)
-        assert logger2.count() == 5
-        logger2.verify()
-
-    def test_max_events_eviction(self):
-        logger = AuditLogger(secret=b"secret", max_events=3)
-        for i in range(5):
-            logger.record("evt", i=i)
-        assert logger.count() == 3
-        assert logger.tail(1)[0].payload["i"] == 4
+    def test_verify_all(self):
+        logger = AuditLogger(secret="key")
+        logger.record("user.login")
+        assert logger.verify_all() == []
 
     def test_repr(self):
-        logger = AuditLogger(secret=b"secret")
+        logger = AuditLogger(secret="key")
+        logger.record("user.login")
         assert "AuditLogger" in repr(logger)

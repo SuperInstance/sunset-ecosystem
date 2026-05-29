@@ -1,149 +1,108 @@
-"""connection_pool.py — Generic connection pooling for fleet services.
+"""Generic connection pool with health checking.
 
-Provides:
-1. Borrow/return connection lifecycle
-2. Max connections per pool
-3. Connection health checks
-4. Idle timeout eviction
-5. Wait-timeout for exhausted pools
+Manages a pool of connections with max size, timeout, and health
+verification. Used for fleet database, API, and service connections.
 
 Usage:
-    pool = ConnectionPool(max_connections=10, factory=create_db_connection)
-    conn = pool.borrow()
-    try:
-        conn.query("SELECT * FROM agents")
-    finally:
-        pool.return_(conn)
+    pool = ConnectionPool(max_size=10, factory=make_conn, health=check_conn)
+    conn = pool.acquire()
+    pool.release(conn)
 """
 from __future__ import annotations
 
-__all__ = [
-    "ConnectionPool",
-    "PooledConnection",
-    "PoolExhausted",
-]
-
-import logging
 import threading
 import time
-from dataclasses import dataclass
-from typing import Any, Callable
-
-logger = logging.getLogger(__name__)
-
-
-class PoolExhausted(Exception):
-    """Raised when pool is exhausted and wait timeout expires."""
-
-
-@dataclass
-class PooledConnection:
-    """A connection wrapper with pool metadata."""
-    conn: Any
-    created_at: float
-    last_used: float
-    use_count: int = 0
-    healthy: bool = True
+from typing import Any, Callable, Dict, List, Optional
 
 
 class ConnectionPool:
-    """Generic connection pool with health checks and eviction."""
+    """
+    Generic connection pool.
+
+    :param max_size: Maximum connections in pool.
+    :param factory: Callable returning a new connection.
+    :param health: Callable(connection) -> bool for health check.
+    :param idle_timeout: Seconds before idle connections are closed.
+    """
 
     def __init__(
         self,
+        max_size: int,
         factory: Callable[[], Any],
-        max_connections: int = 10,
-        idle_timeout: float = 300.0,
-        wait_timeout: float = 5.0,
-        health_check: Callable[[Any], bool] | None = None,
-    ) -> None:
+        health: Optional[Callable[[Any], bool]] = None,
+        idle_timeout: Optional[float] = None,
+    ):
+        self._max_size = max_size
         self._factory = factory
-        self._max_connections = max_connections
+        self._health = health
         self._idle_timeout = idle_timeout
-        self._wait_timeout = wait_timeout
-        self._health_check = health_check
-        self._pool: list[PooledConnection] = []
-        self._in_use_ids: set[int] = set()  # Track by id() for unhashable objects
+        self._pool: List[Dict[str, Any]] = []
+        self._in_use: set = set()
         self._lock = threading.Lock()
-        self._condition = threading.Condition(self._lock)
-        self._total_created = 0
-        self._total_borrowed = 0
-        self._total_returned = 0
 
-    def borrow(self) -> Any:
-        """Borrow a connection from the pool."""
-        with self._condition:
-            deadline = time.time() + self._wait_timeout
-            while True:
-                # Try to get an available connection
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def acquire(self, timeout: Optional[float] = None) -> Any:
+        """
+        Acquire a connection.
+
+        :param timeout: Max seconds to wait.
+        :returns: Connection object.
+        :raises RuntimeError: If pool exhausted and no connection available.
+        """
+        deadline = time.time() + timeout if timeout else None
+        while True:
+            with self._lock:
+                # Check for available healthy connection
                 now = time.time()
-                available = [p for p in self._pool if id(p.conn) not in self._in_use_ids]
-                # Remove stale connections
-                stale = [p for p in available if now - p.last_used > self._idle_timeout]
-                for p in stale:
-                    self._pool.remove(p)
-                    available.remove(p)
-
-                # Find a healthy available connection
-                for p in available:
-                    if self._health_check is not None and not self._health_check(p.conn):
-                        p.healthy = False
-                        self._pool.remove(p)
+                for i, item in enumerate(self._pool):
+                    if item["conn"] in self._in_use:
                         continue
-                    self._in_use_ids.add(id(p.conn))
-                    p.last_used = now
-                    p.use_count += 1
-                    self._total_borrowed += 1
-                    return p.conn
+                    if self._idle_timeout and now - item["last_used"] > self._idle_timeout:
+                        continue
+                    if self._health and not self._health(item["conn"]):
+                        continue
+                    self._in_use.add(item["conn"])
+                    item["last_used"] = now
+                    self._pool.pop(i)
+                    return item["conn"]
 
-                # Create new connection if under limit
-                if len(self._pool) < self._max_connections:
-                    try:
-                        raw = self._factory()
-                        pc = PooledConnection(
-                            conn=raw,
-                            created_at=now,
-                            last_used=now,
-                            use_count=1,
-                        )
-                        self._pool.append(pc)
-                        self._in_use_ids.add(id(raw))
-                        self._total_created += 1
-                        self._total_borrowed += 1
-                        return raw
-                    except Exception as e:
-                        logger.error(f"Connection factory failed: {e}")
-                        raise PoolExhausted(f"Failed to create connection: {e}") from e
+                # Create new if under max
+                if len(self._in_use) < self._max_size:
+                    conn = self._factory()
+                    self._in_use.add(conn)
+                    return conn
 
-                # Wait for a connection to be returned
-                remaining = deadline - time.time()
-                if remaining <= 0:
-                    raise PoolExhausted("Pool exhausted, wait timeout expired")
-                self._condition.wait(timeout=remaining)
+            if deadline and time.time() >= deadline:
+                raise RuntimeError("Connection pool exhausted")
+            time.sleep(0.01)
 
-    def return_(self, conn: Any) -> None:
-        """Return a connection to the pool."""
+    def release(self, conn: Any) -> None:
+        """Release a connection back to the pool."""
         with self._lock:
-            conn_id = id(conn)
-            if conn_id in self._in_use_ids:
-                self._in_use_ids.remove(conn_id)
-                self._total_returned += 1
-                self._condition.notify()
+            self._in_use.discard(conn)
+            self._pool.append({"conn": conn, "last_used": time.time()})
 
-    def stats(self) -> dict[str, Any]:
-        """Pool statistics."""
+    def close(self, conn: Any) -> None:
+        """Remove a connection permanently."""
         with self._lock:
-            available = len([p for p in self._pool if id(p.conn) not in self._in_use_ids])
+            self._in_use.discard(conn)
+            self._pool = [item for item in self._pool if item["conn"] is not conn]
+
+    # ------------------------------------------------------------------
+    # Stats
+    # ------------------------------------------------------------------
+
+    def stats(self) -> Dict[str, int]:
+        with self._lock:
             return {
-                "total_connections": len(self._pool),
-                "in_use": len(self._in_use_ids),
-                "available": available,
-                "max_connections": self._max_connections,
-                "total_created": self._total_created,
-                "total_borrowed": self._total_borrowed,
-                "total_returned": self._total_returned,
+                "available": len(self._pool),
+                "in_use": len(self._in_use),
+                "max": self._max_size,
             }
 
     def __repr__(self) -> str:
-        stats = self.stats()
-        return f"ConnectionPool(total={stats['total_connections']}, in_use={stats['in_use']})"
+        with self._lock:
+            return f"<ConnectionPool available={len(self._pool)} in_use={len(self._in_use)} max={self._max_size}>"
