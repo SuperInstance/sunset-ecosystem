@@ -4,7 +4,7 @@ from typing import Callable, Dict, List, Optional
 from dataclasses import dataclass, field
 import time
 
-from fleet.spatial_projector import WorldState, A2ASpatialIndex
+from fleet.spatial_projector import WorldState, SpatialProjector
 
 
 @dataclass
@@ -20,7 +20,7 @@ class RoomTransition:
 class PlatoRoomSync:
     """Auto-syncs agent WorldState with the spatial projector on room entry/exit."""
 
-    def __init__(self, projector: A2ASpatialIndex):
+    def __init__(self, projector: SpatialProjector):
         self.projector = projector
         self._agent_rooms: Dict[str, str] = {}
         self._transitions: List[RoomTransition] = []

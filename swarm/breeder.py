@@ -133,11 +133,11 @@ class Breeder:
 
     def lifecycle_state(self, room_idx: int) -> str:
         """Return the current lifecycle state of a room."""
-        return self._lifecycle.get(room_idx, LifecycleRecord(room_idx=room_idx)).state
+        return self._lifecycle.get(room_idx, LifecycleRecord(room_id=room_idx)).state
 
     def _advance_lifecycle(self, room_idx: int) -> None:
         """Evaluate and possibly advance the lifecycle state of a room."""
-        record = self._lifecycle.get(room_idx, LifecycleRecord(room_idx=room_idx))
+        record = self._lifecycle.get(room_idx, LifecycleRecord(room_id=room_idx))
         if record.can_advance():
             transitions = {
                 AgentLifecycle.SPAWNED: AgentLifecycle.ACTIVE,

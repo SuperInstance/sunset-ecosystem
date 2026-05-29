@@ -233,6 +233,19 @@ class SpatialProjector:
         self._prediction_history: Dict[str, List[Prediction]] = {}
         self._a2a_callbacks: List[Callable[[Prediction], None]] = []
 
+    def update(self, state: WorldState) -> str:
+        """Upsert an agent's state into the spatial index."""
+        return self.project_state(state.agent_id or "anonymous",
+                                   state.room_id or "default",
+                                   state)
+
+    def remove(self, state: WorldState) -> None:
+        """Remove all projections for an agent."""
+        if state.agent_id:
+            pids = list(self.index._by_agent.get(state.agent_id, []))
+            for pid in pids:
+                self.index.remove(pid)
+
     # ── Agent Management ──
 
     def register_agent(self, agent_id: str, position: tuple):
