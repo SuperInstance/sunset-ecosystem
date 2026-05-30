@@ -11,7 +11,7 @@ from typing import Any, Dict
 
 import pytest
 
-from logos.a2a_protocol import (
+from a2a.protocol import (
     A2AAgentCard,
     A2AClient,
     A2AError,

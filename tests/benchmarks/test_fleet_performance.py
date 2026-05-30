@@ -78,7 +78,7 @@ def _make_dummy_entry(agent_id: str, dim: int, seed: int = 42) -> VectorTableEnt
 
 # Check if AgentIdentity is available (used for signing entries)
 try:
-    from logos.a2a_identity import AgentIdentity
+    from a2a.identity import AgentIdentity
 
     _HAS_IDENTITY = True
 except Exception:

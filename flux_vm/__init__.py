@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from flux_vm.ffi import FLUXVM
+from flux_vm.ffi import FluxVM
 
-__all__ = ["FLUXVM"]
+__all__ = ["FluxVM"]

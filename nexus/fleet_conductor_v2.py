@@ -297,7 +297,7 @@ class FleetConductorV2:
 
         # 5. AgentRegistry
         def _make_registry() -> Any:
-            from logos.a2a_identity import AgentRegistry
+            from a2a.identity import AgentRegistry
 
             return AgentRegistry(identity=self._get_identity())
 
@@ -580,7 +580,7 @@ class FleetConductorV2:
     def _get_identity(self) -> Any | None:
         """Return an AgentIdentity if available, else None."""
         try:
-            from logos.a2a_identity import AgentIdentity
+            from a2a.identity import AgentIdentity
 
             return AgentIdentity(agent_id=self._node_id)
         except Exception as exc:
@@ -954,7 +954,7 @@ class FleetConductorV2:
         if registry is not None:
             try:
                 for agent_id, card in node_info.get("agent_cards", {}).items():
-                    from logos.a2a_identity import AgentCard
+                    from a2a.identity import AgentCard
 
                     if isinstance(card, dict):
                         card = AgentCard.from_dict(card)

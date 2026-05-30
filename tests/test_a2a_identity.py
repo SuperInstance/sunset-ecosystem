@@ -11,7 +11,7 @@ from typing import Any, Dict
 
 import pytest
 
-from logos.a2a_identity import (
+from a2a.identity import (
     AgentCard,
     AgentIdentity,
     AgentRegistry,

@@ -69,7 +69,7 @@ from nerve.distributed_metronome_bridge import MetronomeBridge
 from swarm.mesh_vector_tables import FleetVectorIndex, VectorTableEntry
 from fleet.operational_trap import TrapRegistry
 from sunset.flux_preset_library import FluxPresetLibrary
-from logos.a2a_identity import AgentIdentity
+from a2a.identity import AgentIdentity
 from logos.signed_wal import SignedWAL, WALEntry
 from logos.decision_journal import log_spawn, log_sunset, log_breed
 

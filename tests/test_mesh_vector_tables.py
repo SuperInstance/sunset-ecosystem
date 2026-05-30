@@ -23,7 +23,7 @@ from swarm.mesh_vector_tables import (
 
 # AgentIdentity is optional (cryptography may not be installed)
 try:
-    from logos.a2a_identity import AgentIdentity
+    from a2a.identity import AgentIdentity
     _HAS_IDENTITY = True
 except Exception:
     _HAS_IDENTITY = False

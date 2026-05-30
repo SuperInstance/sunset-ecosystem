@@ -44,3 +44,4 @@ include = ["ethos*", "pathos*", "logos*", "sunset*", "swarm*", "nexus*", "gramma
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = ["--ignore=tests/benchmarks"]

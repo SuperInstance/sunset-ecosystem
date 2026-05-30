@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from compiler.hot_swap_integration import HotSwapCompiler
+from compiler.hot_swap_integration import CompilerHotSwap, CompileResult
 
-__all__ = ["HotSwapCompiler"]
+__all__ = ["CompilerHotSwap", "CompileResult"]

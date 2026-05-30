@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from ethos.hardware_survey import HardwareSurvey
-from ethos.thermal_auto_calibrate import ThermalAutoCalibrate
+from ethos.hardware_survey import HardwareProfile, survey_hardware
+from ethos.thermal_auto_calibrate import ThermalAutoCalibrator
 
 __all__ = [
-    "HardwareSurvey",
-    "ThermalAutoCalibrate",
+    "HardwareProfile",
+    "survey_hardware",
+    "ThermalAutoCalibrator",
 ]
