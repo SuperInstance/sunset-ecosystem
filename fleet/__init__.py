@@ -4,14 +4,7 @@ from __future__ import annotations
 
 # Core fleet abstractions
 from fleet.sense_decide_act import (
-    Sense,
-    Decide,
-    Act,
-    Policy,
-    SDALoop,
-    SDAPipeline,
-    Observation,
-    Action,
+    Sense, Decide, Act, Policy, SDALoop, SDAPipeline, Observation,
 )
 from fleet.holodeck import (
     Holodeck,
@@ -27,20 +20,7 @@ from fleet.plato_signal_chain import (
 )
 
 __all__ = [
-    "Sense",
-    "Decide",
-    "Act",
-    "Policy",
-    "SDALoop",
-    "SDAPipeline",
-    "Observation",
-    "Action",
-    "Holodeck",
-    "RoomNode",
-    "AgentAvatar",
-    "MockPlatoSource",
-    "PlatoSignalChain",
-    "PlatoRoomSense",
-    "PlatoBreedingPolicy",
-    "PlatoBreedingAct",
+    "Sense", "Decide", "Act", "Policy", "SDALoop", "SDAPipeline", "Observation",
+    "Holodeck", "RoomNode", "AgentAvatar", "MockPlatoSource",
+    "PlatoSignalChain", "PlatoRoomSense", "PlatoBreedingPolicy", "PlatoBreedingAct",
 ]

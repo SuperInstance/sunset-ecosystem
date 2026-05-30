@@ -780,103 +780,118 @@ class BreederDaemonV2:
             self._tick_count += 1
             tick = self._tick_count
 
-        # Dequeue highest-priority breed request
+        # 1. Dequeue and validate request
         request = self._wal.dequeue_breed()
         if request is None:
             return transitions
-
         ticket, parent_a, parent_b, priority, remote = request
+        parent_a, parent_b = self._resolve_mate(parent_a, parent_b)
 
-        # If only one parent was specified, select a diverse mate
-        if parent_b is None:
-            candidates = self._get_breedable_candidates()
-            if parent_a in candidates:
-                pairs = self._select_parents_vector(
-                    population=candidates,
-                    vector_table=self._vector_table,
-                    n_children=1,
-                )
-                if pairs:
-                    _, parent_b = pairs[0]
-
-        # ── TrajectoryMonitor circuit breaker ───────────────────
-        parents_to_check = [p for p in (parent_a, parent_b) if p is not None]
-        flagged_parents = self._trajectory_monitor.circuit_breaker(parents_to_check)
-        if flagged_parents:
+        # 2. Security checks
+        flagged = self._trajectory_monitor.circuit_breaker(
+            [p for p in (parent_a, parent_b) if p is not None]
+        )
+        if flagged:
             logger.warning(
                 "Step %d: breeding ticket %d aborted — "
-                "anomalous trajectory detected in parent(s) %s",
-                tick, ticket, flagged_parents,
+                "anomalous trajectory in parent(s) %s",
+                tick, ticket, flagged,
             )
-            # Do NOT re-queue — a flagged parent is a security event.
-            # Return empty transitions; the ticket is consumed.
             return transitions
 
-        # Thermal check
-        device = DeviceType.GPU  # default; could be configurable per agent
-        if not self.thermal.can_spawn(device):
-            # Hysteresis: wait before trying again
-            self._thermal_blocked_ticks += 1
-            if self._thermal_blocked_ticks < self._thermal_cfg.hysteresis_ticks:
-                # Re-queue at same priority for later retry
-                self._wal.enqueue_breed(parent_a, parent_b, priority, remote)
-                logger.debug(
-                    "Thermal block (tick %d, hysteresis %d/%d), re-queued ticket %d",
-                    tick,
-                    self._thermal_blocked_ticks,
-                    self._thermal_cfg.hysteresis_ticks,
-                    ticket,
-                )
-                return transitions
-            else:
-                # Hysteresis exhausted — try parent sacrifice
-                parent_id = f"agent_{parent_a}"
-                ok = self.thermal.parent_sacrifice_before_spawn(
-                    parent_id=parent_id,
-                    child_device=device,
-                )
-                if not ok:
-                    # Still no room; keep re-queuing
-                    self._wal.enqueue_breed(parent_a, parent_b, priority, remote)
-                    logger.warning(
-                        "Thermal saturated, re-queued ticket %d", ticket
-                    )
-                    return transitions
-
-        # Thermal check passed (or sacrifice succeeded)
+        # 3. Thermal budget
+        device = DeviceType.GPU
+        thermal_ok = self._check_thermal(ticket, parent_a, parent_b, priority, remote, device)
+        if not thermal_ok:
+            return transitions
         self._thermal_blocked_ticks = 0
 
-        # ── FLUX gating: check candidate before room allocation ───
-        mutation_plan = {
-            "parents": (parent_a, parent_b),
-            "room_id": None,  # not yet known
-        }
+        # 4. FLUX gating
+        flux_ok = self._check_flux_gating(ticket, parent_a, parent_b, priority, remote)
+        if not flux_ok:
+            return transitions
+
+        # 5. Allocate room
+        room_result = self._allocate_room(ticket, parent_a, parent_b, priority, remote)
+        if room_result is None:
+            return transitions
+        room_id, sunset_transitions = room_result
+        transitions.extend(sunset_transitions)
+
+        # 6. Spawn child
+        child_id = self._next_agent_id()
+        spawn_result = self._spawn_child(
+            tick, child_id, room_id, parent_a, parent_b,
+            priority, remote, device, transitions,
+        )
+        if spawn_result is None:
+            return transitions
+        transitions = spawn_result
+
+        # 7. Post-spawn monitoring
+        self._post_spawn_monitoring(tick, child_id, room_id, parent_a, parent_b)
+
+        return transitions
+
+    def _resolve_mate(self, parent_a, parent_b):
+        """If only one parent was specified, select a diverse mate."""
+        if parent_b is not None:
+            return parent_a, parent_b
+        candidates = self._get_breedable_candidates()
+        if parent_a not in candidates:
+            return parent_a, parent_b
+        pairs = self._select_parents_vector(
+            population=candidates,
+            vector_table=self._vector_table,
+            n_children=1,
+        )
+        if pairs:
+            _, parent_b = pairs[0]
+        return parent_a, parent_b
+
+    def _check_thermal(self, ticket, parent_a, parent_b, priority, remote, device) -> bool:
+        """Check thermal budget. Returns True if OK, False if blocked (re-queues)."""
+        if self.thermal.can_spawn(device):
+            return True
+        self._thermal_blocked_ticks += 1
+        if self._thermal_blocked_ticks < self._thermal_cfg.hysteresis_ticks:
+            self._wal.enqueue_breed(parent_a, parent_b, priority, remote)
+            return False
+        parent_id = f"agent_{parent_a}"
+        ok = self.thermal.parent_sacrifice_before_spawn(
+            parent_id=parent_id, child_device=device,
+        )
+        if not ok:
+            self._wal.enqueue_breed(parent_a, parent_b, priority, remote)
+            return False
+        return True
+
+    def _check_flux_gating(self, ticket, parent_a, parent_b, priority, remote) -> bool:
+        """FLUX gating: check candidate before room allocation. Returns True if OK."""
+        mutation_plan = {"parents": (parent_a, parent_b), "room_id": None}
         flux_result = self._check_flux(parent_a, mutation_plan)
         if not self._flux_passed(flux_result):
             logger.warning(
-                "Step %d: FLUX blocked ticket %d (parents=%s): %s",
-                tick, ticket, (parent_a, parent_b),
+                "FLUX blocked ticket %d (parents=%s): %s",
+                ticket, (parent_a, parent_b),
                 getattr(flux_result, "violations", "unknown"),
             )
-            # Re-queue for later retry — constraint may loosen
             self._wal.enqueue_breed(parent_a, parent_b, priority, remote)
-            return transitions
+            return False
+        return True
 
-        # Find a cold room for the child
+    def _allocate_room(self, ticket, parent_a, parent_b, priority, remote):
+        """Find a cold room and release old agent if any. Returns (room_id, sunset_transitions) or None."""
         cold_rooms = self.grid.cold(thresh=1)
         if not cold_rooms:
-            # No cold rooms — park this request back in queue
             self._wal.enqueue_breed(parent_a, parent_b, priority, remote)
-            return transitions
-
+            return None
         room_id = cold_rooms[0]
-
-        # Release old agent in this room if any
+        transitions = []
         old_agent_id = self._room_allocations.get(room_id)
         if old_agent_id is not None:
             self.thermal.release(f"agent_{old_agent_id}")
             del self._room_allocations[room_id]
-            # Record SUNSET for old agent
             old_fsm = self._fsm.get(old_agent_id)
             old_state = old_fsm.get_state() if old_fsm else LifecycleState.COMPETE
             sunset_tr = LifecycleTransition(
@@ -889,103 +904,89 @@ class BreederDaemonV2:
             self._log_transition_to_signed_wal(sunset_tr)
             if self._decision_journal_path:
                 log_sunset(
-                    agent_id=old_agent_id,
-                    reason="room_reuse",
-                    generation=0,
-                    journal_path=self._decision_journal_path,
+                    agent_id=old_agent_id, reason="room_reuse",
+                    generation=0, journal_path=self._decision_journal_path,
                 )
             self._fsm[old_agent_id] = AgentLifecycleFSM(
                 agent_id=old_agent_id, initial_state=LifecycleState.SUNSET, strict=False
             )
             transitions.append(sunset_tr)
+        return room_id, transitions
 
-        # Determine child agent ID
-        child_id = self._next_agent_id()
-
-        # ── Inheritance Tax ─────────────────────────────────────
-        if self._inheritance_tax is not None and parent_a is not None:
-            parent_slots = self._slot_registry.get(
-                parent_a, InheritanceTax.DEFAULT_SLOTS
-            )
-            # Child inherits a portion of parent's slots
-            child_slots = int(parent_slots * 0.8)
-
-            # Fitness from vector table (0.0 default for unscored agents)
-            parent_fitness = 0.0
-            child_fitness = 0.0
-            if self._vector_table is not None:
-                meta = self._vector_table._meta.get(parent_a)
-                if meta is not None:
-                    parent_fitness = meta.fitness
-
-            parent_after, child_after = self._inheritance_tax.apply_tax(
-                parent_slots, child_slots, parent_fitness, child_fitness
-            )
-            self._slot_registry[parent_a] = parent_after
-            self._slot_registry[child_id] = child_after
-
-            # Social welfare: grant bonus slots from global pool
-            bonus = self._inheritance_tax.fund_new_agent(
-                InheritanceTax.DEFAULT_SLOTS
-            )
-            if bonus > 0:
-                self._slot_registry[child_id] += bonus
-                logger.info(
-                    "InheritanceTax: agent %d granted %d bonus slots "
-                    "from global pool (pool=%d)",
-                    child_id, bonus, self._inheritance_tax.global_pool
-                )
-
-        generation = 0
+    def _determine_generation(self, parent_a, parent_b) -> int:
+        """Determine child generation from parent genealogy."""
         if parent_b is not None:
             g_a = self._wal.get_genealogy(parent_a)
             g_b = self._wal.get_genealogy(parent_b)
             gen_a = g_a["generation"] if g_a else 0
             gen_b = g_b["generation"] if g_b else 0
-            generation = max(gen_a, gen_b) + 1
+            return max(gen_a, gen_b) + 1
         elif parent_a is not None:
             g_a = self._wal.get_genealogy(parent_a)
-            generation = (g_a["generation"] if g_a else 0) + 1
+            return (g_a["generation"] if g_a else 0) + 1
+        return 0
 
-        # ── FLUX Path A: candidate gating ───────────────────────
-        if self._flux_checker is not None:
-            # Gather parent room weights and chaos for FLUX check
-            flux_results: list[tuple[int, Any]] = []
-            for pid in (parent_a, parent_b):
-                if pid is None:
-                    continue
-                pr = self._find_room_for_agent(pid)
-                if pr is not None:
-                    wvec = self._extract_room_vector(pr)
-                    chaos_val = float(self.grid.chaos[pr])
-                    thermal_val = self.thermal.thermal_headroom()
-                    if hasattr(self.thermal, "get_device") and aid is not None:
-                        dev = self.thermal.get_device(f"agent_{aid}")
-                        if dev is not None:
-                            db = self.thermal.device_budget(dev)
-                            if db.max_agents > 0:
-                                thermal_val = db.current_agents / db.max_agents
-                    res = self._flux_checker.check_candidate(
-                        weights=wvec,
-                        chaos=chaos_val,
-                        thermal_pressure=thermal_val,
-                    )
-                    flux_results.append((pid, res))
+    def _apply_inheritance_tax(self, child_id, parent_a):
+        """Apply inheritance tax and social welfare bonuses."""
+        if self._inheritance_tax is None or parent_a is None:
+            return
+        parent_slots = self._slot_registry.get(parent_a, InheritanceTax.DEFAULT_SLOTS)
+        child_slots = int(parent_slots * 0.8)
+        parent_fitness = 0.0
+        child_fitness = 0.0
+        if self._vector_table is not None:
+            meta = self._vector_table._meta.get(parent_a)
+            if meta is not None:
+                parent_fitness = meta.fitness
+        parent_after, child_after = self._inheritance_tax.apply_tax(
+            parent_slots, child_slots, parent_fitness, child_fitness
+        )
+        self._slot_registry[parent_a] = parent_after
+        self._slot_registry[child_id] = child_after
+        bonus = self._inheritance_tax.fund_new_agent(InheritanceTax.DEFAULT_SLOTS)
+        if bonus > 0:
+            self._slot_registry[child_id] += bonus
+            logger.info(
+                "InheritanceTax: agent %d granted %d bonus slots from global pool (pool=%d)",
+                child_id, bonus, self._inheritance_tax.global_pool
+            )
 
-            flux_fails = [(pid, r) for pid, r in flux_results if not r.passed]
-            if flux_fails:
-                fail_str = ", ".join(
-                    f"agent_{pid}({r.violations})" for pid, r in flux_fails
+    def _flux_path_a_check(self, parent_a, parent_b, priority, remote) -> bool:
+        """FLUX Path A: detailed candidate gating. Returns True if OK."""
+        if self._flux_checker is None:
+            return True
+        flux_results = []
+        for pid in (parent_a, parent_b):
+            if pid is None:
+                continue
+            pr = self._find_room_for_agent(pid)
+            if pr is not None:
+                wvec = self._extract_room_vector(pr)
+                chaos_val = float(self.grid.chaos[pr])
+                thermal_val = self.thermal.thermal_headroom()
+                aid = self._room_allocations.get(pr)
+                if hasattr(self.thermal, "get_device") and aid is not None:
+                    dev = self.thermal.get_device(f"agent_{aid}")
+                    if dev is not None:
+                        db = self.thermal.device_budget(dev)
+                        if db.max_agents > 0:
+                            thermal_val = db.current_agents / db.max_agents
+                res = self._flux_checker.check_candidate(
+                    weights=wvec, chaos=chaos_val, thermal_pressure=thermal_val,
                 )
-                logger.warning(
-                    "Step %d: breeding ticket %d FLUX-gated — parent(s) %s",
-                    tick, ticket, fail_str,
-                )
-                # Re-queue with slightly lower priority to avoid spin-lock
-                self._wal.enqueue_breed(parent_a, parent_b, max(0, priority - 1), remote)
-                return transitions
+                flux_results.append((pid, res))
+        flux_fails = [(pid, r) for pid, r in flux_results if not r.passed]
+        if flux_fails:
+            fail_str = ", ".join(f"agent_{pid}({r.violations})" for pid, r in flux_fails)
+            logger.warning(
+                "FLUX-gated — parent(s) %s", fail_str,
+            )
+            self._wal.enqueue_breed(parent_a, parent_b, max(0, priority - 1), remote)
+            return False
+        return True
 
-        # Place child in EGG state
+    def _place_child_egg(self, child_id, parent_a, parent_b, generation, remote):
+        """Place child in EGG state and log."""
         egg_tr = LifecycleTransition(
             agent_id=child_id,
             from_state=LifecycleState.EGG,
@@ -1001,32 +1002,25 @@ class BreederDaemonV2:
         self._fsm[child_id] = AgentLifecycleFSM(
             agent_id=child_id, initial_state=LifecycleState.EGG, strict=False
         )
-        transitions.append(egg_tr)
-
         if self._decision_journal_path:
             log_breed(
-                parent_a=parent_a,
-                parent_b=parent_b,
-                child_id=child_id,
-                generation=generation,
-                journal_path=self._decision_journal_path,
+                parent_a=parent_a, parent_b=parent_b, child_id=child_id,
+                generation=generation, journal_path=self._decision_journal_path,
             )
             log_spawn(
-                agent_id=child_id,
-                parents=(parent_a, parent_b),
-                generation=generation,
-                reason="breeder_daemon_v2 step",
+                agent_id=child_id, parents=(parent_a, parent_b),
+                generation=generation, reason="breeder_daemon_v2 step",
                 journal_path=self._decision_journal_path,
             )
+        return egg_tr
 
-        # Allocate room → COMPETE
-        # Use grid.rebirth() to reset room, then clone parent weights
+    def _transition_to_compete(self, child_id, room_id, parent_a, parent_b, generation, remote, device):
+        """Allocate room, transition to COMPETE, allocate thermal budget."""
         parent_room = self._find_room_for_agent(parent_a)
         if parent_room is not None:
             self.grid.breed(parent_room, room_id)
         else:
             self.grid.rebirth(room_id)
-
         incubate_tr = LifecycleTransition(
             agent_id=child_id,
             from_state=LifecycleState.EGG,
@@ -1042,104 +1036,74 @@ class BreederDaemonV2:
         self._fsm[child_id] = AgentLifecycleFSM(
             agent_id=child_id, initial_state=LifecycleState.COMPETE, strict=False
         )
-        transitions.append(incubate_tr)
-
-        # Allocate thermal budget
         child_agent_str = f"agent_{child_id}"
         self.thermal.allocate(child_agent_str, device)
         self._room_allocations[room_id] = child_id
+        return incubate_tr
 
-        # Sync to vector table if available
-        if self._vector_table is not None:
-            from swarm.vector_table import AgentVector
-            # Build a simple vector from room weights (flattened)
-            vec = self._extract_room_vector(room_id)
-            self._vector_table.add(
-                AgentVector(
-                    agent_id=child_id,
-                    vector=vec.tolist(),
-                    fitness=0.0,  # will be scored after first tick
-                    generation=generation,
-                    capability_mask=0xFFFF,
-                    thermal_pressure=0.0,
-                )
+    def _sync_vector_table_and_lineage(self, child_id, room_id, parent_a, parent_b, generation, transitions):
+        """Sync to vector table, record trajectory, check lineage. Returns updated transitions or None."""
+        if self._vector_table is None:
+            return transitions
+        from swarm.vector_table import AgentVector
+        vec = self._extract_room_vector(room_id)
+        self._vector_table.add(
+            AgentVector(
+                agent_id=child_id, vector=vec.tolist(), fitness=0.0,
+                generation=generation, capability_mask=0xFFFF, thermal_pressure=0.0,
             )
-            # Record trajectory for security monitoring
-            self._trajectory_monitor.record(child_id, vec)
+        )
+        self._trajectory_monitor.record(child_id, vec)
+        lineage_checker = LineageSanityChecker(max_depth=5)
+        population_agents = self._build_lineage_population()
+        child_agent = LineageAgent(
+            id=child_id, vector=vec.tolist(), generation=generation,
+            parent_a=parent_a, parent_b=parent_b,
+        )
+        is_valid, reason = lineage_checker.verify_lineage(
+            child_id, population_agents + [child_agent]
+        )
+        if not is_valid:
+            logger.warning("LineageSanityChecker failed for agent %d: %s", child_id, reason)
+            event = SecurityEvent(
+                agent_id=child_id, z_score=0.0, threshold=0.0,
+                generation_count=generation,
+                message=f"Lineage tamper detected for agent {child_id}: {reason}",
+            )
+            self._trajectory_monitor._events.append(event)
+            sunset_tr = LifecycleTransition(
+                agent_id=child_id, from_state=LifecycleState.COMPETE,
+                to_state=LifecycleState.SUNSET, timestamp=time.time(),
+                generation=generation, parent_a=parent_a, parent_b=parent_b,
+                origin_node="local" if not remote else "remote",
+            )
+            self._wal.transition(sunset_tr)
+            self._log_transition_to_signed_wal(sunset_tr)
+            if self._decision_journal_path:
+                log_sunset(
+                    agent_id=child_id, reason=f"lineage_tamper: {reason}",
+                    generation=generation, journal_path=self._decision_journal_path,
+                )
+            self._fsm[child_id] = AgentLifecycleFSM(
+                agent_id=child_id, initial_state=LifecycleState.SUNSET, strict=False
+            )
+            transitions.append(sunset_tr)
+            self.thermal.release(f"agent_{child_id}")
+            del self._room_allocations[room_id]
+            try:
+                self._vector_table.remove(child_id)
+            except Exception:
+                pass
+            return None
+        return transitions
 
-            # ── LineageSanityChecker integration ────────────────────
-            lineage_checker = LineageSanityChecker(max_depth=5)
-            population_agents = self._build_lineage_population()
-            child_agent = LineageAgent(
-                id=child_id,
-                vector=vec.tolist(),
-                generation=generation,
-                parent_a=parent_a,
-                parent_b=parent_b,
-            )
-            is_valid, reason = lineage_checker.verify_lineage(
-                child_id, population_agents + [child_agent]
-            )
-            if not is_valid:
-                logger.warning(
-                    "LineageSanityChecker failed for agent %d: %s",
-                    child_id, reason,
-                )
-                # Log security event
-                event = SecurityEvent(
-                    agent_id=child_id,
-                    z_score=0.0,
-                    threshold=0.0,
-                    generation_count=generation,
-                    message=(
-                        f"Lineage tamper detected for agent {child_id}: {reason}"
-                    ),
-                )
-                self._trajectory_monitor._events.append(event)
-                # Sunset the child immediately
-                sunset_tr = LifecycleTransition(
-                    agent_id=child_id,
-                    from_state=LifecycleState.COMPETE,
-                    to_state=LifecycleState.SUNSET,
-                    timestamp=time.time(),
-                    generation=generation,
-                    parent_a=parent_a,
-                    parent_b=parent_b,
-                    origin_node="local" if not remote else "remote",
-                )
-                self._wal.transition(sunset_tr)
-                self._log_transition_to_signed_wal(sunset_tr)
-                if self._decision_journal_path:
-                    log_sunset(
-                        agent_id=child_id,
-                        reason=f"lineage_tamper: {reason}",
-                        generation=generation,
-                        journal_path=self._decision_journal_path,
-                    )
-                self._fsm[child_id] = AgentLifecycleFSM(
-                    agent_id=child_id, initial_state=LifecycleState.SUNSET, strict=False
-                )
-                transitions.append(sunset_tr)
-                # Release resources
-                self.thermal.release(child_agent_str)
-                del self._room_allocations[room_id]
-                if self._vector_table is not None:
-                    try:
-                        self._vector_table.remove(child_id)
-                    except Exception:
-                        pass
-                return transitions
-
+    def _post_spawn_monitoring(self, tick, child_id, room_id, parent_a, parent_b):
+        """Diversity collapse hook and FLUX batch check."""
         logger.info(
             "Step %d: spawned agent %d in room %d (parents=%s, gen=%d)",
-            tick,
-            child_id,
-            room_id,
-            (parent_a, parent_b),
-            generation,
+            tick, child_id, room_id, (parent_a, parent_b),
+            self._determine_generation(parent_a, parent_b),
         )
-
-        # ── Diversity collapse hook ───────────────────────────────
         if self._vector_table is not None:
             diversity = self.diversity_score
             self._diversity_trap.record(diversity)
@@ -1147,19 +1111,15 @@ class BreederDaemonV2:
             if alert is not None:
                 logger.warning(
                     "DIVERSITY %s (tick=%d): %s",
-                    alert.level,
-                    tick,
-                    alert.recommended_action,
+                    alert.level, tick, alert.recommended_action,
                 )
-
-        # ── FLUX Path A: batch check top-k active rooms ───────────
         if self._flux_checker is not None:
             topk = self.grid.top(k=self._flux_checker.config.top_k_batch)
             if topk:
-                weights_batch: list[np.ndarray] = []
-                chaos_vec: list[float] = []
-                thermal_vec: list[float] = []
-                room_ids_checked: list[int] = []
+                weights_batch = []
+                chaos_vec = []
+                thermal_vec = []
+                room_ids_checked = []
                 for rid, _ in topk:
                     wvec = self._extract_room_vector(rid)
                     weights_batch.append(wvec)
@@ -1174,7 +1134,6 @@ class BreederDaemonV2:
                                 thermal_val = db.current_agents / db.max_agents
                     thermal_vec.append(thermal_val)
                     room_ids_checked.append(rid)
-
                 if weights_batch:
                     batch_results = self._flux_checker.check_batch(
                         np.stack(weights_batch),
@@ -1183,14 +1142,32 @@ class BreederDaemonV2:
                     )
                     for rid, br in zip(room_ids_checked, batch_results):
                         if not br.passed:
-                            # Increase chaos for violating rooms
                             self.grid.chaos[rid] += 0.1
                             logger.debug(
                                 "FLUX batch: room %d failed (%s), chaos bumped to %.3f",
                                 rid, br.violations, self.grid.chaos[rid],
                             )
 
-        return transitions
+    def _spawn_child(
+        self, tick, child_id, room_id, parent_a, parent_b,
+        priority, remote, device, transitions,
+    ):
+        """Full child spawn: inheritance, generation, FLUX Path A, EGG, COMPETE, vector sync."""
+        self._apply_inheritance_tax(child_id, parent_a)
+        generation = self._determine_generation(parent_a, parent_b)
+        if not self._flux_path_a_check(parent_a, parent_b, priority, remote):
+            return transitions
+        egg_tr = self._place_child_egg(child_id, parent_a, parent_b, generation, remote)
+        transitions.append(egg_tr)
+        compete_tr = self._transition_to_compete(
+            child_id, room_id, parent_a, parent_b, generation, remote, device,
+        )
+        transitions.append(compete_tr)
+        result = self._sync_vector_table_and_lineage(
+            child_id, room_id, parent_a, parent_b, generation, transitions,
+        )
+        return result
+
 
     def _build_lineage_population(self) -> list[LineageAgent]:
         """Construct Agent records for every known agent (state + vector table + genealogy)."""
