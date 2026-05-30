@@ -19,8 +19,8 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-gpu = ["torch", "numpy"]
-npu = ["onnx", "onnxruntime", "torch", "numpy"]
+gpu = ["torch", "numpy", "scipy"]
+npu = ["onnx", "onnxruntime", "torch", "numpy", "scipy"]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
@@ -34,12 +34,27 @@ dev = [
     "ruff>=0.4.0",
     "bandit[toml]",
     "pip-audit",
+    "pyarrow",
+    "pyyaml",
+    "pillow",
 ]
-# ecosystem deps removed - local file:// URLs not allowed on PyPI
+perception = ["pillow", "sounddevice", "pyaudio", "opencv-python-headless"]
+ml = ["transformers", "torchvision", "timm", "clip", "speechbrain", "openai-whisper"]
 vecsearch = ["turbovec>=0.1.0", "numpy"]
+gpu_cuda = ["cupy-cuda12x"]
 
 [tool.setuptools.packages.find]
-include = ["ethos*", "pathos*", "logos*", "sunset*", "swarm*", "nexus*", "grammar*", "nerve*", "triage*", "flux_compat*", "superinstance*"]
+include = [
+    "ethos*", "pathos*", "logos*", "sunset*", "swarm*", "nexus*", "grammar*",
+    "nerve*", "triage*", "flux_compat*", "superinstance*", "fleet*", "distill*",
+    "a2a*", "ranking*", "perception*", "experiments*", "jepa*", "simulators*",
+    "reasoning*", "compiler*", "voice*", "agentic_compiler*", "plato_core*",
+    "tensor_spline*", "eisenstein_embed*", "triplet_miner*", "stable_worldmodel*",
+    "user_ranking*", "ranked_response*", "tournament_sim*", "vision_encoder*",
+    "audio_encoder*", "capture*", "audio_capture*", "cognition_loop*",
+    "constraint_theory*", "flux_vm*", "v3_module*", "opcode_map*", "superinstance_ffi_mock*",
+    "tests*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
