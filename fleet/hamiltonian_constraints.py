@@ -53,7 +53,7 @@ class AugmentedEnergy:
         potential: Potential energy V(q) — user-defined cost landscape.
         penalty: Sum of penalty terms Σ ½w·c(q)².
         lagrangian: Sum of multiplier terms Σ λ·c(q).
-        total: Augmented Hamiltonian H.
+        total: Augmented Hamiltonian H (auto-computed).
     """
 
     kinetic: float = 0.0
@@ -61,6 +61,9 @@ class AugmentedEnergy:
     penalty: float = 0.0
     lagrangian: float = 0.0
     total: float = 0.0
+
+    def __post_init__(self):
+        self.total = self.kinetic + self.potential + self.penalty + self.lagrangian
 
     def conservation_quality(self, baseline: Optional[float] = None) -> float:
         """Return a conservation quality metric.
@@ -172,19 +175,24 @@ class HamiltonianSystem:
         """Compute constraint forces and energy contributions.
 
         Returns:
-            force: Total constraint force on the agent state.
+            force: Total constraint force on the agent state (negative gradient).
             penalty: Σ ½w·c².
             lagrangian: Σ λ·c.
         """
         force = np.zeros(self.dim, dtype=float)
         penalty = 0.0
         lagrangian = 0.0
+        max_force_mag = 1000.0  # Clamp to prevent numerical explosion
 
         for c in self._state.constraints:
             val = c.value_fn(q)
             grad = c.gradient_fn(q)
-            # Augmented Lagrangian force: ∇(½w·c² + λ·c) = (w·c + λ)·∇c
-            force += (c.weight * val + c.multiplier) * grad
+            # Augmented Lagrangian force: -∇(½w·c² + λ·c) = -(w·c + λ)·∇c
+            raw_force = (c.weight * val + c.multiplier) * grad
+            force_mag = np.linalg.norm(raw_force)
+            if force_mag > max_force_mag:
+                raw_force = raw_force * (max_force_mag / force_mag)
+            force -= raw_force
             penalty += 0.5 * c.weight * val * val
             lagrangian += c.multiplier * val
 
@@ -226,15 +234,16 @@ class HamiltonianSystem:
     def step_damped(self, dt: float) -> None:
         """Damped relaxation step — drives state onto constraint manifold.
 
-        Adds velocity damping to the Störmer-Verlet step. Useful for
-        agent initialization / onboarding when the initial state is far
-        from the feasible manifold.
+        Uses a modified Verlet scheme with strong per-step velocity decay
+        (damping is applied as a fraction per step, not per unit time)
+        plus a small position-level stabilization toward the manifold.
         """
-        q = self._state.position
-        p = self._state.momentum
+        q = self._state.position.copy()
+        p = self._state.momentum.copy()
 
-        # Damped momentum (exponential decay of velocity)
-        p_damped = p * (1.0 - self.damping * dt)
+        # Strong per-step damping (damping coefficient is fraction per step)
+        beta = max(0.0, 1.0 - self.damping)
+        p_damped = p * beta
 
         # Symplectic step with damped momentum
         f_ext = self._potential_force(q)
@@ -247,8 +256,37 @@ class HamiltonianSystem:
         f_c_new, _, _ = self._compute_constraint_forces(q_new)
         p_new = p_half + 0.5 * dt * (f_ext_new + f_c_new)
 
-        # Additional damping on final momentum
-        p_new = p_new * (1.0 - self.damping * dt)
+        # Final damping
+        p_new = p_new * beta
+
+        # Position-level stabilization: small direct gradient step
+        # This accelerates convergence without breaking dynamics
+        if self.damping > 0:
+            _, penalty, _ = self._compute_constraint_forces(q_new)
+            if penalty > 0.0:
+                # Coupled Gauss-Newton stabilization (proper multi-constraint step)
+                J_rows = []
+                w_vals = []
+                c_vals = []
+                for c in self._state.constraints:
+                    val = c.value_fn(q_new)
+                    grad = c.gradient_fn(q_new)
+                    g_norm = np.linalg.norm(grad)
+                    if g_norm > 1e-8:
+                        J_rows.append(grad / g_norm)
+                        w_vals.append(c.weight)
+                        c_vals.append(val * g_norm)  # scaled violation
+                if J_rows:
+                    J = np.stack(J_rows)
+                    W = np.diag(w_vals)
+                    c_vec = np.array(c_vals)
+                    # Levenberg-Marquardt: (J^T W J + eps I)^{-1} J^T W c
+                    JtWJ = J.T @ W @ J + 1e-6 * np.eye(self.dim)
+                    try:
+                        delta = -np.linalg.solve(JtWJ, J.T @ W @ c_vec)
+                        q_new = q_new + 0.005 * delta  # small step
+                    except np.linalg.LinAlgError:
+                        pass  # Skip stabilization if singular
 
         self._state.position = q_new
         self._state.momentum = p_new
