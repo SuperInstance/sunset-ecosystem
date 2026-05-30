@@ -54,9 +54,10 @@ class MockWorldModel:
         if state.velocity:
             for step in range(1, horizon + 1):
                 dt = 1.0
+                prev = trajectory[-1]
                 new_pos = tuple(
                     p + v * dt
-                    for p, v in zip(state.position, state.velocity)
+                    for p, v in zip(prev.position, state.velocity)
                 )
                 new_state = WorldState(
                     position=new_pos,
