@@ -1,14 +1,11 @@
 import numpy as np
 import pytest
 
-from nerve.room_grid import RoomGrid
-from nerve.routing import RoutingLayer
-from sunset.compiler import Compiler
-
 
 @pytest.fixture
 def room_grid_100():
     """Return a RoomGrid with 100 rooms (seeded for determinism)."""
+    from nerve.room_grid import RoomGrid
     np.random.seed(42)
     return RoomGrid(100)
 
@@ -16,6 +13,7 @@ def room_grid_100():
 @pytest.fixture
 def room_grid_1000():
     """Return a RoomGrid with 1000 rooms (seeded for determinism)."""
+    from nerve.room_grid import RoomGrid
     np.random.seed(42)
     return RoomGrid(1000)
 
@@ -23,6 +21,7 @@ def room_grid_1000():
 @pytest.fixture
 def routing_layer():
     """Return a RoutingLayer with 10 routes (seeded for determinism)."""
+    from nerve.routing import RoutingLayer
     np.random.seed(42)
     rl = RoutingLayer()
     for i in range(10):
@@ -33,6 +32,7 @@ def routing_layer():
 @pytest.fixture
 def compiler():
     """Return a Compiler instance with profiler."""
+    from sunset.compiler import Compiler
     return Compiler()
 
 
