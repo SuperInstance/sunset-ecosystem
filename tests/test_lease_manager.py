@@ -28,15 +28,15 @@ class TestLeaseManager:
 
     def test_acquire_after_expiry(self):
         mgr = LeaseManager()
-        mgr.acquire("leader", "node-1", ttl_sec=0.05)
-        time.sleep(0.06)
+        mgr.acquire("leader", "node-1", ttl_sec=0.03)
+        time.sleep(0.05)
         assert mgr.acquire("leader", "node-2", ttl_sec=1.0) is True
 
     def test_renew(self):
         mgr = LeaseManager()
-        mgr.acquire("leader", "node-1", ttl_sec=0.1)
+        mgr.acquire("leader", "node-1", ttl_sec=0.05)
         assert mgr.renew("leader", "node-1", ttl_sec=1.0) is True
-        time.sleep(0.11)
+        time.sleep(0.06)
         assert mgr.is_owner("leader", "node-1") is True
 
     def test_renew_wrong_owner(self):

@@ -36,7 +36,7 @@ class TestShutdownCoordinator:
         sc.start_work()
 
         def finish_later():
-            time.sleep(0.1)
+            time.sleep(0.05)
             sc.finish_work()
             sc.finish_work()
 

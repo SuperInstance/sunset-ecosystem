@@ -29,10 +29,10 @@ class TestThrottle:
         assert throttle.acquire() is False
 
     def test_token_refill(self):
-        throttle = Throttle(rate=10, burst=1)
+        throttle = Throttle(rate=20, burst=1)
         assert throttle.acquire() is True
         assert throttle.acquire() is False
-        time.sleep(0.11)
+        time.sleep(0.06)
         assert throttle.acquire() is True
 
     def test_stats(self):

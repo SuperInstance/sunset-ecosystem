@@ -29,23 +29,23 @@ class TestFleetCache:
 
     def test_ttl_expiration(self):
         cache = FleetCache()
-        cache.set("key", "value", ttl=0.1)
+        cache.set("key", "value", ttl=0.05)
         assert cache.get("key") == "value"
-        time.sleep(0.15)
+        time.sleep(0.08)
         assert cache.get("key") is None
 
     def test_default_ttl(self):
-        cache = FleetCache(default_ttl=0.1)
+        cache = FleetCache(default_ttl=0.05)
         cache.set("key", "value")
         assert cache.get("key") == "value"
-        time.sleep(0.15)
+        time.sleep(0.08)
         assert cache.get("key") is None
 
     def test_override_default_ttl(self):
         cache = FleetCache(default_ttl=60.0)
-        cache.set("key", "value", ttl=0.1)
+        cache.set("key", "value", ttl=0.05)
         assert cache.get("key") == "value"
-        time.sleep(0.15)
+        time.sleep(0.08)
         assert cache.get("key") is None
 
     def test_lru_eviction(self):

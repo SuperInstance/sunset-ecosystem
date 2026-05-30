@@ -28,7 +28,7 @@ class TestHeartbeatMonitor:
         m.beat("node-1")
         time.sleep(0.03)
         m.beat("node-1")
-        time.sleep(0.2)
+        time.sleep(0.15)
         assert m.status("node-1") == "suspected"
 
     def test_dead_timeout(self):

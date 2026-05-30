@@ -33,8 +33,8 @@ class TestFleetAuth:
 
     def test_validate_expired(self):
         auth = FleetAuth(secret_key="test-secret")
-        token = auth.create_token("agent-1", ttl=0.1)
-        time.sleep(0.15)
+        token = auth.create_token("agent-1", ttl=0.05)
+        time.sleep(0.08)
         payload = auth.validate_token(token)
         assert payload is None
 

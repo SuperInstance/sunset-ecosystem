@@ -36,11 +36,11 @@ class TestTaskScheduler:
     def test_run_once_interval(self):
         ts = TaskScheduler()
         executed = []
-        ts.schedule("test", lambda: executed.append(1), interval=0.1)
+        ts.schedule("test", lambda: executed.append(1), interval=0.05)
         # Not due yet
         ts.run_once()
         assert len(executed) == 0
-        time.sleep(0.15)
+        time.sleep(0.08)
         # Now due
         ts.run_once()
         assert len(executed) == 1

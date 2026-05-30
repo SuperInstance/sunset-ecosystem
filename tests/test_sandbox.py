@@ -37,7 +37,7 @@ class TestSandbox:
         box = Sandbox(max_cpu_sec=0.1)
 
         def slow():
-            time.sleep(5)
+            time.sleep(0.1)
             return 42
 
         result = box.run(slow, timeout=0.05)
@@ -48,7 +48,7 @@ class TestSandbox:
         box = Sandbox(max_cpu_sec=10.0)
 
         def slow():
-            time.sleep(2)
+            time.sleep(0.1)
             return 42
 
         result = box.run(slow, timeout=0.05)
