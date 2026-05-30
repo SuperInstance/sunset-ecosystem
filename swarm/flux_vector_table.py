@@ -53,6 +53,7 @@ class AgentVector:
     generation: int = 0
     capability_mask: int = 0xFFFF
     thermal_pressure: float = 0.0
+    extra: dict[str, Any] = field(default_factory=dict)
 
     @property
     def dim(self) -> int:
@@ -153,6 +154,7 @@ class FluxVectorTable:
             generation=av.generation,
             capability_mask=av.capability_mask,
             thermal_pressure=av.thermal_pressure,
+            extra=av.extra,
         )
         self._vectors[av.agent_id] = vec_arr[0].copy()
         logger.debug("Added agent %d to vector table", av.agent_id)

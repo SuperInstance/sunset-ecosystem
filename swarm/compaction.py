@@ -174,11 +174,11 @@ class CompactionManager:
 
         for aid in to_compact:
             # Retrieve from table
-            vec = self.table.get_vector(aid)
+            vec = self.table._get_vector(aid)
             if vec is None:
                 continue
             vectors.append(np.array(vec, dtype=np.float32))
-            meta = self.table.get_meta(aid)
+            meta = self.table._meta.get(aid)
             if meta:
                 fitnesses.append(meta.fitness)
                 capabilities.append(meta.capability_mask)
@@ -205,7 +205,7 @@ class CompactionManager:
 
         # Remove compacted agents from table
         for aid in to_compact:
-            self.table.delete(aid)
+            self.table.remove(aid)
             self._archived.discard(aid)
             self._generations.pop(aid, None)
 
