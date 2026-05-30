@@ -425,6 +425,9 @@ class KnowledgePipeline:
     def doc_count(self) -> int:
         return len(self._docs)
 
+    def total_chunks(self) -> int:
+        return len(self._docs)
+
     def __repr__(self) -> str:
         return (
             f"KnowledgePipeline(rooms={self.room_count()}, "
