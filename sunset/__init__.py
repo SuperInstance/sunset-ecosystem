@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 from sunset.plato_bridge import PlatoBridge
-from sunset.superinstance_ffi import (
-    eisenstein_norm,
-    laman_is_rigid,
-    holonomy_check,
-)
+from sunset.compiler import Compiler
+from sunset.flux_vm_bridge import FluxVMBridge
 
 __all__ = [
     "PlatoBridge",
-    "eisenstein_norm",
-    "laman_is_rigid",
-    "holonomy_check",
+    "Compiler",
+    "FluxVMBridge",
 ]

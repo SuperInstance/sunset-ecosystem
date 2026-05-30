@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from nerve.room_grid import RoomGrid
-from nerve.distributed_metronome_bridge import DistributedMetronomeBridge
+from nerve.distributed_metronome_bridge import MetronomeBridge
 
 __all__ = [
     "RoomGrid",
