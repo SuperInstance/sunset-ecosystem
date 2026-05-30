@@ -117,7 +117,7 @@ def cmd_report(args):
             passed=args.passed or False,
             score=args.score or 0.0,
             violations={},
-            proof_hash=args.proof,
+            proof_hash=args.proofs or "",
             vm_cycles=args.cycles or 0,
         )
     else:
