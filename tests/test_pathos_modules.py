@@ -9,7 +9,7 @@ import pytest
 from pathos.interaction_log import InteractionLog, InteractionRecord, InteractionSummary
 from pathos.need_tracker import NeedTracker, NeedState, Urgency, Satisfaction
 from pathos.moment_scorer import MomentScorer, MomentScore
-from pathos.trinity_connection import TrinityConnection, TrinityScore
+from pathos.trinity_connection import PathosTrinity, TrinityScore
 
 
 class TestInteractionRecord:
@@ -240,9 +240,9 @@ class TestMomentScorer:
         assert "MomentScorer" in repr(scorer)
 
 
-class TestTrinityConnection:
+class TestPathosTrinity:
     def test_perfect_agent(self):
-        tc = TrinityConnection()
+        tc = PathosTrinity()
         score = tc.score(
             human_facing=True,
             resolves_needs=True,
@@ -254,7 +254,7 @@ class TestTrinityConnection:
         assert score.solves_human_problems > 0.8
 
     def test_useless_agent(self):
-        tc = TrinityConnection()
+        tc = PathosTrinity()
         score = tc.score(
             human_facing=False,
             resolves_needs=False,
@@ -265,7 +265,7 @@ class TestTrinityConnection:
         assert score.composite < 0.5
 
     def test_score_from_history(self):
-        tc = TrinityConnection()
+        tc = PathosTrinity()
         score = tc.score_from_history(
             total_interactions=20,
             resolved_count=18,
@@ -276,7 +276,7 @@ class TestTrinityConnection:
         assert score.composite > 0.5
 
     def test_score_from_history_no_interactions(self):
-        tc = TrinityConnection()
+        tc = PathosTrinity()
         score = tc.score_from_history(
             total_interactions=0,
             resolved_count=0,
@@ -286,10 +286,10 @@ class TestTrinityConnection:
         assert "no interactions" in score.reason
 
     def test_high_error_rate(self):
-        tc = TrinityConnection()
+        tc = PathosTrinity()
         score = tc.score(error_rate=0.5, resolves_needs=True)
         assert score.solves_human_problems < 0.8
 
     def test_repr(self):
-        tc = TrinityConnection()
-        assert "TrinityConnection" in repr(tc)
+        tc = PathosTrinity()
+        assert "PathosTrinity" in repr(tc)

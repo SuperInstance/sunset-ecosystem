@@ -22,7 +22,7 @@ def test_grammar_server():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    time.sleep(1)
+    time.sleep(0.5)
 
     def fetch(url, data=None):
         req = urllib.request.Request(url, method="POST" if data else "GET")

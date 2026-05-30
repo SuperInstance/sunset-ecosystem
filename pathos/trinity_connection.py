@@ -40,7 +40,7 @@ class TrinityScore:
         )
 
 
-class TrinityConnection:
+class PathosTrinity:
     """Scores how connected an agent/room is to PATHOS (the human interface).
 
     Trinity asks three questions about any agent:
@@ -54,7 +54,7 @@ class TrinityConnection:
 
     Example::
 
-        tc = TrinityConnection()
+        tc = PathosTrinity()
         score = tc.score(
             human_facing=True,
             resolves_needs=True,
@@ -198,4 +198,8 @@ class TrinityConnection:
         )
 
     def __repr__(self) -> str:
-        return "TrinityConnection()"
+        return "PathosTrinity()"
+
+
+# Backward compatibility alias
+TrinityConnection = PathosTrinity
