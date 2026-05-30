@@ -16,8 +16,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install bandit[toml]
-      - run: bandit -r sunset_ecosystem/ swarm/ nexus/ logos/ -f json -o bandit-report.json || true
-      - run: bandit -r sunset_ecosystem/ swarm/ nexus/ logos/ -ll || true
+      - run: bandit -r sunset/ swarm/ nexus/ logos/ -f json -o bandit-report.json || true
+      - run: bandit -r sunset/ swarm/ nexus/ logos/ -ll || true
 
   pip-audit:
     runs-on: ubuntu-latest

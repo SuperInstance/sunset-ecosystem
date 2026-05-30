@@ -18,9 +18,9 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
           restore-keys: ${{ runner.os }}-pip-
       - run: pip install -e ".[dev]"
-      - run: python -m pytest tests/ -q --tb=short --cov=sunset_ecosystem --cov-report=term-missing --cov-fail-under=75
-      - run: python -m mypy sunset_ecosystem/ --ignore-missing-imports --warn-unreachable || true
-      - run: python -m ruff check sunset_ecosystem/ || true
+      - run: python -m pytest tests/ -q --tb=short --cov=sunset --cov-report=term-missing --cov-fail-under=75
+      - run: python -m mypy sunset/ --ignore-missing-imports --warn-unreachable || true
+      - run: python -m ruff check sunset/ || true
 
   benchmark:
     runs-on: ubuntu-latest

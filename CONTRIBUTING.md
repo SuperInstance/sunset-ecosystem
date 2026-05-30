@@ -17,7 +17,7 @@ pip install -e ".[dev]"
 python -m pytest tests/ -q
 
 # With coverage
-python -m pytest tests/ --cov=sunset_ecosystem --cov-report=term-missing
+python -m pytest tests/ --cov=sunset --cov-report=term-missing
 
 # Single file
 python -m pytest tests/test_breeder_daemon_v2.py -v
@@ -26,8 +26,8 @@ python -m pytest tests/test_breeder_daemon_v2.py -v
 ## Lint & Type Check
 
 ```bash
-ruff check sunset_ecosystem/ swarm/ nexus/ logos/
-mypy sunset_ecosystem/ --ignore-missing-imports
+ruff check sunset/ swarm/ nexus/ logos/
+mypy sunset/ --ignore-missing-imports
 ```
 
 ## Pre-commit Hooks

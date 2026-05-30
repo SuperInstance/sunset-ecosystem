@@ -267,7 +267,7 @@ curl http://localhost:8080/sse/stream
 
 ```bash
 # Via CLI (if implemented)
-python -m sunset_ecosystem.cli spawn \
+python -m sunset.cli spawn \
   --attachment pythagorean \
   --generations 100 \
   --population 50
