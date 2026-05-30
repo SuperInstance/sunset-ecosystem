@@ -40,7 +40,7 @@ class TestThreadPool:
     def test_cancel(self):
         pool = ThreadPool(max_workers=2)
         # Submit a slow task, then cancel before it runs
-        future = pool.submit(lambda: time.sleep(1.0))
+        future = pool.submit(lambda: time.sleep(0.05))
         assert future.cancel() is True
         assert future.cancelled() is True
         pool.shutdown()
@@ -53,22 +53,22 @@ class TestThreadPool:
 
     def test_queue_depth(self):
         pool = ThreadPool(max_workers=1, max_queue=2)
-        pool.submit(lambda: time.sleep(0.1))
-        pool.submit(lambda: time.sleep(0.1))
+        pool.submit(lambda: time.sleep(0.05))
+        pool.submit(lambda: time.sleep(0.05))
         # With 1 worker, at least one task should be in queue
         assert pool.queue_depth() >= 1
         pool.shutdown()
 
     def test_reject_policy_drop(self):
         pool = ThreadPool(max_workers=1, max_queue=1, reject_policy="drop")
-        pool.submit(lambda: time.sleep(0.5))
+        pool.submit(lambda: time.sleep(0.05))
         with pytest.raises(PoolFull):
-            pool.submit(lambda: time.sleep(0.5))
+            pool.submit(lambda: time.sleep(0.05))
         pool.shutdown()
 
     def test_reject_policy_block(self):
         pool = ThreadPool(max_workers=1, max_queue=1, reject_policy="block")
-        pool.submit(lambda: time.sleep(0.1))
+        pool.submit(lambda: time.sleep(0.05))
         future = pool.submit(lambda: 42, timeout=1.0)
         assert future.result(timeout=1.0) == 42
         pool.shutdown()
@@ -83,7 +83,7 @@ class TestThreadPool:
         pool = ThreadPool(max_workers=2)
         assert pool.active_count() == 2
         pool.shutdown()
-        time.sleep(0.1)
+        time.sleep(0.05)
         assert pool.active_count() == 0
 
     def test_stats(self):

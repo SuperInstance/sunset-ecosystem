@@ -34,7 +34,7 @@ class TestProcessSupervisor:
         ps.start("sleep", cmd=["sleep", "10"])
         old_pid = ps.status("sleep")["pid"]
         ps.restart("sleep")
-        time.sleep(0.2)
+        time.sleep(0.05)
         new_pid = ps.status("sleep")["pid"]
         assert new_pid != old_pid
 
@@ -88,7 +88,7 @@ class TestProcessSupervisor:
             restart_delay=0.05,
             restart_window=10.0,
         )
-        time.sleep(0.5)
+        time.sleep(0.3)
         assert proc.status == "failed" or proc.restart_count <= 3
         ps.shutdown()
 
@@ -100,7 +100,7 @@ class TestProcessSupervisor:
             cmd=["sleep", "10"],
             health_check=lambda: healthy.pop(0),
         )
-        time.sleep(0.3)
+        time.sleep(0.2)
         assert proc.status in ("running", "unhealthy")
         ps.stop("hc")
 

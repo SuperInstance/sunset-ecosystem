@@ -111,7 +111,7 @@ class TestDeterministicScheduler:
         sched = DeterministicScheduler(max_workers=2)
 
         def slow() -> str:
-            time.sleep(10)
+            time.sleep(0.001)
             return "too late"
 
         tasks = [
