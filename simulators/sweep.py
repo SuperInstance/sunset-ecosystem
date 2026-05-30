@@ -4,7 +4,7 @@ Tournament Parameter Sweep
 Runs across cap values and strategies for the sunset-ecosystem tournament sim.
 """
 import random, math, csv, time
-import tournament_sim as ts
+from simulators import tournament_sim as ts
 
 def compute_diversity(pop):
     """Aggregate standard deviation across ethos, pathos, logos."""
