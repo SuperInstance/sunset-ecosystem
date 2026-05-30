@@ -421,8 +421,87 @@ class FluxCompiler:
             (the low-level Path B pattern).
     """
 
-    def __init__(self, prefer_range_check: bool = True) -> None:
+    def __init__(self, prefer_range_check: bool = True, var_defaults: dict[str, float] | None = None) -> None:
         self.prefer_range_check = prefer_range_check
+        self.var_defaults = var_defaults or {}
+
+    def _fresh_label(self, prefix: str = "lbl") -> str:
+        """Generate a unique label name."""
+        idx = getattr(self, "_label_counter", 0)
+        self._label_counter = idx + 1
+        return f"__{prefix}_{idx}"
+
+    def _compile_cmpop_as_expr(self, node: CmpOp, emitter: BytecodeEmitter) -> None:
+        """Compile a CmpOp as a value-producing expression (1.0 or 0.0)."""
+        true_label = self._fresh_label("cmp_true")
+        end_label = self._fresh_label("cmp_end")
+
+        if node.op == "LE":
+            self.compile_expr(node.left, emitter)
+            self.compile_expr(node.right, emitter)
+            emitter.op(FluxOpcode.Sub)
+            emitter.cond_jump(true_label)
+        elif node.op == "LT":
+            self.compile_expr(node.right, emitter)
+            self.compile_expr(node.left, emitter)
+            emitter.op(FluxOpcode.Sub)
+            false_label = self._fresh_label("cmp_false")
+            emitter.cond_jump(false_label)
+            emitter.push(1.0)
+            emitter.fwd_jump(end_label)
+            emitter.label(false_label)
+            emitter.push(0.0)
+            emitter.label(end_label)
+            return
+        elif node.op == "GE":
+            self.compile_expr(node.right, emitter)
+            self.compile_expr(node.left, emitter)
+            emitter.op(FluxOpcode.Sub)
+            emitter.cond_jump(true_label)
+        elif node.op == "GT":
+            self.compile_expr(node.left, emitter)
+            self.compile_expr(node.right, emitter)
+            emitter.op(FluxOpcode.Sub)
+            false_label = self._fresh_label("cmp_false")
+            emitter.cond_jump(false_label)
+            emitter.push(1.0)
+            emitter.fwd_jump(end_label)
+            emitter.label(false_label)
+            emitter.push(0.0)
+            emitter.label(end_label)
+            return
+        elif node.op == "EQ":
+            self.compile_expr(node.left, emitter)
+            self.compile_expr(node.right, emitter)
+            emitter.op(FluxOpcode.Sub)
+            emitter.op(FluxOpcode.Abs)
+            emitter.push(1e-6)
+            emitter.op(FluxOpcode.Sub)
+            emitter.cond_jump(true_label)
+        elif node.op == "NE":
+            self.compile_expr(node.left, emitter)
+            self.compile_expr(node.right, emitter)
+            emitter.op(FluxOpcode.Sub)
+            emitter.op(FluxOpcode.Abs)
+            emitter.push(1e-6)
+            emitter.op(FluxOpcode.Sub)
+            # For NE we want TRUE when |diff| > epsilon
+            # CondJump fires when |diff| - epsilon <= 0
+            # So jump to FALSE on |diff| <= epsilon, fall through to TRUE
+            false_label = self._fresh_label("cmp_false")
+            emitter.cond_jump(false_label)
+            emitter.push(1.0)
+            emitter.fwd_jump(end_label)
+            emitter.label(false_label)
+            emitter.push(0.0)
+            emitter.label(end_label)
+            return
+
+        emitter.push(0.0)
+        emitter.fwd_jump(end_label)
+        emitter.label(true_label)
+        emitter.push(1.0)
+        emitter.label(end_label)
 
     def compile_expr(self, expr: Expr, emitter: BytecodeEmitter, with_validate: bool = True) -> None:
         """Compile an expression into *emitter*."""
@@ -445,6 +524,8 @@ class FluxCompiler:
             if opcode is None or expr.op not in PYTHON_SAFE_OPCODES:
                 raise ValueError(f"Unsupported or unsafe unary op: {expr.op}")
             emitter.op(opcode)
+        elif isinstance(expr, CmpOp):
+            self._compile_cmpop_as_expr(expr, emitter)
         elif isinstance(expr, RangeCheckNode):
             if self.prefer_range_check:
                 self.compile_expr(expr.expr, emitter, with_validate)
@@ -570,8 +651,8 @@ class FluxCompiler:
             emitter.label(end_label)
         elif cond.op == "GT":
             # left > right  →  right - left < 0
-            self.compile_expr(cond.left, emitter)
             self.compile_expr(cond.right, emitter)
+            self.compile_expr(cond.left, emitter)
             emitter.op(FluxOpcode.Sub)
             emitter.cond_jump(then_label)
             self.compile_expr(node.else_expr, emitter)
@@ -602,6 +683,8 @@ class FluxCompiler:
         In a real compiler this would look up from a symbol table or
         runtime environment.  For the prototype we use a default map.
         """
+        if name in self.var_defaults:
+            return self.var_defaults[name]
         defaults: Dict[str, float] = {
             "weight": 5.0,
             "chaos": 0.3,
@@ -642,6 +725,7 @@ def compile_constraint(
     prefer_range_check: bool = True,
     with_validate: bool = True,
     with_halt: bool = True,
+    var_defaults: dict[str, float] | None = None,
 ) -> Tuple[bytes, List[float], List[str]]:
     """Compile a constraint and return (bytecode, constant_pool, disassembly).
 
@@ -652,6 +736,6 @@ def compile_constraint(
             prefer_range_check=False,
         )
     """
-    compiler = FluxCompiler(prefer_range_check=prefer_range_check)
+    compiler = FluxCompiler(prefer_range_check=prefer_range_check, var_defaults=var_defaults)
     emitter = compiler.compile_constraint(expr, with_validate=with_validate, with_halt=with_halt)
     return emitter.to_bytes(), emitter.const_pool, emitter.disassemble()
