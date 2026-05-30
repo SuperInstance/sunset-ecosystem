@@ -22,11 +22,8 @@ class TestSerializationHelper:
         assert unpacked == data
 
     def test_pickle_roundtrip(self):
-        ser = SerializationHelper("pickle")
-        data = {"x": 1}
-        packed = ser.pack(data)
-        unpacked = ser.unpack(packed)
-        assert unpacked == data
+        with pytest.raises(ValueError):
+            SerializationHelper("pickle")
 
     def test_binary_roundtrip(self):
         ser = SerializationHelper("binary")
