@@ -1,16 +1,7 @@
-"""Federated Nexus — Fleet-wide agent registration and discovery.
+"""Nexus-level orchestration modules."""
 
-Agents register with a central nexus to discover peers, share load,
-and propagate seed-bank archives across the fleet.
-"""
+from __future__ import annotations
 
-__version__ = "0.1.0"
-__all__ = [
-    "FederatedNexus",
-    "RegistrationRecord",
-    "FederationEndpoint",
-    "NexusError",
-    "ConnectionRefusedError",
-    "FleetConductor",
-    "BeatState",
-]
+from nexus.fleet_conductor_v2 import FleetConductorV2
+
+__all__ = ["FleetConductorV2"]

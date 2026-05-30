@@ -1,37 +1,20 @@
-"""Swarm — The full running ecosystem."""
+"""Swarm-level modules for agent breeding, constraint theory, and vector operations."""
 
-from .penrose import PenrosePosition, assign_positions, compute_overlap
-from .broadcast import BroadcastMessage, BroadcastingChannel
-from .swarm_runner import SwarmRunner, SwarmStatus
-from .tournament import (
-    AgentScore,
-    TournamentMatch,
-    TournamentRound,
-    dominated_by,
-    breed,
-    sunset_candidates,
+from __future__ import annotations
+
+from swarm.constraint_bridge import ConstraintBridge, SnapResult
+from swarm.fleet_bft_qd import (
+    FleetBFTNetwork,
+    FleetBreederConsensus,
+    PBFTNode,
+    QDArchive,
 )
-from .thermal import DeviceBudget, DeviceType, ThermalBudget
-from .breeder import Breeder, AgentLifecycle, spawn_from_template
 
 __all__ = [
-    "PenrosePosition",
-    "assign_positions",
-    "compute_overlap",
-    "BroadcastMessage",
-    "BroadcastingChannel",
-    "SwarmRunner",
-    "SwarmStatus",
-    "AgentScore",
-    "TournamentMatch",
-    "TournamentRound",
-    "dominated_by",
-    "breed",
-    "sunset_candidates",
-    "DeviceBudget",
-    "DeviceType",
-    "ThermalBudget",
-    "Breeder",
-    "AgentLifecycle",
-    "spawn_from_template",
+    "ConstraintBridge",
+    "SnapResult",
+    "FleetBFTNetwork",
+    "FleetBreederConsensus",
+    "PBFTNode",
+    "QDArchive",
 ]

@@ -197,22 +197,22 @@ class DictCompressor:
     @staticmethod
     def compress(data: dict[str, Any]) -> CompressionResult:
         """Compress a dictionary using pickle + zlib."""
-        import pickle
+        import json
         start = time.time()
-        pickled = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
-        compressed = zlib.compress(pickled, level=6)
+        encoded = json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        compressed = zlib.compress(encoded, level=6)
         time_ms = (time.time() - start) * 1000
         return CompressionResult(
             data=compressed,
-            original_size=len(pickled),
+            original_size=len(encoded),
             compressed_size=len(compressed),
-            ratio=len(pickled) / max(len(compressed), 1),
-            algorithm="pickle+zlib",
+            ratio=len(encoded) / max(len(compressed), 1),
+            algorithm="json+zlib",
             time_ms=time_ms,
         )
 
     @staticmethod
     def decompress(compressed: CompressionResult) -> dict[str, Any]:
-        import pickle
+        import json
         raw = zlib.decompress(compressed.data)
-        return pickle.loads(raw)
+        return json.loads(raw.decode("utf-8"))

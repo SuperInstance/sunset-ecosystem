@@ -1,21 +1,46 @@
-"""fleet/ — Fleet infrastructure: notifications, config, decks, CLI, health checks."""
+"""Fleet-level modules for the Sunset Ecosystem."""
 
-from fleet.config import FleetConfig, get_config
-from fleet.health_check import FleetHealthChecker, ServiceDef, CheckResult
-from fleet.notifier import FleetNotifier, BreedingAlert
-from fleet.deck import Deck, Slide, breeding_report, fleet_status, flux_gate_decision
+from __future__ import annotations
+
+# Core fleet abstractions
+from fleet.sense_decide_act import (
+    Sense,
+    Decide,
+    Act,
+    Policy,
+    SDALoop,
+    SDAPipeline,
+    Observation,
+    Action,
+)
+from fleet.holodeck import (
+    Holodeck,
+    RoomNode,
+    AgentAvatar,
+    MockPlatoSource,
+)
+from fleet.plato_signal_chain import (
+    PlatoSignalChain,
+    PlatoRoomSense,
+    PlatoBreedingPolicy,
+    PlatoBreedingAct,
+)
 
 __all__ = [
-    "FleetConfig",
-    "get_config",
-    "FleetHealthChecker",
-    "ServiceDef",
-    "CheckResult",
-    "FleetNotifier",
-    "BreedingAlert",
-    "Deck",
-    "Slide",
-    "breeding_report",
-    "fleet_status",
-    "flux_gate_decision",
+    "Sense",
+    "Decide",
+    "Act",
+    "Policy",
+    "SDALoop",
+    "SDAPipeline",
+    "Observation",
+    "Action",
+    "Holodeck",
+    "RoomNode",
+    "AgentAvatar",
+    "MockPlatoSource",
+    "PlatoSignalChain",
+    "PlatoRoomSense",
+    "PlatoBreedingPolicy",
+    "PlatoBreedingAct",
 ]

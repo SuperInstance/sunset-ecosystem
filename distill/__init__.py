@@ -1,20 +1,11 @@
-"""Distill — The progressive hint removal loop."""
+"""Distillation modules for training and signal processing."""
 
-from .prompt_history import PromptHistory, PromptRecord
-from .hint_schedule import HintSchedule, ExponentialBackoffSchedule
-from .backtest_runner import BacktestRunner, BacktestResult
-from .distillation_signal import DistillationSignal, DistillationGuidance
-from .delta_tracker import DeltaSnapshot, DeltaTracker
+from __future__ import annotations
+
+from distill.distillation_signal import DistillationSignal
+from distill.delta_tracker import DeltaTracker
 
 __all__ = [
-    "PromptHistory",
-    "PromptRecord",
-    "HintSchedule",
-    "ExponentialBackoffSchedule",
-    "BacktestRunner",
-    "BacktestResult",
     "DistillationSignal",
-    "DistillationGuidance",
-    "DeltaSnapshot",
     "DeltaTracker",
 ]

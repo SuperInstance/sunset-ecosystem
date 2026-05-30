@@ -12,21 +12,21 @@ Usage:
 from __future__ import annotations
 
 import json
-import pickle
 import struct
 from typing import Any, Dict, List, Optional, Union
 
 
 class SerializationHelper:
     """
-    Serialization helper with multiple backends.
+    Serialization helper with safe backends.
 
-    :param format: Default format ("json", "pickle", "binary").
+    Supports JSON and a custom msgpack-style binary format.
+    Pickle is intentionally NOT supported for security reasons.
     """
 
     def __init__(self, format: str = "json"):
-        if format not in ("json", "pickle", "binary"):
-            raise ValueError("format must be 'json', 'pickle', or 'binary'")
+        if format not in ("json", "binary"):
+            raise ValueError("format must be 'json' or 'binary'. Pickle is not supported for security.")
         self._format = format
 
     # ------------------------------------------------------------------
@@ -38,8 +38,6 @@ class SerializationHelper:
         fmt = format or self._format
         if fmt == "json":
             return json.dumps(data).encode("utf-8")
-        if fmt == "pickle":
-            return pickle.dumps(data)
         if fmt == "binary":
             return self._binary_pack(data)
         raise ValueError(f"Unknown format: {fmt}")
@@ -49,8 +47,6 @@ class SerializationHelper:
         fmt = format or self._format
         if fmt == "json":
             return json.loads(data.decode("utf-8"))
-        if fmt == "pickle":
-            return pickle.loads(data)
         if fmt == "binary":
             value, _offset = self._binary_unpack(data)
             return value

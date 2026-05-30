@@ -1,24 +1,17 @@
-"""SUNSET — the lifecycle engine where every agent lives one generation."""
+"""Sunset-level bridge and integration modules."""
 
-from sunset.unified_memory import MemoryHandle, UnifiedMemoryPool
-from sunset.agent import Agent, AgentPhase
-from sunset.sunset_documents import Epilogue, Onboarding, Summary
-from sunset.seed_bank import SeedBank
-from sunset.tensor_archive import TensorArchive
-from sunset.trinity_scorer import trinity_score
-from sunset.generation_runner import GenerationRunner, GenerationReport
+from __future__ import annotations
+
+from sunset.plato_bridge import PlatoBridge
+from sunset.superinstance_ffi import (
+    eisenstein_norm,
+    laman_is_rigid,
+    holonomy_check,
+)
 
 __all__ = [
-    "Agent",
-    "AgentPhase",
-    "Epilogue",
-    "Onboarding",
-    "Summary",
-    "SeedBank",
-    "TensorArchive",
-    "trinity_score",
-    "GenerationRunner",
-    "GenerationReport",
-    "MemoryHandle",
-    "UnifiedMemoryPool",
+    "PlatoBridge",
+    "eisenstein_norm",
+    "laman_is_rigid",
+    "holonomy_check",
 ]
