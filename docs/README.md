@@ -46,7 +46,7 @@ How sunset-ecosystem connects to the broader SuperInstance ecosystem.
 | Document | What You'll Learn |
 |----------|-------------------|
 | [ECOSYSTEM_INTEGRATION.md](./ECOSYSTEM_INTEGRATION.md) | Full analysis of 598 repos, 10 integration targets, 4 build phases |
-| [ECOSYSTEM_INTEGRATION_MAP.md](./ECOSYSTEM_INTEGRATION_MAP.md) | Visual map of integration points |
+| [CONSERVATION_SPECTRAL_BRIDGE.md](./CONSERVATION_SPECTRAL_BRIDGE.md) | Laplacian eigenvalue fingerprints for breeding diversity & trinity anomaly detection |
 | [INTEGRATION_MAP.md](./INTEGRATION_MAP.md) | Component-level integration diagram |
 | [CROSS_POLLINATION_CATALOG.md](./CROSS_POLLINATION_CATALOG.md) | Patterns shared across repos |
 | [CROSS-REPO-DUPLICATION.md](./CROSS-REPO-DUPLICATION.md) | Detecting and resolving duplicated logic |

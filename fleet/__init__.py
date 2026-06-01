@@ -31,15 +31,10 @@ from fleet.i2i_bridge import (
 )
 from fleet.conservation_spectral_bridge import (
     SpectralFingerprint,
-    SpectralFleetRegistry,
-    build_laplacian,
-    spectral_decompose,
-    compute_fingerprint,
-    eigenvalue_similarity,
-    conservation_ratio,
-    fiedler_alignment,
-    flux_collaborative_intelligence,
-    collaborative_score,
+    SpectralAlignmentScorer,
+    ConservationRatioMonitor,
+    SpectralBreederDiversity,
+    ConservationSpectralEngine,
 )
 
 __all__ = [
@@ -49,8 +44,6 @@ __all__ = [
     "PlatoSDKBridge", "TileResult",
     "AgentIdentity", "Bottle", "I2IBridge",
     "InstanceLayer", "IterationLayer", "IndividualLayer", "InteractionLayer", "IronLayer",
-    "SpectralFingerprint", "SpectralFleetRegistry",
-    "build_laplacian", "spectral_decompose", "compute_fingerprint",
-    "eigenvalue_similarity", "conservation_ratio", "fiedler_alignment",
-    "flux_collaborative_intelligence", "collaborative_score",
+    "SpectralFingerprint", "SpectralAlignmentScorer", "ConservationRatioMonitor",
+    "SpectralBreederDiversity", "ConservationSpectralEngine",
 ]
