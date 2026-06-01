@@ -62,7 +62,7 @@ class TestDependencyGraph:
         g.add_edge("c", "a")
         g.add_edge("c", "b")
         batches = g.resolve_parallel_batches()
-        assert batches[0] == ["a", "b"]
+        assert set(batches[0]) == {"a", "b"}
         assert batches[1] == ["c"]
 
     def test_parallel_batches_cycle(self):

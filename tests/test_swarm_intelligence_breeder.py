@@ -46,7 +46,7 @@ class TestSwarmTopology:
         assert 0 <= cc <= 1.0
 
     def test_clustering_single_neighbor(self):
-        t = SwarmTopology(n_particles=5, k_neighbors=1)
+        t = SwarmTopology(n_particles=5, k_neighbors=1, rewire_prob=0.0)
         cc = t.get_clustering_coefficient(0)
         assert cc == 0.0  # Need at least 2 neighbors for triangles
 
