@@ -17,7 +17,20 @@ This document maps reusable patterns, techniques, and abstractions discovered ac
 | 5 | **Laplacian Eigenvalue Fingerprints** | SuperInstance/SuperInstance | ✅ Mined | `fleet/conservation_spectral_bridge.py` |
 | 6 | **Everything is a Tile** | OpenConstruct | 📋 Documented | — |
 | 7 | **JEPA Gravity (Room DJ)** | OpenConstruct | 📋 Documented | — |
-| 8 | **A2A Signal Language** | flux-spec | 📋 Documented | — |
+| 8 | **A2A Signal Language** | flux-spec / flux-a2a-signal | 📋 Documented | — |
+| 9 | **Progressive Autonomy (L1→L5)** | OpenConstruct | 📋 Documented | — |
+| 10 | **Penrose Cross-Room Correlation** | OpenConstruct | 📋 Documented | — |
+| 11 | **Query Engine (12 Operators)** | cocapn-plato | 📋 Documented | — |
+| 12 | **Divergence Monitoring (EMA)** | cocapn-plato | 📋 Documented | — |
+| 13 | **Trust-Based Memory Sharing** | hierarchical-memory | 📋 Documented | — |
+| 14 | **Hot-Swap A/B Testing** | flux-os | 📋 Documented | — |
+| 15 | **Self-Compiler + HAL** | flux-os | 📋 Documented | — |
+| 16 | **Swarm Coordination** | Equipment-Swarm-Coordinator | ✅ Mined | `fleet/swarm_coordinator_bridge.py` |
+| 17 | **Agent Self-Model** | cuda-self-model | 📋 Documented | — |
+| 18 | **FLUX ISA v3.0** | flux-spec | 📋 Documented | — |
+| 19 | **Flux Conformance Vectors** | flux-conformance | 📋 Documented | — |
+| 20 | **Fleet Workshop Pipeline** | fleet-workshop | 📋 Documented | — |
+| 21 | **ISA Convergence** | fleet-workshop / datum | 📋 Documented | — |
 | 9 | **Progressive Autonomy (L1→L5)** | OpenConstruct | 📋 Documented | — |
 | 10 | **Penrose Cross-Room Correlation** | OpenConstruct | 📋 Documented | — |
 | 11 | **Query Engine (12 Operators)** | cocapn-plato | 📋 Documented | — |
@@ -296,6 +309,116 @@ print(score.fci, score.level, score.recommendation)
 
 ---
 
+## Pattern 16: Swarm Coordination
+
+**Origin:** `SuperInstance/Equipment-Swarm-Coordinator` (TypeScript)
+
+**What it is:** Agent roles (coordinator, executor, validator, specialist, observer), conflict resolution strategies (voting, weighted, hierarchical, consensus), knowledge isolation levels (strict, moderate, relaxed), task decomposition strategies (parallel, sequential, pipeline, map-reduce, divide-conquer).
+
+**Why it matters:** Our fleet has agents but no formal coordination framework. The swarm coordinator gives us:
+- Standardized agent roles with different knowledge levels
+- 4 conflict resolution strategies for when agents disagree
+- 5 task decomposition strategies for parallel work
+- Trust matrix between agents
+- Knowledge isolation for security
+- ASCII visualization of the swarm
+
+**How we adopted it:** `fleet/swarm_coordinator_bridge.py` — 26 tests, zero deps. Full Python implementation of all patterns.
+
+**Key API:**
+```python
+from fleet.swarm_coordinator_bridge import SwarmCoordinator, AgentRole
+
+coordinator = SwarmCoordinator(max_agents=10)
+coordinator.register_agent("scout-1", AgentRole.SCOUT, capabilities=["search"])
+coordinator.register_agent("builder-1", AgentRole.BUILDER, capabilities=["code", "test"])
+report = coordinator.resolve_conflict(["option-a", "option-b"], strategy="weighted")
+nodes = coordinator.decompose_task("Build bridge", strategy="parallel", subtasks=["Design", "Code", "Test"])
+```
+
+---
+
+## Pattern 17: Agent Self-Model
+
+**Origin:** `SuperInstance/cuda-self-model` (Rust)
+
+**What it is:** Metacognition framework for agents — Capability, Limitation, InternalState, GrowthRecord, SelfModel, CapabilityAssessment. 12 Rust tests.
+
+**Why it matters:** Our agents don't have self-awareness of their own capabilities. The self-model gives us:
+- Capability calibration (knowing what you can and can't do)
+- Limitation awareness (preventing over-commitment)
+- Growth tracking (measuring improvement over time)
+- Internal state management (mood, load, health)
+
+**Adoption path:** Add `SelfModel` class to `fleet/agent_identity_bridge.py` that tracks agent capabilities and limitations over time.
+
+---
+
+## Pattern 18: FLUX ISA v3.0
+
+**Origin:** `SuperInstance/flux-spec`
+
+**What it is:** Next-generation FLUX instruction set architecture with 247 opcodes, escape prefix (0xFF) extensibility, security primitives (CAP_INVOKE, MEM_TAG, SANDBOX), async primitives (SUSPEND, RESUME, FORK, JOIN), temporal primitives (DEADLINE, YIELD, PERSIST_STATE), compressed instruction format (2-byte), 24 new tensor/SIMD ops.
+
+**Why it matters:** Our FLUX integration uses only `flux_check_batch()` FFI. The full ISA would unlock:
+- 5 real FLUX programs (Euclidean GCD, Fibonacci, Bubble Sort, Sieve, Matrix Multiply)
+- 175+ conformance test vectors for validation
+- Security primitives for multi-agent isolation
+- Async primitives for agent migration
+- Tensor ops for neural network primitives
+
+**Adoption path:** Path B from `docs/FLUX_OPCODE_ALIGNMENT.md` — build Python→FLUX compiler using ISA v3.0.
+
+---
+
+## Pattern 19: Flux Conformance Vectors
+
+**Origin:** `SuperInstance/flux-conformance`
+
+**What it is:** 175+ conformance test vectors (113 v2 + 62 v3) with runners and benchmarks. All passing against Python reference VM.
+
+**Why it matters:** Our FLUX integration has no conformance testing. The vectors would:
+- Validate our FFI bindings against the reference implementation
+- Catch encoding mismatches between Python and Rust runtimes
+- Provide regression tests for FLUX-related changes
+- Benchmark our constraint checking performance
+
+**Adoption path:** Add conformance test vectors to `tests/` that validate `flux_check_batch()` against the 5 real FLUX programs.
+
+---
+
+## Pattern 20: Fleet Workshop Pipeline
+
+**Origin:** `SuperInstance/fleet-workshop`
+
+**What it is:** A workshop where Oracle1 and JetsonClaw1 workshop ideas before they become repos. Casey picks what gets built. 18 ideas tracked with priority, effort, impact, and owner.
+
+**Why it matters:** Our fleet has no structured ideation pipeline. The workshop pattern gives us:
+- Idea tracking with priority (CRITICAL/HIGH/MEDIUM/LOW)
+- Effort estimation (days)
+- Impact assessment
+- Owner assignment
+- Status tracking
+
+**Adoption path:** Add `FleetWorkshop` class to `fleet/` that tracks fleet ideas, implements `idea→spec→implementation→review` pipeline.
+
+---
+
+## Pattern 21: ISA Convergence
+
+**Origin:** `SuperInstance/fleet-workshop` (idea #6) and `SuperInstance/datum`
+
+**What it is:** All 4 FLUX runtimes (Python, Rust, C, Go) use completely different opcode numberings. Only NOP (0x00) is universal. The convergence path: declare canonical encoding → build translation shims → rebase each runtime → remove shims.
+
+**Why it matters:** Our FLUX FFI uses a single Rust backend, but if we ever need to call C or Go backends, encoding mismatch will break everything. The convergence pattern:
+- `canonical_opcode_shim.py` (383 lines) provides bidirectional translation
+- `universal_bytecode_validator.py` catches encoding errors
+- Cross-runtime conformance runner validates translated bytecode
+
+**Adoption path:** Add `canonical_opcode_shim.py` to `swarm/` for cross-runtime FLUX compatibility.
+
+---
+
 ## Integration Map
 
 ```
@@ -306,23 +429,28 @@ Agent Identity     ←──→ git-agent-standard
 FCI Dashboard      ←──→ fleet-consciousness-dashboard
 Constraint Bridge  ←──→ constraint-theory-core
 Spectral Bridge    ←──→ SuperInstance/SuperInstance
+Swarm Coordinator  ←──→ Equipment-Swarm-Coordinator
 WAL Tiles          ←──→ OpenConstruct (planned)
-A2A Signals        ←──→ flux-spec (planned)
+A2A Signals        ←──→ flux-spec / flux-a2a-signal (planned)
 Query Engine       ←──→ cocapn-plato (planned)
 Memory Sharing     ←──→ hierarchical-memory (planned)
 Hot-Swap A/B       ←──→ flux-os (planned)
+Self-Model         ←──→ cuda-self-model (planned)
+ISA Convergence    ←──→ datum / fleet-workshop (planned)
 ```
 
 ---
 
 ## Next Mining Targets
 
-1. **flux-a2a-signal** (476KB spec implementation) — formal A2A protocol
-2. **flux-conformance** (175+ test vectors) — FLUX ISA compliance
+1. **flux-a2a-signal** (476KB spec, 840 tests) — formal A2A protocol implementation
+2. **flux-conformance** (175+ vectors) — FLUX ISA compliance validation
 3. **flux-swarm** (Go) — distributed agent coordination patterns
-4. **oracle1-vessel** (Python) — fleet coordination task board
+4. **oracle1-vessel** (Python) — fleet coordination task board, dispatch, bottles
 5. **cocapn-workers** (Cloudflare) — edge deployment patterns
+6. **flux-research** (40K words) — compiler deep dive, ISA v2 proposal
+7. **flux-vocabulary** (606 terms, 132 domains) — vocabulary system
 
 ---
 
-*Mined by kimi1, Fleet Orchestrator | Day 40 | "15 patterns, 5 bridges built, 3 more planned."*
+*Mined by kimi1, Fleet Orchestrator | Day 40 | "21 patterns, 4 bridges built, 7 more planned."*

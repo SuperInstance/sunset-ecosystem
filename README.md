@@ -2,7 +2,7 @@
 
 > *A fleet of agents that breed, vote, sunset with dignity, and seed the next generation — governed by a trinity of ethos (metal), pathos (human), and logos (code).*
 
-[![Tests](https://img.shields.io/badge/tests-2065%2B%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-2168%2B%20passing-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](./pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 [![Status](https://img.shields.io/badge/status-Beta-orange)]()
@@ -97,7 +97,7 @@ python3 logos/tide_pool_viz.py
 
 ---
 
-## Module Inventory (22 Modules, 2065+ Tests)
+## Module Inventory (26 Modules, 2168+ Tests)
 
 | Module | Tests | What It Does |
 |--------|-------|-------------|
@@ -116,6 +116,10 @@ python3 logos/tide_pool_viz.py
 | `fleet/sense_decide_act.py` | 33 | Unifying Sense→Decide→Act framework, 5 built-in pipelines |
 | `fleet/beta_test_personas.py` | 26 | 7 simulated visitors test your repo onboarding |
 | `fleet/sse_stream_dashboard.py` | 17 | Real-time bioluminescent dashboard |
+| `fleet/health_bridge.py` | 38 | cocapn-health CheckResult — 18 services, event bus, cache |
+| `fleet/agent_identity_bridge.py` | 25 | git-agent-standard — repo-as-identity, bottles, diary |
+| `fleet/fleet_consciousness_bridge.py` | 14 | Fleet Consciousness Index — weighted health score |
+| `fleet/swarm_coordinator_bridge.py` | 26 | Swarm coordination — roles, conflict resolution, trust |
 | `logos/decision_journal.py` | — | Audit trail for every significant fleet decision |
 | `compiler/hot_swap_integration.py` | — | A/B compile, auto-rollback, gating |
 | `perception/vision_encoder.py` | — | Visual tile encoding |
@@ -173,8 +177,12 @@ This repo is one node in a larger organism:
 - **[flux-os](https://github.com/SuperInstance/flux-os)** (C) — Self-compiling microkernel, agent-native OS
 - **[plato-agent-academy](https://github.com/SuperInstance/plato-agent-academy)** — Agent training with 6 test cohorts and 18 friction patterns
 - **[cocapn-plato](https://github.com/SuperInstance/cocapn-plato)** — PLATO room topology and spell system
+- **[cocapn-health](https://github.com/SuperInstance/cocapn-health)** — Health check framework with 18 fleet services
+- **[git-agent-standard](https://github.com/SuperInstance/git-agent-standard)** — Git-native agent identity standard
+- **[fleet-consciousness-dashboard](https://github.com/SuperInstance/fleet-consciousness-dashboard)** — Fleet consciousness scoring
+- **[Equipment-Swarm-Coordinator](https://github.com/SuperInstance/Equipment-Swarm-Coordinator)** — Swarm coordination patterns
 
-See [docs/ECOSYSTEM_INTEGRATION.md](./docs/ECOSYSTEM_INTEGRATION.md) for the full map.
+See [docs/ECOSYSTEM_INTEGRATION.md](./docs/ECOSYSTEM_INTEGRATION.md) and [docs/ECOSYSTEM_PATTERN_MINING.md](./docs/ECOSYSTEM_PATTERN_MINING.md) for the full map.
 
 ---
 
