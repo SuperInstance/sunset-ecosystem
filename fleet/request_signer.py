@@ -60,6 +60,10 @@ class RequestSigner:
         :returns: Signature string.
         """
         ts = timestamp if timestamp is not None else self._clock()
+        # Normalize float timestamps that are whole numbers back to int
+        # so verify() signatures match sign() signatures exactly.
+        if isinstance(ts, float) and ts.is_integer():
+            ts = int(ts)
         payload = self._build_payload(path, method, body, headers, ts)
         sig = hmac.new(self._secret, payload.encode(), hashlib.sha256).hexdigest()
         return f"{ts}:{sig}"
