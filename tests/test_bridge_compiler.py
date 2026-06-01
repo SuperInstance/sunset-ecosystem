@@ -15,6 +15,8 @@ Coverage:
 from __future__ import annotations
 
 import ctypes
+import shutil
+import subprocess
 import sys
 import types
 from pathlib import Path
@@ -94,6 +96,8 @@ def grpc_schema() -> dict:
 
 @pytest.fixture
 def ffi_schema(tmp_path: Path) -> dict:
+    if shutil.which("gcc") is None:
+        pytest.skip("gcc not available")
     # Build a tiny mock shared library for FFI tests
     lib_path = tmp_path / "libmock.so"
     c_code = tmp_path / "mock_lib.c"
@@ -101,7 +105,7 @@ def ffi_schema(tmp_path: Path) -> dict:
         """
         int mock_push(const char* data) { return 0; }
         int mock_pull(const char* query, char* buf, unsigned long len) {
-            const char* resp = "{\\"status\\": \"ok\\"}";
+            const char* resp = "{\\\"status\\\": \\"ok\\\"}";
             unsigned long i;
             for (i = 0; i < len && resp[i]; i++) buf[i] = resp[i];
             if (i < len) buf[i] = '\\0';
@@ -118,7 +122,7 @@ def ffi_schema(tmp_path: Path) -> dict:
     return {
         "name": "test_ffi",
         "host": "localhost",
-        "port": 0,
+        "port": 1,
         "protocol": "ffi",
         "library_path": str(lib_path),
         "endpoints": {
@@ -259,6 +263,7 @@ def test_grpc_bridge_lifecycle(compiler: BridgeCompiler, grpc_schema: dict) -> N
 
 # ── 8. FFI bridge generation ─────────────────────────────────────
 
+@pytest.mark.skipif(shutil.which("gcc") is None, reason="gcc not available")
 def test_ffi_bridge_generation(compiler: BridgeCompiler, ffi_schema: dict) -> None:
     bridge_class = compiler.compile_from_dict(ffi_schema)
     assert issubclass(bridge_class, Bridge)
@@ -267,6 +272,7 @@ def test_ffi_bridge_generation(compiler: BridgeCompiler, ffi_schema: dict) -> No
 
 # ── 9. FFI bridge connect / push / pull / disconnect (real .so) ─
 
+@pytest.mark.skipif(shutil.which("gcc") is None, reason="gcc not available")
 def test_ffi_bridge_lifecycle(compiler: BridgeCompiler, ffi_schema: dict) -> None:
     bridge_class = compiler.compile_from_dict(ffi_schema)
     bridge = bridge_class(node_id="node-1")
@@ -423,6 +429,7 @@ def test_compiler_dispatches_grpc(compiler: BridgeCompiler, grpc_schema: dict) -
     assert bridge_class.__name__ == "TestGrpcBridge"
 
 
+@pytest.mark.skipif(shutil.which("gcc") is None, reason="gcc not available")
 def test_compiler_dispatches_ffi(compiler: BridgeCompiler, ffi_schema: dict) -> None:
     bridge_class = compiler.compile_from_dict(ffi_schema)
     assert bridge_class.__name__ == "TestFfiBridge"
@@ -464,7 +471,8 @@ def test_http_push_when_disconnected(compiler: BridgeCompiler, minimal_http_sche
     bridge_class = compiler.compile_from_dict(minimal_http_schema)
     bridge = bridge_class(node_id="disc")
     # Never connected
-    assert bridge.push({"x": 1}) is False
+    with pytest.raises(ConnectionError):
+        bridge.push({"x": 1})
 
 
 # ── 24. HTTP bridge pull failure on disconnected ─────────────────
@@ -473,7 +481,8 @@ def test_http_pull_when_disconnected(compiler: BridgeCompiler, minimal_http_sche
     bridge_class = compiler.compile_from_dict(minimal_http_schema)
     bridge = bridge_class(node_id="disc")
     # Never connected
-    assert bridge.pull("q") is None
+    with pytest.raises(ConnectionError):
+        bridge.pull("q")
 
 
 # ── 25. HTTP bridge error handling (network failure) ─────────────

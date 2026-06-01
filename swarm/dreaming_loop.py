@@ -511,12 +511,12 @@ class DreamingLoop:
                 return dream
 
             # Build a small random population
-            population = self._make_population(dream.population_size)
+            self.kernel.population = self._make_population(dream.population_size)
             best = -float("inf")
             mean = 0.0
             div = 0.0
             count = 0
-            for event in self.kernel.run(population, generations=dream.generations):
+            for event in self.kernel.run(generations=dream.generations):
                 best = max(best, event.best_fitness)
                 mean = event.mean_fitness
                 div = event.diversity
@@ -531,7 +531,8 @@ class DreamingLoop:
 
     def _make_population(self, size: int) -> List[Any]:
         """Build a simple float-vector population for generic kernels."""
-        return [np.random.randn(8).astype(np.float32).tolist() for _ in range(size)]
+        from swarm.breeding_kernel import Genome
+        return [Genome(genes=np.random.randn(8).astype(np.float32).tolist()) for _ in range(size)]
 
     def _synthetic_fitness(self, dream: Dream) -> float:
         """Deterministic synthetic fitness from tag hash for reproducible tests."""

@@ -32,6 +32,42 @@ class BreedingEvent:
         self.payload = payload
         self.timestamp = timestamp or 0.0
 
+    @property
+    def best_fitness(self) -> Optional[float]:
+        return self.payload.get("best_fitness")
+
+    @property
+    def mean_fitness(self) -> Optional[float]:
+        return self.payload.get("avg_fitness")
+
+    @property
+    def diversity(self) -> Optional[float]:
+        return self.payload.get("diversity")
+
+    @property
+    def qd_coverage(self) -> Optional[float]:
+        return self.payload.get("qd_coverage")
+
+    @property
+    def qd_score(self) -> Optional[float]:
+        return self.payload.get("qd_score")
+
+    @property
+    def nodes_agreed(self) -> Optional[int]:
+        return self.payload.get("nodes_agreed")
+
+    @property
+    def total_nodes(self) -> Optional[int]:
+        return self.payload.get("total_nodes")
+
+    @property
+    def flux_passed(self) -> Optional[int]:
+        return self.payload.get("flux_passed")
+
+    @property
+    def flux_failed(self) -> Optional[int]:
+        return self.payload.get("flux_failed")
+
     def __repr__(self) -> str:
         return f"BreedingEvent({self.event_type!r}, gen={self.generation})"
 

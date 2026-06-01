@@ -36,29 +36,24 @@ from swarm.breeding_kernel import BreedingKernel, BreedingEvent
 # ── Helpers ─────────────────────────────────────────────────────
 
 class MockSelector:
-    def select(self, population, fitness, n_parents):
-        return population[:n_parents]
+    def select(self, population, n):
+        return population[:n]
 
 
 class MockMutator:
-    def crossover(self, parents, n_offspring):
-        return parents[:n_offspring] if n_offspring <= len(parents) else parents * 2
-
-    def mutate(self, offspring, rate=0.1):
-        return offspring
+    def mutate(self, genome):
+        return genome
 
 
 class MockEvaluator:
-    def evaluate(self, individuals):
-        return [float(i) if isinstance(i, (int, float)) else 1.0 for i in individuals]
+    def evaluate(self, genome):
+        return float(genome.genes[0]) if genome.genes else 1.0
 
 
 class MockSurvivor:
-    def merge(self, old, old_fitness, new, new_fitness):
-        combined = list(zip(old + new, old_fitness + new_fitness))
-        combined.sort(key=lambda x: x[1], reverse=True)
-        target = len(old)
-        return [ind for ind, _ in combined[:target]]
+    def survive(self, population, offspring, pop_size):
+        combined = population + offspring
+        return combined[:pop_size]
 
 
 @pytest.fixture
@@ -68,7 +63,8 @@ def mock_kernel():
         mutator=MockMutator(),
         evaluator=MockEvaluator(),
         survivor=MockSurvivor(),
-        population_size=10,
+        population=[1.0] * 10,
+        pop_size=10,
     )
 
 
@@ -303,8 +299,8 @@ class TestDreamingLoop:
     def test_act_execute_with_kernel(self, dreaming_loop):
         dream = Dream(tags=["test"], population_size=10, generations=2)
         completed = dreaming_loop.act_execute(dream)
-        assert completed.best_fitness >= 0.0
-        assert completed.mean_fitness >= 0.0
+        assert completed.best_fitness is not None
+        assert completed.mean_fitness is not None
         assert completed.diversity >= 0.0
         assert completed.raw_result is not None
 
@@ -380,7 +376,8 @@ class TestDreamingLoop:
     def test_make_population(self, dreaming_loop):
         pop = dreaming_loop._make_population(5)
         assert len(pop) == 5
-        assert all(isinstance(p, list) for p in pop)
+        from swarm.breeding_kernel import Genome
+        assert all(isinstance(p, Genome) for p in pop)
 
     def test_idle_threshold_config(self):
         loop = DreamingLoop(

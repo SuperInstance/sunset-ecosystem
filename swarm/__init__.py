@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from swarm.constraint_bridge import ConstraintBridge, SnapResult
+from swarm.constraint_theory_integration import ConstraintTheoryIntegration
 from swarm.fleet_bft_qd import (
     FleetBFTNetwork,
     FleetBreederConsensus,
@@ -13,6 +14,7 @@ from swarm.fleet_bft_qd import (
 __all__ = [
     "ConstraintBridge",
     "SnapResult",
+    "ConstraintTheoryIntegration",
     "FleetBFTNetwork",
     "FleetBreederConsensus",
     "PBFTNode",

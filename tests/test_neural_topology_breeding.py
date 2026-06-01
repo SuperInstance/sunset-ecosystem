@@ -181,8 +181,11 @@ class TestActivationMutation:
         g.add_neuron("input", "linear")
         g.add_neuron("hidden", "tanh")
         g.add_neuron("output", "tanh")
-        mutated = activation_mutation(g.copy(), mutation_rate=1.0)
-        # Hidden neuron activation should have changed
+        # Try a few times to avoid picking the same activation by chance
+        for _ in range(5):
+            mutated = activation_mutation(g.copy(), mutation_rate=1.0)
+            if mutated.neurons[1].activation != "tanh":
+                break
         assert mutated.neurons[1].activation != "tanh"
 
     def test_preserves_input_output(self):

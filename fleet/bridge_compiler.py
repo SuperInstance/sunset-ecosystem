@@ -314,7 +314,7 @@ class HTTPBridgeGenerator(BaseBridgeGenerator):
 
         def push(self, data: Any) -> bool:
             if self._status != BridgeStatus.CONNECTED:
-                return False
+                raise ConnectionError("Bridge is not connected")
             url = urljoin(self._base_url, push_path)
             try:
                 headers = {"Content-Type": "application/json", **push_headers}
@@ -329,7 +329,7 @@ class HTTPBridgeGenerator(BaseBridgeGenerator):
 
         def pull(self, query: Any) -> Any:
             if self._status != BridgeStatus.CONNECTED:
-                return None
+                raise ConnectionError("Bridge is not connected")
             url = urljoin(self._base_url, pull_path)
             try:
                 params = query if isinstance(query, dict) else None
@@ -404,14 +404,14 @@ class GRPCBridgeGenerator(BaseBridgeGenerator):
 
         def push(self, data: Any) -> bool:
             if self._status != BridgeStatus.CONNECTED or self._stub is None:
-                return False
+                raise ConnectionError("gRPC bridge is not connected")
             # Stub: would call unary RPC here
             logger.debug("%s push stub: %s", class_name, data)
             return True
 
         def pull(self, query: Any) -> Any:
             if self._status != BridgeStatus.CONNECTED or self._stub is None:
-                return None
+                raise ConnectionError("gRPC bridge is not connected")
             # Stub: would call unary RPC here
             logger.debug("%s pull stub: %s", class_name, query)
             return {"stub": True, "query": query}
@@ -476,7 +476,7 @@ class FFIBridgeGenerator(BaseBridgeGenerator):
 
         def push(self, data: Any) -> bool:
             if self._status != BridgeStatus.CONNECTED:
-                return False
+                raise ConnectionError("FFI bridge is not connected")
             try:
                 func = getattr(self._lib, push_symbol)
                 # Best-effort ctypes signature: accept char* and return int
@@ -491,7 +491,7 @@ class FFIBridgeGenerator(BaseBridgeGenerator):
 
         def pull(self, query: Any) -> Any:
             if self._status != BridgeStatus.CONNECTED:
-                return None
+                raise ConnectionError("FFI bridge is not connected")
             try:
                 func = getattr(self._lib, pull_symbol)
                 func.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_size_t]
