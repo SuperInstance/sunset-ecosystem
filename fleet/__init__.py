@@ -18,9 +18,11 @@ from fleet.plato_signal_chain import (
     PlatoBreedingPolicy,
     PlatoBreedingAct,
 )
+from fleet.plato_sdk_bridge import PlatoSDKBridge, TileResult
 
 __all__ = [
     "Sense", "Decide", "Act", "Policy", "SDALoop", "SDAPipeline", "Observation",
     "Holodeck", "RoomNode", "AgentAvatar", "MockPlatoSource",
     "PlatoSignalChain", "PlatoRoomSense", "PlatoBreedingPolicy", "PlatoBreedingAct",
+    "PlatoSDKBridge", "TileResult",
 ]
