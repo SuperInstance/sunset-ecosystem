@@ -7,6 +7,10 @@ Usage:
     python examples/academy_training.py
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from fleet.plato_academy_bridge import PlatoAcademyBridge
 
 def main():

@@ -6,6 +6,12 @@ Usage:
     python examples/voice_room.py
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    python examples/voice_room.py
+"""
+
 from voice.soniqo_bridge import SoniqoBridge
 from jepa.jepa_room import JEPARoom
 
