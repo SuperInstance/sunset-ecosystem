@@ -2,7 +2,7 @@
 
 > *A fleet of agents that breed, vote, sunset with dignity, and seed the next generation — governed by a trinity of ethos (metal), pathos (human), and logos (code).*
 
-[![Tests](https://img.shields.io/badge/tests-2168%2B%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-2215%2B%20passing-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](./pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 [![Status](https://img.shields.io/badge/status-Beta-orange)]()
@@ -97,7 +97,7 @@ python3 logos/tide_pool_viz.py
 
 ---
 
-## Module Inventory (26 Modules, 2168+ Tests)
+## Module Inventory (29 Modules, 2215+ Tests)
 
 | Module | Tests | What It Does |
 |--------|-------|-------------|
@@ -120,6 +120,9 @@ python3 logos/tide_pool_viz.py
 | `fleet/agent_identity_bridge.py` | 25 | git-agent-standard — repo-as-identity, bottles, diary |
 | `fleet/fleet_consciousness_bridge.py` | 14 | Fleet Consciousness Index — weighted health score |
 | `fleet/swarm_coordinator_bridge.py` | 26 | Swarm coordination — roles, conflict resolution, trust |
+| `fleet/fence_board_bridge.py` | 16 | Tom Sawyer Protocol — tasks as puzzles, challenger ratings, badges |
+| `fleet/heartbeat_bridge.py` | 10 | Fleet heartbeat — registry discovery, task discovery, health checks |
+| `fleet/fleet_task_board_bridge.py` | 20 | Fleet task board — priority, tags, ETA, blocking, org chart |
 | `logos/decision_journal.py` | — | Audit trail for every significant fleet decision |
 | `compiler/hot_swap_integration.py` | — | A/B compile, auto-rollback, gating |
 | `perception/vision_encoder.py` | — | Visual tile encoding |
@@ -181,6 +184,7 @@ This repo is one node in a larger organism:
 - **[git-agent-standard](https://github.com/SuperInstance/git-agent-standard)** — Git-native agent identity standard
 - **[fleet-consciousness-dashboard](https://github.com/SuperInstance/fleet-consciousness-dashboard)** — Fleet consciousness scoring
 - **[Equipment-Swarm-Coordinator](https://github.com/SuperInstance/Equipment-Swarm-Coordinator)** — Swarm coordination patterns
+- **[oracle1-vessel](https://github.com/SuperInstance/oracle1-vessel)** — Fleet heartbeat, task board, fence board, agent coordination
 
 See [docs/ECOSYSTEM_INTEGRATION.md](./docs/ECOSYSTEM_INTEGRATION.md) and [docs/ECOSYSTEM_PATTERN_MINING.md](./docs/ECOSYSTEM_PATTERN_MINING.md) for the full map.
 

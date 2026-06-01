@@ -31,13 +31,9 @@ This document maps reusable patterns, techniques, and abstractions discovered ac
 | 19 | **Flux Conformance Vectors** | flux-conformance | 📋 Documented | — |
 | 20 | **Fleet Workshop Pipeline** | fleet-workshop | 📋 Documented | — |
 | 21 | **ISA Convergence** | fleet-workshop / datum | 📋 Documented | — |
-| 9 | **Progressive Autonomy (L1→L5)** | OpenConstruct | 📋 Documented | — |
-| 10 | **Penrose Cross-Room Correlation** | OpenConstruct | 📋 Documented | — |
-| 11 | **Query Engine (12 Operators)** | cocapn-plato | 📋 Documented | — |
-| 12 | **Divergence Monitoring (EMA)** | cocapn-plato | 📋 Documented | — |
-| 13 | **Trust-Based Memory Sharing** | hierarchical-memory | 📋 Documented | — |
-| 14 | **Hot-Swap A/B Testing** | flux-os | 📋 Documented | — |
-| 15 | **Self-Compiler + HAL** | flux-os | 📋 Documented | — |
+| 22 | **Fence Board / Tom Sawyer** | oracle1-vessel | ✅ Mined | `fleet/fence_board_bridge.py` |
+| 23 | **Heartbeat Protocol** | oracle1-vessel | ✅ Mined | `fleet/heartbeat_bridge.py` |
+| 24 | **Fleet Task Board** | oracle1-vessel | ✅ Mined | `fleet/fleet_task_board_bridge.py` |
 
 ---
 
@@ -419,6 +415,100 @@ nodes = coordinator.decompose_task("Build bridge", strategy="parallel", subtasks
 
 ---
 
+## Pattern 22: Fence Board / Tom Sawyer Protocol
+
+**Origin:** `SuperInstance/oracle1-vessel` (Markdown + Python)
+
+**What it is:** Tasks are "fences" — puzzles with visible results. Agents are "challengers" with difficulty ratings. The board tracks: open fences (anyone can claim), claimed fences (someone is working), completed fences (with badges). Max 5 active fences at a time.
+
+**Why it matters:** Our fleet has tasks but no motivation framework. The fence board gives us:
+- Tasks framed as puzzles, not chores
+- Challenger difficulty ratings (1–10) showing who has the edge
+- Claim windows creating urgency
+- Rewards that explain what changes when done
+- Badges (🥇🥈🥉) for recognition
+- The "Tom Sawyer" effect: work so good they'll fight to do it
+
+**How we adopted it:** `fleet/fence_board_bridge.py` — 16 tests, zero deps. Full Python implementation with ASCII board rendering.
+
+**Key API:**
+```python
+from fleet.fence_board_bridge import FenceBoard
+
+board = FenceBoard(max_active=5)
+fence = board.post_fence(
+    title="Map Opcodes",
+    brush="16 ops undefined",
+    view="Name on every runtime",
+    challengers={"Babel": (3, "Built it"), "Oracle1": (7, "Specs")},
+    reward="0x70-0x7F attributed",
+)
+board.claim_fence(fence.id, "Oracle1", "Build encoder")
+board.complete_fence(fence.id, ["artifact.py"], "🥇 Gold")
+```
+
+---
+
+## Pattern 23: Heartbeat Protocol
+
+**Origin:** `SuperInstance/oracle1-vessel` (Python)
+
+**What it is:** Fleet registry discovery (no hardcoded room names), service health checks (PLATO, Matrix), task discovery from PLATO tiles, acknowledgment tracking, state persistence across sessions, daemon mode.
+
+**Why it matters:** Our fleet has no unified heartbeat system. The heartbeat protocol gives us:
+- Automatic discovery of which rooms to check
+- Service health monitoring with timeout handling
+- Task acknowledgment to avoid duplicate reports
+- State persistence across sessions
+- Daemon mode for background monitoring
+- Priority communication channels (PLATO > Git > Matrix > I2I)
+
+**How we adopted it:** `fleet/heartbeat_bridge.py` — 10 tests, zero deps. Mock fetch support for testing.
+
+**Key API:**
+```python
+from fleet.heartbeat_bridge import Heartbeat, ServiceCheck
+
+hb = Heartbeat(plato_url="http://147.224.38.131:8847")
+report = hb.run()  # Returns text report
+hb.ack("tile-123")  # Acknowledge task
+hb.save_state()  # Persist across sessions
+```
+
+---
+
+## Pattern 24: Fleet Task Board
+
+**Origin:** `SuperInstance/oracle1-vessel` (Markdown)
+
+**What it is:** CRITICAL/HIGH/MEDIUM/LOW priority levels, capability tags ([c], [python], [rust]), owner assignment, T-minus estimates (T-24h, T-0h), status tracking, dependency blocking, critical path filtering, org chart rendering.
+
+**Why it matters:** Our fleet has no structured task management. The task board gives us:
+- Priority levels with visual icons (🔴🟠🟡🟢)
+- Capability tags for matching tasks to agent skills
+- Owner assignment with org chart visualization
+- T-minus estimates for deadline tracking
+- Dependency blocking (task A blocks task B)
+- Critical path auto-filtering
+- Fleet org chart from owner assignments
+
+**How we adopted it:** `fleet/fleet_task_board_bridge.py` — 20 tests, zero deps. Full task lifecycle with rendering.
+
+**Key API:**
+```python
+from fleet.fleet_task_board_bridge import FleetTaskBoard, TaskPriority
+
+board = FleetTaskBoard()
+board.add_task("Conformance", TaskPriority.CRITICAL, ["c", "python"], owner="JC1")
+board.set_eta("task-1", "T-24h")
+board.claim_task("task-1", "JC1")
+board.complete_task("task-1", commit_hash="abc123")
+print(board.render_text())
+print(board.render_org_chart())
+```
+
+---
+
 ## Integration Map
 
 ```
@@ -430,6 +520,9 @@ FCI Dashboard      ←──→ fleet-consciousness-dashboard
 Constraint Bridge  ←──→ constraint-theory-core
 Spectral Bridge    ←──→ SuperInstance/SuperInstance
 Swarm Coordinator  ←──→ Equipment-Swarm-Coordinator
+Fence Board        ←──→ oracle1-vessel
+Heartbeat          ←──→ oracle1-vessel
+Task Board         ←──→ oracle1-vessel
 WAL Tiles          ←──→ OpenConstruct (planned)
 A2A Signals        ←──→ flux-spec / flux-a2a-signal (planned)
 Query Engine       ←──→ cocapn-plato (planned)
@@ -446,11 +539,12 @@ ISA Convergence    ←──→ datum / fleet-workshop (planned)
 1. **flux-a2a-signal** (476KB spec, 840 tests) — formal A2A protocol implementation
 2. **flux-conformance** (175+ vectors) — FLUX ISA compliance validation
 3. **flux-swarm** (Go) — distributed agent coordination patterns
-4. **oracle1-vessel** (Python) — fleet coordination task board, dispatch, bottles
-5. **cocapn-workers** (Cloudflare) — edge deployment patterns
-6. **flux-research** (40K words) — compiler deep dive, ISA v2 proposal
-7. **flux-vocabulary** (606 terms, 132 domains) — vocabulary system
+4. **cocapn-workers** (Cloudflare) — edge deployment patterns
+5. **flux-research** (40K words) — compiler deep dive, ISA v2 proposal
+6. **flux-vocabulary** (606 terms, 132 domains) — vocabulary system
+7. **hierarchical-memory** (TypeScript) — multi-agent memory sharing
+8. **flux-os** (C) — microkernel hot-swap A/B testing
 
 ---
 
-*Mined by kimi1, Fleet Orchestrator | Day 40 | "21 patterns, 4 bridges built, 7 more planned."*
+*Mined by kimi1, Fleet Orchestrator | Day 40 | "24 patterns, 7 bridges built, 8 more planned."*

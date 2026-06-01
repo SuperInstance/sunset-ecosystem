@@ -51,6 +51,9 @@ How sunset-ecosystem connects to the broader SuperInstance ecosystem.
 | [HEALTH_BRIDGE.md](./HEALTH_BRIDGE.md) | cocapn-health CheckResult pattern — 18 fleet services, event bus, cache TTL |
 | [AGENT_IDENTITY_BRIDGE.md](./AGENT_IDENTITY_BRIDGE.md) | git-agent-standard pattern — repo-as-identity, bottles, abstraction planes |
 | [FLEET_CONSCIOUSNESS_BRIDGE.md](./FLEET_CONSCIOUSNESS_BRIDGE.md) | Fleet Consciousness Index — weighted fleet health score (dormant→transcendent) |
+| [FENCE_BOARD_BRIDGE.md](./FENCE_BOARD_BRIDGE.md) | Tom Sawyer Protocol — tasks as puzzles with claim windows and challenger ratings |
+| [HEARTBEAT_BRIDGE.md](./HEARTBEAT_BRIDGE.md) | Fleet heartbeat — registry discovery, task discovery, service health checks |
+| [FLEET_TASK_BOARD_BRIDGE.md](./FLEET_TASK_BOARD_BRIDGE.md) | Fleet task board — CRITICAL/HIGH/MEDIUM/LOW, capability tags, T-minus estimates |
 | [SWARM_COORDINATOR_BRIDGE.md](./SWARM_COORDINATOR_BRIDGE.md) | Swarm coordination — agent roles, conflict resolution, task decomposition, trust matrix |
 | [INTEGRATION_MAP.md](./INTEGRATION_MAP.md) | Component-level integration diagram |
 | [CROSS_POLLINATION_CATALOG.md](./CROSS_POLLINATION_CATALOG.md) | Patterns shared across repos |
@@ -75,6 +78,9 @@ The constraint virtual machine and compilation pipeline.
 | [SPEC_FLUX_PIPELINE.md](./SPEC_FLUX_PIPELINE.md) | FLUX pipeline specification |
 | [SPEC-FLUX-RESOLUTION.md](./SPEC-FLUX-RESOLUTION.md) | Constraint resolution algorithm spec |
 | [AGENTIC-COMPILER-RESEARCH.md](./AGENTIC-COMPILER-RESEARCH.md) | Research on compiler-agent collaboration |
+| [FENCE_BOARD_BRIDGE.md](./FENCE_BOARD_BRIDGE.md) | Tom Sawyer Protocol — tasks as puzzles, challenger ratings, badges |
+| [HEARTBEAT_BRIDGE.md](./HEARTBEAT_BRIDGE.md) | Fleet heartbeat — registry discovery, task discovery, health checks |
+| [FLEET_TASK_BOARD_BRIDGE.md](./FLEET_TASK_BOARD_BRIDGE.md) | Fleet task board — priority, tags, ETA, blocking, org chart |
 
 ---
 
