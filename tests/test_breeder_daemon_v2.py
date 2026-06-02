@@ -231,7 +231,9 @@ class TestLifecycleTransitions:
         assert incubate_tr.generation == 1  # max(0,0)+1
 
     def test_sunset_transition(self, grid, thermal, wal_path, vector_table):
-        daemon = make_daemon(grid, thermal, wal_path, vector_table)
+        # Use a tiny grid so room reuse is forced
+        tiny_grid = RoomGrid(n=1)
+        daemon = make_daemon(tiny_grid, thermal, wal_path, vector_table)
         daemon.start()
 
         # Breed once
