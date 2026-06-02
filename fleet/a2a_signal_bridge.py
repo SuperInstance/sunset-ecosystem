@@ -8,10 +8,12 @@ Brings the flux-a2a-signal patterns into sunset-ecosystem:
 - Fork — agent inheritance with state control
 - ConsensusDetector — 6 consensus types with convergence tracking
 - CoIterate — shared program traversal
+- Discuss — structured agent discourse (debate, brainstorm, review, negotiate)
+- Reflect — meta-cognition and self-assessment
 
 Usage:
     from fleet.a2a_signal_bridge import ConfidenceScore, SignalMessage, AgentPosition
-    from fleet.a2a_signal_bridge import Branch, Fork, ConsensusDetector
+    from fleet.a2a_signal_bridge import Branch, Fork, ConsensusDetector, Discussion, SelfAssessor
 
     # Confidence arithmetic
     c1 = ConfidenceScore(0.8)
@@ -36,6 +38,19 @@ Usage:
     detector = ConsensusDetector()
     result = detector.detect(positions, threshold=0.7)
     # result.type == "majority" (Oracle1 and kimi1 agree)
+
+    # Structured discussion
+    d = Discussion(topic="deploy v2", mode=DiscourseMode.DEBATE)
+    d.add_round([
+        Turn("Oracle1", AgentPosition("Oracle1", [0.8, 0.2]), ConfidenceScore(0.9)),
+        Turn("kimi1", AgentPosition("kimi1", [0.75, 0.25]), ConfidenceScore(0.8)),
+    ])
+    result = d.consensus()
+
+    # Self-assessment
+    assessor = SelfAssessor(target_confidence=0.8)
+    reflection = assessor.assess("kimi1", ConfidenceScore(0.6), {"strategy": "default"})
+    # reflection.adjustments == ["gather_more_evidence", "seek_review"]
 """
 
 from __future__ import annotations
@@ -596,4 +611,168 @@ class SharedProgram:
             "length": len(self.body),
             "cursors": [c.to_dict() for c in self.cursors],
             "state_mode": self.state_mode.value,
+        }
+
+
+# ─────────────────────────────────────────────────────────────
+# Discuss — structured agent discourse
+# ─────────────────────────────────────────────────────────────
+
+class DiscourseMode(Enum):
+    DEBATE = "debate"
+    BRAINSTORM = "brainstorm"
+    REVIEW = "review"
+    NEGOTIATE = "negotiate"
+
+
+@dataclass
+class Turn:
+    """A single turn in a structured discussion."""
+    agent_id: str
+    position: AgentPosition
+    confidence: ConfidenceScore
+    text: str = ""
+    round_num: int = 0
+
+    def to_dict(self) -> dict:
+        return {
+            "agent_id": self.agent_id,
+            "position": self.position.vector,
+            "confidence": self.confidence.value,
+            "text": self.text,
+            "round": self.round_num,
+        }
+
+
+@dataclass
+class Discussion:
+    """Structured multi-agent discourse with a topic and rounds."""
+    topic: str
+    mode: DiscourseMode = DiscourseMode.DEBATE
+    rounds: list[list[Turn]] = field(default_factory=list)
+    max_rounds: int = 3
+    consensus_threshold: float = 0.7
+
+    def add_round(self, turns: list[Turn]) -> None:
+        for t in turns:
+            t.round_num = len(self.rounds) + 1
+        self.rounds.append(turns)
+
+    def consensus(self) -> ConsensusResult:
+        """Detect consensus across all turns in the discussion."""
+        if not self.rounds:
+            return ConsensusResult(
+                type=ConsensusType.STALEMATE,
+                confidence=ConfidenceScore(0.0),
+                positions=[],
+                explanation="No discussion rounds",
+            )
+        # Use latest round positions for consensus
+        latest = self.rounds[-1]
+        positions = [t.position for t in latest]
+        detector = ConsensusDetector(similarity_threshold=self.consensus_threshold)
+        return detector.detect(positions)
+
+    def convergence_trend(self) -> str:
+        """Track how positions evolved across rounds."""
+        if len(self.rounds) < 2:
+            return "stable"
+        detector = ConsensusDetector(similarity_threshold=self.consensus_threshold)
+        for r in self.rounds:
+            positions = [t.position for t in r]
+            detector.detect(positions)
+        return detector.convergence_trend()
+
+    def to_dict(self) -> dict:
+        return {
+            "topic": self.topic,
+            "mode": self.mode.value,
+            "rounds": [[t.to_dict() for t in r] for r in self.rounds],
+            "max_rounds": self.max_rounds,
+            "consensus": self.consensus().to_dict(),
+            "trend": self.convergence_trend(),
+        }
+
+
+# ─────────────────────────────────────────────────────────────
+# Reflect — meta-cognition and self-assessment
+# ─────────────────────────────────────────────────────────────
+
+@dataclass
+class Reflection:
+    """Meta-cognitive assessment of an agent's own performance."""
+    agent_id: str
+    self_confidence: ConfidenceScore
+    strategy: str = ""
+    assessment: str = ""
+    adjustments: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "agent_id": self.agent_id,
+            "self_confidence": self.self_confidence.value,
+            "strategy": self.strategy,
+            "assessment": self.assessment,
+            "adjustments": self.adjustments,
+        }
+
+
+class SelfAssessor:
+    """Agent self-assessment with strategy adjustment recommendations."""
+
+    def __init__(self, target_confidence: float = 0.8):
+        self.target_confidence = target_confidence
+        self.history: list[Reflection] = []
+
+    def assess(self, agent_id: str, confidence: ConfidenceScore, context: dict[str, Any]) -> Reflection:
+        """Assess an agent and suggest adjustments."""
+        adjustments: list[str] = []
+        if confidence.value < self.target_confidence * 0.5:
+            assessment = "critical"
+            adjustments.append("escalate_to_trusted_peer")
+            adjustments.append("reduce_scope")
+        elif confidence.value < self.target_confidence:
+            assessment = "below_target"
+            adjustments.append("gather_more_evidence")
+            adjustments.append("seek_review")
+        elif confidence.value > 0.95:
+            assessment = "overconfident"
+            adjustments.append("red_team_check")
+        else:
+            assessment = "healthy"
+
+        strategy = context.get("strategy", "default")
+        if assessment == "critical" and strategy != "conservative":
+            adjustments.append("switch_to_conservative")
+        elif assessment == "overconfident" and strategy != "aggressive":
+            adjustments.append("stress_test_assumptions")
+
+        reflection = Reflection(
+            agent_id=agent_id,
+            self_confidence=confidence,
+            strategy=strategy,
+            assessment=assessment,
+            adjustments=adjustments,
+        )
+        self.history.append(reflection)
+        return reflection
+
+    def trend(self) -> str:
+        """Confidence trend over assessment history."""
+        if len(self.history) < 2:
+            return "stable"
+        values = [r.self_confidence.value for r in self.history]
+        first_half = sum(values[:len(values)//2]) / max(len(values)//2, 1)
+        second_half = sum(values[len(values)//2:]) / max(len(values) - len(values)//2, 1)
+        if second_half > first_half + 0.1:
+            return "improving"
+        elif second_half < first_half - 0.1:
+            return "declining"
+        return "stable"
+
+    def to_dict(self) -> dict:
+        return {
+            "target_confidence": self.target_confidence,
+            "trend": self.trend(),
+            "history": [r.to_dict() for r in self.history[-10:]],  # last 10
         }
