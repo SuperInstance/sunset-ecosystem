@@ -2,7 +2,7 @@
 
 > A fleet-scale mesh vector database with emergent applications for distributed agent systems.
 >
-> **147 tests passing. 22 modules. 6 bridges.**
+> **160 tests passing. 23 modules. 6 bridges.**
 
 ## Table of Contents
 
@@ -202,6 +202,30 @@ recs = tracker.get_cache_recommendations()
 
 ---
 
+### CognitiveCache
+
+Adaptive cache that learns from query patterns.
+
+```python
+base = MeshVectorTable(table_id="cache")
+storage = TieredMeshStorage(base_table=base)
+tracker = SceneTracker(base, strategy=CacheStrategy(
+    hot_threshold_accesses=3,
+    scene_timeout_seconds=60.0,
+))
+cache = CognitiveCache(storage, tracker)
+
+# Queries are automatically tracked
+entry = cache.query("agent_42")
+
+# Predictive preloading: co-occurring entries are preloaded
+# When agent_42 is queried, agent_43 is preloaded (learned pattern)
+```
+
+**Why it emerges**: SceneTracker detects patterns. TieredMeshStorage handles hot/warm/cold. CognitiveCache connects them so the cache learns what to keep hot.
+
+---
+
 ## Emergent Applications
 
 These are not standalone services. They are **compositions** of the primitives above.
@@ -396,7 +420,7 @@ table.insert(entry, skip_verify=True)
 
 ## Testing Strategy
 
-### Current Test Inventory (147 tests)
+### Current Test Inventory (160 tests)
 
 | Module | Tests | Key Coverage |
 |--------|-------|--------------|
@@ -408,6 +432,7 @@ table.insert(entry, skip_verify=True)
 | tiered_mesh_storage | 7 | Hot/warm/cold, promotion, demotion |
 | fleet_memory | 12 | Time sharding, LRU, temporal queries |
 | vector_swarm | 12 | Distributed KNN, consensus, dedup |
+| cognitive_cache | 13 | Predictive preloading, accuracy, co-occurrence |
 | quanta_vdb_bridge | 12 | CRDT manifest, SQLite shadow, HNSW |
 | caslang_executor | 12 | JSONL parse, sandbox, rollback |
 | level_runner | 11 | Systems, events, bounds, stats |
