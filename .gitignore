@@ -16,3 +16,6 @@ breeder.wal.sqlite
 benchmarks/cuda_benchmark_results.json
 vendor/
 .fleet/runtime/
+*.db
+tiered_cold/
+memory_shard_*_warm.db
