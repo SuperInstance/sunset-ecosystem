@@ -419,3 +419,10 @@ class SceneTracker:
             dominant = max(pattern_counts.items(), key=lambda x: x[1])
             scene.dominant_pattern = dominant[0]
             scene.frequency = dominant[1]
+
+    def _query_rate(self) -> float:
+        """Return queries per minute in the current window."""
+        if not self._query_rate_window:
+            return 0.0
+        window_duration = 60.0
+        return len(self._query_rate_window) / (window_duration / 60.0)

@@ -145,10 +145,27 @@ def get_agent(agent_id: str) -> dict[str, Any]:
     }
 
 
+def _brute_force_knn(
+    table: MeshVectorTable,
+    vector: np.ndarray,
+    k: int,
+) -> list[VectorTableEntry]:
+    """Brute-force KNN search (fallback when HNSW is unavailable)."""
+    entries = table.all_entries()
+    if not entries:
+        return []
+    distances = []
+    for e in entries:
+        d = np.linalg.norm(e.vector - vector)
+        distances.append((d, e))
+    distances.sort(key=lambda x: x[0])
+    return [e for _, e in distances[:k]]
+
+
 @app.post("/agents/similar")
 def similar_agents(query: SimilarityQuery) -> dict[str, Any]:
     vector = np.array(query.vector, dtype=np.float32)
-    entries = _table.query_similarity_sorted(vector, k=query.k)
+    entries = _brute_force_knn(_table, vector, k=query.k)
     return {
         "query": query.vector,
         "k": query.k,
@@ -178,13 +195,18 @@ def memory_query(req: MemoryQuery) -> dict[str, Any]:
     filter_fn = None
     if req.filter_fitness:
         filter_fn = lambda e: e.fitness >= req.filter_fitness
-    # Query via FleetMemory.recall
+    # Query via FleetMemory shards — iterate ALL tiers
     results = []
     for shard in _memory._shards.values():
-        for entry in shard.all_entries():
+        # Use tiered storage to get entries across hot/warm/cold
+        entries = shard._tiered.query_by_fitness(
+            min_fitness=req.filter_fitness or 0.0,
+            max_results=100000,
+            include_warm=True,
+        )
+        for entry in entries:
             if req.start_time <= entry.timestamp <= req.end_time:
-                if filter_fn is None or filter_fn(entry):
-                    results.append(entry)
+                results.append(entry)
 
     return {
         "count": len(results),
