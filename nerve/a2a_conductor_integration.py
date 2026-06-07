@@ -69,7 +69,6 @@ def handle_beat_sync_task(
         if drift_ms > conductor.max_drift_ms:
             if delta_beats >= 1.0:
                 # Upgrade to skip-jump via existing conductor machinery
-                from nexus.fleet_conductor import BeatState
                 consensus = BeatState.now(beat_number=task.target_beat)
                 conductor._apply_skip_jump(consensus)
             else:
@@ -149,7 +148,6 @@ def handle_drift_alert_task(
     recommended = result.payload.get("recommended_action", "none")
 
     if recommended == "skip_jump":
-        from nexus.fleet_conductor import BeatState
         target = task.target_beat or 0
         consensus = BeatState.now(beat_number=target)
         conductor._apply_skip_jump(consensus)
@@ -168,7 +166,6 @@ def handle_drift_alert_task(
         )
 
     elif recommended == "phase_nudge":
-        from nexus.fleet_conductor import BeatState
         beat_duration_ms = conductor._beat_duration_ms()
         conductor._apply_phase_nudge(
             BeatState.now(beat_number=task.target_beat or 0),
