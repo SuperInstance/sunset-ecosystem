@@ -1,129 +1,249 @@
+# CAPABILITY.toml — sunset-ecosystem
+# Auto-generated from source analysis of 1439 files, 2065+ tests.
+# See INTEGRATION.md for cross-repo usage examples.
+
 [package]
 name = "sunset-ecosystem"
 version = "0.1.0"
-layer = "orchestration"
-description = "Python-native orchestration layer for the SuperInstance fleet — neural inference, evolutionary breeding, thermal auctions, mesh gossip, drift detection, decision journaling, and ambient visualization"
+description = "Trinity-architecture agent ecosystem — ethos, pathos, logos"
+authors = ["SuperInstance"]
+license = "MIT"
+repository = "https://github.com/SuperInstance/sunset-ecosystem"
+keywords = ["agent", "evolutionary", "trinity", "swarm", "nerve", "breeding"]
 
 [provides]
-capabilities = [
-  # ── Nerve: Forward inference & metronome sync ──────────────────────
-  { name = "nerve-forward-inference", type = "module", description = "NerveTopology COLLECT→SELECT→COMPILE→FEEDBACK→REGULATE lifecycle with Hebbian routing and fiber perception" },
-  { name = "metronome-sync", type = "module", description = "Tempo-driven scheduler wrapping RoomGrid.tick() with harmonic breeding and FLUX triggers" },
-  { name = "signal-source", type = "protocol", description = "Pluggable signal generator protocol (RandomSignalSource, A2ASignalSource) for nerve grid input" },
-  { name = "tick-orchestration", type = "module", description = "TickResult snapshots and per-beat latency tracking across fibers, rooms, and routes" },
-  { name = "world-model", type = "module", description = "JEPA predictive world model with calibration-driven uncertainty estimation" },
 
-  # ── Swarm: Breeding & evolution ────────────────────────────────────
-  { name = "swarm-breeding", type = "module", description = "Tournament breeding pipeline: Pareto frontier, sunset candidates, breed, rebirth with AgentLifecycle FSM" },
-  { name = "thermal-auction", type = "module", description = "VCG combinatorial auction for GPU/CPU/iGPU/NPU slot allocation with truthful bidding dominance" },
-  { name = "agent-lifecycle", type = "module", description = "Finite-state machine: SPAWNED→ACTIVE→ADAPTING→COMPILED→SUNSET with transition predicates" },
-  { name = "spawn-from-template", type = "fn", description = "Imprint an AgentTemplate onto a RoomGrid room with chaos and trinity bias" },
+# ── Nerve Layer ──────────────────────────────────────────────────────────
 
-  # ── Sunset: Trinity scoring ────────────────────────────────────────
-  { name = "sunset-trinity-scoring", type = "module", description = "Three-body selection pressure: Ethos × Pathos × Logos. Zero in any dimension triggers sunset" },
-  { name = "connection-normalization", type = "fn", description = "Clamp raw connection values to [0, 1] for trinity score computation" },
+nerve-forward-inference = { module = "nerve.jepa", description = "JEPA forward inference with chaos-engineered routing — MinimalJEPA encoder + ChaosRoom dispatch" }
+nerve-fiber-lifecycle = { module = "nerve.fiber", description = "Sensory fiber lifecycle: PERCEIVING → ADAPTING → COMPILED → NOVELTY_ALERT with ecosystem adapters" }
+nerve-room-grid = { module = "nerve.room_grid", description = "RoomGrid — N-room nerve topology with latent state, chaos, and fiber attachment" }
+nerve-topology = { module = "nerve.topology", description = "NerveTopology — multi-fiber topology with tick cycle, stats, and benchmark harness" }
+nerve-routing = { module = "nerve.routing", description = "RoutingLayer — chaos-engineered signal routing across rooms with diversity tracking" }
+nerve-metronome = { module = "nerve.metronome", description = "MetronomeScheduler — tempo-driven RoomGrid tick scheduler with harmonic sub-beats" }
+nerve-metronome-bridge = { module = "nerve.metronome_bridge", description = "Device-aware metronome dispatch: beat-selective RoomGrid ticks (full/thermal/breeding/perception)" }
+nerve-distributed-metronome = { module = "nerve.distributed_metronome_bridge", description = "Cross-node beat sync via A2A-signed messages with PID drift correction (UnifiedBeat, DriftCorrection)" }
+nerve-a2a-conductor = { module = "nerve.a2a_conductor_integration", description = "A2A conductor extension — dispatch BeatSyncTask, BPMNegotiationTask, DriftAlertTask via FleetConductor" }
+nerve-adaptation = { module = "nerve.adaptation", description = "AdaptationEngine + ShoeTracker — shoe metaphor lifecycle tracking across nerve fibers" }
+nerve-jepa-ffi = { module = "nerve.jepa_ffi", description = "Python FFI bindings for libjepa_kernel.so — batch forward inference via Rust shared library" }
+nerve-jepa-rust = { module = "nerve.jepa_rust", description = "PersistentGrid — weights stay in Rust, Python sends signals only; eliminates per-tick copy overhead" }
+nerve-cuda-bridge = { module = "nerve.cuda_bridge", description = "PersistentCUDAGrid — GPU-accelerated JEPA forward with cuMemAlloc persistent weights, zero copy per tick" }
+nerve-bloom-filter = { module = "nerve.bloom_filter_wrapper", description = "Bit-packed Bloom filter via C shared library (bf_create, bf_add, bf_test)" }
+nerve-ring-buffer = { module = "nerve.ring_buffer_wrapper", description = "Lock-free ring buffer C FFI wrapper for nerve signal history" }
 
-  # ── Logos: Journals & visualization ────────────────────────────────
-  { name = "logos-journals", type = "module", description = "FLAME-format structured decision journal for human-fleet interactions (why/what/expected/actual/confidence)" },
-  { name = "tide-pool-viz", type = "module", description = "Ambient bioluminescent fleet visualization — HTML and ASCII renders for intuition-building" },
-  { name = "decision-logging", type = "fn", description = "log_spawn, log_sunset, log_breed, log_human_command with JSONL persistence" },
-  { name = "journal-query", type = "fn", description = "get_decision_history with scope and time-range filtering" },
+# ── Swarm Layer ──────────────────────────────────────────────────────────
 
-  # ── Triage: Drift detection ────────────────────────────────────────
-  { name = "triage-drift-detection", type = "module", description = "Structural drift detection: stale dependencies, test regression, doc drift, dead code, branch divergence" },
-  { name = "drift-report", type = "struct", description = "Structured DriftReport with severity grading (low/medium/high/critical)" },
+swarm-breeding = { module = "swarm.breeding_kernel", description = "Base evolutionary engine: BreedingKernel, Selector, Mutator, Evaluator, Survivor, BreedingEvent" }
+swarm-breeder = { module = "swarm.breeder", description = "Tournament → Pareto frontier → breed → rebirth pipeline with AgentLifecycle FSM" }
+swarm-breeder-daemon = { module = "swarm.breeder_daemon", description = "AutoBreeder — periodic cold-room tournament + breed + rebirth with FluxVectorTable integration" }
+swarm-breeder-daemon-v2 = { module = "swarm.breeder_daemon_v2", description = "Persistent diversity-aware daemon: EGG→COMPETE→SURVIVE→BREED→SUNSET→ARCHIVE with SQLite WAL" }
+swarm-breeder-fsm = { module = "swarm.breeder_fsm_v2", description = "BreederFSMV2 — deterministic 6-state lifecycle state machine with entry/exit guards" }
+swarm-adaptive-breeder = { module = "swarm.adaptive_breeder", description = "Strategy-switching breeder that tracks performance per strategy and selects best for landscape" }
+swarm-causal-breeder = { module = "swarm.causal_breeder", description = "Causal inference breeder — PC algorithm + do-calculus for fitness landscape causality discovery" }
+swarm-ensemble-breeder = { module = "swarm.ensemble_breeder", description = "Multi-strategy ensemble breeding with weighted voting" }
+swarm-meta-learning-breeder = { module = "swarm.meta_learning_breeder", description = "Learns-to-learn breeder — meta-gradient descent across breeding strategies" }
+swarm-spectral-breeding = { module = "swarm.spectral_breeding", description = "Spectral graph breeding — uses Laplacian eigenvalue structure for parent selection" }
+swarm-gnn-breeder = { module = "swarm.gnn_breeder", description = "Graph neural network breeder — GNN-encoded agent graphs for fitness prediction" }
+swarm-nca-breeder = { module = "swarm.nca_breeder", description = "Neural Cellular Automata breeder — morphogenetic pattern formation for agent evolution" }
+swarm-differential-breeder = { module = "swarm.differential_breeder", description = "Differential evolution breeder with DE/rand/1, DE/best/1, and adaptive mutation" }
+swarm-info-theoretic-breeder = { module = "swarm.info_theoretic_breeder", description = "Information-geometry breeding — Fisher information matrix for landscape-aware mutation" }
+swarm-pythagorean-evolution = { module = "swarm.pythagorean_evolution", description = "Pythagorean48-encoded evolutionary operations for deterministic breeding" }
+swarm-neural-topology-breeding = { module = "swarm.neural_topology_breeding", description = "Neural topology-aware breeding — evolves agent connectivity graphs" }
+swarm-swarm-intelligence-breeding = { module = "swarm.swarm_intelligence_breeder", description = "PSO/ACO-inspired breeding with collective intelligence" }
+swarm-adversarial-arena = { module = "swarm.adversarial_arena", description = "Co-evolutionary arena: solver vs tester populations in game-theoretic equilibrium" }
 
-  # ── Fleet: Gossip, API, and bridges ────────────────────────────────
-  { name = "mesh-gossip", type = "module", description = "Anti-entropy gossip protocol for FluxVectorTable CRDTs with digest-based delta pulls" },
-  { name = "epidemic-gossip", type = "module", description = "Random peer-selection state propagation converging in O(log N) rounds" },
-  { name = "si-fleet-api", type = "module", description = "FastAPI REST server: /health, /status, /agents, /memory, /swarm/knn, /cache" },
-  { name = "si-cli-bridge", type = "module", description = "HTTP bridge exposing breeding, FLUX, mesh, and status to the Claw CLI gateway" },
-  { name = "conservation-spectral-bridge", type = "module", description = "Bridge entropy conservation (conservation-law-rs) with spectral fleet ranking via Fiedler vectors" },
+swarm-tournament = { module = "swarm.tournament", description = "Tournament selection with Pareto frontier extraction and sunset candidate identification" }
+swarm-thermal = { module = "swarm.thermal", description = "Multi-device thermal budget: GPU(9), CPU(36), iGPU(14), NPU(6) — cost-based slot allocation" }
+swarm-async-thermal = { module = "swarm.async_thermal", description = "Asyncio-compatible thermal budget manager with cost-based allocation" }
+swarm-thermal-auction = { module = "swarm.thermal_auction", description = "Thermal auction — competitive bidding for compute budget with spectral alignment priority" }
+swarm-bft-consensus = { module = "swarm.fleet_bft_qd", description = "PBFT consensus + MAP-Elites quality-diversity archive for distributed breeding agreement" }
+swarm-bft-qd-integration = { module = "swarm.breeder_bft_qd_integration", description = "PBFT consensus gate for BreederDaemonV2 parent selection — 2f+1 before breeding" }
+swarm-flux-gating = { module = "swarm.flux_gating", description = "FLUX constraint gating for breeding — proof-carrying constraint checks before agent spawn" }
+swarm-flux-compiler = { module = "swarm.flux_compiler", description = "Constraint expression compiler — Python AST → FLUX IR nodes" }
+swarm-flux-vm-runner = { module = "swarm.flux_vm_runner", description = "FLUX VM bytecode execution runner for constraint verification" }
+swarm-constraint-bridge = { module = "swarm.constraint_bridge", description = "ConstraintTheory → Swarm bridge: soft→snap→hard constraint lifecycle" }
+swarm-constraint-theory = { module = "swarm.constraint_theory_integration", description = "Full constraint theory integration with Eisenstein snapping and Laman rigidity" }
 
-  # ── FFI: C bindings ────────────────────────────────────────────────
-  { name = "si-core-c-ffi", type = "module", description = "ctypes bindings to libsuperinstance_ffi.so: Eisenstein norms, Laman rigidity, holonomy checks, spline interpolation" },
-  { name = "constraint-check", type = "fn", description = "Fast C-bound constraint satisfaction with violation magnitude" },
-  { name = "deadband-filter", type = "fn", description = "C-bound hysteresis filter for noisy sensor/actuator signals" },
-  { name = "pythagorean-encode", type = "fn", description = "Frequency ratio → 48-tone index for musical agent communication" },
-]
+swarm-mesh-vector-gossip = { module = "swarm.mesh_vector_gossip", description = "Gossip-based mesh vector propagation with delta compression and anti-entropy sync" }
+swarm-arrow-mesh = { module = "swarm.arrow_mesh", description = "Arrow serialization for mesh gossip — zero-copy columnar layout with schema evolution" }
+swarm-arrow-flight-mesh = { module = "swarm.arrow_flight_mesh", description = "Apache Arrow Flight gRPC mesh node — 10-100x faster cross-node vector propagation" }
+swarm-arrow-telemetry = { module = "swarm.arrow_telemetry", description = "Zero-copy columnar telemetry streaming from PLATO → Arrow → fleet analytics" }
+swarm-hebbian-mesh = { module = "swarm.hebbian_mesh", description = "Hebbian learning mesh — strengthens frequently co-active agent connections" }
+swarm-spectral-mesh-routing = { module = "swarm.spectral_mesh_routing", description = "Spectral graph-based mesh routing using Laplacian eigenvectors" }
+swarm-hnsw-mesh-table = { module = "swarm.hnsw_mesh_table", description = "HNSW approximate nearest neighbor index for mesh vector lookup" }
+swarm-hash-ring = { module = "swarm.hash_ring", description = "Consistent hashing ring for distributed agent placement" }
+swarm-crdt-merge = { module = "swarm.crdt_merge", description = "CRDT-based state merge for eventually-consistent mesh replication" }
+swarm-crdt-hdc-hybrid = { module = "swarm.crdt_hdc_hybrid", description = "CRDT + Hyperdimensional Computing hybrid for mergeable agent fingerprints" }
+swarm-mesh-wal = { module = "swarm.mesh_wal", description = "Write-ahead log for mesh state persistence and recovery" }
+swarm-mesh-grouping = { module = "swarm.mesh_grouping", description = "Mesh group management — partition agents into affinity groups" }
+swarm-tiered-mesh-storage = { module = "swarm.tiered_mesh_storage", description = "Tiered storage: hot (memory) → warm (mmap) → cold (disk) for mesh state" }
+swarm-vector-table = { module = "swarm.vector_table", description = "Agent latent vector table with cosine similarity search" }
+swarm-flux-vector-table = { module = "swarm.flux_vector_table", description = "FluxVectorTable — R15-masked vector table for capability-filtered parent selection" }
+swarm-fleet-turbovec = { module = "swarm.fleet_turbovec", description = "SIMD-accelerated vector operations for fleet-scale embedding search" }
 
-exports = [
-  # nerve
-  "nerve.metronome.LocalMetronome",
-  "nerve.metronome.MetronomeScheduler",
-  "nerve.metronome.SignalSource",
-  "nerve.metronome.A2ASignalSource",
-  "nerve.metronome.RandomSignalSource",
-  "nerve.metronome.TickAsTask",
-  "nerve.topology.NerveTopology",
-  "nerve.topology.TickResult",
-  "nerve.world_model.WorldModel",
-  "nerve.world_model.WanderingJEPA",
-  "nerve.world_model.Calibrator",
-  "nerve.world_model.CalibrationReport",
+swarm-agent-migration = { module = "swarm.agent_migration", description = "Agent state migration between fleet nodes with checkpoint/transfer/resume/rollback" }
+swarm-broadcast = { module = "swarm.broadcast", description = "BroadcastingChannel — pub/sub with Hebbian strengthening between agents" }
+swarm-dreaming-loop = { module = "swarm.dreaming_loop", description = "Offline consolidation — replay and refine agent policies during idle periods" }
+swarm-chaos = { module = "swarm.chaos", description = "Chaos engineering primitives for stochastic exploration injection" }
+swarm-hdc-novelty = { module = "swarm.hdc_novelty", description = "Hyperdimensional computing novelty detection for agent diversity" }
+swarm-jepa-memory = { module = "swarm.jepa_memory", description = "JEPA-encoded memory bank for experience replay in breeding" }
+swarm-cellular-engine = { module = "swarm.cellular_engine", description = "Cellular automata engine for spatial agent simulation" }
+swarm-cellular-gpu = { module = "swarm.cellular_gpu", description = "GPU-accelerated cellular automata via CUDA/Numba" }
+swarm-cellular-numba = { module = "swarm.cellular_numba", description = "Numba-JIT cellular automata for CPU-optimized spatial simulation" }
+swarm-tda-landscape = { module = "swarm.tda_landscape", description = "Topological Data Analysis for fitness landscape characterization" }
+swarm-exact-qd-archive = { module = "swarm.exact_qd_archive", description = "Exact quality-diversity archive with Pareto front tracking" }
+swarm-cvt-map-elites = { module = "swarm.cvt_map_elites", description = "Centroidal Voronoi Tessellation MAP-Elites for structured archive coverage" }
+swarm-inheritance-tax = { module = "swarm.inheritance_tax", description = "Entropy-based inheritance tax — penalizes over-proliferation of successful lineages" }
+swarm-lineage-checker = { module = "swarm.lineage_checker", description = "Lineage verification — detects inbreeding and incest in agent family trees" }
+swarm-lifecycle-fsm = { module = "swarm.lifecycle_fsm", description = "Canonical lifecycle state machine: EGG→COMPETE→SURVIVE→BREED→SUNSET→ARCHIVE" }
+swarm-trajectory-monitor = { module = "swarm.trajectory_monitor", description = "Agent trajectory monitoring — detects oscillation, stagnation, and divergence" }
+swarm-scene-tracker = { module = "swarm.scene_tracker", description = "Scene tracking — identifies environmental regime changes for adaptation triggers" }
+swarm-service-discovery = { module = "swarm.service_discovery", description = "Service discovery for dynamic fleet mesh node registration" }
+swarm-search-api = { module = "swarm.search_api", description = "Unified search API over agent capabilities, vectors, and metadata" }
+swarm-fleet-diversity = { module = "swarm.fleet_diversity", description = "Fleet-wide diversity metrics — species count, evenness, entropy" }
+swarm-knowledge-pipeline = { module = "swarm.knowledge_pipeline", description = "Knowledge distillation pipeline between agent generations" }
+swarm-hardware-index = { module = "swarm.hardware_index", description = "Hardware capability index — maps device types to supported breeding operations" }
+swarm-npu-router = { module = "swarm.npu_router", description = "NPU (Neural Processing Unit) task router for edge inference" }
+swarm-penrose-tiling = { module = "swarm.penrose", description = "Penrose tiling-based spatial decomposition for agent placement" }
+swarm-eisenstein-integration = { module = "swarm.eisenstein_integration", description = "Eisenstein integer geometry — E12 lattice, hex disk, angular snapping" }
+swarm-simd-ops = { module = "swarm.simd_ops", description = "SIMD-optimized vector operations for breeding kernels" }
+swarm-wal = { module = "swarm.wal", description = "Generic write-ahead log for append-only state persistence" }
 
-  # swarm
-  "swarm.breeder.Breeder",
-  "swarm.breeder.AgentLifecycle",
-  "swarm.breeder.LifecycleRecord",
-  "swarm.breeder.spawn_from_template",
-  "swarm.thermal_auction.VCGAuction",
-  "swarm.thermal_auction.Bid",
-  "swarm.thermal_auction.Allocation",
-  "swarm.mesh_vector_gossip.MeshVectorGossip",
-  "swarm.mesh_vector_gossip.GossipDigest",
-  "swarm.mesh_vector_gossip.DeltaBatch",
-  "swarm.mesh_vector_gossip.GossipResult",
+# ── Sunset Layer ─────────────────────────────────────────────────────────
 
-  # sunset
-  "sunset.trinity_scorer.trinity_score",
-  "sunset.trinity_scorer.normalize_connection",
-  "sunset.trinity_scorer.trinity_score_raw",
+sunset-agent = { module = "sunset.agent", description = "Agent lifecycle: INCUBATING→COMPETING→BREEDING→SUNSETTING→ASLEEP with ResourceBudget" }
+sunset-trinity-scoring = { module = "sunset.trinity_scorer", description = "Ethos × Pathos × Logos composite trinity score computation" }
+sunset-generation-runner = { module = "sunset.generation_runner", description = "GenerationRunner — orchestrates one generation: spawn→compete→breed→sunset→report" }
+sunset-seed-bank = { module = "sunset.seed_bank", description = "SeedBank — manages onboarding docs and seed selection for next generation" }
+sunset-sunset-documents = { module = "sunset.sunset_documents", description = "Epilogue, Summary, Onboarding — inter-generation knowledge transfer documents" }
+sunset-tensor-archive = { module = "sunset.tensor_archive", description = "TensorArchive — persistent tensor storage for agent weights and latent states" }
+sunset-compiler = { module = "sunset.compiler", description = "Agentic compiler — Profiler→Analyzer→CodeGenerator→Validator→Deployer pipeline" }
+sunset-codegen = { module = "sunset.codegen", description = "Code generator: Python AST → Numba/Rust with A/B validation and hot-swap" }
+sunset-compiler-integration = { module = "sunset.compiler_integration", description = "Auto-compile RoomGrid hot paths (diversity, tick) via agentic-compiler bridge" }
+sunset-cuda-einsum = { module = "sunset.cuda_einsum", description = "Hand-tiled CUDA einsum kernel for RoomGrid signal routing with shared memory tiling" }
+sunset-flux-vm-bridge = { module = "sunset.flux_vm_bridge", description = "FluxVMBridge — Rust FFI wrapper for FLUX VM: bytecode load, constraint check, proof hash" }
+sunset-flux-integration = { module = "sunset.flux_integration", description = "FluxConstraintChecker — batch room output checking against FLUX safety constraints" }
+sunset-flux-codegen = { module = "sunset.flux_codegen", description = "FLUX VM bytecode emitter — Python → FLUX opcode sequences for constraint proofs" }
+sunset-flux-presets = { module = "sunset.flux_preset_library", description = "FluxPresetLibrary — reusable constraint presets (ThermalCeiling, AgentLiveness, NeuralBounds)" }
+sunset-flux-vm-bridge-ast = { module = "sunset.flux_vm_bridge_ast", description = "Python AST → FLUX bytecode compiler (Forge-Flux bridge) for lambda/function expressions" }
+sunset-plato-bridge = { module = "sunset.plato_bridge", description = "PLATO tile adapter — persists trinity scores, epilogues, seeds as PLATO tiles" }
+sunset-room-grid-observer = { module = "sunset.room_grid_plato_observer", description = "RoomGrid tick observer → PLATO tiles (diversity, thermal, occupancy, lifecycle)" }
+sunset-health-thermal-bridge = { module = "sunset.health_thermal_bridge", description = "cocapn-health → RoomGrid thermal budget bridge with emergency breeding triggers" }
 
-  # logos
-  "logos.decision_journal.DecisionJournal",
-  "logos.decision_journal.Decision",
-  "logos.decision_journal.log_spawn",
-  "logos.decision_journal.log_sunset",
-  "logos.decision_journal.log_breed",
-  "logos.decision_journal.log_human_command",
-  "logos.decision_journal.get_decision_history",
-  "logos.tide_pool_viz.TidePoolVisualizer",
-  "logos.tide_pool_viz.FleetSnapshot",
-  "logos.tide_pool_viz.AgentSnapshot",
+# ── Logos Layer ──────────────────────────────────────────────────────────
 
-  # triage
-  "triage.drift_detect.DriftDetector",
-  "triage.drift_detect.DriftReport",
-  "triage.drift_detect.detect_drift",
+logos-intent-protocol = { module = "logos.intent_protocol", description = "IntentConfirmationProtocol + FleetState — distributed intent negotiation" }
+logos-decision-journal = { module = "logos.decision_journal", description = "Append-only decision journal with structured rationale logging" }
+logos-decision-log = { module = "logos.decision_log", description = "Decision logging with context, reasoning, and outcome tracking" }
+logos-signed-wal = { module = "logos.signed_wal", description = "HMAC-signed write-ahead log for tamper-evident decision persistence" }
+logos-mmap-wal = { module = "logos.mmap_wal", description = "Memory-mapped WAL for high-throughput decision log I/O" }
+logos-wal-index = { module = "logos.wal_index", description = "B-tree index over WAL entries for fast decision lookup" }
+logos-wal-query = { module = "logos.wal_query", description = "Query engine for WAL — time-range, actor, decision-type filters" }
+logos-a2a-protocol = { module = "logos.a2a_protocol", description = "Agent-to-Agent wire protocol for distributed task negotiation" }
+logos-a2a-identity = { module = "logos.a2a_identity", description = "Agent identity management with cryptographic signing for A2A messages" }
+logos-opcode-capability-index = { module = "logos.opcode_capability_index", description = "Opcode capability registry — tracks which FLUX opcodes are safe per execution context" }
+logos-compression-utils = { module = "logos.compression_utils", description = "Compression utilities for WAL and decision log storage" }
+logos-generation-memory = { module = "logos.generation_memory", description = "Cross-generation memory — persists decisions and context across agent lifecycles" }
+logos-codebase-state = { module = "logos.codebase_state", description = "Codebase state tracking — monitors file changes and dependency evolution" }
+logos-tide-pool-viz = { module = "logos.tide_pool_viz", description = "Tide pool visualization — PLATO room state dashboard renderer" }
 
-  # fleet
-  "fleet.fleet_api.app",
-  "fleet.gossip_protocol.GossipProtocol",
-  "fleet.gossip_protocol.GossipMessage",
-  "fleet.conservation_spectral_bridge.ConservationSpectralEngine",
-  "fleet.conservation_spectral_bridge.SpectralFingerprint",
-  "fleet.conservation_spectral_bridge.SpectralAlignmentScorer",
-  "fleet.conservation_spectral_bridge.ConservationRatioMonitor",
-  "claw_fleet_bridge.FleetBridgeServer",
+# ── Ethos Layer ──────────────────────────────────────────────────────────
 
-  # ffi
-  "superinstance_ffi_real.eisenstein_norm",
-  "superinstance_ffi_real.laman_is_rigid",
-  "superinstance_ffi_real.holonomy_check",
-  "superinstance_ffi_real.pythagorean48_encode",
-  "superinstance_ffi_real.constraint_check",
-  "superinstance_ffi_real.constraint_violation",
-  "superinstance_ffi_real.spline_interpolate",
-  "superinstance_ffi_real.deadband_filter",
-]
+ethos-hardware-survey = { module = "ethos.hardware_survey", description = "HardwareProfile — CUDA/CPU/NPU survey: GPU memory, compute capability, temperature, power" }
+ethos-stress-test = { module = "ethos.stress_test", description = "Micro-benchmark suite: matrix multiply, token throughput, memory bandwidth per device" }
+ethos-agent-allocation = { module = "ethos.agent_allocation", description = "AllocationPlan — maps agent types to compute units based on hardware profile" }
+ethos-thermal-calibration = { module = "ethos.thermal_auto_calibrate", description = "ThermalAutoCalibrator — learns thermal models, predicts budget, rebalances on alert" }
+ethos-connection-score = { module = "ethos.ethos_connection_score", description = "EthosConnectionScore — rates hardware efficiency, latency fit, thermal fit, memory fit" }
+
+# ── Pathos Layer ─────────────────────────────────────────────────────────
+
+pathos-need-tracker = { module = "pathos.need_tracker", description = "NeedTracker — real-time human need state with urgency and satisfaction tracking" }
+pathos-interaction-log = { module = "pathos.interaction_log", description = "InteractionLog — records queries, responses, follow-ups, time-to-solution" }
+pathos-moment-scorer = { module = "pathos.moment_scorer", description = "MomentScorer — scores latency, resolution, frustration, invisibility per interaction" }
+pathos-trinity-connection = { module = "pathos.trinity_connection", description = "TrinityConnection — scores agent alignment with human needs (solves problems, reduces load)" }
+
+# ── Perception Layer ─────────────────────────────────────────────────────
+
+perception-vision = { module = "perception.vision_encoder", description = "VisionTileEncoder — 512-dim embeddings via SigLIP/CLIP/MobileViT/ONNX" }
+perception-audio = { module = "perception.audio_encoder", description = "AudioTileEncoder — 512-dim embeddings via Whisper/Wav2Vec2/CLAP/ONNX" }
+perception-webcam = { module = "perception.capture", description = "WebcamCapture + ScreenCapture — OpenCV/MSS frame capture with FPS throttling" }
+perception-microphone = { module = "perception.audio_capture", description = "MicrophoneCapture + SystemAudioCapture — sounddevice/pyaudio with frame dropping" }
+perception-cognition-loop = { module = "perception.cognition_loop", description = "CognitionLoop — observe→reason→act cycle for RoomGrid agents with AgentConfig" }
+
+# ── Ranking Layer ────────────────────────────────────────────────────────
+
+ranking-user-ranking = { module = "ranking.user_ranking", description = "UserRanking — collects and parses multi-response rankings with preference tag extraction" }
+ranking-personalization = { module = "ranking.personalization", description = "PersonalizationStore + PreferenceScore — accumulates user preference tags over time" }
+ranking-feedback-loop = { module = "ranking.feedback_loop", description = "FeedbackLoop — connects user rankings to hint schedule, personalization, and distillation signal" }
+ranking-ranked-response = { module = "ranking.ranked_response", description = "RankedResponse — single ranked response with source, hint level, latency metadata" }
+
+# ── Triage Layer ─────────────────────────────────────────────────────────
+
+triage-health-metrics = { module = "triage.metrics", description = "RepoHealthMetrics — five-component health score: Freshness(30) + Tests(25) + Docs(15) + Deps(15) + Hygiene(15)" }
+triage-github-issues = { module = "triage.github_issues", description = "GitHubIssues — REST API wrapper for issue fetching, labeling, lifecycle tracking" }
+triage-duplicate-detect = { module = "triage.duplicate_detect", description = "DuplicateDetector — TF-IDF + cosine similarity for duplicate issue flagging" }
+triage-repo-duplicate = { module = "triage.repo_duplicate", description = "RepoDuplicateDetector — cross-repo identity file hashing for duplicate repo detection" }
+triage-drift-detect = { module = "triage.drift_detect", description = "DriftDetector — stale deps, test regression, doc drift, dead code, branch divergence" }
+triage-weekly = { module = "triage.weekly", description = "WeeklyTriage — full weekly orchestration: health + issues + duplicates + drift + auto-label" }
+
+# ── Fleet Layer ──────────────────────────────────────────────────────────
+
+fleet-sda = { module = "fleet.sense_decide_act", description = "SDAPipeline — unified Sense→Decide→Act framework for 20+ cross-pollination patterns" }
+fleet-holodeck = { module = "fleet.holodeck", description = "Holodeck — mock PLATO source for fleet simulation and testing" }
+fleet-plato-signal-chain = { module = "fleet.plato_signal_chain", description = "PlatoSignalChain — PLATO room sense → breeding policy → breeding act pipeline" }
+fleet-plato-sdk-bridge = { module = "fleet.plato_sdk_bridge", description = "PlatoSDKBridge — bidirectional PLATO SDK ↔ fleet adapter with TileResult" }
+fleet-i2i-bridge = { module = "fleet.i2i_bridge", description = "I2IBridge — Instance→Iteration→Individual→Interaction→Iron layer bridge" }
+fleet-conservation-spectral = { module = "fleet.conservation_spectral_bridge", description = "Conservation Spectral bridge — Laplacian spectra, conservation ratios, spectral alignment" }
+
+# ── Nexus Layer ──────────────────────────────────────────────────────────
+
+nexus-fleet-conductor = { module = "nexus.fleet_conductor_v2", description = "FleetConductorV2 — cross-node fleet orchestration with scheduler registration" }
+nexus-fleet-event-bus = { module = "nexus.fleet_event_bus", description = "FleetEventBus — pub/sub event bus for fleet-wide state propagation" }
+nexus-federation = { module = "nexus.federation", description = "Federation — multi-fleet negotiation and resource sharing" }
+nexus-holonomy-bridge = { module = "nexus.holonomy_bridge", description = "HolonomyBridge — holonomy consistency checks across fleet nodes" }
+nexus-distributed-consensus = { module = "nexus.distributed_consensus", description = "Distributed consensus protocols for fleet-wide decision making" }
+
+# ── Distillation ─────────────────────────────────────────────────────────
+
+distill-signal = { module = "distill.distillation_signal", description = "DistillationSignal — big→small model distillation guidance generation" }
+distill-delta-tracker = { module = "distill.delta_tracker", description = "DeltaTracker — tracks performance deltas between model versions" }
+distill-hint-schedule = { module = "distill.hint_schedule", description = "HintSchedule — progressive hint removal schedule for distillation training" }
+distill-backtest = { module = "distill.backtest_runner", description = "BacktestRunner — evaluates distilled model against held-out rankings" }
+distill-prompt-history = { module = "distill.prompt_history", description = "PromptHistory — tracks prompt variations and their distillation outcomes" }
+
+# ── Grammar Engine ───────────────────────────────────────────────────────
+
+grammar-core = { module = "grammar.core", description = "Production rule engine — create_rule, validate_rule_name, score_rule, evolve, batch_create" }
+grammar-security = { module = "grammar.security_hardening", description = "Security hardening for grammar rules — sandboxed execution, input validation" }
+grammar-server = { module = "grammar.server", description = "HTTP server for grammar rule validation and evolution API" }
+
+# ── Superinstance Runtime ────────────────────────────────────────────────
+
+superinstance-runtime = { module = "superinstance.runtime", description = "EventBus runtime — COLLECT→SELECT→COMPILE plugin system with CollectorPlugin, SelectorPlugin, CompilerPlugin" }
+
+# ── FFI (Rust) ───────────────────────────────────────────────────────────
+
+superinstance-ffi = { module = "superinstance_ffi", description = "Rust C FFI: eisenstein_norm, laman_check_subset, holonomy_consistency_check, pythagorean48_encode, constraint_bounds_check, cubic_spline, deadband_filter, manhattan_distance, cascade_match" }
 
 [requires]
-optional = [
-  { crate = "conservation-law-rs", reason = "Entropy budget enforcement for breeding rounds via constraint_check/constraint_violation", import = "superinstance_ffi_real.constraint_check" },
-  { crate = "spectral-fleet-rs", reason = "Spectral fingerprint ranking and Fiedler-vector alignment scoring", import = "fleet.conservation_spectral_bridge.SpectralAlignmentScorer" },
-  { crate = "si-fleet-api", reason = "FastAPI REST endpoints expose fleet memory and swarm KNN to external clients", import = "fleet.fleet_api.app" },
-  { crate = "si-core-c", reason = "ctypes FFI to libsuperinstance_ffi.so for geometric constraint checks", import = "superinstance_ffi_real.laman_is_rigid" },
-  { crate = "si-runtime-python", reason = "Python bindings for fleet scheduler and task board bridge", import = "fleet.fleet_scheduler.FleetScheduler" },
-  { crate = "si-cli", reason = "Claw CLI discovers capabilities via FleetBridgeServer HTTP bridge", import = "claw_fleet_bridge.FleetBridgeServer" },
-]
+
+conservation-law = { version = ">=0.1.0", optional = true, description = "Entropy budget engine for thermal allocation gating" }
+spectral-fleet = { version = ">=0.1.0", optional = true, description = "Laplacian eigenvalue spectra for agent capability graphs" }
+agentic-compiler = { version = ">=0.1.0", optional = true, description = "Standalone agentic compiler package for hot-path optimization" }
+plato-core = { version = ">=0.1.0", optional = true, description = "Tile persistence layer with Lamport clock ordering" }
+soniqo = { version = ">=0.1.0", optional = true, description = "Speech/audio SDK for ASR, TTS, VAD" }
+eisenstein-embed = { version = ">=0.1.0", optional = true, description = "Bitvector fingerprints for tile pattern matching" }
+flux-vm-v3 = { version = ">=0.1.0", optional = true, description = "Rust FLUX constraint VM for proof-carrying checks" }
+pyarrow = { version = ">=14.0", optional = true, description = "Apache Arrow for zero-copy telemetry and mesh serialization" }
+torch = { version = ">=2.0", optional = true, description = "PyTorch for JEPA models and CUDA kernels" }
+numpy = { version = ">=1.24", description = "Core array operations" }
+
+[integrations]
+
+si-cli = { how = "discovered via si scan", version = ">=0.1.0", description = "CLI tool that reads CAPABILITY.toml and lists all provides/requires" }
+si-fleet-api = { how = "REST API at /api/v1/fleet", version = ">=0.1.0", description = "Fleet registry REST API backed by Supabase" }
+supabase = { how = "fleet registry tables", project = "igogykhksgkaxcwzudwi", description = "Postgres + realtime for repos, capabilities, entropy_budgets, breeding_events, trinity_scores, triage_reports" }
+conservation-law-rs = { how = "entropy budgets flow into swarm/thermal_auction.py", version = ">=0.1.0" }
+spectral-fleet-rs = { how = "ranking influences swarm/spectral_breeding.py parent selection", version = ">=0.1.0" }
+si-core-c = { how = "C FFI bridge via nerve/jepa_ffi.py and superinstance-ffi/", description = "C-callable math primitives from Rust crate" }
+si-runtime-python = { how = "Python bindings wrapping conservation API and nerve forward inference", version = ">=0.1.0" }
