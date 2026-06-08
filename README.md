@@ -594,7 +594,7 @@ z = E12(a=3, b=4)
 print(f"Norm N(3,4) = {eisenstein_norm(3, 4)}")  # 3² - 3·4 + 4² = 13
 
 # Snap an angle to the nearest Eisenstein lattice point
- snapped = snap_from_angle(angle_rad=0.785, radius=5.0)
+snapped = snap_from_angle(angle_rad=0.785, radius=5.0)
 print(f"Snapped: ({snapped.a}, {snapped.b})")
 
 # Check if a configuration graph is rigid (Laman's theorem)
