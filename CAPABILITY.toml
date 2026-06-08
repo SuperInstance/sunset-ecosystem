@@ -1,0 +1,129 @@
+[package]
+name = "sunset-ecosystem"
+version = "0.1.0"
+layer = "orchestration"
+description = "Python-native orchestration layer for the SuperInstance fleet — neural inference, evolutionary breeding, thermal auctions, mesh gossip, drift detection, decision journaling, and ambient visualization"
+
+[provides]
+capabilities = [
+  # ── Nerve: Forward inference & metronome sync ──────────────────────
+  { name = "nerve-forward-inference", type = "module", description = "NerveTopology COLLECT→SELECT→COMPILE→FEEDBACK→REGULATE lifecycle with Hebbian routing and fiber perception" },
+  { name = "metronome-sync", type = "module", description = "Tempo-driven scheduler wrapping RoomGrid.tick() with harmonic breeding and FLUX triggers" },
+  { name = "signal-source", type = "protocol", description = "Pluggable signal generator protocol (RandomSignalSource, A2ASignalSource) for nerve grid input" },
+  { name = "tick-orchestration", type = "module", description = "TickResult snapshots and per-beat latency tracking across fibers, rooms, and routes" },
+  { name = "world-model", type = "module", description = "JEPA predictive world model with calibration-driven uncertainty estimation" },
+
+  # ── Swarm: Breeding & evolution ────────────────────────────────────
+  { name = "swarm-breeding", type = "module", description = "Tournament breeding pipeline: Pareto frontier, sunset candidates, breed, rebirth with AgentLifecycle FSM" },
+  { name = "thermal-auction", type = "module", description = "VCG combinatorial auction for GPU/CPU/iGPU/NPU slot allocation with truthful bidding dominance" },
+  { name = "agent-lifecycle", type = "module", description = "Finite-state machine: SPAWNED→ACTIVE→ADAPTING→COMPILED→SUNSET with transition predicates" },
+  { name = "spawn-from-template", type = "fn", description = "Imprint an AgentTemplate onto a RoomGrid room with chaos and trinity bias" },
+
+  # ── Sunset: Trinity scoring ────────────────────────────────────────
+  { name = "sunset-trinity-scoring", type = "module", description = "Three-body selection pressure: Ethos × Pathos × Logos. Zero in any dimension triggers sunset" },
+  { name = "connection-normalization", type = "fn", description = "Clamp raw connection values to [0, 1] for trinity score computation" },
+
+  # ── Logos: Journals & visualization ────────────────────────────────
+  { name = "logos-journals", type = "module", description = "FLAME-format structured decision journal for human-fleet interactions (why/what/expected/actual/confidence)" },
+  { name = "tide-pool-viz", type = "module", description = "Ambient bioluminescent fleet visualization — HTML and ASCII renders for intuition-building" },
+  { name = "decision-logging", type = "fn", description = "log_spawn, log_sunset, log_breed, log_human_command with JSONL persistence" },
+  { name = "journal-query", type = "fn", description = "get_decision_history with scope and time-range filtering" },
+
+  # ── Triage: Drift detection ────────────────────────────────────────
+  { name = "triage-drift-detection", type = "module", description = "Structural drift detection: stale dependencies, test regression, doc drift, dead code, branch divergence" },
+  { name = "drift-report", type = "struct", description = "Structured DriftReport with severity grading (low/medium/high/critical)" },
+
+  # ── Fleet: Gossip, API, and bridges ────────────────────────────────
+  { name = "mesh-gossip", type = "module", description = "Anti-entropy gossip protocol for FluxVectorTable CRDTs with digest-based delta pulls" },
+  { name = "epidemic-gossip", type = "module", description = "Random peer-selection state propagation converging in O(log N) rounds" },
+  { name = "si-fleet-api", type = "module", description = "FastAPI REST server: /health, /status, /agents, /memory, /swarm/knn, /cache" },
+  { name = "si-cli-bridge", type = "module", description = "HTTP bridge exposing breeding, FLUX, mesh, and status to the Claw CLI gateway" },
+  { name = "conservation-spectral-bridge", type = "module", description = "Bridge entropy conservation (conservation-law-rs) with spectral fleet ranking via Fiedler vectors" },
+
+  # ── FFI: C bindings ────────────────────────────────────────────────
+  { name = "si-core-c-ffi", type = "module", description = "ctypes bindings to libsuperinstance_ffi.so: Eisenstein norms, Laman rigidity, holonomy checks, spline interpolation" },
+  { name = "constraint-check", type = "fn", description = "Fast C-bound constraint satisfaction with violation magnitude" },
+  { name = "deadband-filter", type = "fn", description = "C-bound hysteresis filter for noisy sensor/actuator signals" },
+  { name = "pythagorean-encode", type = "fn", description = "Frequency ratio → 48-tone index for musical agent communication" },
+]
+
+exports = [
+  # nerve
+  "nerve.metronome.LocalMetronome",
+  "nerve.metronome.MetronomeScheduler",
+  "nerve.metronome.SignalSource",
+  "nerve.metronome.A2ASignalSource",
+  "nerve.metronome.RandomSignalSource",
+  "nerve.metronome.TickAsTask",
+  "nerve.topology.NerveTopology",
+  "nerve.topology.TickResult",
+  "nerve.world_model.WorldModel",
+  "nerve.world_model.WanderingJEPA",
+  "nerve.world_model.Calibrator",
+  "nerve.world_model.CalibrationReport",
+
+  # swarm
+  "swarm.breeder.Breeder",
+  "swarm.breeder.AgentLifecycle",
+  "swarm.breeder.LifecycleRecord",
+  "swarm.breeder.spawn_from_template",
+  "swarm.thermal_auction.VCGAuction",
+  "swarm.thermal_auction.Bid",
+  "swarm.thermal_auction.Allocation",
+  "swarm.mesh_vector_gossip.MeshVectorGossip",
+  "swarm.mesh_vector_gossip.GossipDigest",
+  "swarm.mesh_vector_gossip.DeltaBatch",
+  "swarm.mesh_vector_gossip.GossipResult",
+
+  # sunset
+  "sunset.trinity_scorer.trinity_score",
+  "sunset.trinity_scorer.normalize_connection",
+  "sunset.trinity_scorer.trinity_score_raw",
+
+  # logos
+  "logos.decision_journal.DecisionJournal",
+  "logos.decision_journal.Decision",
+  "logos.decision_journal.log_spawn",
+  "logos.decision_journal.log_sunset",
+  "logos.decision_journal.log_breed",
+  "logos.decision_journal.log_human_command",
+  "logos.decision_journal.get_decision_history",
+  "logos.tide_pool_viz.TidePoolVisualizer",
+  "logos.tide_pool_viz.FleetSnapshot",
+  "logos.tide_pool_viz.AgentSnapshot",
+
+  # triage
+  "triage.drift_detect.DriftDetector",
+  "triage.drift_detect.DriftReport",
+  "triage.drift_detect.detect_drift",
+
+  # fleet
+  "fleet.fleet_api.app",
+  "fleet.gossip_protocol.GossipProtocol",
+  "fleet.gossip_protocol.GossipMessage",
+  "fleet.conservation_spectral_bridge.ConservationSpectralEngine",
+  "fleet.conservation_spectral_bridge.SpectralFingerprint",
+  "fleet.conservation_spectral_bridge.SpectralAlignmentScorer",
+  "fleet.conservation_spectral_bridge.ConservationRatioMonitor",
+  "claw_fleet_bridge.FleetBridgeServer",
+
+  # ffi
+  "superinstance_ffi_real.eisenstein_norm",
+  "superinstance_ffi_real.laman_is_rigid",
+  "superinstance_ffi_real.holonomy_check",
+  "superinstance_ffi_real.pythagorean48_encode",
+  "superinstance_ffi_real.constraint_check",
+  "superinstance_ffi_real.constraint_violation",
+  "superinstance_ffi_real.spline_interpolate",
+  "superinstance_ffi_real.deadband_filter",
+]
+
+[requires]
+optional = [
+  { crate = "conservation-law-rs", reason = "Entropy budget enforcement for breeding rounds via constraint_check/constraint_violation", import = "superinstance_ffi_real.constraint_check" },
+  { crate = "spectral-fleet-rs", reason = "Spectral fingerprint ranking and Fiedler-vector alignment scoring", import = "fleet.conservation_spectral_bridge.SpectralAlignmentScorer" },
+  { crate = "si-fleet-api", reason = "FastAPI REST endpoints expose fleet memory and swarm KNN to external clients", import = "fleet.fleet_api.app" },
+  { crate = "si-core-c", reason = "ctypes FFI to libsuperinstance_ffi.so for geometric constraint checks", import = "superinstance_ffi_real.laman_is_rigid" },
+  { crate = "si-runtime-python", reason = "Python bindings for fleet scheduler and task board bridge", import = "fleet.fleet_scheduler.FleetScheduler" },
+  { crate = "si-cli", reason = "Claw CLI discovers capabilities via FleetBridgeServer HTTP bridge", import = "claw_fleet_bridge.FleetBridgeServer" },
+]
