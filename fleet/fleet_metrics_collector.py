@@ -49,6 +49,7 @@ class ModuleMetrics:
 
 
 @dataclass
+@dataclass
 class MetricsSnapshot:
     """Complete snapshot of fleet metrics at a point in time."""
 
@@ -60,6 +61,7 @@ class MetricsSnapshot:
     critical_modules: int
     total_tests: int
     tests_passed: int
+    tests_failed: int
     test_coverage_pct: float
     integration_count: int
     tested_integrations: int
@@ -125,7 +127,7 @@ class FleetMetricsCollector:
         self._ensure_initialized()
 
         if not self._harbor or not self._orchestrator:
-            return MetricsSnapshot(timestamp=time.time(), cycle_number=0, total_modules=0, healthy_modules=0, warning_modules=0, critical_modules=0, total_tests=0, tests_passed=0, test_coverage_pct=0.0, integration_count=0, tested_integrations=0)
+            return MetricsSnapshot(timestamp=time.time(), cycle_number=0, total_modules=0, healthy_modules=0, warning_modules=0, critical_modules=0, total_tests=0, tests_passed=0, tests_failed=0, test_coverage_pct=0.0, integration_count=0, tested_integrations=0)
 
         # Run a beat to get current state
         beat = self._orchestrator.beat()
@@ -168,6 +170,7 @@ class FleetMetricsCollector:
             critical_modules=critical,
             total_tests=harbor_stats.get("tests", 0),
             tests_passed=harbor_report.get("tests_passed", 0),
+            tests_failed=harbor_report.get("tests_failed", 0),
             test_coverage_pct=harbor_report.get("test_coverage", 0.0),
             integration_count=harbor_stats.get("integration_count", 0),
             tested_integrations=sum(1 for p in self._harbor.integrations if p.status == "tested"),
