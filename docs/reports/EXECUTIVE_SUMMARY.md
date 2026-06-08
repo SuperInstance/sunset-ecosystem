@@ -1,6 +1,6 @@
 # 🌅 Sunset Ecosystem Executive Summary
 
-*Generated: 2026-06-07 23:18:53 UTC*
+*Generated: 2026-06-08 00:22:18 UTC*
 
 ## Fleet Status
 
@@ -11,14 +11,6 @@
 | Tests | 356 |
 | Coverage | 100% |
 | Integrations | 7/12 |
-
-## Trends
-
-- ➡️ **health**: stable (+0.0%)
-- ➡️ **coverage**: stable (+0.0%)
-- ➡️ **tests**: stable (+0.0%)
-- ➡️ **integrations**: stable (+0.0%)
-- ➡️ **critical**: stable (+0.0%)
 
 ## Alerts
 
