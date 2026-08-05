@@ -315,12 +315,12 @@ class ThermalBudget:
         # Auction mode: queue a bid
         from swarm.thermal_auction import Bid
 
-        value = bid_value if bid_value is not None else (fitness or 0.0)
+        value = bid_value if bid_value is not None else (fitness if fitness is not None else 0.0)
         bid = Bid(
             agent_id=agent_id,
             device_type=preferred_device,
             value=float(value),
-            fitness=float(fitness or 0.0),
+            fitness=float(fitness) if fitness is not None else 0.0,
         )
         with self._lock:
             self._bid_queue.append(bid)

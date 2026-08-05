@@ -169,15 +169,18 @@ class FleetConfig:
 
     @property
     def mutation_rate(self) -> float:
-        return float(self.get("fleet", "breeding", "mutation_rate") or 0.1)
+        v = self.get("fleet", "breeding", "mutation_rate")
+        return float(v) if v is not None else 0.1
 
     @property
     def crossover_rate(self) -> float:
-        return float(self.get("fleet", "breeding", "crossover_rate") or 0.7)
+        v = self.get("fleet", "breeding", "crossover_rate")
+        return float(v) if v is not None else 0.7
 
     @property
     def elitism(self) -> float:
-        return float(self.get("fleet", "breeding", "elitism") or 0.05)
+        v = self.get("fleet", "breeding", "elitism")
+        return float(v) if v is not None else 0.05
 
     @property
     def latent_dim(self) -> int:
@@ -187,7 +190,8 @@ class FleetConfig:
 
     @property
     def flux_pass_threshold(self) -> float:
-        return float(self.get("fleet", "flux", "pass_threshold") or 0.35)
+        v = self.get("fleet", "flux", "pass_threshold")
+        return float(v) if v is not None else 0.35
 
     @property
     def flux_weight_bounds(self) -> tuple[float, float]:
@@ -204,11 +208,13 @@ class FleetConfig:
 
     @property
     def flux_max_chaos(self) -> float:
-        return float(self.get("fleet", "flux", "max_chaos") or 1.0)
+        v = self.get("fleet", "flux", "max_chaos")
+        return float(v) if v is not None else 1.0
 
     @property
     def flux_thermal_budget_gate(self) -> float:
-        return float(self.get("fleet", "flux", "thermal_budget_gate") or 0.8)
+        v = self.get("fleet", "flux", "thermal_budget_gate")
+        return float(v) if v is not None else 0.8
 
     @property
     def flux_vm_so_path(self) -> str | None:
@@ -227,7 +233,8 @@ class FleetConfig:
 
     @property
     def thermal_normal(self) -> float:
-        return float(self.get("fleet", "thermal", "normal_threshold") or 0.5)
+        v = self.get("fleet", "thermal", "normal_threshold")
+        return float(v) if v is not None else 0.5
 
     @property
     def thermal_elevated(self) -> float:
