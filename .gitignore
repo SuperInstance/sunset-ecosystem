@@ -19,3 +19,5 @@ vendor/
 *.db
 tiered_cold/
 memory_shard_*_warm.db
+.coverage
+.wrangler/
