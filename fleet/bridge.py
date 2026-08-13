@@ -178,6 +178,92 @@ class BridgeCompiler:
                 "pull_endpoint": str,
                 "protocol": "http" | "grpc" | "ffi",
             }
+
+        The generated class uses HTTP for ``"http"`` protocol and falls
+        back to a no-op in-memory store for ``"ffi"`` / unknown protocols.
         """
-        # TODO: Generate a dynamic class from the schema
-        raise NotImplementedError("Schema compilation not yet implemented")
+        protocol = schema.get("protocol", "http")
+        push_endpoint = schema.get("push_endpoint", "")
+        pull_endpoint = schema.get("pull_endpoint", "")
+
+        if protocol == "http":
+            import urllib.request
+            import urllib.error
+            import json as _json
+
+            class _SchemaBridgeHTTP(Bridge):
+                def __init__(self, node_id: str):
+                    super().__init__(node_id)
+                    self._base_url = ""
+
+                def connect(self, host: str, port: int) -> None:
+                    self._base_url = f"http://{host}:{port}"
+                    self._status = BridgeStatus.CONNECTED
+
+                def push(self, data: Any) -> bool:
+                    if not push_endpoint:
+                        return False
+                    try:
+                        body = _json.dumps(data).encode()
+                        req = urllib.request.Request(
+                            f"{self._base_url}{push_endpoint}",
+                            data=body,
+                            headers={"Content-Type": "application/json"},
+                            method="POST",
+                        )
+                        urllib.request.urlopen(req, timeout=10)
+                        return True
+                    except Exception as exc:
+                        logger.error("SchemaBridge push failed: %s", exc)
+                        return False
+
+                def pull(self, query: Any) -> Any:
+                    if not pull_endpoint:
+                        return None
+                    try:
+                        url = f"{self._base_url}{pull_endpoint}"
+                        if query:
+                            url = f"{url}?q={query}"
+                        with urllib.request.urlopen(url, timeout=10) as resp:
+                            return _json.loads(resp.read())
+                    except Exception as exc:
+                        logger.error("SchemaBridge pull failed: %s", exc)
+                        return None
+
+                def disconnect(self) -> None:
+                    self._status = BridgeStatus.DISCONNECTED
+
+            generated = type(
+                name,
+                (_SchemaBridgeHTTP,),
+                {"__doc__": f"Auto-generated HTTP bridge for {name}"},
+            )
+        else:
+            # FFI or unknown protocol: in-memory store
+            class _SchemaBridgeMem(Bridge):
+                def __init__(self, node_id: str):
+                    super().__init__(node_id)
+                    self._store: list = []
+
+                def connect(self, host: str, port: int) -> None:
+                    self._status = BridgeStatus.CONNECTED
+
+                def push(self, data: Any) -> bool:
+                    self._store.append(data)
+                    return True
+
+                def pull(self, query: Any) -> Any:
+                    return self._store.pop(0) if self._store else None
+
+                def disconnect(self) -> None:
+                    self._status = BridgeStatus.DISCONNECTED
+
+            generated = type(
+                name,
+                (_SchemaBridgeMem,),
+                {"__doc__": f"Auto-generated in-memory bridge for {name}"},
+            )
+
+        self.registry.register(name, generated)
+        logger.info("Compiled bridge '%s' from schema (protocol=%s)", name, protocol)
+        return generated

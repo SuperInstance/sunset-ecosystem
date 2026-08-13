@@ -54,8 +54,11 @@ logger = logging.getLogger(__name__)
 CT_AVAILABLE = False
 try:
     import constraint_theory as ct
-    CT_AVAILABLE = True
-    logger.info("Constraint Theory Python bindings loaded")
+    if hasattr(ct, "PythagoreanManifold"):
+        CT_AVAILABLE = True
+        logger.info("Constraint Theory Python bindings loaded")
+    else:
+        logger.debug("constraint_theory module present but lacks PythagoreanManifold; using fallback")
 except ImportError:
     logger.debug("constraint-theory-python not available")
 

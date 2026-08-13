@@ -111,15 +111,18 @@ class TestBridgeRegistry:
 
 
 class TestBridgeCompiler:
-    def test_compile_schema_not_implemented(self):
+    def test_compile_schema_generates_class(self):
         reg = BridgeRegistry()
         bc = BridgeCompiler(registry=reg)
-        with pytest.raises(NotImplementedError):
-            bc.compile_from_schema("TestBridge", {"connect": ["host", "port"], "push": ["data"]})
+        bridge_cls = bc.compile_from_schema("TestBridge", {"protocol": "ffi", "push_endpoint": "/push", "pull_endpoint": "/pull"})
+        assert issubclass(bridge_cls, Bridge)
+        assert "TestBridge" in reg.list_bridges()
 
-    def test_compile_returns_bridge_subclass_not_implemented(self):
+    def test_compile_returns_bridge_subclass(self):
         reg = BridgeRegistry()
         bc = BridgeCompiler(registry=reg)
-        with pytest.raises(NotImplementedError):
-            bc.compile_from_schema("Dyn", {"connect": ["host"], "push": ["data"], "pull": ["query"], "disconnect": []})
+        bridge_cls = bc.compile_from_schema("Dyn", {"protocol": "http", "host": "localhost", "port": 8080, "push_endpoint": "/push", "pull_endpoint": "/pull"})
+        assert issubclass(bridge_cls, Bridge)
+        instance = bridge_cls(node_id="node-1")
+        assert instance.status == BridgeStatus.DISCONNECTED
 
