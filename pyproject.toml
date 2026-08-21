@@ -24,6 +24,7 @@ npu = ["onnx", "onnxruntime", "torch", "numpy", "scipy"]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
+    "pytest-json-report",  # required by fleet shared python-ci (--json-report)
     "pytest-asyncio",
     "numpy",
     "cryptography",
