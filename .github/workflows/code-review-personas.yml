@@ -49,10 +49,16 @@ jobs:
               console.log('No review comment file found');
               return;
             }
-            const body = fs.readFileSync(commentPath, 'utf8');
+            let body = fs.readFileSync(commentPath, 'utf8');
             if (!body.trim()) {
               console.log('Empty review comment');
               return;
+            }
+            // 2026-08-21: GitHub caps issue comments at 65536 chars; large
+            // reviews must be truncated to post at all.
+            const MAX = 65000;
+            if (body.length > MAX) {
+              body = body.slice(0, MAX) + '\n\n… report truncated (' + body.length + ' chars); full output in the workflow log';
             }
             github.rest.issues.createComment({
               issue_number: context.issue.number,

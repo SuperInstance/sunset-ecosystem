@@ -25,6 +25,8 @@ dev = [
     "pytest>=7.0",
     "pytest-cov",
     "pytest-json-report",  # required by fleet shared python-ci (--json-report)
+    "fastapi",  # tests/test_fleet_api.py
+    "httpx",  # fastapi TestClient backend
     "pytest-asyncio",
     "numpy",
     "cryptography",
