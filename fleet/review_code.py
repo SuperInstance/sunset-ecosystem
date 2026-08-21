@@ -176,7 +176,7 @@ class CorrectnessVisitor(PersonaVisitor):
         # Detect 'is' with string/number literals
         for op in node.ops:
             if isinstance(op, ast.Is):
-                if isinstance(node.left, (ast.Constant, ast.Str)):
+                if isinstance(node.left, ast.Constant):
                     self._findings.add(
                         "warning",
                         "Using 'is' with literal — use '==' instead",

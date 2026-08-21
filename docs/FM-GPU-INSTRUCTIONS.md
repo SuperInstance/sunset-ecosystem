@@ -79,7 +79,7 @@ The 4 attack vectors now blocked:
 
 ## 5. Federated Nexus — Deploy to Oracle1
 
-PR #9 adds `nexus/federation.py` with `DEFAULT_NEXUS_IP = "147.224.38.131"`.
+PR #9 adds `nexus/federation.py` with `DEFAULT_NEXUS_IP = "<BOAT_IP>"`.
 
 **Action:**
 1. Merge PR #9

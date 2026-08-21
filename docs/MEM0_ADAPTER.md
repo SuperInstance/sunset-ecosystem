@@ -107,7 +107,7 @@ The handler:
 
 ```python
 # Direct point-to-point
-memory.share_memory("agent_a", "agent_b", "server_host = 147.224.38.131")
+memory.share_memory("agent_a", "agent_b", "server_host = <BOAT_IP>")
 
 # Fleet-wide broadcast
 payload = memory.build_sync_payload("agent_a")

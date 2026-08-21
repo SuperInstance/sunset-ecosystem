@@ -81,62 +81,52 @@ class ServiceDef:
 
 # Default fleet services — matches cocapn-health's FLEET_SERVICES
 FLEET_SERVICES = [
-    ServiceDef("MUD v3", "147.224.38.131", 4042, "/status", extract={"rooms": "rooms"}),
+    ServiceDef("MUD v3", "<BOAT_IP>", 4042, "/status", extract={"rooms": "rooms"}),
     ServiceDef(
         "The Lock v2",
-        "147.224.38.131",
+        "<BOAT_IP>",
         4043,
         "/status",
         extract={"strategies": "strategies"},
     ),
     ServiceDef(
-        "Arena",
-        "147.224.38.131",
-        4044,
-        "/stats",
-        extract={"total_matches": "total_matches"},
+        "Arena", "<BOAT_IP>", 4044, "/stats", extract={"total_matches": "total_matches"}
     ),
     ServiceDef(
         "Grammar Engine",
-        "147.224.38.131",
+        "<BOAT_IP>",
         4045,
         "/grammar",
         extract={"total_rules": "total_rules"},
     ),
-    ServiceDef("Dashboard", "147.224.38.131", 4046, "/"),
-    ServiceDef("Federated Nexus", "147.224.38.131", 4047, "/"),
-    ServiceDef("Harbor", "147.224.38.131", 4050, "/"),
+    ServiceDef("Dashboard", "<BOAT_IP>", 4046, "/"),
+    ServiceDef("Federated Nexus", "<BOAT_IP>", 4047, "/"),
+    ServiceDef("Harbor", "<BOAT_IP>", 4050, "/"),
     ServiceDef(
         "Grammar Compactor",
-        "147.224.38.131",
+        "<BOAT_IP>",
         4055,
         "/status",
         extract={"total_rules": "total_rules"},
     ),
     ServiceDef(
-        "Rate-Attention",
-        "147.224.38.131",
-        4056,
-        "/streams",
-        extract={"streams": "streams"},
+        "Rate-Attention", "<BOAT_IP>", 4056, "/streams", extract={"streams": "streams"}
     ),
     ServiceDef(
         "Skill Forge",
-        "147.224.38.131",
+        "<BOAT_IP>",
         4057,
         "/status",
         extract={"total_drills": "total_drills"},
     ),
-    ServiceDef("PLATO Terminal", "147.224.38.131", 4060, "/"),
-    ServiceDef(
-        "PLATO Gate", "147.224.38.131", 8847, "/rooms", extract={"rooms": "rooms"}
-    ),
-    ServiceDef("PLATO Shell", "147.224.38.131", 8848, "/"),
-    ServiceDef("Service Guard", "147.224.38.131", 8899, "/"),
-    ServiceDef("Task Queue", "147.224.38.131", 8900, "/"),
-    ServiceDef("Steward", "147.224.38.131", 8901, "/"),
-    ServiceDef("Matrix Bridge", "147.224.38.131", 6168, "/status"),
-    ServiceDef("Conduwuit", "147.224.38.131", 6167, "/"),
+    ServiceDef("PLATO Terminal", "<BOAT_IP>", 4060, "/"),
+    ServiceDef("PLATO Gate", "<BOAT_IP>", 8847, "/rooms", extract={"rooms": "rooms"}),
+    ServiceDef("PLATO Shell", "<BOAT_IP>", 8848, "/"),
+    ServiceDef("Service Guard", "<BOAT_IP>", 8899, "/"),
+    ServiceDef("Task Queue", "<BOAT_IP>", 8900, "/"),
+    ServiceDef("Steward", "<BOAT_IP>", 8901, "/"),
+    ServiceDef("Matrix Bridge", "<BOAT_IP>", 6168, "/status"),
+    ServiceDef("Conduwuit", "<BOAT_IP>", 6167, "/"),
 ]
 
 

@@ -473,7 +473,7 @@ board.complete_fence(fence.id, ["artifact.py"], "🥇 Gold")
 ```python
 from fleet.heartbeat_bridge import Heartbeat, ServiceCheck
 
-hb = Heartbeat(plato_url="http://147.224.38.131:8847")
+hb = Heartbeat(plato_url="http://<BOAT_IP>:8847")
 report = hb.run()  # Returns text report
 hb.ack("tile-123")  # Acknowledge task
 hb.save_state()  # Persist across sessions

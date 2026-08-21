@@ -121,7 +121,7 @@ class TestConfigBasics:
 
 class TestHealthCheck:
     def test_service_def_creation(self):
-        svc = ServiceDef("PLATO Gate", "147.224.38.131", 8847, "/status")
+        svc = ServiceDef("PLATO Gate", "<BOAT_IP>", 8847, "/status")
         assert svc.name == "PLATO Gate"
         assert svc.timeout == 5.0
 

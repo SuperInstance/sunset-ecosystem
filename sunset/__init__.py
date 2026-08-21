@@ -8,6 +8,8 @@ from sunset.seed_bank import SeedBank
 from sunset.sunset_documents import Epilogue, Summary, Onboarding
 from sunset.tensor_archive import TensorArchive
 from sunset.trinity_scorer import trinity_score
+from sunset.baton import BatonPass, SessionData, TrinityResult
+from sunset.daily_cycle import DailyCycle
 from sunset.plato_bridge import PlatoBridge
 from sunset.compiler import Compiler
 from sunset.flux_vm_bridge import FluxVMBridge
@@ -15,13 +17,17 @@ from sunset.flux_vm_bridge import FluxVMBridge
 __all__ = [
     "Agent",
     "AgentPhase",
+    "BatonPass",
+    "DailyCycle",
     "Epilogue",
     "GenerationReport",
     "GenerationRunner",
     "Onboarding",
     "SeedBank",
+    "SessionData",
     "Summary",
     "TensorArchive",
+    "TrinityResult",
     "trinity_score",
     "PlatoBridge",
     "Compiler",

@@ -31,7 +31,7 @@ class BreedingEvent:
         self.event_type = event_type
         self.generation = generation
         self.payload = payload
-        self.timestamp = timestamp or 0.0
+        self.timestamp = timestamp if timestamp is not None else 0.0
 
     @property
     def best_fitness(self) -> Optional[float]:

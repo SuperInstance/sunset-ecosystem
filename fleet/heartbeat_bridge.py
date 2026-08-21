@@ -11,7 +11,7 @@ Brings the oracle1-vessel heartbeat pattern into sunset-ecosystem:
 Usage:
     from fleet.heartbeat_bridge import Heartbeat
 
-    hb = Heartbeat(plato_url="http://147.224.38.131:8847")
+    hb = Heartbeat(plato_url="http://<BOAT_IP>:8847")
     report = hb.run()  # Returns text report of tasks found
     hb.save_state()    # Persist ack state
 """
@@ -81,7 +81,7 @@ class Heartbeat:
 
     def __init__(
         self,
-        plato_url: str = "http://147.224.38.131:8847",
+        plato_url: str = "http://<BOAT_IP>:8847",
         registry_room: str = "fleet-registry",
         state_file: Optional[str] = None,
         services: Optional[list[ServiceCheck]] = None,

@@ -48,7 +48,7 @@ Since the fix is already in `main` (commit `918261a`), Oracle1 just needs a serv
 
 ```bash
 # SSH to Oracle1
-ssh ubuntu@147.224.38.131
+ssh ubuntu@<BOAT_IP>
 
 # Restart grammar engine
 cd /home/ubuntu/.openclaw/workspace/sunset-ecosystem

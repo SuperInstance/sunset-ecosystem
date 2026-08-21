@@ -4,7 +4,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - NEXUS_IP=${NEXUS_IP:-147.224.38.131}
+      - NEXUS_IP=${NEXUS_IP:-<BOAT_IP>}
       - NEXUS_PORT=${NEXUS_PORT:-4047}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]

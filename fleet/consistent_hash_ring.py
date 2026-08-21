@@ -76,7 +76,7 @@ class HashRing:
         """
         Add a physical node to the ring.
 
-        :param node:   unique node identifier (e.g. "147.224.38.131:8847")
+        :param node:   unique node identifier (e.g. "<BOAT_IP>:8847")
         :param weight: capacity weight.  weight=2 receives ~2x the keys of
                        weight=1, but uses 2x virtual nodes (more memory).
         """
@@ -266,7 +266,7 @@ def _key_hash(key: str) -> int:
 if __name__ == "__main__":
     # 1. Build a ring with 4 fleet nodes, heterogeneous weights.
     ring = HashRing(replicas=120)
-    ring.add_node("plato-147.224.38.131:8847", weight=2)
+    ring.add_node("plato-<BOAT_IP>:8847", weight=2)
     ring.add_node("traps-147.224.38.132:4042", weight=1)
     ring.add_node("health-147.224.38.133:8080", weight=1)
     ring.add_node("oracle-147.224.38.134:5000", weight=1)

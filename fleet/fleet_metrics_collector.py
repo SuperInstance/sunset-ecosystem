@@ -49,7 +49,6 @@ class ModuleMetrics:
 
 
 @dataclass
-@dataclass
 class MetricsSnapshot:
     """Complete snapshot of fleet metrics at a point in time."""
 

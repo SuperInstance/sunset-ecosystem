@@ -12,7 +12,7 @@ the caller**, not the actual nexus host.
 
 The federation logic was **not present** in ``SuperInstance/sunset-ecosystem`` at
 the time of this fix.  CCC's audit (MEMORY.md, 2026-04-22) indicates the running
-nexus code previously lived on the **Oracle1 server** (``147.224.38.131:4047``).
+nexus code previously lived on the **Oracle1 server** (``<BOAT_IP>:4047``).
 
 This PR brings the module into the sunset-ecosystem repo with the correct
 address baked in as the default.
@@ -21,9 +21,9 @@ address baked in as the default.
 
 | Before | After |
 |--------|-------|
-| ``localhost`` (implicit or explicit) | ``147.224.38.131`` (Cocapn fleet nexus) |
+| ``localhost`` (implicit or explicit) | ``<BOAT_IP>`` (Cocapn fleet nexus) |
 
-- ``nexus/federation.py`` defines ``DEFAULT_NEXUS_IP = "147.224.38.131"``.
+- ``nexus/federation.py`` defines ``DEFAULT_NEXUS_IP = "<BOAT_IP>"``.
 - ``FederationEndpoint`` **rejects** any host that resolves to a loopback address
   (``127.*``, ``::1``, or ``localhost``) at instantiation time, raising
   ``InvalidEndpointError``.
