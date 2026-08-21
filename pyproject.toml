@@ -60,3 +60,18 @@ include = [
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = ["--ignore=tests/benchmarks"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+# Baseline for the fleet shared python-ci workflow (agent-operations/python-ci.yml
+# runs `ruff check .` + `ruff format --check .`).
+#
+# This repo predates linting: the broader rule sets surface ~8.8k legacy findings
+# (~6.8k mechanical autofixes — UP006/UP045/UP035 typing modernization, F401
+# unused imports, I001 import sorting). Those belong to a dedicated cleanup
+# pass, not the CI-migration PR. The baseline below is ruff's recommended
+# bootstrap for existing codebases: syntax errors, basic pycodestyle, and
+# assertion mistakes.
+select = ["E4", "E7", "E9", "F63"]
