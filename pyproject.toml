@@ -38,7 +38,7 @@ dev = [
     "pyyaml",
     "pillow",
 ]
-perception = ["pillow", "sounddevice", "pyaudio", "opencv-python-headless"]
+perception = ["pillow", "sounddevice", "pyaudio; sys_platform != \"linux\"", "opencv-python-headless"]
 ml = ["transformers", "torchvision", "timm", "clip", "speechbrain", "openai-whisper"]
 vecsearch = ["turbovec>=0.1.0", "numpy"]
 gpu_cuda = ["cupy-cuda12x"]
