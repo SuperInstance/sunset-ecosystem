@@ -8,11 +8,15 @@ import inspect
 from sunset.compiler import Compiler
 from sunset.codegen import CodeGenerator
 
+import os
+
 NUMBA_AVAILABLE = False
+NUMBA_JIT_ENABLED = False
 try:
     import numba
 
     NUMBA_AVAILABLE = True
+    NUMBA_JIT_ENABLED = os.environ.get("NUMBA_DISABLE_JIT", "0") != "1"
 except ImportError:
     pass
 

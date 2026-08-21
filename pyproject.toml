@@ -27,6 +27,7 @@ dev = [
     "pytest-json-report",  # required by fleet shared python-ci (--json-report)
     "fastapi",  # tests/test_fleet_api.py
     "httpx",  # fastapi TestClient backend
+    "nlopt",  # flux_compat.nlopt_solver tests
     "pytest-asyncio",
     "numpy",
     "cryptography",

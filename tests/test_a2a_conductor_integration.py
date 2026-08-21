@@ -1,5 +1,7 @@
 """Tests for a2a_conductor_integration.py — A2A task handlers."""
 
+import os
+
 import pytest
 from unittest.mock import MagicMock, patch
 
