@@ -9,7 +9,9 @@ class TestLockToken:
         assert t.is_expired() is True
 
     def test_is_not_expired(self):
-        t = LockToken(resource="r", holder="h", timestamp=time.time(), ttl=60.0, token_id="x")
+        t = LockToken(
+            resource="r", holder="h", timestamp=time.time(), ttl=60.0, token_id="x"
+        )
         assert t.is_expired() is False
 
     def test_to_dict(self):
@@ -96,7 +98,9 @@ class TestDistributedLock:
         dl = DistributedLock()
         dl.acquire("r1")
         dl.acquire("r2")
-        dl.release("r1", dl._locks.get("r1", None).token_id if "r1" in dl._locks else "")
+        dl.release(
+            "r1", dl._locks.get("r1", None).token_id if "r1" in dl._locks else ""
+        )
         stats = dl.get_stats()
         assert stats["acquired"] == 2
         assert stats["released"] == 1

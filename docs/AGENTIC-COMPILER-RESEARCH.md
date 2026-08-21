@@ -115,7 +115,9 @@ Before building the compiler, we can get 10× speedup with targeted fixes:
 
 ```python
 def _load_rust_lib():
-    lib_path = os.path.join(os.path.dirname(__file__), "target/release/libjepa_kernel.so")
+    lib_path = os.path.join(
+        os.path.dirname(__file__), "target/release/libjepa_kernel.so"
+    )
     if not os.path.exists(lib_path):
         return None
     lib = ctypes.CDLL(lib_path)
@@ -135,10 +137,10 @@ def _load_rust_lib():
 def fire_vectorized(self, source: str) -> list[str]:
     # Get all routes for this source
     routes = self._routes_by_source[source]  # pre-built index
-    
+
     # Compiled routes always fire — no random check
     compiled = [r.destination for r in routes if r.strength > 0.9]
-    
+
     # Exploratory routes: vectorized random check
     exploratory = [r for r in routes if r.strength <= 0.9]
     if exploratory:
@@ -149,12 +151,11 @@ def fire_vectorized(self, source: str) -> list[str]:
         chaos_rolls = np.random.random(len(exploratory))
         chaos_mask = chaos_rolls < self.chaos
         fired = compiled + [
-            exploratory[i].destination 
-            for i in np.where(fired_mask | chaos_mask)[0]
+            exploratory[i].destination for i in np.where(fired_mask | chaos_mask)[0]
         ]
     else:
         fired = compiled
-    
+
     return fired
 ```
 
@@ -191,14 +192,24 @@ def tick(self, x):
 def activate_channels_batch(self, fired: list[str], top_k: int = 10):
     # Only strongest room pairs get Hebbian boost
     if len(fired) <= top_k:
-        pairs = [(fired[i], fired[j]) for i in range(len(fired)) for j in range(i+1, len(fired))]
+        pairs = [
+            (fired[i], fired[j])
+            for i in range(len(fired))
+            for j in range(i + 1, len(fired))
+        ]
     else:
         # Sample top_k strongest pairs by combined room activity
         import random
-        pairs = random.sample([
-            (fired[i], fired[j]) for i in range(len(fired)) for j in range(i+1, len(fired))
-        ], top_k)
-    
+
+        pairs = random.sample(
+            [
+                (fired[i], fired[j])
+                for i in range(len(fired))
+                for j in range(i + 1, len(fired))
+            ],
+            top_k,
+        )
+
     for a, b in pairs:
         key = self._channel_key(a, b)
         if key in self._channels:

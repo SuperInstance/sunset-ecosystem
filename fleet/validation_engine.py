@@ -11,6 +11,7 @@ Usage:
     engine.add_rule("age", required=True, type=int, min=0, max=120)
     ok, errors = engine.validate({"name": "Alice", "age": 30})
 """
+
 from __future__ import annotations
 
 import re
@@ -84,7 +85,9 @@ class ValidationEngine:
             value = data[field]
             # Type check
             if rules["type"] and not isinstance(value, rules["type"]):
-                errors.append(f"{field}: expected {rules['type'].__name__}, got {type(value).__name__}")
+                errors.append(
+                    f"{field}: expected {rules['type'].__name__}, got {type(value).__name__}"
+                )
                 continue
             # Range check
             if rules["min"] is not None and value < rules["min"]:

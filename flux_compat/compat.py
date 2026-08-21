@@ -2,6 +2,7 @@
 
 Implements `load_v2(path) -> v3.Module` per SPEC-FLUX-RESOLUTION.md.
 """
+
 from __future__ import annotations
 
 import os
@@ -47,7 +48,9 @@ def load_v2(path: str) -> Module:
 
     # Translate constraints (simple 1:1 kind mapping)
     for c in v2.constraints:
-        v3_constraints.append(ConstraintDef(kind=c.kind, params={"raw": c.payload.hex()}))
+        v3_constraints.append(
+            ConstraintDef(kind=c.kind, params={"raw": c.payload.hex()})
+        )
 
     # Translate instructions opcode-by-opcode
     for idx, inst in enumerate(v2.instructions):

@@ -8,6 +8,7 @@ spectrum. Conservation ratio (CR) directly predicts fleet coherence halflife.
 Reference: wave-conservation + analog-spectral patterns from SuperInstance
 ecosystem audit (May 30, 2026).
 """
+
 from __future__ import annotations
 
 import math
@@ -68,7 +69,9 @@ class WaveState:
         for i, j, w in edges:
             adj[i, j] = w
             adj[j, i] = w
-        return cls(adjacency=adj, node_labels=labels or [f"node_{k}" for k in range(n_nodes)])
+        return cls(
+            adjacency=adj, node_labels=labels or [f"node_{k}" for k in range(n_nodes)]
+        )
 
     @classmethod
     def from_fleet_topology(

@@ -10,6 +10,7 @@ Usage:
     collector.finish_span(span)
     trace = collector.get_trace("abc-123")
 """
+
 from __future__ import annotations
 
 import time

@@ -33,11 +33,20 @@ def main():
     kernel = CudaEinsumKernel(n_sms=20, shared_mem_kb=16)
 
     writer = csv.writer(sys.stdout)
-    writer.writerow([
-        "n_rooms", "d_latent", "n_selected", "n_iterations",
-        "ms_per_call_cuda", "ms_per_call_np", "speedup",
-        "cuda_available", "shape_ok", "max_diff",
-    ])
+    writer.writerow(
+        [
+            "n_rooms",
+            "d_latent",
+            "n_selected",
+            "n_iterations",
+            "ms_per_call_cuda",
+            "ms_per_call_np",
+            "speedup",
+            "cuda_available",
+            "shape_ok",
+            "max_diff",
+        ]
+    )
 
     for n_rooms in room_counts:
         for d_latent in dimensions:
@@ -46,18 +55,20 @@ def main():
                 d_latent=d_latent,
                 n_iterations=n_iterations,
             )
-            writer.writerow([
-                bench["n_rooms"],
-                bench["d_latent"],
-                bench["n_selected"],
-                bench["n_iterations"],
-                bench["ms_per_call"],
-                bench["ms_per_call_np"],
-                bench["speedup"],
-                bench["cuda_available"],
-                bench["shape_ok"],
-                bench["max_diff"],
-            ])
+            writer.writerow(
+                [
+                    bench["n_rooms"],
+                    bench["d_latent"],
+                    bench["n_selected"],
+                    bench["n_iterations"],
+                    bench["ms_per_call"],
+                    bench["ms_per_call_np"],
+                    bench["speedup"],
+                    bench["cuda_available"],
+                    bench["shape_ok"],
+                    bench["max_diff"],
+                ]
+            )
             # Flush so partial output is visible even if interrupted
             sys.stdout.flush()
 

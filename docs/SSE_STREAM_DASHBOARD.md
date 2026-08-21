@@ -43,6 +43,7 @@ from flask import Flask, Response
 app = Flask(__name__)
 dash = SSEStreamDashboard()
 
+
 @app.route("/stream")
 def stream():
     def event_stream():
@@ -50,6 +51,7 @@ def stream():
         while True:
             ev = sub.get(timeout=30.0)
             yield ev.to_sse()
+
     return Response(event_stream(), mimetype="text/event-stream")
 ```
 
@@ -59,11 +61,11 @@ def stream():
 from fleet.sse_stream_dashboard import DashboardConfig
 
 cfg = DashboardConfig(
-    max_queue_size=1000,        # drop old events when full
+    max_queue_size=1000,  # drop old events when full
     heartbeat_interval_sec=15,  # keepalive ping
-    history_buffer_size=100,    # replay last N events to new subscribers
+    history_buffer_size=100,  # replay last N events to new subscribers
     filter_event_types=["BEAT", "FLEET_STATUS"],  # only stream these
-    enable_backpressure=True,   # drop instead of evict when full
+    enable_backpressure=True,  # drop instead of evict when full
 )
 ```
 

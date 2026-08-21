@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_service_discovery.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import time

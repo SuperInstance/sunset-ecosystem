@@ -16,6 +16,7 @@ from __future__ import annotations
 import time
 import numpy as np
 
+
 # A hot numeric function — the kind Numba excels at
 def expensive_dot_product(a: np.ndarray, b: np.ndarray) -> float:
     """Compute (a * b).sum() with manual loop — expensive in pure Python."""
@@ -59,7 +60,9 @@ def run_demo():
     # Step 3: Validate correctness
     print("\n[3] Validating (A/B test, 10 trials)...")
     validated = gen.validate(kernel, expensive_dot_product, (a, b), trials=10)
-    print(f"    {'✅' if validated else '❌'} Correctness: {'PASS' if validated else 'FAIL'}")
+    print(
+        f"    {'✅' if validated else '❌'} Correctness: {'PASS' if validated else 'FAIL'}"
+    )
 
     if not validated:
         return
@@ -72,6 +75,7 @@ def run_demo():
     # Step 5: Hot-swap demonstration
     print("\n[5] Hot-swap demonstration...")
     import types
+
     fake_module = types.ModuleType("test_module")
     fake_module.expensive_dot_product = expensive_dot_product
 

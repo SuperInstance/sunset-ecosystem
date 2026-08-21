@@ -11,6 +11,7 @@ Usage:
     timer.record_latency(1.2)  # 1.2s
     timeout = timer.current_timeout()  # Adjusts based on history
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -143,7 +144,9 @@ class AdaptiveTimeout:
             "count": self._count,
             "ema": round(self._ema, 4),
             "current_timeout": round(self.current_timeout(), 4),
-            "average_latency": round(self.average_latency(), 4) if self._latencies else None,
+            "average_latency": round(self.average_latency(), 4)
+            if self._latencies
+            else None,
         }
 
     def __repr__(self) -> str:

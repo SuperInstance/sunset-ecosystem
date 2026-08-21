@@ -186,7 +186,9 @@ class PathosTrinity:
             return TrinityScore(reason="no interactions recorded")
 
         resolve_rate = resolved_count / total_interactions
-        follow_up_rate = follow_up_count / total_interactions if total_interactions > 0 else 0.0
+        follow_up_rate = (
+            follow_up_count / total_interactions if total_interactions > 0 else 0.0
+        )
 
         return self.score(
             human_facing=human_initiated_count > 0,

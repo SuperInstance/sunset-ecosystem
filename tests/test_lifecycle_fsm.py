@@ -134,17 +134,17 @@ class TestGuardMethods:
         fsm.transition(LifecycleState.COMPETE)
         assert fsm.can_breed() is False  # COMPETE
         fsm.transition(LifecycleState.SURVIVE)
-        assert fsm.can_breed() is True   # SURVIVE
+        assert fsm.can_breed() is True  # SURVIVE
         fsm.transition(LifecycleState.BREED)
         assert fsm.can_breed() is False  # BREED
 
     def test_can_compete_egg_and_survive(self):
         fsm = AgentLifecycleFSM(agent_id=31)
-        assert fsm.can_compete() is True   # EGG
+        assert fsm.can_compete() is True  # EGG
         fsm.transition(LifecycleState.COMPETE)
         assert fsm.can_compete() is False  # COMPETE
         fsm.transition(LifecycleState.SURVIVE)
-        assert fsm.can_compete() is True   # SURVIVE
+        assert fsm.can_compete() is True  # SURVIVE
         fsm.transition(LifecycleState.COMPETE)
         fsm.transition(LifecycleState.SUNSET)
         assert fsm.can_compete() is False  # SUNSET

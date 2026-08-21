@@ -44,6 +44,7 @@ import numpy as np
 @dataclass
 class SolverGenome:
     """A solution genome."""
+
     vector: np.ndarray
     fitness: float = 0.0
     robustness: float = 0.0  # Average fitness across all tests
@@ -58,16 +59,17 @@ class SolverGenome:
         )
 
     @staticmethod
-    def random(dimension: int, bounds: Tuple[float, float] = (-1.0, 1.0)) -> SolverGenome:
+    def random(
+        dimension: int, bounds: Tuple[float, float] = (-1.0, 1.0)
+    ) -> SolverGenome:
         low, high = bounds
-        return SolverGenome(
-            vector=np.random.uniform(low, high, dimension)
-        )
+        return SolverGenome(vector=np.random.uniform(low, high, dimension))
 
 
 @dataclass
 class TesterGenome:
     """A test case genome — evolves to break solvers."""
+
     vector: np.ndarray
     fitness: float = 0.0
     difficulty: float = 0.0  # Average solver score (lower = harder)
@@ -82,11 +84,11 @@ class TesterGenome:
         )
 
     @staticmethod
-    def random(dimension: int, bounds: Tuple[float, float] = (-1.0, 1.0)) -> TesterGenome:
+    def random(
+        dimension: int, bounds: Tuple[float, float] = (-1.0, 1.0)
+    ) -> TesterGenome:
         low, high = bounds
-        return TesterGenome(
-            vector=np.random.uniform(low, high, dimension)
-        )
+        return TesterGenome(vector=np.random.uniform(low, high, dimension))
 
 
 class SolverMutation:
@@ -125,7 +127,9 @@ class SolverCrossover:
     def __init__(self, alpha: float = 0.5):
         self.alpha = alpha
 
-    def crossover(self, p1: SolverGenome, p2: SolverGenome) -> Tuple[SolverGenome, SolverGenome]:
+    def crossover(
+        self, p1: SolverGenome, p2: SolverGenome
+    ) -> Tuple[SolverGenome, SolverGenome]:
         blend = np.random.random(len(p1.vector)) < 0.5
         c1_vec = np.where(blend, p1.vector, p2.vector)
         c2_vec = np.where(blend, p2.vector, p1.vector)
@@ -142,7 +146,9 @@ class TesterCrossover:
     def __init__(self, alpha: float = 0.5):
         self.alpha = alpha
 
-    def crossover(self, p1: TesterGenome, p2: TesterGenome) -> Tuple[TesterGenome, TesterGenome]:
+    def crossover(
+        self, p1: TesterGenome, p2: TesterGenome
+    ) -> Tuple[TesterGenome, TesterGenome]:
         blend = np.random.random(len(p1.vector)) < 0.5
         c1_vec = np.where(blend, p1.vector, p2.vector)
         c2_vec = np.where(blend, p2.vector, p1.vector)
@@ -180,10 +186,18 @@ class AdversarialArena:
 
     generation: int = 0
 
-    _solver_mut: SolverMutation = field(default_factory=lambda: SolverMutation(), repr=False)
-    _tester_mut: TesterMutation = field(default_factory=lambda: TesterMutation(), repr=False)
-    _solver_xo: SolverCrossover = field(default_factory=lambda: SolverCrossover(), repr=False)
-    _tester_xo: TesterCrossover = field(default_factory=lambda: TesterCrossover(), repr=False)
+    _solver_mut: SolverMutation = field(
+        default_factory=lambda: SolverMutation(), repr=False
+    )
+    _tester_mut: TesterMutation = field(
+        default_factory=lambda: TesterMutation(), repr=False
+    )
+    _solver_xo: SolverCrossover = field(
+        default_factory=lambda: SolverCrossover(), repr=False
+    )
+    _tester_xo: TesterCrossover = field(
+        default_factory=lambda: TesterCrossover(), repr=False
+    )
 
     def initialize(
         self,
@@ -238,15 +252,14 @@ class AdversarialArena:
         # Each solver interacts with n testers
         for s_idx, solver in enumerate(self.solver_pop):
             testers = random.sample(
-                self.tester_pop,
-                min(self.n_interactions_per_gen, len(self.tester_pop))
+                self.tester_pop, min(self.n_interactions_per_gen, len(self.tester_pop))
             )
             for tester in testers:
                 # Use identity comparison since TesterGenome contains numpy arrays
-                t_idx = next(
-                    i for i, t in enumerate(self.tester_pop) if t is tester
+                t_idx = next(i for i, t in enumerate(self.tester_pop) if t is tester)
+                solver_score, tester_score = interaction_fn(
+                    solver.vector, tester.vector
                 )
-                solver_score, tester_score = interaction_fn(solver.vector, tester.vector)
 
                 solver.fitness += solver_score
                 solver.robustness += solver_score
@@ -289,7 +302,7 @@ class AdversarialArena:
     def _breed_solvers(self) -> None:
         """Breed solver population."""
         self.solver_pop.sort(key=lambda s: s.fitness, reverse=True)
-        new_pop = [s.copy() for s in self.solver_pop[:self.elitism_count]]
+        new_pop = [s.copy() for s in self.solver_pop[: self.elitism_count]]
 
         while len(new_pop) < self.solver_pop_size:
             p1 = self._tournament_select_solver()
@@ -319,7 +332,7 @@ class AdversarialArena:
     def _breed_testers(self) -> None:
         """Breed tester population."""
         self.tester_pop.sort(key=lambda t: t.fitness, reverse=True)
-        new_pop = [t.copy() for t in self.tester_pop[:self.elitism_count]]
+        new_pop = [t.copy() for t in self.tester_pop[: self.elitism_count]]
 
         while len(new_pop) < self.tester_pop_size:
             p1 = self._tournament_select_tester()
@@ -374,7 +387,9 @@ class AdversarialArena:
             "generation": self.generation,
             "best_fitness": self.tester_best,
             "mean_fitness": sum(fitnesses) / len(fitnesses) if fitnesses else 0,
-            "mean_difficulty": sum(difficulties) / len(difficulties) if difficulties else 0,
+            "mean_difficulty": sum(difficulties) / len(difficulties)
+            if difficulties
+            else 0,
             "pop_size": len(self.tester_pop),
         }
 

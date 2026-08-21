@@ -11,6 +11,7 @@ Usage:
     reporter.timer("latency", 0.023)
     batch = reporter.flush()  # Returns aggregated metrics
 """
+
 from __future__ import annotations
 
 import time
@@ -106,7 +107,11 @@ class MetricReporter:
 
     def metric_names(self) -> List[str]:
         """List all metric names currently held."""
-        names = set(self._counters.keys()) | set(self._gauges.keys()) | set(self._timers.keys())
+        names = (
+            set(self._counters.keys())
+            | set(self._gauges.keys())
+            | set(self._timers.keys())
+        )
         return sorted(names)
 
     def get_counter(self, name: str) -> Optional[float]:

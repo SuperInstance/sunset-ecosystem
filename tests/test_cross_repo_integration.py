@@ -17,6 +17,7 @@ try:
     import agentic_compiler
     from agentic_compiler import Compiler as AgenticCompiler
     from agentic_compiler.core import CompilationResult as AgenticCompilationResult
+
     HAS_AGENTIC_COMPILER = True
     _import_error = ""
 except Exception as exc:
@@ -26,6 +27,7 @@ except Exception as exc:
 try:
     from nerve.room_grid import RoomGrid
     from compiler.hot_swap_integration import CompilerHotSwap, CompileResult
+
     HAS_SUNSET = True
     _sunset_import_error = ""
 except Exception as exc:
@@ -42,6 +44,7 @@ pytestmark = pytest.mark.skipif(
 
 
 # ── Wrapper: provide no-arg tick for CompilerHotSwap ──────────
+
 
 class NoArgTickGrid:
     """Wraps RoomGrid so tick() needs no arguments.
@@ -64,6 +67,7 @@ class NoArgTickGrid:
 
 
 # ── Adapter: bridge agentic_compiler → CompilerHotSwap ──────────
+
 
 class AgenticCompilerAdapter:
     """Wraps agentic_compiler.Compiler so it fits CompilerHotSwap.
@@ -118,10 +122,13 @@ class AgenticCompilerAdapter:
 
 # ── Tests ────────────────────────────────────────────────────────
 
+
 def test_imports_work():
     """Both repos are importable."""
     assert HAS_AGENTIC_COMPILER, "agentic_compiler failed to import"
-    assert HAS_SUNSET, f"sunset-ecosystem modules failed to import: {_sunset_import_error}"
+    assert HAS_SUNSET, (
+        f"sunset-ecosystem modules failed to import: {_sunset_import_error}"
+    )
 
 
 def test_compiler_hot_swap_with_real_compiler():
@@ -253,9 +260,7 @@ def test_adapter_produces_measurable_speedup_for_simple_func():
     # If validated and speedup measured, check it
     if result.validated and result.speedup is not None:
         # Accept >= 0.9× — overhead from small arrays can make speedup < 1.0
-        assert result.speedup >= 0.9, (
-            f"Speedup {result.speedup} is unexpectedly low"
-        )
+        assert result.speedup >= 0.9, f"Speedup {result.speedup} is unexpectedly low"
 
 
 def test_cross_repo_status_includes_both_systems():
@@ -287,6 +292,7 @@ def test_cross_repo_status_includes_both_systems():
 
 
 # ── Global cleanup ───────────────────────────────────────────────
+
 
 def pytest_sessionfinish(session, exitstatus):
     """Restore any hot-swaps left behind by either system."""

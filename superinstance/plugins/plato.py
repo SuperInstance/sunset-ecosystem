@@ -65,7 +65,11 @@ class PlatoSelector(SelectorPlugin):
     ) -> list[TileArtifact]:
         """Filter to tiles with entropy above threshold."""
         threshold = float(context.get("entropy_threshold", 0.5))
-        tiles = [a for a in artifacts if isinstance(a, TileArtifact) and a.entropy >= threshold]
+        tiles = [
+            a
+            for a in artifacts
+            if isinstance(a, TileArtifact) and a.entropy >= threshold
+        ]
         return sorted(tiles, key=lambda t: t.entropy, reverse=True)
 
 

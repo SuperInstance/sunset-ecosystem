@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_work_queue.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import time
@@ -87,6 +88,7 @@ class TestWorkQueue:
 
     def test_visibility_timeout_reclaim(self):
         fake_time = [0.0]
+
         def clock():
             return fake_time[0]
 

@@ -22,19 +22,26 @@ import pytest
 # ── Mock cocapn_traps before swarm.breeder_daemon_v2 import ──
 _mock_cocapn_traps = types.ModuleType("cocapn_traps")
 _mock_cocapn_traps_traps = types.ModuleType("cocapn_traps.traps")
-_mock_cocapn_traps_diversity = types.ModuleType("cocapn_traps.traps.diversity_collapse_trap")
+_mock_cocapn_traps_diversity = types.ModuleType(
+    "cocapn_traps.traps.diversity_collapse_trap"
+)
+
 
 class _MockAlert:
     level = "WARNING"
     recommended_action = "mock alert"
 
+
 class _MockDiversityCollapseTrap:
     def __init__(self, bus=None):
         self._history = []
+
     def record(self, value: float) -> None:
         self._history.append(value)
+
     def check(self):
         return None  # no alerts in tests
+
 
 _mock_cocapn_traps_diversity.DiversityCollapseTrap = _MockDiversityCollapseTrap
 _mock_cocapn_traps_diversity.Alert = _MockAlert
@@ -56,6 +63,7 @@ from swarm.worker_pool import WorkerPool, WorkerState
 
 
 # ── fixtures ────────────────────────────────────────────────
+
 
 @pytest.fixture
 def grid():
@@ -121,6 +129,7 @@ def make_daemon(grid, thermal, wal_path, vector_table=None):
 
 
 # ── E2E lifecycle tests ───────────────────────────────────
+
 
 class TestEggToCompete:
     """WorkerPool spawns → EGG → COMPETE after 3 ticks."""
@@ -282,10 +291,11 @@ class TestBreedToSunset:
 
         # Should see EGG → COMPETE for child
         spawned = [
-            tr.agent_id for tr in transitions
-            if tr.to_state == LifecycleState.EGG
+            tr.agent_id for tr in transitions if tr.to_state == LifecycleState.EGG
         ]
-        assert len(spawned) == 1, f"Expected 1 child, transitions: {[(t.agent_id, t.from_state.name, t.to_state.name) for t in transitions]}"
+        assert len(spawned) == 1, (
+            f"Expected 1 child, transitions: {[(t.agent_id, t.from_state.name, t.to_state.name) for t in transitions]}"
+        )
         child_id = spawned[0]
 
         # Child should be in daemon state
@@ -365,13 +375,18 @@ class TestFullCycle10Generations:
         # Verify seed workers reached at least COMPETE (some may reach SURVIVE)
         for aid in agents:
             state = pool.get_worker_lifecycle(aid)
-            assert state in (LifecycleState.COMPETE, LifecycleState.SURVIVE, LifecycleState.BREED)
+            assert state in (
+                LifecycleState.COMPETE,
+                LifecycleState.SURVIVE,
+                LifecycleState.BREED,
+            )
 
         # Run 10 "generations" via daemon
         for gen in range(1, 11):
             active = pool.list_active()
             available = [
-                aid for aid, info in active.items()
+                aid
+                for aid, info in active.items()
                 if info["lifecycle"] in ("SURVIVE", "BREED", "COMPETE")
             ]
 
@@ -417,7 +432,7 @@ class TestFullCycle10Generations:
                                             "generation": gen,
                                             "parent_a": tr.parent_a,
                                             "parent_b": tr.parent_b,
-                                        }
+                                        },
                                     )
                                 except RuntimeError:
                                     # Thermal or capacity - skip
@@ -452,7 +467,9 @@ class TestFullCycle10Generations:
         assert total_sunset >= 0  # May or may not sunset depending on cold rooms
 
         # Final population should be bounded by thermal max
-        assert generation_counts[-1] <= 20, f"Population exceeded max: {generation_counts[-1]}"
+        assert generation_counts[-1] <= 20, (
+            f"Population exceeded max: {generation_counts[-1]}"
+        )
 
 
 class TestDaemonPoolIntegration:
@@ -482,12 +499,18 @@ class TestDaemonPoolIntegration:
 
         # Should have captured EGG→COMPETE transition
         assert len(transitions_captured) >= 1
-        assert transitions_captured[0] == (agent_id, LifecycleState.EGG, LifecycleState.COMPETE)
+        assert transitions_captured[0] == (
+            agent_id,
+            LifecycleState.EGG,
+            LifecycleState.COMPETE,
+        )
 
         daemon.stop()
         pool.kill_worker(agent_id)
 
-    def test_thermal_shared_between_pool_and_daemon(self, grid, thermal, pool, wal_path):
+    def test_thermal_shared_between_pool_and_daemon(
+        self, grid, thermal, pool, wal_path
+    ):
         """Pool and Daemon share thermal budget correctly."""
         daemon = make_daemon(grid, thermal, wal_path)
         daemon.start()
@@ -536,8 +559,7 @@ class TestDaemonPoolIntegration:
         transitions = daemon.step()
 
         spawned = [
-            tr.agent_id for tr in transitions
-            if tr.to_state == LifecycleState.EGG
+            tr.agent_id for tr in transitions if tr.to_state == LifecycleState.EGG
         ]
 
         if spawned:

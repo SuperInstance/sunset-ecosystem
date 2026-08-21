@@ -36,13 +36,13 @@ from typing import Any, Dict, List, Optional, Callable, Set
 @dataclass
 class GraphNode:
     id: str
-    type: str                          # input, output, llm, agent, tool, router, judge
+    type: str  # input, output, llm, agent, tool, router, judge
     prompt: Optional[str] = None
     tool: Optional[str] = None
-    next: Optional[Any] = None         # str (single) or Dict[str, str] (conditional)
-    parallel: bool = False             # if True, spawn all branches in parallel
-    max_iterations: int = 3            # for judge/refine loops
-    threshold: float = 0.8             # for judge acceptance
+    next: Optional[Any] = None  # str (single) or Dict[str, str] (conditional)
+    parallel: bool = False  # if True, spawn all branches in parallel
+    max_iterations: int = 3  # for judge/refine loops
+    threshold: float = 0.8  # for judge acceptance
 
 
 @dataclass
@@ -113,14 +113,21 @@ class JsonAgentGraphExecutor:
 
             # Handle iterative refinement (judge loop)
             if node.type == "judge":
-                if isinstance(output, dict) and output.get("score", 0) >= node.threshold:
+                if (
+                    isinstance(output, dict)
+                    and output.get("score", 0) >= node.threshold
+                ):
                     # Judge accepted — exit loop
                     state["context"]["judge_accepted"] = True
                 else:
                     state["iterations"] = state.get("iterations", 0) + 1
                     if state["iterations"] < node.max_iterations:
                         # Route back to planner for refinement
-                        next_id = output.get("refine_target", "planner") if isinstance(output, dict) else "planner"
+                        next_id = (
+                            output.get("refine_target", "planner")
+                            if isinstance(output, dict)
+                            else "planner"
+                        )
                     else:
                         state["context"]["judge_maxed"] = True
 
@@ -130,7 +137,9 @@ class JsonAgentGraphExecutor:
                 branch_results = await self._execute_parallel(branch_ids, state)
                 state["context"]["parallel_results"] = branch_results
                 # After parallel, route to the merge node (specified in node's "merge" field)
-                next_id = node.next.get("__merge__") if isinstance(node.next, dict) else None
+                next_id = (
+                    node.next.get("__merge__") if isinstance(node.next, dict) else None
+                )
 
             current_node_id = next_id
             result.iterations += 1
@@ -139,7 +148,9 @@ class JsonAgentGraphExecutor:
             if result.iterations > 100:
                 break
 
-        result.final_output = state.get("context", {}).get("final_output", state.get("input"))
+        result.final_output = state.get("context", {}).get(
+            "final_output", state.get("input")
+        )
         return result
 
     async def _execute_node(self, node: GraphNode, state: Dict[str, Any]) -> Any:
@@ -159,7 +170,9 @@ class JsonAgentGraphExecutor:
             return response
 
         elif node.type == "agent":
-            response = await self.agent_callback(node.tool or "default", state, state["input"])
+            response = await self.agent_callback(
+                node.tool or "default", state, state["input"]
+            )
             state["context"]["last_output"] = response
             return response
 
@@ -179,18 +192,28 @@ class JsonAgentGraphExecutor:
             return routing
 
         elif node.type == "judge":
-            prompt = node.prompt or "Evaluate the output and return a score 0-1 and feedback."
+            prompt = (
+                node.prompt
+                or "Evaluate the output and return a score 0-1 and feedback."
+            )
             if "{input}" in prompt:
                 prompt = prompt.format(**state)
             evaluation = await self.llm_callback(prompt, state)
             if isinstance(evaluation, dict):
                 return evaluation
             # Default: assume score is embedded in text
-            return {"score": 0.5, "feedback": str(evaluation), "refine_target": "planner"}
+            return {
+                "score": 0.5,
+                "feedback": str(evaluation),
+                "refine_target": "planner",
+            }
 
         elif node.type == "aggregator":
             parallel_results = state["context"].get("parallel_results", [])
-            prompt = node.prompt or "Synthesize the following outputs into a single response."
+            prompt = (
+                node.prompt
+                or "Synthesize the following outputs into a single response."
+            )
             combined = "\n".join(str(r) for r in parallel_results)
             response = await self.llm_callback(f"{prompt}\n\n{combined}", state)
             state["context"]["last_output"] = response
@@ -199,8 +222,11 @@ class JsonAgentGraphExecutor:
         else:
             return {"error": f"Unknown node type: {node.type}"}
 
-    async def _execute_parallel(self, branch_ids: List[str], state: Dict[str, Any]) -> List[Any]:
+    async def _execute_parallel(
+        self, branch_ids: List[str], state: Dict[str, Any]
+    ) -> List[Any]:
         """Execute multiple branches in parallel."""
+
         async def run_branch(branch_id: str) -> Any:
             node = self.graph.get(branch_id)
             if not node:
@@ -239,7 +265,9 @@ class JsonAgentGraphExecutor:
         # In production, this calls the actual LLM
         return {"prompt": prompt, "mock_response": "LLM output"}
 
-    async def _default_agent(self, tool: str, state: Dict[str, Any], input_data: Any) -> Any:
+    async def _default_agent(
+        self, tool: str, state: Dict[str, Any], input_data: Any
+    ) -> Any:
         # In production, this spawns a subagent
         return {"tool": tool, "mock_response": "Agent output"}
 

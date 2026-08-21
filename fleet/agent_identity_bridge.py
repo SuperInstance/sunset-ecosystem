@@ -42,6 +42,7 @@ from typing import Any, Optional
 # ---------------------------------------------------------------------------
 # Abstraction Planes
 
+
 @dataclass
 class AbstractionPlane:
     """
@@ -51,6 +52,7 @@ class AbstractionPlane:
     Planes 6-7: abstract (architecture, philosophy)
     Planes 8+: meta (system design, ontology)
     """
+
     primary: int = 4
     reads_from: list[int] = field(default_factory=lambda: [3, 4, 5])
     writes_to: list[int] = field(default_factory=lambda: [2, 3, 4])
@@ -92,9 +94,11 @@ class AbstractionPlane:
 # ---------------------------------------------------------------------------
 # Charter
 
+
 @dataclass
 class Charter:
     """An agent's CHARTER.md contents."""
+
     name: str = ""
     purpose: str = ""
     contracts: list[str] = field(default_factory=list)
@@ -148,9 +152,11 @@ class Charter:
 # ---------------------------------------------------------------------------
 # State
 
+
 @dataclass
 class AgentState:
     """An agent's STATE.md contents."""
+
     last_active: str = ""
     health: str = "🟢 ACTIVE"
     current_task: str = ""
@@ -169,7 +175,9 @@ class AgentState:
                 state.current_task = line.replace("**Current task:**", "").strip()
             elif line.startswith("**Pending:**"):
                 val = line.replace("**Pending:**", "").strip()
-                state.pending = int(re.search(r"\d+", val).group()) if re.search(r"\d+", val) else 0
+                state.pending = (
+                    int(re.search(r"\d+", val).group()) if re.search(r"\d+", val) else 0
+                )
             elif line.startswith("**Blockers:**"):
                 rest = line.replace("**Blockers:**", "").strip()
                 if rest and rest.lower() != "none":
@@ -191,9 +199,11 @@ class AgentState:
 # ---------------------------------------------------------------------------
 # Bottle
 
+
 @dataclass
 class Bottle:
     """A message between agents (for-fleet/ or from-fleet/)."""
+
     from_agent: str
     to_agent: str
     content: str
@@ -258,9 +268,11 @@ class Bottle:
 # ---------------------------------------------------------------------------
 # Task Board
 
+
 @dataclass
 class TaskBoard:
     """An agent's TASK-BOARD.md contents."""
+
     critical: list[str] = field(default_factory=list)
     high: list[str] = field(default_factory=list)
     medium: list[str] = field(default_factory=list)
@@ -280,14 +292,23 @@ class TaskBoard:
             elif "## ✅ Done" in line:
                 current_section = "done"
             elif line.startswith("- [ ]") and current_section:
-                getattr(board, current_section).append(line.replace("- [ ]", "").strip())
+                getattr(board, current_section).append(
+                    line.replace("- [ ]", "").strip()
+                )
             elif line.startswith("- [x]") and current_section:
-                getattr(board, current_section).append(line.replace("- [x]", "").strip())
+                getattr(board, current_section).append(
+                    line.replace("- [x]", "").strip()
+                )
         return board
 
     def to_text(self) -> str:
         lines = ["# Task Board"]
-        for section, emoji in [("critical", "🔴"), ("high", "🟠"), ("medium", "🟡"), ("done", "✅")]:
+        for section, emoji in [
+            ("critical", "🔴"),
+            ("high", "🟠"),
+            ("medium", "🟡"),
+            ("done", "✅"),
+        ]:
             lines.extend(["", f"## {emoji} {section.capitalize()}"])
             tasks = getattr(self, section)
             if tasks:
@@ -302,16 +323,20 @@ class TaskBoard:
 # ---------------------------------------------------------------------------
 # Skills
 
+
 @dataclass
 class SkillEntry:
     """A single skill entry."""
+
     name: str
     description: str
     examples: list[str] = field(default_factory=list)
 
+
 @dataclass
 class Skills:
     """An agent's SKILLS.md contents."""
+
     core_skills: list[SkillEntry] = field(default_factory=list)
     tools: list[str] = field(default_factory=list)
     learned: list[str] = field(default_factory=list)
@@ -327,11 +352,19 @@ class Skills:
                 i += 1
                 while i < len(lines) and not lines[i].startswith("##"):
                     if lines[i].startswith("- **"):
-                        name = lines[i].replace("- **", "").replace("**", "").split("—")[0].strip()
+                        name = (
+                            lines[i]
+                            .replace("- **", "")
+                            .replace("**", "")
+                            .split("—")[0]
+                            .strip()
+                        )
                         desc = ""
                         if "—" in lines[i]:
                             desc = lines[i].split("—", 1)[1].strip()
-                        skills.core_skills.append(SkillEntry(name=name, description=desc))
+                        skills.core_skills.append(
+                            SkillEntry(name=name, description=desc)
+                        )
                     i += 1
                 continue
             elif line.startswith("## Tools"):
@@ -370,6 +403,7 @@ class Skills:
 
 # ---------------------------------------------------------------------------
 # Agent Vessel (the full repo identity)
+
 
 class AgentVessel:
     """
@@ -419,6 +453,7 @@ class AgentVessel:
             # Try YAML parse first, fallback to heuristic
             try:
                 import yaml
+
                 d = yaml.safe_load(text)
                 if d:
                     self.plane = AbstractionPlane.from_dict(d)
@@ -433,9 +468,13 @@ class AgentVessel:
                         if key == "primary_plane":
                             d["primary"] = int(val)
                         elif key == "reads_from":
-                            d["reads_from"] = [int(x.strip()) for x in val.strip("[]").split(",")]
+                            d["reads_from"] = [
+                                int(x.strip()) for x in val.strip("[]").split(",")
+                            ]
                         elif key == "writes_to":
-                            d["writes_to"] = [int(x.strip()) for x in val.strip("[]").split(",")]
+                            d["writes_to"] = [
+                                int(x.strip()) for x in val.strip("[]").split(",")
+                            ]
                         elif key == "floor":
                             d["floor"] = int(val)
                         elif key == "ceiling":
@@ -531,7 +570,13 @@ class AgentVessel:
             "pending": self.state.pending,
             "blockers": self.state.blockers,
             "primary_plane": self.plane.primary,
-            "bottles_out": len(list((self.repo_path / "for-fleet").glob("*.md"))) if (self.repo_path / "for-fleet").exists() else 0,
-            "bottles_in": len(list((self.repo_path / "from-fleet").glob("*.md"))) if (self.repo_path / "from-fleet").exists() else 0,
-            "diary_entries": len(list((self.repo_path / "DIARY").glob("*.md"))) if (self.repo_path / "DIARY").exists() else 0,
+            "bottles_out": len(list((self.repo_path / "for-fleet").glob("*.md")))
+            if (self.repo_path / "for-fleet").exists()
+            else 0,
+            "bottles_in": len(list((self.repo_path / "from-fleet").glob("*.md")))
+            if (self.repo_path / "from-fleet").exists()
+            else 0,
+            "diary_entries": len(list((self.repo_path / "DIARY").glob("*.md")))
+            if (self.repo_path / "DIARY").exists()
+            else 0,
         }

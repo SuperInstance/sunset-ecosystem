@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class Span:
     """A trace span."""
+
     trace_id: str
     span_id: str
     parent_id: Optional[str]
@@ -34,11 +35,13 @@ class Span:
 
     def log(self, message: str, **kwargs):
         """Add a log entry."""
-        self.logs.append({
-            "timestamp": time.time(),
-            "message": message,
-            **kwargs,
-        })
+        self.logs.append(
+            {
+                "timestamp": time.time(),
+                "message": message,
+                **kwargs,
+            }
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -66,10 +69,12 @@ class Tracer:
         self._spans: Dict[str, Span] = {}
         self._traces: Dict[str, List[str]] = {}  # trace_id -> [span_id]
 
-    def start_span(self, name: str, trace_id: Optional[str] = None,
-                   parent_id: Optional[str] = None) -> Span:
+    def start_span(
+        self, name: str, trace_id: Optional[str] = None, parent_id: Optional[str] = None
+    ) -> Span:
         """Start a new span."""
         import uuid
+
         span_id = str(uuid.uuid4())[:8]
         trace_id = trace_id or str(uuid.uuid4())[:8]
 
@@ -113,13 +118,16 @@ class Tracer:
 
     def export_json(self) -> str:
         """Export all traces as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "traces": {
-                trace_id: [self._spans[sid].to_dict() for sid in span_ids]
-                for trace_id, span_ids in self._traces.items()
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "traces": {
+                    trace_id: [self._spans[sid].to_dict() for sid in span_ids]
+                    for trace_id, span_ids in self._traces.items()
+                },
             },
-        }, indent=2)
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

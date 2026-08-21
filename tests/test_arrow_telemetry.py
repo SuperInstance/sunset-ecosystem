@@ -31,6 +31,7 @@ from swarm.arrow_telemetry import (
 # TelemetryEvent
 # ---------------------------------------------------------------------------
 
+
 class TestTelemetryEvent:
     def test_create_basic(self):
         ev = TelemetryEvent(
@@ -67,6 +68,7 @@ class TestTelemetryEvent:
 # ---------------------------------------------------------------------------
 # Schema
 # ---------------------------------------------------------------------------
+
 
 class TestSchema:
     def test_build_schema(self):
@@ -117,38 +119,45 @@ class TestSchema:
 # ArrowTelemetryBuffer
 # ---------------------------------------------------------------------------
 
+
 class TestArrowTelemetryBuffer:
     def test_append_single(self):
         buf = ArrowTelemetryBuffer(max_batches=4, batch_size=2)
-        buf.append(TelemetryEvent(
-            timestamp=time.time(),
-            event_type="AGENT_SPAWN",
-            agent_id="a1",
-            room_id="r1",
-        ))
+        buf.append(
+            TelemetryEvent(
+                timestamp=time.time(),
+                event_type="AGENT_SPAWN",
+                agent_id="a1",
+                room_id="r1",
+            )
+        )
         assert buf.stats()["pending_events"] == 1
 
     def test_flush_on_batch_size(self):
         buf = ArrowTelemetryBuffer(max_batches=4, batch_size=2)
         for i in range(2):
-            buf.append(TelemetryEvent(
-                timestamp=time.time(),
-                event_type="AGENT_SPAWN",
-                agent_id=f"a{i}",
-                room_id="r1",
-            ))
+            buf.append(
+                TelemetryEvent(
+                    timestamp=time.time(),
+                    event_type="AGENT_SPAWN",
+                    agent_id=f"a{i}",
+                    room_id="r1",
+                )
+            )
         assert buf.stats()["pending_events"] == 0
         assert buf.stats()["batch_count"] == 1
 
     def test_ring_buffer_rotation(self):
         buf = ArrowTelemetryBuffer(max_batches=2, batch_size=1)
         for i in range(4):
-            buf.append(TelemetryEvent(
-                timestamp=time.time(),
-                event_type="AGENT_SPAWN",
-                agent_id=f"a{i}",
-                room_id="r1",
-            ))
+            buf.append(
+                TelemetryEvent(
+                    timestamp=time.time(),
+                    event_type="AGENT_SPAWN",
+                    agent_id=f"a{i}",
+                    room_id="r1",
+                )
+            )
         buf.flush()
         assert buf.stats()["batch_count"] == 2
         assert buf.stats()["total_events"] == 4
@@ -157,12 +166,14 @@ class TestArrowTelemetryBuffer:
     def test_to_table(self):
         buf = ArrowTelemetryBuffer(max_batches=4, batch_size=2)
         for i in range(4):
-            buf.append(TelemetryEvent(
-                timestamp=time.time(),
-                event_type="AGENT_SPAWN",
-                agent_id=f"a{i}",
-                room_id="r1",
-            ))
+            buf.append(
+                TelemetryEvent(
+                    timestamp=time.time(),
+                    event_type="AGENT_SPAWN",
+                    agent_id=f"a{i}",
+                    room_id="r1",
+                )
+            )
         table = buf.to_table()
         assert table.num_rows == 4
         assert "timestamp" in table.column_names
@@ -170,12 +181,14 @@ class TestArrowTelemetryBuffer:
     def test_slice(self):
         buf = ArrowTelemetryBuffer(max_batches=4, batch_size=2)
         for i in range(6):
-            buf.append(TelemetryEvent(
-                timestamp=time.time(),
-                event_type="AGENT_SPAWN",
-                agent_id=f"a{i}",
-                room_id="r1",
-            ))
+            buf.append(
+                TelemetryEvent(
+                    timestamp=time.time(),
+                    event_type="AGENT_SPAWN",
+                    agent_id=f"a{i}",
+                    room_id="r1",
+                )
+            )
         sliced = buf.slice(0, 3)
         assert sliced.num_rows == 3
 
@@ -187,18 +200,21 @@ class TestArrowTelemetryBuffer:
     def test_len(self):
         buf = ArrowTelemetryBuffer()
         assert len(buf) == 0
-        buf.append(TelemetryEvent(
-            timestamp=time.time(),
-            event_type="AGENT_SPAWN",
-            agent_id="a1",
-            room_id="r1",
-        ))
+        buf.append(
+            TelemetryEvent(
+                timestamp=time.time(),
+                event_type="AGENT_SPAWN",
+                agent_id="a1",
+                room_id="r1",
+            )
+        )
         assert len(buf) == 1
 
 
 # ---------------------------------------------------------------------------
 # PLATOStreamAdapter
 # ---------------------------------------------------------------------------
+
 
 class TestPLATOStreamAdapter:
     def test_adapt_agent_spawn(self):
@@ -261,6 +277,7 @@ class TestPLATOStreamAdapter:
 # FleetAnalyticsSink
 # ---------------------------------------------------------------------------
 
+
 class TestFleetAnalyticsSink:
     def test_init_creates_dir(self, tmp_path):
         sink = FleetAnalyticsSink(output_dir=tmp_path / "telemetry")
@@ -288,18 +305,23 @@ class TestFleetAnalyticsSink:
     def test_sse_callback(self, tmp_path):
         sink = FleetAnalyticsSink(output_dir=tmp_path / "telemetry")
         received = []
+
         def callback(event):
             received.append(event)
+
         sink.register_sse_callback(callback)
         schema = build_arrow_schema()
-        table = events_to_arrow_record([
-            TelemetryEvent(
-                timestamp=time.time(),
-                event_type="AGENT_SPAWN",
-                agent_id="a1",
-                room_id="r1",
-            )
-        ], schema)
+        table = events_to_arrow_record(
+            [
+                TelemetryEvent(
+                    timestamp=time.time(),
+                    event_type="AGENT_SPAWN",
+                    agent_id="a1",
+                    room_id="r1",
+                )
+            ],
+            schema,
+        )
         sink.write_table(table)
         assert len(received) == 1
         assert received[0]["type"] == "ARROW_BATCH"
@@ -328,12 +350,14 @@ class TestFleetAnalyticsSink:
 # Integration
 # ---------------------------------------------------------------------------
 
+
 class TestIntegration:
     def test_wire_to_fleet_conductor(self):
         class MockConductor:
             def __init__(self):
                 self.beat_count = 0
                 self.identity = type("obj", (object,), {"agent_id": "cond-1"})()
+
             def beat(self):
                 self.beat_count += 1
 
@@ -348,6 +372,7 @@ class TestIntegration:
         class MockDashboard:
             def __init__(self):
                 self.events = []
+
             def publish(self, event):
                 self.events.append(event)
 
@@ -355,14 +380,17 @@ class TestIntegration:
         sink = FleetAnalyticsSink()
         wire_to_sse_dashboard(dashboard, sink)
         schema = build_arrow_schema()
-        table = events_to_arrow_record([
-            TelemetryEvent(
-                timestamp=time.time(),
-                event_type="AGENT_SPAWN",
-                agent_id="a1",
-                room_id="r1",
-            )
-        ], schema)
+        table = events_to_arrow_record(
+            [
+                TelemetryEvent(
+                    timestamp=time.time(),
+                    event_type="AGENT_SPAWN",
+                    agent_id="a1",
+                    room_id="r1",
+                )
+            ],
+            schema,
+        )
         sink.write_table(table)
         assert len(dashboard.events) == 1
         assert dashboard.events[0]["type"] == "ARROW_BATCH"
@@ -372,18 +400,24 @@ class TestIntegration:
 # Edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestEdgeCases:
     def test_buffer_concurrent_access(self):
         import threading
+
         buf = ArrowTelemetryBuffer(max_batches=10, batch_size=5)
+
         def append_many():
             for i in range(20):
-                buf.append(TelemetryEvent(
-                    timestamp=time.time(),
-                    event_type="AGENT_SPAWN",
-                    agent_id=f"t{i}",
-                    room_id="r1",
-                ))
+                buf.append(
+                    TelemetryEvent(
+                        timestamp=time.time(),
+                        event_type="AGENT_SPAWN",
+                        agent_id=f"t{i}",
+                        room_id="r1",
+                    )
+                )
+
         threads = [threading.Thread(target=append_many) for _ in range(4)]
         for t in threads:
             t.start()

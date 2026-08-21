@@ -60,6 +60,7 @@ _HEADER_SIZE = struct.calcsize(_HEADER_FMT)
 @dataclass
 class WALCheckpoint:
     """Checkpoint metadata."""
+
     wal_file: str
     offset: int
     timestamp: float
@@ -86,6 +87,7 @@ class WALCheckpoint:
 @dataclass
 class WALEntry:
     """A single WAL operation record."""
+
     op: str  # "insert", "merge", "delete", "checkpoint"
     timestamp: float
     payload: dict[str, Any]
@@ -127,7 +129,7 @@ class WALEntry:
         if version != WAL_VERSION:
             raise ValueError(f"Unsupported WAL version: {version}")
 
-        payload_compressed = data[_HEADER_SIZE:_HEADER_SIZE + payload_len]
+        payload_compressed = data[_HEADER_SIZE : _HEADER_SIZE + payload_len]
         if len(payload_compressed) != payload_len:
             raise ValueError("Incomplete WAL payload")
 
@@ -187,7 +189,8 @@ class MeshWAL:
         # Checkpoint thread
         self._stop_checkpoint = False
         self._checkpoint_thread = threading.Thread(
-            target=self._checkpoint_loop, daemon=True,
+            target=self._checkpoint_loop,
+            daemon=True,
         )
         self._checkpoint_thread.start()
 
@@ -302,7 +305,11 @@ class MeshWAL:
                         _, _, _, _, payload_len = struct.unpack(_HEADER_FMT, header)
                         payload_data = f.read(payload_len)
                         if len(payload_data) < payload_len:
-                            logger.warning("Incomplete WAL record at offset %d in %s", f.tell(), wal_file.name)
+                            logger.warning(
+                                "Incomplete WAL record at offset %d in %s",
+                                f.tell(),
+                                wal_file.name,
+                            )
                             break
 
                         record_data = header + payload_data
@@ -339,7 +346,7 @@ class MeshWAL:
 
                         elif entry.op == "delete":
                             agent_id = entry.payload.get("agent_id")
-                            if agent_id and hasattr(table, '_entries'):
+                            if agent_id and hasattr(table, "_entries"):
                                 table._entries.pop(agent_id, None)
                                 stats["replayed"] += 1
 
@@ -352,7 +359,9 @@ class MeshWAL:
 
         logger.info(
             "WAL recovery complete: %d replayed, %d errors, %d skipped",
-            stats["replayed"], stats["errors"], stats["skipped"],
+            stats["replayed"],
+            stats["errors"],
+            stats["skipped"],
         )
         return stats
 
@@ -406,11 +415,15 @@ class MeshWAL:
                         old_file.unlink()
                         logger.info("Truncated old WAL: %s", old_file.name)
                     except Exception as exc:
-                        logger.warning("Failed to truncate WAL %s: %s", old_file.name, exc)
+                        logger.warning(
+                            "Failed to truncate WAL %s: %s", old_file.name, exc
+                        )
 
             logger.info(
                 "Checkpoint written: %s at offset %d (%d entries)",
-                wal_file, offset, self._entry_count,
+                wal_file,
+                offset,
+                self._entry_count,
             )
             return checkpoint
 

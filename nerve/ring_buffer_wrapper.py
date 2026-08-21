@@ -2,6 +2,7 @@
 
 Wraps the C implementation in nerve/ring_buffer.so.
 """
+
 from __future__ import annotations
 
 __all__ = ["RingBuffer"]

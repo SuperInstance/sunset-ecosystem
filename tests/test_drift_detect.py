@@ -17,6 +17,7 @@ from triage.drift_detect import DriftDetector, DriftReport, detect_drift
 # DriftReport
 # ---------------------------------------------------------------------------
 
+
 class TestDriftReport:
     def test_defaults(self):
         r = DriftReport(repo="test")
@@ -40,6 +41,7 @@ class TestDriftReport:
 # DriftDetector init
 # ---------------------------------------------------------------------------
 
+
 class TestDetectorInit:
     def test_from_path(self, tmp_path):
         d = DriftDetector(tmp_path)
@@ -50,6 +52,7 @@ class TestDetectorInit:
 # ---------------------------------------------------------------------------
 # _doc_drift
 # ---------------------------------------------------------------------------
+
 
 class TestDocDrift:
     def test_missing_readme(self, tmp_path):
@@ -96,6 +99,7 @@ class TestDocDrift:
 # _dead_code
 # ---------------------------------------------------------------------------
 
+
 class TestDeadCode:
     def test_no_py_files(self, tmp_path):
         d = DriftDetector(tmp_path)
@@ -141,6 +145,7 @@ class TestDeadCode:
 # _branch_divergence
 # ---------------------------------------------------------------------------
 
+
 class TestBranchDivergence:
     def test_no_git(self, tmp_path):
         d = DriftDetector(tmp_path)
@@ -150,8 +155,12 @@ class TestBranchDivergence:
         # Initialize git repo with no upstream
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=True)
         (tmp_path / "f").write_text("x")
-        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True, check=True)
-        subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "add", "."], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
         d = DriftDetector(tmp_path)
         assert d._branch_divergence() is None
 
@@ -159,6 +168,7 @@ class TestBranchDivergence:
 # ---------------------------------------------------------------------------
 # _license_change
 # ---------------------------------------------------------------------------
+
 
 class TestLicenseChange:
     def test_no_license(self, tmp_path):
@@ -168,8 +178,12 @@ class TestLicenseChange:
     def test_recent_license(self, tmp_path):
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=True)
         (tmp_path / "LICENSE").write_text("MIT\n")
-        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True, check=True)
-        subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "add", "."], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
         d = DriftDetector(tmp_path)
         result = d._license_change()
         assert result is not None
@@ -183,6 +197,7 @@ class TestLicenseChange:
 # ---------------------------------------------------------------------------
 # run / severity
 # ---------------------------------------------------------------------------
+
 
 class TestRun:
     def test_clean_repo(self, tmp_path):
@@ -217,6 +232,7 @@ class TestRun:
 # ---------------------------------------------------------------------------
 # detect_drift entrypoint
 # ---------------------------------------------------------------------------
+
 
 class TestDetectDrift:
     def test_entrypoint(self, tmp_path):

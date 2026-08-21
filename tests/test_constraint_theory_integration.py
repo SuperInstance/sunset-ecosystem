@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for swarm/constraint_theory_integration.py."""
+
 import math
 
 import numpy as np
@@ -45,7 +46,6 @@ class TestConstraintTheoryIntegration:
         assert abs(mag - 1.0) < 1e-6
         # Noise should be small (close to original)
         assert r.noise < 0.1
-
 
     def test_snap_batch(self):
         ct = ConstraintTheoryIntegration(density=200)
@@ -122,7 +122,6 @@ class TestConstraintTheoryIntegration:
         cycle = [(0.6, 0.8), (0.6, 0.8)]
         score = ct.check_holonomy(cycle, threshold=1e-3)
         assert score == 1.0
-
 
     def test_check_holonomy_inconsistent(self):
         ct = ConstraintTheoryIntegration(density=200)

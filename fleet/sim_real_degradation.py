@@ -7,6 +7,7 @@ SIMULATION mode.
 
 Reference: holodeck-rust — sim_real_degradation stack pattern.
 """
+
 from __future__ import annotations
 
 import enum
@@ -22,9 +23,9 @@ logger = logging.getLogger(__name__)
 class DegradationLevel(enum.IntEnum):
     """Three-tier degradation stack."""
 
-    GREEN = 0   # All REAL data, full confidence
+    GREEN = 0  # All REAL data, full confidence
     YELLOW = 1  # Partial degradation — some REAL data unreliable
-    RED = 2     # Full SIMULATION mode — all data synthetic
+    RED = 2  # Full SIMULATION mode — all data synthetic
 
 
 @dataclass
@@ -32,10 +33,12 @@ class DataSource:
     """A single data source with health metrics."""
 
     name: str
-    mode: str = "REAL"          # "REAL" or "SIM"
-    confidence: float = 1.0     # [0, 1] — confidence in this source
-    latency_ms: float = 0.0     # Last known latency
-    last_update: float = field(default_factory=time.time)  # Unix timestamp of last update
+    mode: str = "REAL"  # "REAL" or "SIM"
+    confidence: float = 1.0  # [0, 1] — confidence in this source
+    latency_ms: float = 0.0  # Last known latency
+    last_update: float = field(
+        default_factory=time.time
+    )  # Unix timestamp of last update
     stale_threshold_ms: float = 5000.0  # Threshold to consider stale
 
     def is_stale(self, now: Optional[float] = None) -> bool:
@@ -50,7 +53,9 @@ class DataSource:
         if self.is_stale(now):
             return 0.0
         # Confidence decays with latency: latency = 0 → 1.0, latency = threshold → 0.5
-        latency_factor = max(0.0, 1.0 - (self.latency_ms / (self.stale_threshold_ms * 2)))
+        latency_factor = max(
+            0.0, 1.0 - (self.latency_ms / (self.stale_threshold_ms * 2))
+        )
         return self.confidence * latency_factor
 
 
@@ -89,21 +94,25 @@ class SimRealDegradationStack:
     """
 
     # Hysteresis thresholds
-    DEGRADE_TO_YELLOW = 0.7   # Health < this → degrade to YELLOW
-    DEGRADE_TO_RED = 0.3      # Health < this → degrade to RED
-    RECOVER_TO_GREEN = 0.85   # Health > this + sustained → recover to GREEN
+    DEGRADE_TO_YELLOW = 0.7  # Health < this → degrade to YELLOW
+    DEGRADE_TO_RED = 0.3  # Health < this → degrade to RED
+    RECOVER_TO_GREEN = 0.85  # Health > this + sustained → recover to GREEN
     RECOVER_TO_YELLOW = 0.6  # Health > this + sustained → recover from RED
-    SUSTAINED_SECONDS = 5.0   # Seconds of healthy data before recovery
+    SUSTAINED_SECONDS = 5.0  # Seconds of healthy data before recovery
 
     def __init__(self, subsystem: str) -> None:
         self.subsystem = subsystem
         self.state = DegradationState()
         self._health_history: list[tuple[float, float]] = []  # (timestamp, health)
-        self._on_transition: list[Callable[[DegradationLevel, DegradationLevel], None]] = []
+        self._on_transition: list[
+            Callable[[DegradationLevel, DegradationLevel], None]
+        ] = []
 
     # ── public API ───────────────────────────────────────────
 
-    def register_source(self, name: str, mode: str = "REAL", confidence: float = 1.0) -> None:
+    def register_source(
+        self, name: str, mode: str = "REAL", confidence: float = 1.0
+    ) -> None:
         """Register a new data source."""
         self.state.sources[name] = DataSource(
             name=name,
@@ -112,7 +121,9 @@ class SimRealDegradationStack:
             last_update=time.time(),
         )
 
-    def update_source(self, name: str, latency_ms: float, confidence: Optional[float] = None) -> None:
+    def update_source(
+        self, name: str, latency_ms: float, confidence: Optional[float] = None
+    ) -> None:
         """Update a data source with fresh metrics."""
         if name not in self.state.sources:
             raise KeyError(f"Source '{name}' not registered")
@@ -145,7 +156,10 @@ class SimRealDegradationStack:
         if new_level != old_level:
             logger.warning(
                 "[%s] Degradation transition: %s → %s (health=%.2f)",
-                self.subsystem, old_level.name, new_level.name, health
+                self.subsystem,
+                old_level.name,
+                new_level.name,
+                health,
             )
             self.state.level = new_level
             self.state.timestamp = now
@@ -158,7 +172,9 @@ class SimRealDegradationStack:
         """Manually force SIMULATION mode (testing or maintenance)."""
         self.state.sim_override = enabled
 
-    def on_transition(self, callback: Callable[[DegradationLevel, DegradationLevel], None]) -> None:
+    def on_transition(
+        self, callback: Callable[[DegradationLevel, DegradationLevel], None]
+    ) -> None:
         """Register a callback for level transitions."""
         self._on_transition.append(callback)
 
@@ -192,7 +208,9 @@ class SimRealDegradationStack:
         # YELLOW: blend based on overall health
         health = self.state.overall_health()
         # health at DEGRADE_TO_YELLOW (0.7) → 0% real, RECOVER_TO_GREEN (0.85) → 100% real
-        t = (health - self.DEGRADE_TO_YELLOW) / (self.RECOVER_TO_GREEN - self.DEGRADE_TO_YELLOW)
+        t = (health - self.DEGRADE_TO_YELLOW) / (
+            self.RECOVER_TO_GREEN - self.DEGRADE_TO_YELLOW
+        )
         t = max(0.0, min(1.0, t))
 
         if isinstance(real_value, (int, float)) and isinstance(sim_value, (int, float)):

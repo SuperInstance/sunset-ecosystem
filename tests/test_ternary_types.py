@@ -78,7 +78,9 @@ class TestTernaryValue:
         assert TernaryValue.consensus([-1, -1, -1], threshold=0.6) == -1
         # 2/3 = 66.7% >= 60% threshold → consensus +1
         assert TernaryValue.consensus([+1, +1, 0], threshold=0.6) == +1
-        assert TernaryValue.consensus([+1, +1, +1, -1], threshold=0.75) == +1  # 3/4 = 75%
+        assert (
+            TernaryValue.consensus([+1, +1, +1, -1], threshold=0.75) == +1
+        )  # 3/4 = 75%
 
     def test_consensus_empty(self) -> None:
         assert TernaryValue.consensus([], threshold=0.6) == 0
@@ -281,7 +283,9 @@ class TestTernaryOperator:
         assert TernaryOperator.clamp(0, -1, +1) == 0
 
     def test_switch(self) -> None:
-        result = TernaryOperator.switch(+1, {+1: "positive", -1: "negative", 0: "neutral"})
+        result = TernaryOperator.switch(
+            +1, {+1: "positive", -1: "negative", 0: "neutral"}
+        )
         assert result == "positive"
 
     def test_switch_default(self) -> None:

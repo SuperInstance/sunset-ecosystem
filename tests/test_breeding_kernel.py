@@ -174,14 +174,18 @@ class TestBreedingKernel:
     def test_from_preset_exploitation(self):
         pop = [Genome([0.0], fitness=0.0) for _ in range(10)]
         ev = CallableEvaluator(lambda g: 1.0)
-        bk = BreedingKernel.from_preset(BreedingPreset.EXPLOITATION, ev, pop, pop_size=10)
+        bk = BreedingKernel.from_preset(
+            BreedingPreset.EXPLOITATION, ev, pop, pop_size=10
+        )
         assert bk.name == "breeder"
         assert bk.pop_size == 10
 
     def test_from_preset_exploration(self):
         pop = [Genome([0.0], fitness=0.0) for _ in range(10)]
         ev = CallableEvaluator(lambda g: 1.0)
-        bk = BreedingKernel.from_preset(BreedingPreset.EXPLORATION, ev, pop, pop_size=10)
+        bk = BreedingKernel.from_preset(
+            BreedingPreset.EXPLORATION, ev, pop, pop_size=10
+        )
         assert bk.pop_size == 10
 
     def test_from_preset_balanced(self):

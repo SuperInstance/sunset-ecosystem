@@ -35,6 +35,7 @@ Architecture
 - CampaignResult: per-campaign outcome with full sensor history
 - ParallelResult: aggregate across all campaigns
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -69,6 +70,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Campaign:
     """A single breeding campaign specification."""
+
     name: str
     attachment: str  # e.g., "pythagorean", "spectral"
     params: Dict[str, Any] = field(default_factory=dict)
@@ -80,6 +82,7 @@ class Campaign:
 @dataclass
 class CampaignResult:
     """Outcome of a single campaign."""
+
     campaign: Campaign
     status: str  # "success", "failure", "timeout"
     run_id: str = ""
@@ -108,6 +111,7 @@ class CampaignResult:
 @dataclass
 class ParallelResult:
     """Aggregate result across all campaigns."""
+
     campaigns: List[CampaignResult] = field(default_factory=list)
     total_duration: float = 0.0
     audit_entries: int = 0
@@ -153,7 +157,9 @@ class ParallelResult:
             "campaign_count": len(self.campaigns),
             "success_rate": round(self.success_rate, 3),
             "total_duration": round(self.total_duration, 3),
-            "best_campaign": self.best_campaign.to_dict() if self.best_campaign else None,
+            "best_campaign": self.best_campaign.to_dict()
+            if self.best_campaign
+            else None,
             "audit_entries": self.audit_entries,
             "campaigns": [c.to_dict() for c in self.campaigns],
         }
@@ -321,6 +327,7 @@ class ParallelBreedingOrchestrator:
         generations: int,
     ) -> SchedulerTask:
         """Build a SchedulerTask that runs a breeding campaign."""
+
         # Capture campaign in closure
         def _run_breeding() -> Dict[str, Any]:
             shell = OpenConstructShell(node_id=node_id, all_nodes=self.nodes)

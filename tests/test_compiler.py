@@ -1,4 +1,5 @@
 """Tests for the Sunset Compiler — profiler, Numba backend, auto-compile."""
+
 import time
 import numpy as np
 import pytest
@@ -10,6 +11,7 @@ from sunset.codegen import CodeGenerator
 NUMBA_AVAILABLE = False
 try:
     import numba
+
     NUMBA_AVAILABLE = True
 except ImportError:
     pass
@@ -32,6 +34,7 @@ class TestProfiler:
         """After 100 calls on a patched module, profiler records the function."""
         # Install profiler on the current test module
         import tests.test_compiler as test_mod
+
         compiler.install("tests.test_compiler")
 
         obj = SlowSumClass()
@@ -68,6 +71,7 @@ class TestNumbaBackend:
         # Skip if numba has API mismatch
         try:
             import numba.core.registry
+
             numba.core.registry.CPUDispatcher
         except AttributeError:
             pytest.skip("Numba API mismatch — cannot test compilation")
@@ -83,6 +87,7 @@ class TestNumbaBackend:
         """Compiled function is faster than original."""
         try:
             import numba.core.registry
+
             numba.core.registry.CPUDispatcher
         except AttributeError:
             pytest.skip("Numba API mismatch")
@@ -102,6 +107,7 @@ class TestNumbaBackend:
         """Compiled output matches original (±1e-3)."""
         try:
             import numba.core.registry
+
             numba.core.registry.CPUDispatcher
         except AttributeError:
             pytest.skip("Numba API mismatch")
@@ -117,8 +123,9 @@ class TestNumbaBackend:
         expected = slow_sum_func(a, b)
         actual = kernel.compiled(a, b)
 
-        assert abs(expected - actual) < 1e-3, \
+        assert abs(expected - actual) < 1e-3, (
             f"Output mismatch: expected {expected}, got {actual}"
+        )
 
 
 class TestAutoCompile:
@@ -127,11 +134,12 @@ class TestAutoCompile:
     def test_enable_compiler_installs(self):
         """enable_compiler() installs profiler on nerve module."""
         from nerve.topology import NerveTopology
+
         topo = NerveTopology(n_rooms=100)
         topo.enable_compiler()
 
         # Compiler should be attached
-        assert hasattr(topo, '_compiler'), "Compiler not attached"
+        assert hasattr(topo, "_compiler"), "Compiler not attached"
 
     def test_compiler_does_not_break_tick(self):
         """Tick works normally with compiler enabled."""
@@ -143,7 +151,7 @@ class TestAutoCompile:
 
         signals = {fid: np.random.randn(64).astype(np.float32) for fid in topo.fibers}
         result = topo.tick(signals)
-        assert hasattr(result, 'rooms_fired'), "Tick result malformed with compiler"
+        assert hasattr(result, "rooms_fired"), "Tick result malformed with compiler"
 
 
 def slow_sum_func(a, b):
@@ -156,8 +164,10 @@ def slow_sum_func(a, b):
 
 # ── New top-level unit tests (Task requirements) ──
 
+
 def test_profiler_detects_hotspot(compiler):
     """After 100 calls the profiler identifies the watched function."""
+
     def dummy(x):
         return x + 1
 
@@ -189,6 +199,7 @@ def test_numba_speedup(compiler):
 def test_auto_compile_wired(compiler):
     """NerveTopology.enable_compiler() installs the compiler profiler."""
     from nerve.topology import NerveTopology
+
     topo = NerveTopology(n_fibers=2, n_rooms=4)
     topo.enable_compiler()
     assert topo._compiler is not None
@@ -198,6 +209,7 @@ def test_auto_compile_wired(compiler):
 @pytest.mark.skipif(not NUMBA_AVAILABLE, reason="numba not installed")
 def test_compiler_skips_numba(compiler):
     """Already-@njit functions are returned as-is without double-compilation."""
+
     @numba.njit
     def already_fast(array_a, array_b):
         total = 0.0
@@ -321,6 +333,7 @@ def test_compiler_auto_hot_swap(compiler):
 
     # Inject into a module so the compiler can resolve it
     import tests.test_compiler as test_mod
+
     test_mod._auto_swap_target = slow_dot
     slow_dot.__module__ = "tests.test_compiler"
 

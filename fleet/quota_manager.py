@@ -14,6 +14,7 @@ Usage:
     if qm.check("tenant-1", "api_calls", 10):
         process_request()
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -37,6 +38,7 @@ class QuotaExceeded(Exception):
 @dataclass
 class Quota:
     """Quota definition for a resource."""
+
     resource: str
     limit: float
     window: float  # seconds
@@ -93,13 +95,15 @@ class QuotaManager:
         effective_limit = quota.limit + quota.burst
 
         if quota.used > effective_limit:
-            self._alerts.append({
-                "tenant": tenant,
-                "resource": resource,
-                "used": quota.used,
-                "limit": quota.limit,
-                "timestamp": time.time(),
-            })
+            self._alerts.append(
+                {
+                    "tenant": tenant,
+                    "resource": resource,
+                    "used": quota.used,
+                    "limit": quota.limit,
+                    "timestamp": time.time(),
+                }
+            )
             logger.warning(
                 f"Quota exceeded for {tenant}/{resource}: {quota.used} > {effective_limit}"
             )
@@ -109,9 +113,7 @@ class QuotaManager:
     def require(self, tenant: str, resource: str, amount: float = 1.0) -> None:
         """Require quota, raise QuotaExceeded if over."""
         if not self.record_usage(tenant, resource, amount):
-            raise QuotaExceeded(
-                f"Quota exceeded for {tenant}/{resource}"
-            )
+            raise QuotaExceeded(f"Quota exceeded for {tenant}/{resource}")
 
     def _get_active_quota(self, tenant: str, resource: str) -> Quota | None:
         """Get quota, resetting window if expired."""

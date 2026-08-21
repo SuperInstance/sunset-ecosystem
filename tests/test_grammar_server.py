@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
+
 def test_grammar_server():
     """Start grammar server, hit endpoints, verify responses."""
     print("Starting grammar server...")
@@ -37,14 +38,23 @@ def test_grammar_server():
 
     try:
         print("GET /rules (empty):", fetch("http://localhost:4045/rules"))
-        print("POST valid rule:", fetch("http://localhost:4045/rules", {
-            "name": "test_rule",
-            "production": {"tagline": "hello", "condition": "x > 0"}
-        }))
-        print("POST XSS attack:", fetch("http://localhost:4045/rules", {
-            "name": "<script>alert(1)</script>",
-            "production": {"tagline": "xss"}
-        }))
+        print(
+            "POST valid rule:",
+            fetch(
+                "http://localhost:4045/rules",
+                {
+                    "name": "test_rule",
+                    "production": {"tagline": "hello", "condition": "x > 0"},
+                },
+            ),
+        )
+        print(
+            "POST XSS attack:",
+            fetch(
+                "http://localhost:4045/rules",
+                {"name": "<script>alert(1)</script>", "production": {"tagline": "xss"}},
+            ),
+        )
         print("GET /rules (after):", fetch("http://localhost:4045/rules"))
     finally:
         proc.terminate()

@@ -75,7 +75,9 @@ def test_architecture_task_routes_subagent() -> None:
 def test_multiple_files_boost_estimate() -> None:
     router = _make_router()
     one_file = router.estimate_duration("Create one file")
-    three_files = router.estimate_duration("Create 3 files and tests", context={"files": 3})
+    three_files = router.estimate_duration(
+        "Create 3 files and tests", context={"files": 3}
+    )
     assert three_files > one_file
     # With 3 files the estimate should cross the threshold
     assert router.should_delegate("Create 3 files and tests", context={"files": 3})

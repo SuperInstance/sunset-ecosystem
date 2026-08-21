@@ -52,7 +52,9 @@ logger = logging.getLogger(__name__)
 _MMC_PATH = os.environ.get("MERCURY_COMPILER", "mmc")
 _MMC_AVAILABLE = False
 try:
-    subprocess.run([_MMC_PATH, "--version"], capture_output=True, check=True, timeout=2.0)
+    subprocess.run(
+        [_MMC_PATH, "--version"], capture_output=True, check=True, timeout=2.0
+    )
     _MMC_AVAILABLE = True
 except Exception:
     logger.warning("Mercury compiler (mmc) not available; using mock compilation")
@@ -61,6 +63,7 @@ except Exception:
 @dataclass
 class CompileResult:
     """Result of a Mercury compilation."""
+
     formula_name: str
     success: bool
     mercury_code: str
@@ -85,7 +88,9 @@ class MercuryCompilerAgent:
     def __post_init__(self):
         Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
 
-    def compile_formula(self, name: str, formula: str, *, determinism: str = "det") -> CompileResult:
+    def compile_formula(
+        self, name: str, formula: str, *, determinism: str = "det"
+    ) -> CompileResult:
         """Compile a fleet formula to a Mercury plugin.
 
         Steps:
@@ -104,8 +109,10 @@ class MercuryCompilerAgent:
             mercury_code = gen.compile_with_mode(formula, mode=determinism)
         except Exception as exc:
             return CompileResult(
-                formula_name=name, success=False, mercury_code="",
-                errors=[f"Code generation failed: {exc}"]
+                formula_name=name,
+                success=False,
+                mercury_code="",
+                errors=[f"Code generation failed: {exc}"],
             )
 
         # Step 3: Write .m file
@@ -138,8 +145,10 @@ class MercuryCompilerAgent:
             )
         except subprocess.CalledProcessError as exc:
             return CompileResult(
-                formula_name=name, success=False, mercury_code=mercury_code,
-                errors=[exc.stderr.decode("utf-8", errors="replace")]
+                formula_name=name,
+                success=False,
+                mercury_code=mercury_code,
+                errors=[exc.stderr.decode("utf-8", errors="replace")],
             )
 
         # Step 5: Compile C to .so
@@ -157,8 +166,10 @@ class MercuryCompilerAgent:
             )
         except subprocess.CalledProcessError as exc:
             return CompileResult(
-                formula_name=name, success=False, mercury_code=mercury_code,
-                errors=[exc.stderr.decode("utf-8", errors="replace")]
+                formula_name=name,
+                success=False,
+                mercury_code=mercury_code,
+                errors=[exc.stderr.decode("utf-8", errors="replace")],
             )
 
         result = CompileResult(
@@ -182,6 +193,7 @@ class MercuryCompilerAgent:
             return False
         try:
             import ctypes
+
             self._plugins[name] = ctypes.CDLL(str(so_path))
             logger.info("Plugin %s loaded", name)
             return True

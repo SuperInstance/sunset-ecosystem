@@ -142,7 +142,9 @@ def helper():
         docs = doc.parse_all_modules()
         assert len(docs) > 0
         # Should have at least some known modules
-        assert any(name in docs for name in ["Harbor", "FleetOrchestrator", "TernaryTypes"])
+        assert any(
+            name in docs for name in ["Harbor", "FleetOrchestrator", "TernaryTypes"]
+        )
 
     def test_generate_api_docs(self, tmp_path: Path) -> None:
         doc = FleetDoc()

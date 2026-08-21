@@ -271,7 +271,9 @@ class WALBatchQuery:
         limit: int | None = None,
         offset: int = 0,
     ) -> List[SignedEntry]:
-        return self.filter(WALQueryFilter(agent_id=agent_id), limit=limit, offset=offset)
+        return self.filter(
+            WALQueryFilter(agent_id=agent_id), limit=limit, offset=offset
+        )
 
     def by_operation(
         self,
@@ -279,7 +281,9 @@ class WALBatchQuery:
         limit: int | None = None,
         offset: int = 0,
     ) -> List[SignedEntry]:
-        return self.filter(WALQueryFilter(operation=operation), limit=limit, offset=offset)
+        return self.filter(
+            WALQueryFilter(operation=operation), limit=limit, offset=offset
+        )
 
     def by_time_range(
         self,

@@ -24,7 +24,9 @@ coordinator = SwarmCoordinator(max_agents=10, knowledge_isolation="moderate")
 
 # Register agents with roles and capabilities
 coordinator.register_agent("scout-1", AgentRole.SCOUT, capabilities=["search", "fetch"])
-coordinator.register_agent("builder-1", AgentRole.BUILDER, capabilities=["code", "test"])
+coordinator.register_agent(
+    "builder-1", AgentRole.BUILDER, capabilities=["code", "test"]
+)
 coordinator.register_agent("boss", AgentRole.COORDINATOR, hierarchy_level=5)
 
 # Set trust scores

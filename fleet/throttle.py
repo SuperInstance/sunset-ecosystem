@@ -10,6 +10,7 @@ Usage:
     time.sleep(0.1)
     assert not throttle.acquire()  # rate limited
 """
+
 from __future__ import annotations
 
 import time

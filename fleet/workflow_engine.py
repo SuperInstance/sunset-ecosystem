@@ -12,6 +12,7 @@ Usage:
     engine.start("pending", {"budget": 100})
     engine.transition("approved")
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

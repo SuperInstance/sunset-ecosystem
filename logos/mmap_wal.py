@@ -3,6 +3,7 @@
 Faster than SQLite for high-throughput sequential writes.
 Uses mmap for zero-copy reads and POSIX fallocate for pre-allocation.
 """
+
 from __future__ import annotations
 
 __all__ = ["MmapWAL"]

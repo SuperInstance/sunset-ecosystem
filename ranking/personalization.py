@@ -25,6 +25,7 @@ class PreferenceScore:
         matched_tags: Which preference tags this response satisfies.
         missed_tags: Which preference tags this response misses.
     """
+
     score: float = 0.0
     matched_tags: list[str] = field(default_factory=list)
     missed_tags: list[str] = field(default_factory=list)
@@ -69,9 +70,7 @@ class PersonalizationStore:
 
             # Reinforce tags from this ranking
             for tag in tags:
-                self._tag_weights[tag] = (
-                    self._tag_weights.get(tag, 0.0) + 1.0
-                )
+                self._tag_weights[tag] = self._tag_weights.get(tag, 0.0) + 1.0
 
     def get_ground_truths(self) -> dict[str, Any]:
         """Get current user preferences as ground-truths-for-now.
@@ -116,13 +115,12 @@ class PersonalizationStore:
             if total_weight == 0:
                 return PreferenceScore(score=0.5)
 
-            matched_weight = sum(
-                self._tag_weights.get(t, 0.0) for t in tags
-            )
+            matched_weight = sum(self._tag_weights.get(t, 0.0) for t in tags)
             score = matched_weight / total_weight if total_weight > 0 else 0.5
 
             top_tags = set(
-                t for t, w in sorted(
+                t
+                for t, w in sorted(
                     self._tag_weights.items(),
                     key=lambda x: x[1],
                     reverse=True,

@@ -13,6 +13,7 @@ Usage:
     result = future.result(timeout=5.0)
     pool.shutdown()
 """
+
 from __future__ import annotations
 
 __all__ = [

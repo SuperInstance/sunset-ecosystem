@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 # ── Graph Laplacian ───────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class GraphLaplacian:
     """Immutable spectral representation of a mesh topology."""
@@ -99,7 +100,7 @@ class GraphLaplacian:
         if k < 2 or k > n:
             raise ValueError(f"k must be in [2, {n}]")
         # Use first k eigenvectors (skip λ₁=0)
-        X = self.eigenvectors[:, 1:k+1]  # (n, k)
+        X = self.eigenvectors[:, 1 : k + 1]  # (n, k)
         # Simple k-means on rows
         centroids = X[:k, :].copy()
         labels = np.argmin(
@@ -113,6 +114,7 @@ class GraphLaplacian:
 
 
 # ── Spectral Mesh Router ──────────────────────────────────────
+
 
 class SpectralMeshRouter:
     """Dynamic mesh topology optimizer using spectral graph theory.
@@ -145,9 +147,7 @@ class SpectralMeshRouter:
     def _recompute(self) -> None:
         """Rebuild spectral representation."""
         self._lap = GraphLaplacian.from_adjacency(self._adj)
-        self._history.append(
-            (__import__("time").time(), self._lap.fiedler_value)
-        )
+        self._history.append((__import__("time").time(), self._lap.fiedler_value))
 
     # ── optimization suggestions ────────────────────────────
 
@@ -240,17 +240,12 @@ class SpectralMeshRouter:
         resistances = []
         for i in range(self.n):
             total_r = sum(
-                self._lap.effective_resistance(i, j)
-                for j in range(self.n) if i != j
+                self._lap.effective_resistance(i, j) for j in range(self.n) if i != j
             )
             resistances.append(total_r)
 
         thresh = np.quantile(resistances, threshold_quantile)
-        return [
-            self.node_ids[i]
-            for i, r in enumerate(resistances)
-            if r >= thresh
-        ]
+        return [self.node_ids[i] for i, r in enumerate(resistances) if r >= thresh]
 
     def cluster_report(self, k: int = 2) -> dict[str, Any]:
         """Spectral clustering report for mesh communities."""
@@ -271,6 +266,7 @@ class SpectralMeshRouter:
 
 
 # ── standalone helpers ─────────────────────────────────────────
+
 
 def effective_resistance(adj: np.ndarray, i: int, j: int) -> float:
     """One-shot effective resistance between nodes i and j."""

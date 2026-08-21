@@ -20,6 +20,7 @@ from nerve.fiber import (
 # Ecosystem
 # ---------------------------------------------------------------------------
 
+
 class TestEcosystem:
     def test_keys_present(self):
         assert "eisenstein_embed" in ECOSYSTEM
@@ -31,6 +32,7 @@ class TestEcosystem:
 # ---------------------------------------------------------------------------
 # FiberState
 # ---------------------------------------------------------------------------
+
 
 class TestFiberState:
     def test_values(self):
@@ -44,6 +46,7 @@ class TestFiberState:
 # SensoryTile
 # ---------------------------------------------------------------------------
 
+
 class TestSensoryTile:
     def test_defaults(self):
         t = SensoryTile(pattern_id="abc123")
@@ -53,7 +56,9 @@ class TestSensoryTile:
         assert t.timestamp > 0
 
     def test_repr(self):
-        t = SensoryTile(pattern_id="abc123456789", confidence=0.75, state=FiberState.COMPILED)
+        t = SensoryTile(
+            pattern_id="abc123456789", confidence=0.75, state=FiberState.COMPILED
+        )
         r = repr(t)
         assert "abc12345" in r
         assert "conf=0.75" in r
@@ -64,6 +69,7 @@ class TestSensoryTile:
 # NerveFiber init
 # ---------------------------------------------------------------------------
 
+
 class TestNerveFiberInit:
     def test_defaults(self):
         f = NerveFiber("f1")
@@ -73,7 +79,13 @@ class TestNerveFiberInit:
         assert f.confidence == 0.0
 
     def test_custom_params(self):
-        f = NerveFiber("f2", model_type="jepa", adapt_threshold=0.8, novelty_threshold=0.5, epsilon=0.1)
+        f = NerveFiber(
+            "f2",
+            model_type="jepa",
+            adapt_threshold=0.8,
+            novelty_threshold=0.5,
+            epsilon=0.1,
+        )
         assert f.model_type == "jepa"
         assert f.adapt_threshold == 0.8
         assert f.novelty_threshold == 0.5
@@ -89,6 +101,7 @@ class TestNerveFiberInit:
 # ---------------------------------------------------------------------------
 # Hashing
 # ---------------------------------------------------------------------------
+
 
 class TestHashSignal:
     def test_numpy_fast_path(self):
@@ -118,6 +131,7 @@ class TestHashSignal:
 # ---------------------------------------------------------------------------
 # Feature extraction
 # ---------------------------------------------------------------------------
+
 
 class TestExtractFeatures:
     def test_numpy_array(self):
@@ -150,6 +164,7 @@ class TestExtractFeatures:
 # ---------------------------------------------------------------------------
 # State transitions
 # ---------------------------------------------------------------------------
+
 
 class TestStateTransitions:
     def test_perceiving_to_adapting(self):
@@ -232,9 +247,11 @@ class TestStateTransitions:
 # Thread safety
 # ---------------------------------------------------------------------------
 
+
 class TestThreadSafety:
     def test_perceive_concurrent(self):
         import threading
+
         f = NerveFiber("f1", epsilon=0.01)
         errors = []
 
@@ -258,6 +275,7 @@ class TestThreadSafety:
 # ---------------------------------------------------------------------------
 # _get_device_router
 # ---------------------------------------------------------------------------
+
 
 class TestDeviceRouter:
     def test_returns_none_when_unavailable(self):

@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class A2APlugin:
     """A registered A2A plugin."""
+
     name: str
     version: str
     handler: Callable
@@ -41,9 +42,14 @@ class A2APluginManager:
         self.plugins: Dict[str, A2APlugin] = {}
         self._hooks: Dict[str, List[str]] = {}  # hook_name -> [plugin_name]
 
-    def register(self, name: str, version: str, handler: Callable,
-                 metadata: Optional[Dict[str, Any]] = None,
-                 hooks: Optional[List[str]] = None) -> A2APlugin:
+    def register(
+        self,
+        name: str,
+        version: str,
+        handler: Callable,
+        metadata: Optional[Dict[str, Any]] = None,
+        hooks: Optional[List[str]] = None,
+    ) -> A2APlugin:
         """Register a plugin."""
         plugin = A2APlugin(
             name=name,
@@ -53,7 +59,7 @@ class A2APluginManager:
         )
         self.plugins[name] = plugin
 
-        for hook in (hooks or []):
+        for hook in hooks or []:
             self._hooks.setdefault(hook, []).append(name)
 
         return plugin
@@ -99,17 +105,21 @@ class A2APluginManager:
             if plugin and plugin.enabled:
                 try:
                     result = plugin.handler(*args, **kwargs)
-                    results.append({
-                        "plugin": plugin_name,
-                        "result": result,
-                        "success": True,
-                    })
+                    results.append(
+                        {
+                            "plugin": plugin_name,
+                            "result": result,
+                            "success": True,
+                        }
+                    )
                 except Exception as e:
-                    results.append({
-                        "plugin": plugin_name,
-                        "error": str(e),
-                        "success": False,
-                    })
+                    results.append(
+                        {
+                            "plugin": plugin_name,
+                            "error": str(e),
+                            "success": False,
+                        }
+                    )
         return results
 
     def enable(self, name: str) -> bool:
@@ -137,11 +147,14 @@ class A2APluginManager:
 
     def export_manifest(self) -> str:
         """Export plugin manifest as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "plugins": [p.to_dict() for p in self.plugins.values()],
-            "hooks": {k: v for k, v in self._hooks.items()},
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "plugins": [p.to_dict() for p in self.plugins.values()],
+                "hooks": {k: v for k, v in self._hooks.items()},
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

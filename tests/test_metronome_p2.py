@@ -58,14 +58,18 @@ def test_a2a_signal_source_fetch():
     # Build a mock A2A response with a 64-dim signal
     mock_response = MagicMock()
     expected_signal = np.linspace(-1, 1, 64).astype(np.float32)
-    mock_response.read.return_value = json.dumps({
-        "id": "task-001",
-        "status": "completed",
-        "artefacts": [{
-            "type": "SignalPayload",
-            "content": {"signal": expected_signal.tolist()},
-        }],
-    }).encode("utf-8")
+    mock_response.read.return_value = json.dumps(
+        {
+            "id": "task-001",
+            "status": "completed",
+            "artefacts": [
+                {
+                    "type": "SignalPayload",
+                    "content": {"signal": expected_signal.tolist()},
+                }
+            ],
+        }
+    ).encode("utf-8")
     mock_response.__enter__ = MagicMock(return_value=mock_response)
     mock_response.__exit__ = MagicMock(return_value=False)
 
@@ -98,9 +102,11 @@ def test_a2a_signal_source_pad_short_vector():
     src = A2ASignalSource(endpoint_url="http://test.local:8080")
 
     mock_response = MagicMock()
-    mock_response.read.return_value = json.dumps({
-        "artefacts": [{"content": {"signal": [1.0, 2.0, 3.0]}}],
-    }).encode("utf-8")
+    mock_response.read.return_value = json.dumps(
+        {
+            "artefacts": [{"content": {"signal": [1.0, 2.0, 3.0]}}],
+        }
+    ).encode("utf-8")
     mock_response.__enter__ = MagicMock(return_value=mock_response)
     mock_response.__exit__ = MagicMock(return_value=False)
 
@@ -136,10 +142,12 @@ def test_tick_as_task_submit_and_collect(scheduler):
     payload = task.on_beat(beat_number=1)
 
     mock_response = MagicMock()
-    mock_response.read.return_value = json.dumps({
-        "id": "tick-1",
-        "status": "submitted",
-    }).encode("utf-8")
+    mock_response.read.return_value = json.dumps(
+        {
+            "id": "tick-1",
+            "status": "submitted",
+        }
+    ).encode("utf-8")
     mock_response.__enter__ = MagicMock(return_value=mock_response)
     mock_response.__exit__ = MagicMock(return_value=False)
 
@@ -184,18 +192,22 @@ def test_task_mode_scheduler(scheduler):
     assert task_scheduler.a2a_endpoint == "http://mock.nexus:4047/metronome"
 
     mock_response = MagicMock()
-    mock_response.read.return_value = json.dumps({
-        "id": "tick-0",
-        "status": "completed",
-        "artefacts": [{
-            "type": "TickResult",
-            "content": {
-                "beat_number": 0,
-                "fired_rooms": [1, 2, 3],
-                "fired_count": 3,
-            },
-        }],
-    }).encode("utf-8")
+    mock_response.read.return_value = json.dumps(
+        {
+            "id": "tick-0",
+            "status": "completed",
+            "artefacts": [
+                {
+                    "type": "TickResult",
+                    "content": {
+                        "beat_number": 0,
+                        "fired_rooms": [1, 2, 3],
+                        "fired_count": 3,
+                    },
+                }
+            ],
+        }
+    ).encode("utf-8")
     mock_response.__enter__ = MagicMock(return_value=mock_response)
     mock_response.__exit__ = MagicMock(return_value=False)
 
@@ -217,7 +229,12 @@ def test_task_mode_false_runs_direct_phases(scheduler):
 
     result = scheduler.tick_now()
     # Direct tick returns the grid tick result dict, not an A2A envelope
-    assert "fired" in result or "fired_rooms" in result or "ids" in result or "tick" in result
+    assert (
+        "fired" in result
+        or "fired_rooms" in result
+        or "ids" in result
+        or "tick" in result
+    )
     assert scheduler.beat_number == 1
 
 
@@ -265,18 +282,22 @@ def test_integration_a2a_signal_source_in_task_mode():
 
     # Mock both the signal fetch and the task submission
     signal_response = MagicMock()
-    signal_response.read.return_value = json.dumps({
-        "artefacts": [{"content": {"signal": np.ones(64).tolist()}}],
-    }).encode("utf-8")
+    signal_response.read.return_value = json.dumps(
+        {
+            "artefacts": [{"content": {"signal": np.ones(64).tolist()}}],
+        }
+    ).encode("utf-8")
     signal_response.__enter__ = MagicMock(return_value=signal_response)
     signal_response.__exit__ = MagicMock(return_value=False)
 
     task_response = MagicMock()
-    task_response.read.return_value = json.dumps({
-        "id": "tick-0",
-        "status": "completed",
-        "artefacts": [{"content": {"beat_number": 0, "fired_rooms": []}}],
-    }).encode("utf-8")
+    task_response.read.return_value = json.dumps(
+        {
+            "id": "tick-0",
+            "status": "completed",
+            "artefacts": [{"content": {"beat_number": 0, "fired_rooms": []}}],
+        }
+    ).encode("utf-8")
     task_response.__enter__ = MagicMock(return_value=task_response)
     task_response.__exit__ = MagicMock(return_value=False)
 

@@ -26,6 +26,7 @@ class Agent:
         fitness: Current fitness score [0, 1].
         parent_id: Immediate parent (None for root agents).
     """
+
     agent_id: int
     slots: int
     fitness: float
@@ -46,10 +47,10 @@ class InheritanceTax:
     """
 
     TAX_BRACKETS = [
-        (0.0, 0.3, 0.0),    # 0-30% inherited: 0% tax
-        (0.3, 0.6, 0.15),   # 30-60% inherited: 15% tax
-        (0.6, 0.9, 0.30),   # 60-90% inherited: 30% tax
-        (0.9, 1.0, 0.50),   # 90-100% inherited: 50% tax
+        (0.0, 0.3, 0.0),  # 0-30% inherited: 0% tax
+        (0.3, 0.6, 0.15),  # 30-60% inherited: 15% tax
+        (0.6, 0.9, 0.30),  # 60-90% inherited: 30% tax
+        (0.9, 1.0, 0.50),  # 90-100% inherited: 50% tax
     ]
 
     DEFAULT_SLOTS = 10

@@ -22,6 +22,7 @@ from fleet.formula_compiler import (
 # Parser
 # ---------------------------------------------------------------------------
 
+
 class TestParser:
     def test_number(self):
         p = FormulaParser("=42")
@@ -77,7 +78,9 @@ class TestParser:
         assert node.op == "<"
 
     def test_nested_call(self):
-        p = FormulaParser('=IF(AND(THERMAL_AVG() < 0.8, AGENT_COUNT() > 10), SPAWN("scout"), IDLE())')
+        p = FormulaParser(
+            '=IF(AND(THERMAL_AVG() < 0.8, AGENT_COUNT() > 10), SPAWN("scout"), IDLE())'
+        )
         node = p.parse()
         assert isinstance(node, CallNode)
         assert node.func == "IF"
@@ -95,6 +98,7 @@ class TestParser:
 # ---------------------------------------------------------------------------
 # FleetFormulaEnv
 # ---------------------------------------------------------------------------
+
 
 class TestFleetFormulaEnv:
     def test_fleet_health_default(self):
@@ -174,6 +178,7 @@ class TestFleetFormulaEnv:
 # FormulaCompiler
 # ---------------------------------------------------------------------------
 
+
 class TestFormulaCompiler:
     def test_compile_number(self):
         env = FleetFormulaEnv()
@@ -250,6 +255,7 @@ class TestFormulaCompiler:
         class MockConductor:
             def health(self):
                 return 0.3
+
             def queue_depth(self):
                 return 5
 
@@ -280,6 +286,7 @@ class TestFormulaCompiler:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_empty_formula(self):

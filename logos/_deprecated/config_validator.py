@@ -18,6 +18,7 @@ Usage:
     result = schema.validate(config_dict)
     # result.errors or result.value
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -35,6 +36,7 @@ from typing import Any, Callable
 @dataclass
 class ValidationError:
     """Single validation error."""
+
     path: str
     message: str
 
@@ -45,6 +47,7 @@ class ValidationError:
 @dataclass
 class ValidationResult:
     """Result of schema validation."""
+
     value: dict[str, Any] | None
     errors: list[ValidationError] = field(default_factory=list)
     valid: bool = True
@@ -57,6 +60,7 @@ class ValidationResult:
 @dataclass
 class Field:
     """Schema field definition."""
+
     type: type | None = None
     required: bool = True
     default: Any = None
@@ -83,9 +87,11 @@ class Field:
 
         # Type check
         if self.type is not None and not isinstance(value, self.type):
-            errors.append(ValidationError(
-                path, f"expected {self.type.__name__}, got {type(value).__name__}"
-            ))
+            errors.append(
+                ValidationError(
+                    path, f"expected {self.type.__name__}, got {type(value).__name__}"
+                )
+            )
             return errors  # further checks would fail with wrong type
 
         # Range check
@@ -96,43 +102,57 @@ class Field:
 
         # Length check
         if self.min_length is not None and len(value) < self.min_length:
-            errors.append(ValidationError(
-                path, f"length {len(value)} < min_length {self.min_length}"
-            ))
+            errors.append(
+                ValidationError(
+                    path, f"length {len(value)} < min_length {self.min_length}"
+                )
+            )
         if self.max_length is not None and len(value) > self.max_length:
-            errors.append(ValidationError(
-                path, f"length {len(value)} > max_length {self.max_length}"
-            ))
+            errors.append(
+                ValidationError(
+                    path, f"length {len(value)} > max_length {self.max_length}"
+                )
+            )
 
         # Pattern check
         if self.pattern is not None and isinstance(value, str):
             if not re.match(self.pattern, value):
-                errors.append(ValidationError(
-                    path, f"value '{value}' does not match pattern '{self.pattern}'"
-                ))
+                errors.append(
+                    ValidationError(
+                        path, f"value '{value}' does not match pattern '{self.pattern}'"
+                    )
+                )
 
         # Choices check
         if self.choices is not None and value not in self.choices:
-            errors.append(ValidationError(
-                path, f"value {value} not in choices {self.choices}"
-            ))
+            errors.append(
+                ValidationError(path, f"value {value} not in choices {self.choices}")
+            )
 
         # List item schema
-        if self.type is list and self.item_schema is not None and isinstance(value, list):
+        if (
+            self.type is list
+            and self.item_schema is not None
+            and isinstance(value, list)
+        ):
             for i, item in enumerate(value):
                 item_errors = self.item_schema._validate_value(item, f"{path}[{i}]")
                 errors.extend(item_errors)
 
         # Dict schema
-        if self.type is dict and self.dict_schema is not None and isinstance(value, dict):
+        if (
+            self.type is dict
+            and self.dict_schema is not None
+            and isinstance(value, dict)
+        ):
             for key, field_def in self.dict_schema.items():
                 if key in value:
                     dict_errors = field_def._validate_value(value[key], f"{path}.{key}")
                     errors.extend(dict_errors)
                 elif field_def.required:
-                    errors.append(ValidationError(
-                        f"{path}.{key}", "required field missing"
-                    ))
+                    errors.append(
+                        ValidationError(f"{path}.{key}", "required field missing")
+                    )
 
         # Custom validator
         if self.custom_validator is not None:
@@ -146,6 +166,7 @@ class Field:
 @dataclass
 class Schema:
     """Schema definition for dict validation."""
+
     fields: dict[str, Field]
 
     def validate(self, data: dict[str, Any]) -> ValidationResult:
@@ -166,7 +187,11 @@ class Schema:
                 errors.extend(field_errors)
                 if not field_errors:
                     result[key] = data[key]
-            elif field_def.required and field_def.default is None and not field_def.allow_none:
+            elif (
+                field_def.required
+                and field_def.default is None
+                and not field_def.allow_none
+            ):
                 errors.append(ValidationError(key, "required field missing"))
             elif field_def.default is not None:
                 result[key] = field_def.default

@@ -157,7 +157,9 @@ class FleetCLI:
             duration_ms=duration,
         )
 
-    def report(self, report_type: str | None = None, all_reports: bool = False) -> CLIResult:
+    def report(
+        self, report_type: str | None = None, all_reports: bool = False
+    ) -> CLIResult:
         """Generate fleet reports.
 
         Parameters
@@ -236,7 +238,7 @@ class FleetCLI:
                 test_file = f"tests/test_{parts[-1]}.py"
             else:
                 test_file = f"tests/test_{module.replace('.', '_')}.py"
-            
+
             cmd = ["python3", "-m", "pytest", test_file, "-v", "--tb=short"]
         elif all_modules:
             cmd = ["python3", "-m", "pytest", "tests/", "-x", "--tb=short"]
@@ -251,7 +253,9 @@ class FleetCLI:
             ]
             cmd = ["python3", "-m", "pytest"] + test_files + ["-v", "--tb=short"]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.workspace))
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=str(self.workspace)
+        )
         success = result.returncode == 0
 
         duration = (time.time() - start) * 1000
@@ -260,8 +264,12 @@ class FleetCLI:
             success=success,
             message="Tests passed" if success else "Tests failed",
             data={
-                "stdout": result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout,
-                "stderr": result.stderr[-2000:] if len(result.stderr) > 2000 else result.stderr,
+                "stdout": result.stdout[-2000:]
+                if len(result.stdout) > 2000
+                else result.stdout,
+                "stderr": result.stderr[-2000:]
+                if len(result.stderr) > 2000
+                else result.stderr,
                 "returncode": result.returncode,
             },
             duration_ms=duration,
@@ -289,14 +297,14 @@ class FleetCLI:
             # Generate reports first
             self._ensure_reporter()
             self._reporter.generate_all_reports()
-            
+
             # Start simple HTTP server
             import http.server
             import socketserver
-            
+
             report_dir = str(self._reporter.output_dir)
             handler = http.server.SimpleHTTPRequestHandler
-            
+
             with socketserver.TCPServer(("", 8080), handler) as httpd:
                 print(f"Dashboard serving at http://localhost:8080/{report_dir}/")
                 print("Press Ctrl+C to stop")
@@ -304,7 +312,7 @@ class FleetCLI:
                     httpd.serve_forever()
                 except KeyboardInterrupt:
                     pass
-            
+
             duration = (time.time() - start) * 1000
             return CLIResult(
                 command="dashboard",
@@ -315,7 +323,7 @@ class FleetCLI:
         else:
             output_path = output or str(self.workspace / "docs" / "FLEET_DASHBOARD.md")
             self._dashboard.generate_markdown_report(output_path)
-            
+
             duration = (time.time() - start) * 1000
             return CLIResult(
                 command="dashboard",
@@ -325,7 +333,9 @@ class FleetCLI:
                 duration_ms=duration,
             )
 
-    def modules(self, list_modules: bool = False, show_stats: bool = False) -> CLIResult:
+    def modules(
+        self, list_modules: bool = False, show_stats: bool = False
+    ) -> CLIResult:
         """List or analyze fleet modules.
 
         Parameters
@@ -345,13 +355,15 @@ class FleetCLI:
 
         module_data = []
         for mod in self._harbor.modules.values():
-            module_data.append({
-                "name": mod.name,
-                "status": mod.status,
-                "tests": f"{mod.test_passed}/{mod.test_count}",
-                "coverage": f"{mod.test_coverage*100:.0f}%",
-                "health": TernaryValue.to_emoji(mod.health_ternary),
-            })
+            module_data.append(
+                {
+                    "name": mod.name,
+                    "status": mod.status,
+                    "tests": f"{mod.test_passed}/{mod.test_count}",
+                    "coverage": f"{mod.test_coverage * 100:.0f}%",
+                    "health": TernaryValue.to_emoji(mod.health_ternary),
+                }
+            )
 
         duration = (time.time() - start) * 1000
         return CLIResult(
@@ -385,7 +397,7 @@ class FleetCLI:
             message = f"Metrics collected for cycle {snapshot.cycle_number}"
             data = {
                 "cycle": snapshot.cycle_number,
-                "health": f"{snapshot.health_score*100:.0f}%",
+                "health": f"{snapshot.health_score * 100:.0f}%",
                 "tests": f"{snapshot.tests_passed}/{snapshot.total_tests}",
             }
         elif show_trends:
@@ -398,7 +410,7 @@ class FleetCLI:
                 trend_data[name] = {
                     "direction": trend.direction,
                     "change": f"{trend.change_pct:+.1f}%",
-                    "confidence": f"{trend.confidence*100:.0f}%",
+                    "confidence": f"{trend.confidence * 100:.0f}%",
                 }
             message = f"{len(trends)} trends analyzed"
             data = {"trends": trend_data}
@@ -408,7 +420,7 @@ class FleetCLI:
                 message = f"Latest metrics: cycle {snapshot.cycle_number}"
                 data = {
                     "cycle": snapshot.cycle_number,
-                    "health": f"{snapshot.health_score*100:.0f}%",
+                    "health": f"{snapshot.health_score * 100:.0f}%",
                     "tests": f"{snapshot.tests_passed}/{snapshot.total_tests}",
                 }
             else:
@@ -489,24 +501,44 @@ class FleetCLI:
 
         # beat
         beat_parser = subparsers.add_parser("beat", help="Run fleet beat(s)")
-        beat_parser.add_argument("--count", "-c", type=int, default=1, help="Number of beats")
+        beat_parser.add_argument(
+            "--count", "-c", type=int, default=1, help="Number of beats"
+        )
 
         # health
         subparsers.add_parser("health", help="Check fleet health")
 
         # report
         report_parser = subparsers.add_parser("report", help="Generate reports")
-        report_parser.add_argument("--type", "-t", choices=["dashboard", "api", "architecture", "integration", "trend", "summary"], help="Report type")
-        report_parser.add_argument("--all", "-a", action="store_true", help="Generate all reports")
+        report_parser.add_argument(
+            "--type",
+            "-t",
+            choices=[
+                "dashboard",
+                "api",
+                "architecture",
+                "integration",
+                "trend",
+                "summary",
+            ],
+            help="Report type",
+        )
+        report_parser.add_argument(
+            "--all", "-a", action="store_true", help="Generate all reports"
+        )
 
         # test
         test_parser = subparsers.add_parser("test", help="Run tests")
         test_parser.add_argument("--module", "-m", help="Module to test")
-        test_parser.add_argument("--all", "-a", action="store_true", help="Run all tests")
+        test_parser.add_argument(
+            "--all", "-a", action="store_true", help="Run all tests"
+        )
 
         # dashboard
         dash_parser = subparsers.add_parser("dashboard", help="Generate dashboard")
-        dash_parser.add_argument("--serve", "-s", action="store_true", help="Serve dashboard")
+        dash_parser.add_argument(
+            "--serve", "-s", action="store_true", help="Serve dashboard"
+        )
         dash_parser.add_argument("--output", "-o", help="Output file")
 
         # modules
@@ -515,7 +547,9 @@ class FleetCLI:
 
         # metrics
         met_parser = subparsers.add_parser("metrics", help="Show/collect metrics")
-        met_parser.add_argument("--collect", "-c", action="store_true", help="Collect metrics")
+        met_parser.add_argument(
+            "--collect", "-c", action="store_true", help="Collect metrics"
+        )
         met_parser.add_argument("--trends", action="store_true", help="Show trends")
 
         # status
@@ -530,11 +564,17 @@ class FleetCLI:
         commands = {
             "beat": lambda: self.beat(count=parsed.count),
             "health": lambda: self.health(),
-            "report": lambda: self.report(report_type=parsed.type, all_reports=parsed.all),
+            "report": lambda: self.report(
+                report_type=parsed.type, all_reports=parsed.all
+            ),
             "test": lambda: self.test(module=parsed.module, all_modules=parsed.all),
-            "dashboard": lambda: self.dashboard(serve=parsed.serve, output=parsed.output),
+            "dashboard": lambda: self.dashboard(
+                serve=parsed.serve, output=parsed.output
+            ),
             "modules": lambda: self.modules(list_modules=True, show_stats=parsed.stats),
-            "metrics": lambda: self.metrics(collect=parsed.collect, show_trends=parsed.trends),
+            "metrics": lambda: self.metrics(
+                collect=parsed.collect, show_trends=parsed.trends
+            ),
             "status": lambda: self.status(),
         }
 
@@ -542,7 +582,9 @@ class FleetCLI:
         if cmd:
             return cmd()
 
-        return CLIResult(command=parsed.command, success=False, message="Unknown command")
+        return CLIResult(
+            command=parsed.command, success=False, message="Unknown command"
+        )
 
     # ── Console Output ────────────────────────────────────────
 

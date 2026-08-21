@@ -12,6 +12,7 @@ Usage:
     assert shards.get_node("shard-1") == "node-1"
     shards.rebalance()
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -72,7 +73,9 @@ class ShardManager:
             return False
         node = self._assignments.pop(shard_id, None)
         if node:
-            self._node_usage[node] = max(0, self._node_usage.get(node, 0) - self._shards[shard_id]["size"])
+            self._node_usage[node] = max(
+                0, self._node_usage.get(node, 0) - self._shards[shard_id]["size"]
+            )
         del self._shards[shard_id]
         return True
 
@@ -91,9 +94,14 @@ class ShardManager:
         if best_node and best_avail > 0:
             old_node = self._assignments.get(shard_id)
             if old_node:
-                self._node_usage[old_node] = max(0, self._node_usage.get(old_node, 0) - self._shards[shard_id]["size"])
+                self._node_usage[old_node] = max(
+                    0,
+                    self._node_usage.get(old_node, 0) - self._shards[shard_id]["size"],
+                )
             self._assignments[shard_id] = best_node
-            self._node_usage[best_node] = self._node_usage.get(best_node, 0) + self._shards[shard_id]["size"]
+            self._node_usage[best_node] = (
+                self._node_usage.get(best_node, 0) + self._shards[shard_id]["size"]
+            )
             return True
         return False
 
@@ -124,8 +132,7 @@ class ShardManager:
             while usage > target + 1 and len(self._shards) > 0:
                 # Find a shard on this node to move
                 candidates = [
-                    sid for sid, nid in self._assignments.items()
-                    if nid == node_id
+                    sid for sid, nid in self._assignments.items() if nid == node_id
                 ]
                 if not candidates:
                     break
@@ -133,11 +140,17 @@ class ShardManager:
                 # Try to place on another node
                 old_node = self._assignments[shard_id]
                 del self._assignments[shard_id]
-                self._node_usage[old_node] = max(0, self._node_usage.get(old_node, 0) - self._shards[shard_id]["size"])
+                self._node_usage[old_node] = max(
+                    0,
+                    self._node_usage.get(old_node, 0) - self._shards[shard_id]["size"],
+                )
                 if not self._place_shard(shard_id):
                     # Couldn't place, restore
                     self._assignments[shard_id] = old_node
-                    self._node_usage[old_node] = self._node_usage.get(old_node, 0) + self._shards[shard_id]["size"]
+                    self._node_usage[old_node] = (
+                        self._node_usage.get(old_node, 0)
+                        + self._shards[shard_id]["size"]
+                    )
                     break
                 moved += 1
                 usage = self._node_usage.get(node_id, 0)

@@ -36,12 +36,12 @@ logger = logging.getLogger(__name__)
 # ── Rule types ─────────────────────────────────────────────────────────
 
 MercuryRule = Callable[
-    [float, float, List[float]],
-    Tuple[Optional[float], Optional[float]]
+    [float, float, List[float]], Tuple[Optional[float], Optional[float]]
 ]
 
 
 # ── Built-in rules ─────────────────────────────────────────────────────
+
 
 def rule_survival(
     energy: float, state: float, neighbors: List[float]
@@ -85,6 +85,7 @@ def rule_mutation(
 
 # ── Engine ──────────────────────────────────────────────────────────────
 
+
 @dataclass
 class MercuryCellularEngine:
     """Cellular automata engine with Mercury-style declarative rules."""
@@ -106,14 +107,18 @@ class MercuryCellularEngine:
     def states(self) -> np.ndarray:
         return self._states
 
-    def seed(self, positions: List[Tuple[int, int]], energy: float = 1.0, state: float = 1.0) -> None:
+    def seed(
+        self, positions: List[Tuple[int, int]], energy: float = 1.0, state: float = 1.0
+    ) -> None:
         """Seed cells at specific positions."""
         for i, j in positions:
             if 0 <= i < self.grid_size[0] and 0 <= j < self.grid_size[1]:
                 self._energies[i, j] = energy
                 self._states[i, j] = state
 
-    def seed_random(self, count: int, energy_range: Tuple[float, float] = (0.5, 1.0)) -> None:
+    def seed_random(
+        self, count: int, energy_range: Tuple[float, float] = (0.5, 1.0)
+    ) -> None:
         """Randomly seed `count` cells."""
         rows, cols = self.grid_size
         indices = np.random.choice(rows * cols, size=count, replace=False)
@@ -185,6 +190,7 @@ class MercuryCellularEngine:
     def benchmark(self, ticks: int = 100) -> Dict[str, float]:
         """Benchmark tick performance."""
         import time
+
         for _ in range(min(10, ticks)):
             self.tick()
 

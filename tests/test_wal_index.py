@@ -20,12 +20,66 @@ def populated_wal(tmp_path):
     base_ts = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc).timestamp()
 
     entries = [
-        WALEntry(timestamp=base_ts, agent_id=1, operation="spawn", vector_hash="a" * 64, parent_ids=[], generation=0, node_id="node-alpha", room_id="forge"),
-        WALEntry(timestamp=base_ts + 3600, agent_id=2, operation="spawn", vector_hash="b" * 64, parent_ids=[], generation=0, node_id="node-beta", room_id="crucible"),
-        WALEntry(timestamp=base_ts + 7200, agent_id=1, operation="breed", vector_hash="c" * 64, parent_ids=[1], generation=1, node_id="node-alpha", room_id="forge"),
-        WALEntry(timestamp=base_ts + 10800, agent_id=3, operation="sunset", vector_hash="d" * 64, parent_ids=[2], generation=0, node_id="node-gamma", room_id="archive"),
-        WALEntry(timestamp=base_ts + 14400, agent_id=1, operation="tick", vector_hash="e" * 64, parent_ids=[], generation=1, node_id="node-alpha", room_id="forge"),
-        WALEntry(timestamp=base_ts + 18000, agent_id=4, operation="flux_violation", vector_hash="f" * 64, parent_ids=[], generation=0, node_id="node-beta", room_id="crucible"),
+        WALEntry(
+            timestamp=base_ts,
+            agent_id=1,
+            operation="spawn",
+            vector_hash="a" * 64,
+            parent_ids=[],
+            generation=0,
+            node_id="node-alpha",
+            room_id="forge",
+        ),
+        WALEntry(
+            timestamp=base_ts + 3600,
+            agent_id=2,
+            operation="spawn",
+            vector_hash="b" * 64,
+            parent_ids=[],
+            generation=0,
+            node_id="node-beta",
+            room_id="crucible",
+        ),
+        WALEntry(
+            timestamp=base_ts + 7200,
+            agent_id=1,
+            operation="breed",
+            vector_hash="c" * 64,
+            parent_ids=[1],
+            generation=1,
+            node_id="node-alpha",
+            room_id="forge",
+        ),
+        WALEntry(
+            timestamp=base_ts + 10800,
+            agent_id=3,
+            operation="sunset",
+            vector_hash="d" * 64,
+            parent_ids=[2],
+            generation=0,
+            node_id="node-gamma",
+            room_id="archive",
+        ),
+        WALEntry(
+            timestamp=base_ts + 14400,
+            agent_id=1,
+            operation="tick",
+            vector_hash="e" * 64,
+            parent_ids=[],
+            generation=1,
+            node_id="node-alpha",
+            room_id="forge",
+        ),
+        WALEntry(
+            timestamp=base_ts + 18000,
+            agent_id=4,
+            operation="flux_violation",
+            vector_hash="f" * 64,
+            parent_ids=[],
+            generation=0,
+            node_id="node-beta",
+            room_id="crucible",
+        ),
     ]
     for e in entries:
         wal.append(e)
@@ -46,11 +100,20 @@ class TestIndexRebuild:
     def test_index_rebuild_after_append(self, populated_wal):
         wal, _ = populated_wal
         idx = WALIndex(wal)
-        wal.append(WALEntry(
-            timestamp=datetime(2024, 5, 20, 18, 0, 0, tzinfo=timezone.utc).timestamp(),
-            agent_id=5, operation="spawn", vector_hash="g" * 64,
-            parent_ids=[], generation=0, node_id="node-delta", room_id="void",
-        ))
+        wal.append(
+            WALEntry(
+                timestamp=datetime(
+                    2024, 5, 20, 18, 0, 0, tzinfo=timezone.utc
+                ).timestamp(),
+                agent_id=5,
+                operation="spawn",
+                vector_hash="g" * 64,
+                parent_ids=[],
+                generation=0,
+                node_id="node-delta",
+                room_id="void",
+            )
+        )
         idx.rebuild()
         assert len(idx.by_type["spawn"]) == 3
         assert "node-delta" in idx.by_node
@@ -62,11 +125,20 @@ class TestIndexIncrementalUpdate:
         wal, _ = populated_wal
         idx = WALIndex(wal)
         initial_spawn_count = len(idx.by_type["spawn"])
-        new_entry = wal.append(WALEntry(
-            timestamp=datetime(2024, 5, 20, 18, 0, 0, tzinfo=timezone.utc).timestamp(),
-            agent_id=5, operation="spawn", vector_hash="g" * 64,
-            parent_ids=[], generation=0, node_id="node-delta", room_id="void",
-        ))
+        new_entry = wal.append(
+            WALEntry(
+                timestamp=datetime(
+                    2024, 5, 20, 18, 0, 0, tzinfo=timezone.utc
+                ).timestamp(),
+                agent_id=5,
+                operation="spawn",
+                vector_hash="g" * 64,
+                parent_ids=[],
+                generation=0,
+                node_id="node-delta",
+                room_id="void",
+            )
+        )
         idx.update(new_entry)
         assert len(idx.by_type["spawn"]) == initial_spawn_count + 1
         assert "node-delta" in idx.by_node
@@ -184,16 +256,18 @@ class TestIndexPersistence:
         base_ts = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc).timestamp()
 
         for i in range(10):
-            wal.append(WALEntry(
-                timestamp=base_ts + i * 600,
-                agent_id=i,
-                operation="spawn",
-                vector_hash=f"{i:064x}",
-                parent_ids=[],
-                generation=0,
-                node_id=f"node-{i % 3}",
-                room_id=f"room-{i % 2}",
-            ))
+            wal.append(
+                WALEntry(
+                    timestamp=base_ts + i * 600,
+                    agent_id=i,
+                    operation="spawn",
+                    vector_hash=f"{i:064x}",
+                    parent_ids=[],
+                    generation=0,
+                    node_id=f"node-{i % 3}",
+                    room_id=f"room-{i % 2}",
+                )
+            )
 
         idx1 = WALIndex(wal)
         assert len(idx1.by_type["spawn"]) == 10
@@ -213,8 +287,26 @@ class TestIndexCorruption:
         wal = SignedWAL(log_path=path)
         base_ts = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc).timestamp()
 
-        wal.append(WALEntry(timestamp=base_ts, agent_id=1, operation="spawn", vector_hash="a" * 64, parent_ids=[], generation=0))
-        wal.append(WALEntry(timestamp=base_ts + 3600, agent_id=2, operation="tick", vector_hash="b" * 64, parent_ids=[], generation=0))
+        wal.append(
+            WALEntry(
+                timestamp=base_ts,
+                agent_id=1,
+                operation="spawn",
+                vector_hash="a" * 64,
+                parent_ids=[],
+                generation=0,
+            )
+        )
+        wal.append(
+            WALEntry(
+                timestamp=base_ts + 3600,
+                agent_id=2,
+                operation="tick",
+                vector_hash="b" * 64,
+                parent_ids=[],
+                generation=0,
+            )
+        )
 
         # Append a corrupt line directly to the file
         with open(path, "a") as f:
@@ -227,7 +319,12 @@ class TestIndexCorruption:
         idx = WALIndex(wal2)
         assert len(idx.by_type["spawn"]) == 1
         assert len(idx.by_type["tick"]) == 1
-        assert idx.query(conjunction="and", filters=[{"field": "event_type", "value": "spawn"}])[0].entry.agent_id == 1
+        assert (
+            idx.query(
+                conjunction="and", filters=[{"field": "event_type", "value": "spawn"}]
+            )[0].entry.agent_id
+            == 1
+        )
 
 
 class TestIndexConvenience:

@@ -9,6 +9,7 @@ Usage::
     kernel = JEPAKernel("nerve/target/release/libjepa_kernel.so")
     out = kernel.forward_batch(x, weights, biases, n_rooms)
 """
+
 from __future__ import annotations
 
 import ctypes
@@ -77,7 +78,7 @@ class JEPAKernel:
             ctypes.POINTER(ctypes.c_float),  # b1
             ctypes.POINTER(ctypes.c_float),  # b2
             ctypes.POINTER(ctypes.c_float),  # b3
-            ctypes.c_size_t,                  # n
+            ctypes.c_size_t,  # n
             ctypes.POINTER(ctypes.c_float),  # out
         ]
         self._lib.jepa_forward_batch.restype = None

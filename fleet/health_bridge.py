@@ -35,6 +35,7 @@ from typing import Any, Callable, Optional
 @dataclass
 class CheckResult:
     """Standardized health check result — compatible with cocapn-health."""
+
     name: str
     ok: bool
     latency_ms: float
@@ -64,6 +65,7 @@ class CheckResult:
 @dataclass
 class ServiceDef:
     """A fleet service to monitor — compatible with cocapn-health."""
+
     name: str
     host: str
     port: int
@@ -80,17 +82,55 @@ class ServiceDef:
 # Default fleet services — matches cocapn-health's FLEET_SERVICES
 FLEET_SERVICES = [
     ServiceDef("MUD v3", "147.224.38.131", 4042, "/status", extract={"rooms": "rooms"}),
-    ServiceDef("The Lock v2", "147.224.38.131", 4043, "/status", extract={"strategies": "strategies"}),
-    ServiceDef("Arena", "147.224.38.131", 4044, "/stats", extract={"total_matches": "total_matches"}),
-    ServiceDef("Grammar Engine", "147.224.38.131", 4045, "/grammar", extract={"total_rules": "total_rules"}),
+    ServiceDef(
+        "The Lock v2",
+        "147.224.38.131",
+        4043,
+        "/status",
+        extract={"strategies": "strategies"},
+    ),
+    ServiceDef(
+        "Arena",
+        "147.224.38.131",
+        4044,
+        "/stats",
+        extract={"total_matches": "total_matches"},
+    ),
+    ServiceDef(
+        "Grammar Engine",
+        "147.224.38.131",
+        4045,
+        "/grammar",
+        extract={"total_rules": "total_rules"},
+    ),
     ServiceDef("Dashboard", "147.224.38.131", 4046, "/"),
     ServiceDef("Federated Nexus", "147.224.38.131", 4047, "/"),
     ServiceDef("Harbor", "147.224.38.131", 4050, "/"),
-    ServiceDef("Grammar Compactor", "147.224.38.131", 4055, "/status", extract={"total_rules": "total_rules"}),
-    ServiceDef("Rate-Attention", "147.224.38.131", 4056, "/streams", extract={"streams": "streams"}),
-    ServiceDef("Skill Forge", "147.224.38.131", 4057, "/status", extract={"total_drills": "total_drills"}),
+    ServiceDef(
+        "Grammar Compactor",
+        "147.224.38.131",
+        4055,
+        "/status",
+        extract={"total_rules": "total_rules"},
+    ),
+    ServiceDef(
+        "Rate-Attention",
+        "147.224.38.131",
+        4056,
+        "/streams",
+        extract={"streams": "streams"},
+    ),
+    ServiceDef(
+        "Skill Forge",
+        "147.224.38.131",
+        4057,
+        "/status",
+        extract={"total_drills": "total_drills"},
+    ),
     ServiceDef("PLATO Terminal", "147.224.38.131", 4060, "/"),
-    ServiceDef("PLATO Gate", "147.224.38.131", 8847, "/rooms", extract={"rooms": "rooms"}),
+    ServiceDef(
+        "PLATO Gate", "147.224.38.131", 8847, "/rooms", extract={"rooms": "rooms"}
+    ),
     ServiceDef("PLATO Shell", "147.224.38.131", 8848, "/"),
     ServiceDef("Service Guard", "147.224.38.131", 8899, "/"),
     ServiceDef("Task Queue", "147.224.38.131", 8900, "/"),
@@ -155,7 +195,9 @@ class HealthChecker:
                     name=url,
                     ok=is_up,
                     latency_ms=latency_ms,
-                    status=f"UP | HTTP {status_code}" if is_up else f"DEGRADED | HTTP {status_code}",
+                    status=f"UP | HTTP {status_code}"
+                    if is_up
+                    else f"DEGRADED | HTTP {status_code}",
                     details=details,
                 )
         except urllib.error.HTTPError as e:
@@ -206,11 +248,12 @@ class HealthChecker:
     def check_disk(path: str = "/", min_percent_free: float = 10.0) -> CheckResult:
         """Check disk space."""
         import shutil
+
         start = time.time()
         try:
             usage = shutil.disk_usage(path)
-            total_gb = usage.total / (1024 ** 3)
-            free_gb = usage.free / (1024 ** 3)
+            total_gb = usage.total / (1024**3)
+            free_gb = usage.free / (1024**3)
             percent_free = (usage.free / usage.total) * 100
             latency_ms = (time.time() - start) * 1000
             ok = percent_free >= min_percent_free
@@ -371,14 +414,17 @@ class HealthChecker:
     def report(results: list[CheckResult], format: str = "md") -> str:
         """Format results as markdown, json, or oneline."""
         if format == "json":
-            return json.dumps({
-                "summary": {
-                    "total": len(results),
-                    "up": sum(1 for r in results if r.ok),
-                    "down": sum(1 for r in results if not r.ok),
+            return json.dumps(
+                {
+                    "summary": {
+                        "total": len(results),
+                        "up": sum(1 for r in results if r.ok),
+                        "down": sum(1 for r in results if not r.ok),
+                    },
+                    "services": [r.to_dict() for r in results],
                 },
-                "services": [r.to_dict() for r in results],
-            }, indent=2)
+                indent=2,
+            )
 
         if format == "oneline":
             up = sum(1 for r in results if r.ok)
@@ -406,6 +452,7 @@ class HealthChecker:
 
 # ---------------------------------------------------------------------------
 # Event bus bridge for service transitions
+
 
 class EventBusHealthChecker(HealthChecker):
     """
@@ -464,6 +511,7 @@ class EventBusHealthChecker(HealthChecker):
 # ---------------------------------------------------------------------------
 # Health cache with TTL
 
+
 class HealthCache:
     """Cache health check results with TTL — compatible with cocapn-health."""
 
@@ -508,6 +556,7 @@ class HealthCache:
 
 # ---------------------------------------------------------------------------
 # Utility
+
 
 def _extract_json_path(data: Any, path: str) -> Any:
     """Extract a value from nested dict using dot notation."""

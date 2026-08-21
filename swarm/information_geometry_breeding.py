@@ -39,17 +39,19 @@ logger = logging.getLogger(__name__)
 
 # ── Fisher Metric ─────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class FisherMetric:
     """Fisher information matrix for a parameterized distribution."""
 
-    theta: np.ndarray          # parameter vector (d,)
+    theta: np.ndarray  # parameter vector (d,)
     fisher_matrix: np.ndarray  # (d, d) positive semi-definite
 
     def __post_init__(self) -> None:
         # Ensure symmetry
         object.__setattr__(
-            self, "fisher_matrix",
+            self,
+            "fisher_matrix",
             (self.fisher_matrix + self.fisher_matrix.T) / 2.0,
         )
 
@@ -72,6 +74,7 @@ class FisherMetric:
 
 
 # ── Fisher-Rao Distance ───────────────────────────────────────
+
 
 def fisher_rao_distance(
     theta_a: np.ndarray,
@@ -101,9 +104,7 @@ def fisher_rao_distance(
     return total * dt
 
 
-def fisher_information_gaussian(
-    mean: np.ndarray, cov: np.ndarray
-) -> np.ndarray:
+def fisher_information_gaussian(mean: np.ndarray, cov: np.ndarray) -> np.ndarray:
     """Fisher information matrix for multivariate Gaussian N(μ, Σ).
 
     For Gaussian: I(μ) = Σ⁻¹ (information about mean)
@@ -115,6 +116,7 @@ def fisher_information_gaussian(
 
 
 # ── Natural Gradient Step ─────────────────────────────────────
+
 
 def natural_gradient_step(
     theta: np.ndarray,
@@ -143,6 +145,7 @@ def natural_gradient_step(
 
 
 # ── Information Geometry Breeder ──────────────────────────────
+
 
 class InformationGeometryBreeder:
     """Breeder that uses natural gradient for mutation and Fisher-Rao for diversity.
@@ -186,10 +189,7 @@ class InformationGeometryBreeder:
         gradients: list[np.ndarray],
     ) -> list[np.ndarray]:
         """Vectorized mutation for a batch of parents."""
-        return [
-            self.mutate(p, g)
-            for p, g in zip(parents, gradients)
-        ]
+        return [self.mutate(p, g) for p, g in zip(parents, gradients)]
 
     # ── crossover (geodesic interpolation) ─────────────────
 

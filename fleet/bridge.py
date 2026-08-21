@@ -21,6 +21,7 @@ Usage
     data = bridge.pull("query")
     bridge.disconnect()
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -42,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 # ── Status ──────────────────────────────────────────────────────
 
+
 class BridgeStatus(Enum):
     DISCONNECTED = auto()
     CONNECTING = auto()
@@ -51,9 +53,11 @@ class BridgeStatus(Enum):
 
 # ── Event ───────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class BridgeEvent:
     """Emitted by a bridge during operation."""
+
     bridge_name: str
     status: BridgeStatus
     latency_ms: float
@@ -62,6 +66,7 @@ class BridgeEvent:
 
 
 # ── ABC ─────────────────────────────────────────────────────────
+
 
 class Bridge(ABC):
     """Common interface for all fleet adapters."""
@@ -97,6 +102,7 @@ class Bridge(ABC):
     def health_check(self) -> BridgeEvent:
         """Quick connectivity check."""
         import time
+
         t0 = time.perf_counter()
         try:
             self.push({"__health_check": True})
@@ -119,6 +125,7 @@ class Bridge(ABC):
 
 # ── Registry ────────────────────────────────────────────────────
 
+
 class BridgeRegistry:
     """Central registry for all fleet bridges."""
 
@@ -134,7 +141,9 @@ class BridgeRegistry:
     def create(self, name: str, node_id: str, **kwargs: Any) -> Bridge:
         """Instantiate a registered bridge."""
         if name not in self._bridges:
-            raise KeyError(f"Bridge '{name}' not registered. Known: {list(self._bridges.keys())}")
+            raise KeyError(
+                f"Bridge '{name}' not registered. Known: {list(self._bridges.keys())}"
+            )
         instance = self._bridges[name](node_id=node_id, **kwargs)
         self._instances[f"{name}::{node_id}"] = instance
         return instance
@@ -149,13 +158,11 @@ class BridgeRegistry:
 
     def health_check_all(self) -> Dict[str, BridgeEvent]:
         """Run health check on all instantiated bridges."""
-        return {
-            key: bridge.health_check()
-            for key, bridge in self._instances.items()
-        }
+        return {key: bridge.health_check() for key, bridge in self._instances.items()}
 
 
 # ── Compiler (stub for auto-generation) ─────────────────────────
+
 
 class BridgeCompiler:
     """Auto-generate bridge classes from foreign system schemas.

@@ -11,6 +11,7 @@ References
 - SuperInstance/constraint-theory-python (PyO3) v1.0.1
 - SuperInstance/eisenstein                    v0.3.1
 """
+
 from __future__ import annotations
 
 import math
@@ -25,12 +26,14 @@ _CT_MANIFOLD: Optional[Callable] = None
 
 try:
     from constraint_theory import PythagoreanManifold as _CTManifold
+
     _CT_AVAILABLE = True
 except Exception:  # pragma: no cover
     pass
 
 
 # ── Pure-Python fallback (mirrors constraint-theory-python manifold.py) ───
+
 
 class _FallbackManifold:
     """Pure-Python Pythagorean manifold — zero external deps."""
@@ -75,15 +78,19 @@ class _FallbackManifold:
                 best_state = (sx, sy)
         return (best_state[0], best_state[1], math.sqrt(best_dist))
 
-    def snap_batch(self, vectors: List[Tuple[float, float]]) -> List[Tuple[float, float, float]]:
+    def snap_batch(
+        self, vectors: List[Tuple[float, float]]
+    ) -> List[Tuple[float, float, float]]:
         return [self.snap(v[0], v[1]) for v in vectors]
 
 
 # ── Public wrapper ──────────────────────────────────────────────────────
 
+
 @dataclass
 class SnapResult:
     """Result of snapping a vector to exact Pythagorean coordinates."""
+
     x: float
     y: float
     noise: float
@@ -99,7 +106,9 @@ class ConstraintTheoryIntegration:
 
     def __init__(self, density: int = 200):
         self._density = density
-        self._backend = _CTManifold(density) if _CT_AVAILABLE else _FallbackManifold(density)
+        self._backend = (
+            _CTManifold(density) if _CT_AVAILABLE else _FallbackManifold(density)
+        )
         self._has_ct = _CT_AVAILABLE
 
     @property
@@ -196,7 +205,9 @@ class ConstraintTheoryIntegration:
 
     # ── Holonomy / consistency checks ─────────────────────────────────────
 
-    def check_holonomy(self, cycle: List[Tuple[float, float]], threshold: float = 1e-6) -> float:
+    def check_holonomy(
+        self, cycle: List[Tuple[float, float]], threshold: float = 1e-6
+    ) -> float:
         """Verify cyclic consistency (sum of snapped deltas ≈ 0).
 
         Returns a score in [0, 1] where 1.0 = perfectly consistent.
@@ -219,6 +230,7 @@ class ConstraintTheoryIntegration:
 
 
 # ── Convenience module-level functions ───────────────────────────────────
+
 
 def snap_vector(v: Tuple[float, float], density: int = 200) -> SnapResult:
     """One-shot snap a vector."""

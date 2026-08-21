@@ -10,6 +10,7 @@ Usage:
     signature = signer.sign("/api/users", method="POST", body=b"data")
     assert signer.verify("/api/users", method="POST", body=b"data", signature=signature)
 """
+
 from __future__ import annotations
 
 import hmac

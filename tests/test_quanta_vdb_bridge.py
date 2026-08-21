@@ -48,8 +48,13 @@ class TestQuantaTableEntry:
     def test_roundtrip_dict(self) -> None:
         vec = np.array([1.0, 2.0, 3.0], dtype=np.float32)
         e = QuantaTableEntry(
-            agent_id="a1", vector=vec, timestamp=1.0, node_id="n1",
-            generation=0, fitness=0.5, signature="s1",
+            agent_id="a1",
+            vector=vec,
+            timestamp=1.0,
+            node_id="n1",
+            generation=0,
+            fitness=0.5,
+            signature="s1",
         )
         d = e.to_dict()
         e2 = QuantaTableEntry.from_dict(d)
@@ -61,7 +66,9 @@ class TestQuantaTableEntry:
 class TestVdbSyncPayload:
     def test_roundtrip(self, sample_entry: QuantaTableEntry) -> None:
         payload = VdbSyncPayload(
-            node_id="remote", timestamp=2000.0, entries=[sample_entry],
+            node_id="remote",
+            timestamp=2000.0,
+            entries=[sample_entry],
         )
         blob = payload.to_bytes()
         restored = VdbSyncPayload.from_bytes(blob)
@@ -71,11 +78,15 @@ class TestVdbSyncPayload:
 
 
 class TestInsertAndQuery:
-    def test_insert_new(self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry) -> None:
+    def test_insert_new(
+        self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry
+    ) -> None:
         assert bridge.insert(sample_entry) is True
         assert bridge.stats["count"] == 1
 
-    def test_insert_duplicate_crdt(self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry) -> None:
+    def test_insert_duplicate_crdt(
+        self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry
+    ) -> None:
         bridge.insert(sample_entry)
         # Same agent_id, lower fitness → should be rejected
         duplicate = QuantaTableEntry(
@@ -89,7 +100,9 @@ class TestInsertAndQuery:
         )
         assert bridge.insert(duplicate) is False
 
-    def test_insert_newer_wins(self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry) -> None:
+    def test_insert_newer_wins(
+        self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry
+    ) -> None:
         bridge.insert(sample_entry)
         newer = QuantaTableEntry(
             agent_id="agent_001",
@@ -105,7 +118,9 @@ class TestInsertAndQuery:
         assert queried is not None
         assert queried.generation == 2
 
-    def test_manifest_query(self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry) -> None:
+    def test_manifest_query(
+        self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry
+    ) -> None:
         bridge.insert(sample_entry)
         result = bridge._manifest_query("agent_001")
         assert result is not None
@@ -160,7 +175,9 @@ class TestSearch:
 
 
 class TestSync:
-    def test_sync_payload_roundtrip(self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry) -> None:
+    def test_sync_payload_roundtrip(
+        self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry
+    ) -> None:
         bridge.insert(sample_entry)
         payload = bridge.get_sync_payload()
         assert len(payload) > 0
@@ -168,7 +185,10 @@ class TestSync:
         # Create a second bridge (different node) and apply
         with tempfile.TemporaryDirectory() as tmp2:
             bridge2 = QuantaVdbBridge(
-                prefix="test2", data_path=tmp2, dim=64, node_id="remote_node",
+                prefix="test2",
+                data_path=tmp2,
+                dim=64,
+                node_id="remote_node",
             )
             stats = bridge2.apply_sync_payload(payload)
             assert stats["merged"] == 1
@@ -177,19 +197,29 @@ class TestSync:
     def test_sync_crdt_merge(self, bridge: QuantaVdbBridge) -> None:
         # Local entry
         local = QuantaTableEntry(
-            agent_id="agent_001", vector=np.random.randn(64).astype(np.float32),
-            timestamp=1000.0, node_id="test_node", generation=1, fitness=0.8,
+            agent_id="agent_001",
+            vector=np.random.randn(64).astype(np.float32),
+            timestamp=1000.0,
+            node_id="test_node",
+            generation=1,
+            fitness=0.8,
             signature="local",
         )
         bridge.insert(local)
 
         # Remote entry with newer timestamp
         remote = QuantaTableEntry(
-            agent_id="agent_001", vector=np.random.randn(64).astype(np.float32),
-            timestamp=2000.0, node_id="remote_node", generation=2, fitness=0.9,
+            agent_id="agent_001",
+            vector=np.random.randn(64).astype(np.float32),
+            timestamp=2000.0,
+            node_id="remote_node",
+            generation=2,
+            fitness=0.9,
             signature="remote",
         )
-        payload = VdbSyncPayload(node_id="remote", timestamp=3000.0, entries=[remote]).to_bytes()
+        payload = VdbSyncPayload(
+            node_id="remote", timestamp=3000.0, entries=[remote]
+        ).to_bytes()
 
         stats = bridge.apply_sync_payload(payload)
         assert stats["merged"] == 1
@@ -238,7 +268,9 @@ class TestFleetQueries:
 
 
 class TestStats:
-    def test_stats_tracking(self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry) -> None:
+    def test_stats_tracking(
+        self, bridge: QuantaVdbBridge, sample_entry: QuantaTableEntry
+    ) -> None:
         bridge.insert(sample_entry)
         # Search via brute-force fallback (Quanta C++ not available in test)
         results = bridge.search(sample_entry.vector, k=1)

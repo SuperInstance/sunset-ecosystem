@@ -43,9 +43,9 @@ mod = Module(
     version=3,
     constants=[42, 100],
     instructions=[
-        Instruction(opcode="Push", operand=0),      # push const[0] = 42
-        Instruction(opcode="Push", operand=1),      # push const[1] = 100
-        Instruction(opcode="RangeCheck"),            # verify 42 < 100
+        Instruction(opcode="Push", operand=0),  # push const[0] = 42
+        Instruction(opcode="Push", operand=1),  # push const[1] = 100
+        Instruction(opcode="RangeCheck"),  # verify 42 < 100
     ],
     constraints=[],
     metadata={"agent_id": "demo-001"},

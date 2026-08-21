@@ -17,6 +17,7 @@ Usage:
     compressed = FloatCompressor.compress(array, level="auto")
     array = FloatCompressor.decompress(compressed)
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -37,6 +38,7 @@ import numpy as np
 @dataclass
 class CompressionResult:
     """Result of a compression operation."""
+
     data: bytes
     original_size: int
     compressed_size: int
@@ -95,7 +97,9 @@ class FloatCompressor:
             min_val = float(np.min(flat))
             max_val = float(np.max(flat))
             if max_val > min_val:
-                scaled = ((flat - min_val) / (max_val - min_val) * 255.0).astype(np.uint8)
+                scaled = ((flat - min_val) / (max_val - min_val) * 255.0).astype(
+                    np.uint8
+                )
             else:
                 scaled = np.zeros_like(flat, dtype=np.uint8)
             header = struct.pack("!f f B", min_val, max_val, 8)
@@ -105,7 +109,9 @@ class FloatCompressor:
             min_val = float(np.min(flat))
             max_val = float(np.max(flat))
             if max_val > min_val:
-                scaled = ((flat - min_val) / (max_val - min_val) * 65535.0).astype(np.uint16)
+                scaled = ((flat - min_val) / (max_val - min_val) * 65535.0).astype(
+                    np.uint16
+                )
             else:
                 scaled = np.zeros_like(flat, dtype=np.uint16)
             header = struct.pack("!f f B", min_val, max_val, 16)
@@ -159,7 +165,9 @@ class FloatCompressor:
             min_val, max_val, _ = struct.unpack("!f f B", raw[:9])
             data = np.frombuffer(raw[9:], dtype=np.uint16)
             if max_val > min_val:
-                return (data.astype(np.float64) / 65535.0) * (max_val - min_val) + min_val
+                return (data.astype(np.float64) / 65535.0) * (
+                    max_val - min_val
+                ) + min_val
             return np.full(len(data), min_val, dtype=np.float64)
 
         else:  # 32-bit delta
@@ -180,13 +188,15 @@ class FloatCompressor:
         for bits in [8, 16, 32]:
             for level in ["fast", "auto", "max"]:
                 r = FloatCompressor.compress(array, level=level, quantization_bits=bits)
-                results.append({
-                    "bits": bits,
-                    "level": level,
-                    "ratio": r.ratio,
-                    "time_ms": r.time_ms,
-                    "savings": r.savings_percent,
-                })
+                results.append(
+                    {
+                        "bits": bits,
+                        "level": level,
+                        "ratio": r.ratio,
+                        "time_ms": r.time_ms,
+                        "savings": r.savings_percent,
+                    }
+                )
         best = max(results, key=lambda x: x["ratio"])
         return {"best": best, "all": results}
 
@@ -198,6 +208,7 @@ class DictCompressor:
     def compress(data: dict[str, Any]) -> CompressionResult:
         """Compress a dictionary using pickle + zlib."""
         import json
+
         start = time.time()
         encoded = json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
         compressed = zlib.compress(encoded, level=6)
@@ -214,5 +225,6 @@ class DictCompressor:
     @staticmethod
     def decompress(compressed: CompressionResult) -> dict[str, Any]:
         import json
+
         raw = zlib.decompress(compressed.data)
         return json.loads(raw.decode("utf-8"))

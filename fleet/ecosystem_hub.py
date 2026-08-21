@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RepoCard:
     """A discovered repository with metadata."""
+
     name: str
     url: str
     description: str | None = None
@@ -55,6 +56,7 @@ class RepoCard:
 @dataclass
 class IntegrationTask:
     """A concrete integration task."""
+
     priority: str  # P0, P1, P2
     target_repo: str
     target_module: str
@@ -69,6 +71,7 @@ class IntegrationTask:
 @dataclass
 class IntegrationMap:
     """A mapping from a SuperInstance repo to a sunset-ecosystem module."""
+
     repo_name: str
     sunset_module: str
     opportunity: str
@@ -111,18 +114,29 @@ class EcosystemHub:
                 data = json.load(f)
             age = time.time() - data.get("timestamp", 0)
             if age < 86400:
-                self.repos = {name: RepoCard(**card) for name, card in data["repos"].items()}
+                self.repos = {
+                    name: RepoCard(**card) for name, card in data["repos"].items()
+                }
                 self._discovery_time = data["timestamp"]
-                logger.info("Loaded %d repos from cache (age=%.0fh)", len(self.repos), age / 3600)
+                logger.info(
+                    "Loaded %d repos from cache (age=%.0fh)",
+                    len(self.repos),
+                    age / 3600,
+                )
                 return self.repos
 
         # Fetch via gh CLI
         try:
             result = subprocess.run(
                 [
-                    "gh", "repo", "list", self.org,
-                    "--limit", "200",
-                    "--json", "name,description,primaryLanguage,pushedAt,updatedAt,url,isFork",
+                    "gh",
+                    "repo",
+                    "list",
+                    self.org,
+                    "--limit",
+                    "200",
+                    "--json",
+                    "name,description,primaryLanguage,pushedAt,updatedAt,url,isFork",
                 ],
                 capture_output=True,
                 text=True,
@@ -134,7 +148,11 @@ class EcosystemHub:
 
             raw_repos = json.loads(result.stdout)
             for r in raw_repos:
-                lang = r.get("primaryLanguage", {}).get("name") if r.get("primaryLanguage") else None
+                lang = (
+                    r.get("primaryLanguage", {}).get("name")
+                    if r.get("primaryLanguage")
+                    else None
+                )
                 card = RepoCard(
                     name=r["name"],
                     url=r["url"],
@@ -172,7 +190,12 @@ class EcosystemHub:
             tags.append("music")
         if "breed" in name or "evolution" in name or "genetic" in name:
             tags.append("breeding")
-        if "crypto" in name or "cipher" in name or "signature" in name or "lattice" in name:
+        if (
+            "crypto" in name
+            or "cipher" in name
+            or "signature" in name
+            or "lattice" in name
+        ):
             tags.append("crypto")
         if "compress" in name or "huffman" in name or "lz" in name or "bwt" in name:
             tags.append("compression")
@@ -201,7 +224,9 @@ class EcosystemHub:
         """Save discovered repos to cache file."""
         data = {
             "timestamp": self._discovery_time or time.time(),
-            "repos": {name: self._repo_to_dict(card) for name, card in self.repos.items()},
+            "repos": {
+                name: self._repo_to_dict(card) for name, card in self.repos.items()
+            },
         }
         with open(self.cache_path, "w") as f:
             json.dump(data, f, indent=2)
@@ -391,44 +416,208 @@ class EcosystemHub:
 
         # Convert maps to tasks with effort estimates
         task_specs = [
-            ("P0", "cuda-oxide", "swarm.hnsw_mesh_table", "GPU HNSW backend", "8-12h", 0.95, "PyO3"),
-            ("P0", "agent-operations", "fleet.fleet_monitor", "Operational pattern detection", "4-6h", 0.90, "subprocess"),
-            ("P0", "t-minus-rs", "nerve.distributed_metronome_bridge", "Deadline propagation", "6-8h", 0.85, "PyO3"),
-            ("P1", "NEXAH", "swarm.mesh_grouping", "Topological anomaly detection", "10-15h", 0.80, "REST"),
-            ("P1", "optimal-transport-rs", "swarm.fleet_bft_qd", "Wasserstein parent selection", "8-12h", 0.75, "PyO3"),
-            ("P1", "market-manifold", "swarm.vector_swarm", "Financial pattern search", "6-10h", 0.70, "REST"),
-            ("P2", "lattice-crypto-rs", "swarm.fleet_bft_qd", "Post-quantum signatures", "12-20h", 0.65, "PyO3"),
-            ("P2", "self-improving-band", "fleet.cognitive_cache", "Musical pattern prediction", "6-10h", 0.60, "subprocess"),
-            ("P2", "plato-engine-block-c", "fleet.fleet_monitor", "Embedded sensor monitoring", "8-12h", 0.55, "FFI"),
-            ("P2", "c-ternary", "swarm.caslang_executor", "Three-valued logic", "4-6h", 0.50, "FFI"),
-            ("P2", "conservation-law-rs", "fleet.sense_decide_act", "Conservation-aware decisions", "8-12h", 0.50, "PyO3"),
-            ("P2", "spectral-fleet-rs", "swarm.mesh_vector_tables", "Spectral clustering", "6-10h", 0.45, "PyO3"),
-            ("P2", "wasserstein-agents-rs", "swarm.vector_swarm", "Multi-marginal distances", "8-12h", 0.45, "PyO3"),
-            ("P3", "tropical-geometry-rs", "swarm.mesh_vector_tables", "Tropical vector ops", "6-10h", 0.35, "PyO3"),
-            ("P3", "dial-theory-rs", "fleet.fleet_memory", "Cultural memory", "6-10h", 0.30, "PyO3"),
-            ("P3", "agent-homeostasis-rs", "fleet.fleet_monitor", "Homeostatic regulation", "6-10h", 0.30, "PyO3"),
-            ("P3", "categorical-agents-rs", "swarm.vector_swarm", "Categorical composition", "8-12h", 0.25, "PyO3"),
-            ("P3", "fleet-warden-rs", "fleet.fleet_monitor", "Resource guardian", "4-6h", 0.25, "PyO3"),
-            ("P3", "hodge-music-rs", "swarm.scene_tracker", "Hodge scene tracking", "6-10h", 0.20, "PyO3"),
-            ("P3", "intention-field-rs", "fleet.cognitive_cache", "Intention prediction", "6-10h", 0.20, "PyO3"),
+            (
+                "P0",
+                "cuda-oxide",
+                "swarm.hnsw_mesh_table",
+                "GPU HNSW backend",
+                "8-12h",
+                0.95,
+                "PyO3",
+            ),
+            (
+                "P0",
+                "agent-operations",
+                "fleet.fleet_monitor",
+                "Operational pattern detection",
+                "4-6h",
+                0.90,
+                "subprocess",
+            ),
+            (
+                "P0",
+                "t-minus-rs",
+                "nerve.distributed_metronome_bridge",
+                "Deadline propagation",
+                "6-8h",
+                0.85,
+                "PyO3",
+            ),
+            (
+                "P1",
+                "NEXAH",
+                "swarm.mesh_grouping",
+                "Topological anomaly detection",
+                "10-15h",
+                0.80,
+                "REST",
+            ),
+            (
+                "P1",
+                "optimal-transport-rs",
+                "swarm.fleet_bft_qd",
+                "Wasserstein parent selection",
+                "8-12h",
+                0.75,
+                "PyO3",
+            ),
+            (
+                "P1",
+                "market-manifold",
+                "swarm.vector_swarm",
+                "Financial pattern search",
+                "6-10h",
+                0.70,
+                "REST",
+            ),
+            (
+                "P2",
+                "lattice-crypto-rs",
+                "swarm.fleet_bft_qd",
+                "Post-quantum signatures",
+                "12-20h",
+                0.65,
+                "PyO3",
+            ),
+            (
+                "P2",
+                "self-improving-band",
+                "fleet.cognitive_cache",
+                "Musical pattern prediction",
+                "6-10h",
+                0.60,
+                "subprocess",
+            ),
+            (
+                "P2",
+                "plato-engine-block-c",
+                "fleet.fleet_monitor",
+                "Embedded sensor monitoring",
+                "8-12h",
+                0.55,
+                "FFI",
+            ),
+            (
+                "P2",
+                "c-ternary",
+                "swarm.caslang_executor",
+                "Three-valued logic",
+                "4-6h",
+                0.50,
+                "FFI",
+            ),
+            (
+                "P2",
+                "conservation-law-rs",
+                "fleet.sense_decide_act",
+                "Conservation-aware decisions",
+                "8-12h",
+                0.50,
+                "PyO3",
+            ),
+            (
+                "P2",
+                "spectral-fleet-rs",
+                "swarm.mesh_vector_tables",
+                "Spectral clustering",
+                "6-10h",
+                0.45,
+                "PyO3",
+            ),
+            (
+                "P2",
+                "wasserstein-agents-rs",
+                "swarm.vector_swarm",
+                "Multi-marginal distances",
+                "8-12h",
+                0.45,
+                "PyO3",
+            ),
+            (
+                "P3",
+                "tropical-geometry-rs",
+                "swarm.mesh_vector_tables",
+                "Tropical vector ops",
+                "6-10h",
+                0.35,
+                "PyO3",
+            ),
+            (
+                "P3",
+                "dial-theory-rs",
+                "fleet.fleet_memory",
+                "Cultural memory",
+                "6-10h",
+                0.30,
+                "PyO3",
+            ),
+            (
+                "P3",
+                "agent-homeostasis-rs",
+                "fleet.fleet_monitor",
+                "Homeostatic regulation",
+                "6-10h",
+                0.30,
+                "PyO3",
+            ),
+            (
+                "P3",
+                "categorical-agents-rs",
+                "swarm.vector_swarm",
+                "Categorical composition",
+                "8-12h",
+                0.25,
+                "PyO3",
+            ),
+            (
+                "P3",
+                "fleet-warden-rs",
+                "fleet.fleet_monitor",
+                "Resource guardian",
+                "4-6h",
+                0.25,
+                "PyO3",
+            ),
+            (
+                "P3",
+                "hodge-music-rs",
+                "swarm.scene_tracker",
+                "Hodge scene tracking",
+                "6-10h",
+                0.20,
+                "PyO3",
+            ),
+            (
+                "P3",
+                "intention-field-rs",
+                "fleet.cognitive_cache",
+                "Intention prediction",
+                "6-10h",
+                0.20,
+                "PyO3",
+            ),
         ]
 
         for priority, repo, module, desc, effort, impact, bridge in task_specs:
             if repo in self.repos:
-                self.tasks.append(IntegrationTask(
-                    priority=priority,
-                    target_repo=repo,
-                    target_module=module,
-                    description=desc,
-                    effort_estimate=effort,
-                    impact_score=impact,
-                    sunset_module=module,
-                    bridge_type=bridge,
-                ))
+                self.tasks.append(
+                    IntegrationTask(
+                        priority=priority,
+                        target_repo=repo,
+                        target_module=module,
+                        description=desc,
+                        effort_estimate=effort,
+                        impact_score=impact,
+                        sunset_module=module,
+                        bridge_type=bridge,
+                    )
+                )
 
         # Sort by priority then impact
         priority_order = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
-        self.tasks.sort(key=lambda t: (priority_order.get(t.priority, 99), -t.impact_score))
+        self.tasks.sort(
+            key=lambda t: (priority_order.get(t.priority, 99), -t.impact_score)
+        )
 
         logger.info("Generated %d integration tasks", len(self.tasks))
         return self.tasks
@@ -499,7 +688,13 @@ class EcosystemHub:
                 }
                 for t in self.tasks[:5]
             ],
-            "python_bridge_gaps": len([c for c in self.repos.values() if "rust" in c.tags and not c.has_python_bridge]),
+            "python_bridge_gaps": len(
+                [
+                    c
+                    for c in self.repos.values()
+                    if "rust" in c.tags and not c.has_python_bridge
+                ]
+            ),
         }
 
     def write_report(self, path: Path | None = None) -> Path:
@@ -540,15 +735,23 @@ class EcosystemHub:
             lines.append("")
         lines.append("## Python Bridge Gaps")
         lines.append("")
-        lines.append(f"**{report['python_bridge_gaps']}** Rust repos lack Python bridges.")
+        lines.append(
+            f"**{report['python_bridge_gaps']}** Rust repos lack Python bridges."
+        )
         lines.append("This is the largest untapped capability surface in the fleet.")
         lines.append("")
         lines.append("## Recommendations")
         lines.append("")
-        lines.append("1. **Build PyO3 bridges for P0 repos** — cuda-oxide, t-minus-rs, agent-operations")
-        lines.append("2. **Create integration examples** for each bridge showing concrete usage")
+        lines.append(
+            "1. **Build PyO3 bridges for P0 repos** — cuda-oxide, t-minus-rs, agent-operations"
+        )
+        lines.append(
+            "2. **Create integration examples** for each bridge showing concrete usage"
+        )
         lines.append("3. **Add CI/CD** to auto-test bridges on every commit")
-        lines.append("4. **Write E2E tests** that exercise the full stack from Rust → Python → Fleet")
+        lines.append(
+            "4. **Write E2E tests** that exercise the full stack from Rust → Python → Fleet"
+        )
         lines.append("")
 
         with open(path, "w") as f:

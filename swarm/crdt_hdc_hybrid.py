@@ -42,7 +42,7 @@ def merge_with_diversity(
     # Pairwise novelty: agent i vs all others
     scores = scorer.score_batch(packed, packed)
     for i, aid in enumerate(ids):
-        others = np.concatenate([scores[i, :i], scores[i, i + 1:]])
+        others = np.concatenate([scores[i, :i], scores[i, i + 1 :]])
         min_dist = float(others.min()) if len(others) else 1.0
         merged._meta[aid].extra["novelty_score"] = round(min_dist, 4)
         merged._meta[aid].extra["diversity_flag"] = min_dist < diversity_threshold

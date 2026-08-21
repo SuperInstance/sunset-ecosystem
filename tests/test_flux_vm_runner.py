@@ -22,7 +22,11 @@ class TestFluxVMRunner:
         return bytes([FluxOpcode.CondJump]) + struct.pack("<H", offset)
 
     def _range_check(self, lo: float, hi: float) -> bytes:
-        return bytes([FluxOpcode.RangeCheck]) + struct.pack("<f", lo) + struct.pack("<f", hi)
+        return (
+            bytes([FluxOpcode.RangeCheck])
+            + struct.pack("<f", lo)
+            + struct.pack("<f", hi)
+        )
 
     def test_push_and_halt(self):
         runner = FluxVMRunner([1.0])
@@ -31,27 +35,52 @@ class TestFluxVMRunner:
 
     def test_add(self):
         runner = FluxVMRunner([1.0])
-        bc = self._push(2.0) + self._push(3.0) + bytes([FluxOpcode.Add]) + bytes([FluxOpcode.Halt])
+        bc = (
+            self._push(2.0)
+            + self._push(3.0)
+            + bytes([FluxOpcode.Add])
+            + bytes([FluxOpcode.Halt])
+        )
         assert runner.run(bc) == pytest.approx(5.0)
 
     def test_sub(self):
         runner = FluxVMRunner([1.0])
-        bc = self._push(5.0) + self._push(2.0) + bytes([FluxOpcode.Sub]) + bytes([FluxOpcode.Halt])
+        bc = (
+            self._push(5.0)
+            + self._push(2.0)
+            + bytes([FluxOpcode.Sub])
+            + bytes([FluxOpcode.Halt])
+        )
         assert runner.run(bc) == pytest.approx(3.0)
 
     def test_mul(self):
         runner = FluxVMRunner([1.0])
-        bc = self._push(3.0) + self._push(4.0) + bytes([FluxOpcode.Mul]) + bytes([FluxOpcode.Halt])
+        bc = (
+            self._push(3.0)
+            + self._push(4.0)
+            + bytes([FluxOpcode.Mul])
+            + bytes([FluxOpcode.Halt])
+        )
         assert runner.run(bc) == pytest.approx(12.0)
 
     def test_div(self):
         runner = FluxVMRunner([1.0])
-        bc = self._push(8.0) + self._push(2.0) + bytes([FluxOpcode.Div]) + bytes([FluxOpcode.Halt])
+        bc = (
+            self._push(8.0)
+            + self._push(2.0)
+            + bytes([FluxOpcode.Div])
+            + bytes([FluxOpcode.Halt])
+        )
         assert runner.run(bc) == pytest.approx(4.0)
 
     def test_div_by_zero(self):
         runner = FluxVMRunner([1.0])
-        bc = self._push(1.0) + self._push(0.0) + bytes([FluxOpcode.Div]) + bytes([FluxOpcode.Halt])
+        bc = (
+            self._push(1.0)
+            + self._push(0.0)
+            + bytes([FluxOpcode.Div])
+            + bytes([FluxOpcode.Halt])
+        )
         assert runner.run(bc) == float("inf")
 
     def test_load_const(self):
@@ -61,23 +90,44 @@ class TestFluxVMRunner:
 
     def test_dup(self):
         runner = FluxVMRunner([1.0])
-        bc = self._push(5.0) + bytes([FluxOpcode.Dup]) + bytes([FluxOpcode.Add]) + bytes([FluxOpcode.Halt])
+        bc = (
+            self._push(5.0)
+            + bytes([FluxOpcode.Dup])
+            + bytes([FluxOpcode.Add])
+            + bytes([FluxOpcode.Halt])
+        )
         assert runner.run(bc) == pytest.approx(10.0)
 
     def test_swap(self):
         runner = FluxVMRunner([1.0])
-        bc = self._push(2.0) + self._push(3.0) + bytes([FluxOpcode.Swap]) + bytes([FluxOpcode.Sub]) + bytes([FluxOpcode.Halt])
+        bc = (
+            self._push(2.0)
+            + self._push(3.0)
+            + bytes([FluxOpcode.Swap])
+            + bytes([FluxOpcode.Sub])
+            + bytes([FluxOpcode.Halt])
+        )
         # Stack: 2, 3 -> swap -> 3, 2 -> sub = 3 - 2 = 1
         assert runner.run(bc) == pytest.approx(1.0)
 
     def test_min(self):
         runner = FluxVMRunner([1.0])
-        bc = self._push(3.0) + self._push(1.0) + bytes([FluxOpcode.Min]) + bytes([FluxOpcode.Halt])
+        bc = (
+            self._push(3.0)
+            + self._push(1.0)
+            + bytes([FluxOpcode.Min])
+            + bytes([FluxOpcode.Halt])
+        )
         assert runner.run(bc) == pytest.approx(1.0)
 
     def test_max(self):
         runner = FluxVMRunner([1.0])
-        bc = self._push(3.0) + self._push(1.0) + bytes([FluxOpcode.Max]) + bytes([FluxOpcode.Halt])
+        bc = (
+            self._push(3.0)
+            + self._push(1.0)
+            + bytes([FluxOpcode.Max])
+            + bytes([FluxOpcode.Halt])
+        )
         assert runner.run(bc) == pytest.approx(3.0)
 
     def test_abs(self):
@@ -160,5 +210,10 @@ class TestFluxVMRunner:
 
     def test_pop(self):
         runner = FluxVMRunner([1.0])
-        bc = self._push(1.0) + self._push(2.0) + bytes([FluxOpcode.Pop]) + bytes([FluxOpcode.Halt])
+        bc = (
+            self._push(1.0)
+            + self._push(2.0)
+            + bytes([FluxOpcode.Pop])
+            + bytes([FluxOpcode.Halt])
+        )
         assert runner.run(bc) == pytest.approx(1.0)

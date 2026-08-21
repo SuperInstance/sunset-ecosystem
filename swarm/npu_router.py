@@ -171,16 +171,18 @@ class NPURouterOffload:
         # Build provider list, preferring the requested one but falling
         # back to CPU if it is not installed / not available.
         available = ort.get_available_providers()
-        providers = [p for p in [self.provider, self._fallback_provider] if p in available]
+        providers = [
+            p for p in [self.provider, self._fallback_provider] if p in available
+        ]
         if not providers:
             providers = ["CPUExecutionProvider"]
 
         sess_options = ort.SessionOptions()
-        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-
-        self._session = ort.InferenceSession(
-            path, sess_options, providers=providers
+        sess_options.graph_optimization_level = (
+            ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         )
+
+        self._session = ort.InferenceSession(path, sess_options, providers=providers)
         self._input_name = self._session.get_inputs()[0].name
         return self._session
 
@@ -211,7 +213,9 @@ class NPURouterOffload:
         if x.shape[1] != self.input_dim:
             # Zero-pad or truncate to the expected input_dim
             if x.shape[1] < self.input_dim:
-                pad = np.zeros((x.shape[0], self.input_dim - x.shape[1]), dtype=np.float32)
+                pad = np.zeros(
+                    (x.shape[0], self.input_dim - x.shape[1]), dtype=np.float32
+                )
                 x = np.concatenate([x, pad], axis=1)
             else:
                 x = x[:, : self.input_dim]
@@ -265,9 +269,7 @@ class NPURouterOffload:
                 continue
 
             sess_options = ort.SessionOptions()
-            sess = ort.InferenceSession(
-                path, sess_options, providers=[provider]
-            )
+            sess = ort.InferenceSession(path, sess_options, providers=[provider])
             input_name = sess.get_inputs()[0].name
             dummy = np.random.randn(1, self.input_dim).astype(np.float32)
 

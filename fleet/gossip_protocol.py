@@ -11,6 +11,7 @@ Usage:
     for _ in range(10):
         gossip.round()
 """
+
 from __future__ import annotations
 
 import hashlib

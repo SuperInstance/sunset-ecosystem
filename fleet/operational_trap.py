@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 # ── severity model ──────────────────────────────────────
 
+
 class TrapSeverity(Enum):
     """Operational trap severity levels."""
 
@@ -43,6 +44,7 @@ class TrapSeverity(Enum):
 
 
 # ── data structures ─────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class TrapResult:
@@ -70,6 +72,7 @@ class TrapResult:
 
 
 # ── base trap ───────────────────────────────────────────
+
 
 class OperationalTrap(ABC):
     """Abstract base for all fleet health traps.
@@ -195,6 +198,7 @@ class OperationalTrap(ABC):
 
 # ── built-in traps ──────────────────────────────────────
 
+
 class ThermalTrap(OperationalTrap):
     """Detects thermal overcommit on compute devices.
 
@@ -284,7 +288,11 @@ class FluxViolationTrap(OperationalTrap):
                 logger.exception("get_recent_results failed")
                 return None
         # Backward compat: checker with a _wal attribute
-        elif self.checker is not None and hasattr(self.checker, "_wal") and self.checker._wal is not None:
+        elif (
+            self.checker is not None
+            and hasattr(self.checker, "_wal")
+            and self.checker._wal is not None
+        ):
             try:
                 recent = (
                     self.checker._wal.all()
@@ -380,11 +388,15 @@ class AgentCrashTrap(OperationalTrap):
             condition="agent_crash",
             severity=TrapSeverity.CRITICAL,
             message=f"{len(missing)} agent(s) missing or crashed: {missing}",
-            metadata={"missing_agents": missing, "expected_count": len(self.expected_agents)},
+            metadata={
+                "missing_agents": missing,
+                "expected_count": len(self.expected_agents),
+            },
         )
 
 
 # ── registry ────────────────────────────────────────────
+
 
 class TrapRegistry:
     """Collects and runs a set of operational traps.
@@ -438,6 +450,7 @@ class TrapRegistry:
 
 # ── dashboard ───────────────────────────────────────────
 
+
 class TrapDashboard:
     """Unified view of all trap states.
 
@@ -465,9 +478,7 @@ class TrapDashboard:
 
         total_checks = sum(t.get("total_checks", 0) for t in traps)
         total_fired = sum(t.get("total_fired", 0) for t in traps)
-        critical_count = sum(
-            1 for r in results if r.severity == TrapSeverity.CRITICAL
-        )
+        critical_count = sum(1 for r in results if r.severity == TrapSeverity.CRITICAL)
 
         return {
             "summary": {

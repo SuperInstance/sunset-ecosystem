@@ -3,6 +3,7 @@
 These tests use the random_projection backend by default so they pass
 without transformers, whisper, or heavy model downloads.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -17,6 +18,7 @@ from perception import (
 
 
 # ── Fixtures ───────────────────────────────────────────────
+
 
 @pytest.fixture
 def encoder():
@@ -40,6 +42,7 @@ def synthetic_silence():
 
 
 # ── AudioTileEncoder ──────────────────────────────────────
+
 
 class TestEncodeSegment:
     """Test encode_segment returns a 512-dim normalised embedding."""
@@ -74,7 +77,9 @@ class TestEncodeSegment:
 
     def test_encode_int16(self, encoder):
         """int16 input should be normalised and produce valid embedding."""
-        audio_int16 = (np.sin(2 * np.pi * 440.0 * np.linspace(0, 1.0, 16000)) * 32767).astype(np.int16)
+        audio_int16 = (
+            np.sin(2 * np.pi * 440.0 * np.linspace(0, 1.0, 16000)) * 32767
+        ).astype(np.int16)
         emb = encoder.encode_segment(audio_int16, sample_rate=16000)
         assert emb.shape == (512,)
         assert emb.dtype == np.float32
@@ -160,7 +165,9 @@ class TestToTile:
 
     def test_extra_metadata_merged(self, encoder, synthetic_sine):
         emb = encoder.encode_segment(synthetic_sine, sample_rate=16000)
-        tile = encoder.to_tile(emb, source="test", extra_metadata={"event": "door_slam"})
+        tile = encoder.to_tile(
+            emb, source="test", extra_metadata={"event": "door_slam"}
+        )
         assert tile["metadata"]["event"] == "door_slam"
 
 
@@ -221,6 +228,7 @@ class TestEncoderProperties:
 
 # ── Capture sources (mock, no real microphone needed) ──────────────
 
+
 class TestMicrophoneCaptureMock:
     """Test MicrophoneCapture with mock (no hardware)."""
 
@@ -262,6 +270,7 @@ class TestSystemAudioCaptureMock:
 
 # ── End-to-end: tile flows into topology signal ──────────────
 
+
 class TestAudioTopologyIntegration:
     """Audio tile → topology signal round-trip."""
 
@@ -279,7 +288,9 @@ class TestAudioTopologyIntegration:
         signal = encoder.to_signal(emb, signal_dim=64)
 
         topo = NerveTopology(n_fibers=2, n_rooms=20, signal_dim=64)
-        result = topo.tick(signals={"fiber-0": signal, "fiber-1": np.zeros(64, dtype=np.float32)})
+        result = topo.tick(
+            signals={"fiber-0": signal, "fiber-1": np.zeros(64, dtype=np.float32)}
+        )
 
         assert result.fibers_perceived == 2
         assert result.tick == 1

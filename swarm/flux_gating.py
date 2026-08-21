@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 # ── configuration ───────────────────────────────────────
 
+
 @dataclass
 class FluxGatingConfig:
     """Configuration for FLUX constraint gating.
@@ -63,6 +64,7 @@ class FluxGatingConfig:
 
 # ── result type ─────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class FluxCheckResult:
     """Result of a single FLUX constraint check."""
@@ -86,6 +88,7 @@ class FluxCheckResult:
 
 
 # ── Python fallback ───────────────────────────────────────
+
 
 class PythonFluxFallback:
     """Pure-Python FLUX constraint checker.
@@ -142,7 +145,9 @@ class PythonFluxFallback:
         if w.size > 1:
             var = float(np.var(w))
             if var > cfg.max_variance:
-                violations["variance"] = (var - cfg.max_variance) / max(cfg.max_variance, 1e-6)
+                violations["variance"] = (var - cfg.max_variance) / max(
+                    cfg.max_variance, 1e-6
+                )
 
         # 4. Chaos
         if chaos > cfg.max_chaos:
@@ -150,9 +155,9 @@ class PythonFluxFallback:
 
         # 5. Thermal
         if thermal_pressure > cfg.thermal_budget_gate:
-            violations["thermal"] = (
-                thermal_pressure - cfg.thermal_budget_gate
-            ) / max(cfg.thermal_budget_gate, 1e-6)
+            violations["thermal"] = (thermal_pressure - cfg.thermal_budget_gate) / max(
+                cfg.thermal_budget_gate, 1e-6
+            )
 
         # Aggregate score
         score = 0.0
@@ -193,12 +198,15 @@ class PythonFluxFallback:
         results: list[FluxCheckResult] = []
         for i in range(n):
             results.append(
-                self.check_candidate(batch[i], float(chaos_vec[i]), float(thermal_vec[i]))
+                self.check_candidate(
+                    batch[i], float(chaos_vec[i]), float(thermal_vec[i])
+                )
             )
         return results
 
 
 # ── Rust FFI backend (stub) ─────────────────────────────
+
 
 class _RustFFIBackend:
     """Future backend wrapping the compiled FLUX VM shared library.
@@ -231,6 +239,7 @@ class _RustFFIBackend:
 
 
 # ── unified checker ─────────────────────────────────────
+
 
 class FluxGatingChecker:
     """Public API for FLUX constraint gating.
@@ -266,7 +275,9 @@ class FluxGatingChecker:
                 try:
                     self._backend = _RustFFIBackend(so_path, self.config)
                 except Exception as exc:
-                    logger.warning("Rust FFI load failed (%s), falling back to Python", exc)
+                    logger.warning(
+                        "Rust FFI load failed (%s), falling back to Python", exc
+                    )
                     self._backend = PythonFluxFallback(self.config)
             else:
                 self._backend = PythonFluxFallback(self.config)

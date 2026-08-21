@@ -10,6 +10,7 @@ Usage:
     sched.submit("alert", priority=10, fn=alert_task)
     task = sched.next()  # alert_task (priority 10)
 """
+
 from __future__ import annotations
 
 import heapq
@@ -153,4 +154,6 @@ class PriorityScheduler:
         }
 
     def __repr__(self) -> str:
-        return f"<PriorityScheduler queued={len(self._heap)} completed={self._completed}>"
+        return (
+            f"<PriorityScheduler queued={len(self._heap)} completed={self._completed}>"
+        )

@@ -25,7 +25,9 @@ import numpy as np
 try:
     from turbovec import IdMapIndex
 except ImportError:
-    os.environ["LD_PRELOAD"] = "/usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblas.so.0"
+    os.environ["LD_PRELOAD"] = (
+        "/usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblas.so.0"
+    )
     print("⚠️  Setting LD_PRELOAD for openblas — turbovec wheel linking issue")
     # Re-exec with LD_PRELOAD
     os.execv(sys.executable, [sys.executable] + sys.argv)
@@ -41,7 +43,7 @@ WARMUP = 100
 
 
 def benchmark_dim(dim: int) -> dict:
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Dimension: {dim} (TURBOVEC SIMD)")
     print("=" * 60)
 
@@ -64,7 +66,7 @@ def benchmark_dim(dim: int) -> dict:
             )
         )
     build_time = time.perf_counter() - t0
-    print(f"  Build: {build_time:.2f}s ({POPULATION/build_time:.0f} agents/s)")
+    print(f"  Build: {build_time:.2f}s ({POPULATION / build_time:.0f} agents/s)")
 
     # Warmup
     query = rng.standard_normal(dim).astype(np.float32)
@@ -93,7 +95,9 @@ def benchmark_dim(dim: int) -> dict:
 
     print(f"  Avg latency: {avg_latency:.3f}ms")
     print(f"  P99 latency: {p99_latency:.3f}ms")
-    print(f"  Memory: {total_mb:.1f}MB (naive {naive_mb:.1f}MB, {compression:.1f}x compression)")
+    print(
+        f"  Memory: {total_mb:.1f}MB (naive {naive_mb:.1f}MB, {compression:.1f}x compression)"
+    )
 
     return {
         "dim": dim,
@@ -120,12 +124,15 @@ def main() -> None:
         except Exception as exc:
             print(f"  ❌ FAILED: {exc}")
             import traceback
+
             traceback.print_exc()
 
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
-    print(f"{'Dim':>6} {'Build':>8} {'Avg ms':>10} {'P99 ms':>10} {'Memory':>10} {'Compress':>10}")
+    print(
+        f"{'Dim':>6} {'Build':>8} {'Avg ms':>10} {'P99 ms':>10} {'Memory':>10} {'Compress':>10}"
+    )
     print("-" * 60)
     for r in results:
         print(

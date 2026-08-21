@@ -9,6 +9,7 @@ Usage:
     compressed = compressor.compress("large payload...", algorithm="gzip")
     original = compressor.decompress(compressed, algorithm="gzip")
 """
+
 from __future__ import annotations
 
 import gzip

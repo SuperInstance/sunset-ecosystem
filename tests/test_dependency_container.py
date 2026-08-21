@@ -2,11 +2,16 @@
 
 Run: python3 -m pytest tests/test_dependency_container.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
 
-from fleet.dependency_container import DependencyContainer, CircularDependency, ServiceNotFound
+from fleet.dependency_container import (
+    DependencyContainer,
+    CircularDependency,
+    ServiceNotFound,
+)
 
 
 class TestDependencyContainer:
@@ -27,9 +32,11 @@ class TestDependencyContainer:
     def test_singleton(self):
         c = DependencyContainer()
         counter = [0]
+
         def make():
             counter[0] += 1
             return {"id": counter[0]}
+
         c.register("obj", make, lifecycle="singleton")
         a = c.resolve("obj")
         b = c.resolve("obj")

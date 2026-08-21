@@ -36,6 +36,7 @@ from typing import Any, Optional
 # Try to import the real conservation-spectral package
 try:
     from conservation_spectral import ConservationEngine
+
     _HAS_CONSERVATION_SPECTRAL = True
 except ImportError:
     _HAS_CONSERVATION_SPECTRAL = False
@@ -44,17 +45,20 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Pure-Python fallback for the core spectral operations
 
+
 def _laplacian(adjacency: np.ndarray) -> np.ndarray:
     """Compute the combinatorial Laplacian L = D - A."""
     degrees = np.sum(adjacency, axis=1)
     D = np.diag(degrees)
     return D - adjacency
 
+
 def _eigendecompose(laplacian: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Return (eigenvalues, eigenvectors) sorted ascending."""
     vals, vecs = np.linalg.eigh(laplacian)
     idx = np.argsort(vals)
     return vals[idx], vecs[:, idx]
+
 
 def _conservation_ratio(
     eigenvalues: np.ndarray,
@@ -86,6 +90,7 @@ def _conservation_ratio(
 
     return float(norm_spectral / norm_adj)
 
+
 def _spectral_alignment(
     eigenvalues_a: np.ndarray,
     eigenvalues_b: np.ndarray,
@@ -98,8 +103,8 @@ def _spectral_alignment(
     max_len = max(len(eigenvalues_a), len(eigenvalues_b))
     a = np.zeros(max_len, dtype=float)
     b = np.zeros(max_len, dtype=float)
-    a[:len(eigenvalues_a)] = eigenvalues_a
-    b[:len(eigenvalues_b)] = eigenvalues_b
+    a[: len(eigenvalues_a)] = eigenvalues_a
+    b[: len(eigenvalues_b)] = eigenvalues_b
 
     norm_a = np.linalg.norm(a)
     norm_b = np.linalg.norm(b)
@@ -107,6 +112,7 @@ def _spectral_alignment(
         return 0.0
 
     return float(np.dot(a, b) / (norm_a * norm_b))
+
 
 def _fiedler_vector(eigenvectors: np.ndarray) -> np.ndarray:
     """Return the Fiedler vector (eigenvector of λ₂)."""
@@ -116,12 +122,15 @@ def _fiedler_vector(eigenvectors: np.ndarray) -> np.ndarray:
         return np.zeros(eigenvectors.shape[0])
     return eigenvectors[:, 1]
 
+
 # ---------------------------------------------------------------------------
 # Data classes
+
 
 @dataclass
 class SpectralFingerprint:
     """An agent's spectral identity — its Laplacian eigenvalue spectrum."""
+
     agent_id: str
     eigenvalues: np.ndarray
     eigenvectors: np.ndarray
@@ -420,8 +429,10 @@ class SpectralBreederDiversity:
             sbd.monitor.record_from_fingerprint(fp)
         return sbd
 
+
 # ---------------------------------------------------------------------------
 # Conservation Spectral Engine (optional, uses real package if available)
+
 
 class ConservationSpectralEngine:
     """

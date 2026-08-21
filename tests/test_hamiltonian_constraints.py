@@ -5,6 +5,7 @@ Störmer-Verlet energy conservation, damped relaxation convergence,
 augmented Lagrangian multiplier updates, energy conservation quality
 metrics, and contradictory constraint settling.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -19,11 +20,12 @@ from fleet.hamiltonian_constraints import (
 
 # ─── helpers ───────────────────────────────────────────────────────────────
 
+
 def _circle_constraint(radius: float = 1.0):
     """Return (value_fn, gradient_fn) for a circle: x² + y² = radius²."""
 
     def value_fn(q: np.ndarray) -> float:
-        return float(q[0] ** 2 + q[1] ** 2 - radius ** 2)
+        return float(q[0] ** 2 + q[1] ** 2 - radius**2)
 
     def grad_fn(q: np.ndarray) -> np.ndarray:
         return np.array([2 * q[0], 2 * q[1]], dtype=float)
@@ -48,7 +50,7 @@ def _sphere_constraint(radius: float = 1.0, dim: int = 3):
     """Return (value_fn, gradient_fn) for a sphere in N dimensions."""
 
     def value_fn(q: np.ndarray) -> float:
-        return float(np.dot(q, q) - radius ** 2)
+        return float(np.dot(q, q) - radius**2)
 
     def grad_fn(q: np.ndarray) -> np.ndarray:
         return 2 * q
@@ -79,10 +81,15 @@ class TestConstraintDataclass:
         assert c.name == "x_axis"
 
     def test_constraint_callable_invocation(self) -> None:
-        c = Constraint(value_fn=lambda q: float(q[0] - 1.0), gradient_fn=lambda q: np.array([1.0, 0.0]))
+        c = Constraint(
+            value_fn=lambda q: float(q[0] - 1.0),
+            gradient_fn=lambda q: np.array([1.0, 0.0]),
+        )
         assert c.value_fn(np.array([1.0, 0.0])) == 0.0
         assert c.value_fn(np.array([2.0, 0.0])) == 1.0
-        np.testing.assert_array_equal(c.gradient_fn(np.array([0.0, 0.0])), np.array([1.0, 0.0]))
+        np.testing.assert_array_equal(
+            c.gradient_fn(np.array([0.0, 0.0])), np.array([1.0, 0.0])
+        )
 
 
 # ─── AugmentedEnergy ───────────────────────────────────────────────────────
@@ -94,15 +101,21 @@ class TestAugmentedEnergy:
         assert ae.total == pytest.approx(10.0)
 
     def test_conservation_quality_with_baseline(self) -> None:
-        ae = AugmentedEnergy(kinetic=1.0, potential=2.0, penalty=0.1, lagrangian=0.1, total=3.2)
-        assert ae.conservation_quality(baseline=3.0) == pytest.approx(0.2 / 3.0, abs=1e-10)
+        ae = AugmentedEnergy(
+            kinetic=1.0, potential=2.0, penalty=0.1, lagrangian=0.1, total=3.2
+        )
+        assert ae.conservation_quality(baseline=3.0) == pytest.approx(
+            0.2 / 3.0, abs=1e-10
+        )
 
     def test_conservation_quality_zero_baseline(self) -> None:
         ae = AugmentedEnergy(total=0.0)
         assert ae.conservation_quality(baseline=0.0) == 0.0
 
     def test_conservation_quality_without_baseline(self) -> None:
-        ae = AugmentedEnergy(kinetic=1.0, potential=1.0, penalty=0.5, lagrangian=0.5, total=3.0)
+        ae = AugmentedEnergy(
+            kinetic=1.0, potential=1.0, penalty=0.5, lagrangian=0.5, total=3.0
+        )
         assert ae.conservation_quality() == pytest.approx(1.0 / 3.0, abs=1e-10)
 
     def test_conservation_quality_zero_total(self) -> None:
@@ -205,7 +218,9 @@ class TestSingleConstraintSatisfaction:
         """Damped relaxation onto a plane constraint."""
         sys = HamiltonianSystem(dim=3, damping=0.1)
         sys.set_state(np.array([1.0, 2.0, 3.0]))
-        sys.add_constraint(*_plane_constraint([0.0, 0.0, 1.0], 1.0), weight=50.0, name="z_eq_1")
+        sys.add_constraint(
+            *_plane_constraint([0.0, 0.0, 1.0], 1.0), weight=50.0, name="z_eq_1"
+        )
 
         sys.reset_momentum()
         for _ in range(3000):
@@ -239,8 +254,12 @@ class TestMultipleConstraintIntersection:
         """State should settle on the intersection of two planes."""
         sys = HamiltonianSystem(dim=3, damping=0.05)
         sys.set_state(np.array([1.0, 1.0, 1.0]))
-        sys.add_constraint(*_plane_constraint([1.0, 0.0, 0.0], 0.5), weight=50.0, name="x_eq_0.5")
-        sys.add_constraint(*_plane_constraint([0.0, 1.0, 0.0], 0.5), weight=50.0, name="y_eq_0.5")
+        sys.add_constraint(
+            *_plane_constraint([1.0, 0.0, 0.0], 0.5), weight=50.0, name="x_eq_0.5"
+        )
+        sys.add_constraint(
+            *_plane_constraint([0.0, 1.0, 0.0], 0.5), weight=50.0, name="y_eq_0.5"
+        )
 
         sys.reset_momentum()
         for _ in range(3000):
@@ -256,7 +275,9 @@ class TestMultipleConstraintIntersection:
         sys = HamiltonianSystem(dim=3, damping=0.05)
         sys.set_state(np.array([0.5, 0.5, 0.5]))
         sys.add_constraint(*_sphere_constraint(1.0, 3), weight=20.0, name="sphere")
-        sys.add_constraint(*_plane_constraint([0.0, 0.0, 1.0], 0.0), weight=20.0, name="z_eq_0")
+        sys.add_constraint(
+            *_plane_constraint([0.0, 0.0, 1.0], 0.0), weight=20.0, name="z_eq_0"
+        )
 
         sys.reset_momentum()
         for _ in range(5000):
@@ -272,9 +293,15 @@ class TestMultipleConstraintIntersection:
         """Three orthogonal planes → single point."""
         sys = HamiltonianSystem(dim=3, damping=0.1)
         sys.set_state(np.array([5.0, -3.0, 2.0]))
-        sys.add_constraint(*_plane_constraint([1.0, 0.0, 0.0], 1.0), weight=100.0, name="x_eq_1")
-        sys.add_constraint(*_plane_constraint([0.0, 1.0, 0.0], 2.0), weight=100.0, name="y_eq_2")
-        sys.add_constraint(*_plane_constraint([0.0, 0.0, 1.0], 3.0), weight=100.0, name="z_eq_3")
+        sys.add_constraint(
+            *_plane_constraint([1.0, 0.0, 0.0], 1.0), weight=100.0, name="x_eq_1"
+        )
+        sys.add_constraint(
+            *_plane_constraint([0.0, 1.0, 0.0], 2.0), weight=100.0, name="y_eq_2"
+        )
+        sys.add_constraint(
+            *_plane_constraint([0.0, 0.0, 1.0], 3.0), weight=100.0, name="z_eq_3"
+        )
 
         sys.reset_momentum()
         for _ in range(3000):
@@ -287,8 +314,12 @@ class TestMultipleConstraintIntersection:
     def test_multiple_constraints_rms_violation(self) -> None:
         sys = HamiltonianSystem(dim=3, damping=0.1)
         sys.set_state(np.array([1.0, 1.0, 1.0]))
-        sys.add_constraint(*_plane_constraint([1.0, 0.0, 0.0], 0.0), weight=10.0, name="x_eq_0")
-        sys.add_constraint(*_plane_constraint([0.0, 1.0, 0.0], 0.0), weight=10.0, name="y_eq_0")
+        sys.add_constraint(
+            *_plane_constraint([1.0, 0.0, 0.0], 0.0), weight=10.0, name="x_eq_0"
+        )
+        sys.add_constraint(
+            *_plane_constraint([0.0, 1.0, 0.0], 0.0), weight=10.0, name="y_eq_0"
+        )
 
         sys.reset_momentum()
         for _ in range(2000):
@@ -357,11 +388,11 @@ class TestStormerVerletEnergyConservation:
         q = 1.0
         p = 0.0
         dt = 0.01
-        e0 = 0.5 * k * q ** 2
+        e0 = 0.5 * k * q**2
         for _ in range(1000):
             p = p - k * q * dt
             q = q + p * dt
-        e_euler = 0.5 * (p ** 2 + k * q ** 2)
+        e_euler = 0.5 * (p**2 + k * q**2)
         euler_drift = abs(e_euler - e0) / abs(e0)
 
         # Störmer-Verlet
@@ -586,7 +617,10 @@ class TestEnergyConservationQuality:
             sys.step(0.01)
             sys.energy()
 
-        qualities = [e.conservation_quality(baseline=sys.energy_history[0].total) for e in sys.energy_history]
+        qualities = [
+            e.conservation_quality(baseline=sys.energy_history[0].total)
+            for e in sys.energy_history
+        ]
         # Quality should not drift catastrophically
         assert max(qualities) < 1e-1
 
@@ -601,8 +635,12 @@ class TestContradictoryConstraints:
         the average/midpoint between the two planes."""
         sys = HamiltonianSystem(dim=2, damping=0.1)
         sys.set_state(np.array([0.0, 0.0]))
-        sys.add_constraint(*_plane_constraint([1.0, 0.0], 0.0), weight=10.0, name="x_eq_0")
-        sys.add_constraint(*_plane_constraint([1.0, 0.0], 2.0), weight=10.0, name="x_eq_2")
+        sys.add_constraint(
+            *_plane_constraint([1.0, 0.0], 0.0), weight=10.0, name="x_eq_0"
+        )
+        sys.add_constraint(
+            *_plane_constraint([1.0, 0.0], 2.0), weight=10.0, name="x_eq_2"
+        )
         sys.reset_momentum()
 
         for _ in range(5000):
@@ -642,8 +680,12 @@ class TestContradictoryConstraints:
         """Higher-weighted constraint should be satisfied more closely."""
         sys = HamiltonianSystem(dim=2, damping=0.1)
         sys.set_state(np.array([0.0, 0.0]))
-        sys.add_constraint(*_plane_constraint([1.0, 0.0], 0.0), weight=100.0, name="x_eq_0")
-        sys.add_constraint(*_plane_constraint([1.0, 0.0], 2.0), weight=1.0, name="x_eq_2")
+        sys.add_constraint(
+            *_plane_constraint([1.0, 0.0], 0.0), weight=100.0, name="x_eq_0"
+        )
+        sys.add_constraint(
+            *_plane_constraint([1.0, 0.0], 2.0), weight=1.0, name="x_eq_2"
+        )
         sys.reset_momentum()
 
         for _ in range(5000):
@@ -810,7 +852,9 @@ class TestFullPipeline:
         sys = HamiltonianSystem(dim=3, damping=0.1, multiplier_update_rate=0.05)
         sys.set_state(np.array([5.0, -2.0, 1.0]))
         sys.add_constraint(*_sphere_constraint(1.0, 3), weight=10.0, name="sphere")
-        sys.add_constraint(*_plane_constraint([0.0, 0.0, 1.0], 0.0), weight=10.0, name="equator")
+        sys.add_constraint(
+            *_plane_constraint([0.0, 0.0, 1.0], 0.0), weight=10.0, name="equator"
+        )
         sys.reset_momentum()
 
         # Phase 1: damped onboarding (1000 steps)
@@ -891,7 +935,9 @@ class TestFullPipeline:
         sys = HamiltonianSystem(dim=2, damping=0.1)
         sys.set_state(np.array([1.0, 1.0]))
         sys.add_constraint(*_circle_constraint(1.0), weight=10.0, name="circle")
-        sys.add_constraint(*_plane_constraint([1.0, 0.0], 0.0), weight=10.0, name="x_eq_0")
+        sys.add_constraint(
+            *_plane_constraint([1.0, 0.0], 0.0), weight=10.0, name="x_eq_0"
+        )
         sys.reset_momentum()
 
         for _ in range(1000):

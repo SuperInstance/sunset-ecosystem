@@ -46,7 +46,7 @@ for i, a in enumerate(prints):
     for j, b in enumerate(prints):
         if i < j:
             diffs.append(a.diff(b))
-print(f"Mean pairwise diff: {sum(diffs)/len(diffs):.3f}")
+print(f"Mean pairwise diff: {sum(diffs) / len(diffs):.3f}")
 ```
 
 ## Verification

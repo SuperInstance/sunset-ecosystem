@@ -14,11 +14,22 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
 
-from fleet.config import FleetConfig, get_config, _deep_merge, _resolve_env_vars, _resolve_strings
+from fleet.config import (
+    FleetConfig,
+    get_config,
+    _deep_merge,
+    _resolve_env_vars,
+    _resolve_strings,
+)
 from fleet.health_check import FleetHealthChecker, ServiceDef, CheckResult
 from fleet.notifier import (
-    FleetNotifier, BreedingAlert,
-    DiscordChannel, TelegramChannel, FileChannel, WebhookChannel, SSEChannel,
+    FleetNotifier,
+    BreedingAlert,
+    DiscordChannel,
+    TelegramChannel,
+    FileChannel,
+    WebhookChannel,
+    SSEChannel,
 )
 from fleet.deck import Deck, Slide, breeding_report, fleet_status, flux_gate_decision
 
@@ -26,6 +37,7 @@ from fleet.deck import Deck, Slide, breeding_report, fleet_status, flux_gate_dec
 # ═══════════════════════════════════════════════════════════════
 # Config tests
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestConfigBasics:
     def test_default_values(self):
@@ -54,7 +66,9 @@ class TestConfigBasics:
     def test_resolve_env_vars(self):
         os.environ["TEST_VAR_XYZ"] = "hello"
         assert _resolve_env_vars("${TEST_VAR_XYZ}") == "hello"
-        assert _resolve_env_vars("prefix-${TEST_VAR_XYZ}-suffix") == "prefix-hello-suffix"
+        assert (
+            _resolve_env_vars("prefix-${TEST_VAR_XYZ}-suffix") == "prefix-hello-suffix"
+        )
 
     def test_resolve_strings_recursive(self):
         os.environ["REC_TEST"] = "42"
@@ -72,7 +86,13 @@ class TestConfigBasics:
 
     def test_notification_channels_empty_by_default(self):
         cfg = FleetConfig()
-        assert cfg.notification_channels == {'alert_file': '', 'discord_webhook': '', 'telegram_bot_token': '', 'telegram_chat_id': '', 'webhook_url': ''}
+        assert cfg.notification_channels == {
+            "alert_file": "",
+            "discord_webhook": "",
+            "telegram_bot_token": "",
+            "telegram_chat_id": "",
+            "webhook_url": "",
+        }
 
     def test_services_list(self):
         cfg = FleetConfig()
@@ -97,6 +117,7 @@ class TestConfigBasics:
 # ═══════════════════════════════════════════════════════════════
 # Health check tests
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestHealthCheck:
     def test_service_def_creation(self):
@@ -147,7 +168,7 @@ class TestHealthCheck:
 
     def test_thermal_score_computed(self):
         results = [
-            CheckResult("A", True, 50, "UP"),   # penalty 0.0
+            CheckResult("A", True, 50, "UP"),  # penalty 0.0
             CheckResult("B", True, 600, "UP"),  # penalty 0.3
         ]
         checker = FleetHealthChecker([])
@@ -158,10 +179,13 @@ class TestHealthCheck:
 
         class FakeResponse:
             status = 200
+
             def read(self, n):
                 return b'{"rooms": 5}'
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *args):
                 pass
 
@@ -170,7 +194,9 @@ class TestHealthCheck:
 
         monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
 
-        svc = ServiceDef("Test", "127.0.0.1", 9999, "/status", extract={"rooms": "rooms"})
+        svc = ServiceDef(
+            "Test", "127.0.0.1", 9999, "/status", extract={"rooms": "rooms"}
+        )
         checker = FleetHealthChecker([svc])
         results = checker.check_all()
         assert len(results) == 1
@@ -207,6 +233,7 @@ class TestHealthCheck:
 # ═══════════════════════════════════════════════════════════════
 # Notifier tests
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestBreedingAlert:
     def test_thermal_critical(self):
@@ -316,6 +343,7 @@ class TestFleetNotifier:
 # Deck tests
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestDeck:
     def test_render_basic(self):
         deck = Deck("Test", "test")
@@ -338,8 +366,13 @@ class TestDeck:
 class TestTemplates:
     def test_breeding_report(self):
         md = breeding_report(
-            generation=42, pool_size=50, pass_rate=0.85,
-            top_score=0.12, flux_gate_blocks=3, thermal_violations=0, proof_count=47,
+            generation=42,
+            pool_size=50,
+            pass_rate=0.85,
+            top_score=0.12,
+            flux_gate_blocks=3,
+            thermal_violations=0,
+            proof_count=47,
         )
         assert "Generation 42" in md
         assert "Pass rate: 85.0%" in md
@@ -375,15 +408,18 @@ class TestTemplates:
 # CLI smoke tests (minimal — we don't invoke subprocess here)
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestCLISmoke:
     def test_cli_imports(self):
         from fleet.cli import cmd_status, cmd_test, cmd_breed, cmd_report, main
+
         assert callable(cmd_status)
         assert callable(main)
 
     def test_argparse_parses_status(self):
         from fleet.cli import main
         import argparse
+
         # Just verify the parser builds without error
         # (main() calls parse_args which needs sys.argv; we test indirectly)
         assert True  # Import succeeded = parser built

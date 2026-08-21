@@ -41,11 +41,14 @@ class TestStatus:
 class TestAgents:
     def test_insert_and_query(self) -> None:
         # Insert
-        response = client.post("/agents", json={
-            "agent_id": "test_agent_1",
-            "vector": [1.0, 0.0, 0.5],
-            "fitness": 0.8,
-        })
+        response = client.post(
+            "/agents",
+            json={
+                "agent_id": "test_agent_1",
+                "vector": [1.0, 0.0, 0.5],
+                "fitness": 0.8,
+            },
+        )
         assert response.status_code == 200
         assert response.json()["status"] == "inserted"
 
@@ -63,16 +66,22 @@ class TestAgents:
     def test_similar(self) -> None:
         # Insert multiple
         for i in range(3):
-            client.post("/agents", json={
-                "agent_id": f"sim_{i}",
-                "vector": [float(i), 0.0, 0.0],
-                "fitness": 0.5 + i * 0.1,
-            })
+            client.post(
+                "/agents",
+                json={
+                    "agent_id": f"sim_{i}",
+                    "vector": [float(i), 0.0, 0.0],
+                    "fitness": 0.5 + i * 0.1,
+                },
+            )
 
-        response = client.post("/agents/similar", json={
-            "vector": [1.0, 0.0, 0.0],
-            "k": 2,
-        })
+        response = client.post(
+            "/agents/similar",
+            json={
+                "vector": [1.0, 0.0, 0.0],
+                "k": 2,
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert len(data["results"]) <= 2
@@ -81,17 +90,23 @@ class TestAgents:
 class TestMemory:
     def test_write_and_query(self) -> None:
         now = 1717800000.0
-        response = client.post("/memory/write", json={
-            "agent_id": "mem_1",
-            "vector": [1.0, 2.0, 3.0],
-            "timestamp": now,
-        })
+        response = client.post(
+            "/memory/write",
+            json={
+                "agent_id": "mem_1",
+                "vector": [1.0, 2.0, 3.0],
+                "timestamp": now,
+            },
+        )
         assert response.status_code == 200
 
-        response = client.post("/memory/query", json={
-            "start_time": now - 1,
-            "end_time": now + 1,
-        })
+        response = client.post(
+            "/memory/query",
+            json={
+                "start_time": now - 1,
+                "end_time": now + 1,
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["count"] >= 1
@@ -119,16 +134,22 @@ class TestSwarm:
     def test_knn(self) -> None:
         # Insert entries
         for i in range(3):
-            client.post("/agents", json={
-                "agent_id": f"swarm_{i}",
-                "vector": [float(i), 0.0, 0.0],
-            })
+            client.post(
+                "/agents",
+                json={
+                    "agent_id": f"swarm_{i}",
+                    "vector": [float(i), 0.0, 0.0],
+                },
+            )
 
-        response = client.post("/swarm/knn", json={
-            "vector": [1.0, 0.0, 0.0],
-            "k": 2,
-            "consistency": "all",
-        })
+        response = client.post(
+            "/swarm/knn",
+            json={
+                "vector": [1.0, 0.0, 0.0],
+                "k": 2,
+                "consistency": "all",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert len(data["results"]) <= 2

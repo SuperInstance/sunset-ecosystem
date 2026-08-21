@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class Secret:
     """A stored secret."""
+
     name: str
     value: str
     created_at: float
@@ -44,9 +45,13 @@ class SecretManager:
         self._secrets: Dict[str, Secret] = {}
         self._access_log: List[Dict[str, Any]] = []
 
-    def set(self, name: str, value: str,
-            metadata: Optional[Dict[str, Any]] = None,
-            ttl_seconds: Optional[float] = None) -> Secret:
+    def set(
+        self,
+        name: str,
+        value: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        ttl_seconds: Optional[float] = None,
+    ) -> Secret:
         """Store a secret."""
         secret = Secret(
             name=name,
@@ -66,11 +71,13 @@ class SecretManager:
         if secret.is_expired():
             del self._secrets[name]
             return None
-        self._access_log.append({
-            "name": name,
-            "timestamp": time.time(),
-            "action": "read",
-        })
+        self._access_log.append(
+            {
+                "name": name,
+                "timestamp": time.time(),
+                "action": "read",
+            }
+        )
         return secret.value
 
     def delete(self, name: str) -> bool:
@@ -78,11 +85,13 @@ class SecretManager:
         if name not in self._secrets:
             return False
         del self._secrets[name]
-        self._access_log.append({
-            "name": name,
-            "timestamp": time.time(),
-            "action": "delete",
-        })
+        self._access_log.append(
+            {
+                "name": name,
+                "timestamp": time.time(),
+                "action": "delete",
+            }
+        )
         return True
 
     def list_names(self) -> List[str]:

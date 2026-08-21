@@ -14,6 +14,7 @@ import numpy as np
 
 try:
     from swarm.vector_table import AgentVector, FluxVectorTable
+
     HAS_TURBOVEC = True
 except ImportError:
     HAS_TURBOVEC = False
@@ -67,7 +68,9 @@ def benchmark_turbovec(n_agents: int, dim: int, bit_width: int, k: int) -> dict:
 
 def benchmark_numpy(n_agents: int, dim: int, k: int) -> dict:
     """Run naive numpy benchmark."""
-    vectors = np.array([make_random_vector(dim) for _ in range(n_agents)], dtype=np.float32)
+    vectors = np.array(
+        [make_random_vector(dim) for _ in range(n_agents)], dtype=np.float32
+    )
     ids = np.arange(n_agents, dtype=np.uint64)
     meta = {
         i: {
@@ -135,8 +138,12 @@ def run_all():
         speedup = np_result["query_ms"] / tv_result["query_ms"]
         compression = np_result["memory_mb"] / tv_result["memory_mb"]
 
-        print(f"  numpy:  query={np_result['query_ms']:.3f} ms, memory={np_result['memory_mb']:.1f} MB")
-        print(f"  turbovec: query={tv_result['query_ms']:.3f} ms, memory={tv_result['memory_mb']:.1f} MB")
+        print(
+            f"  numpy:  query={np_result['query_ms']:.3f} ms, memory={np_result['memory_mb']:.1f} MB"
+        )
+        print(
+            f"  turbovec: query={tv_result['query_ms']:.3f} ms, memory={tv_result['memory_mb']:.1f} MB"
+        )
         print(f"  speedup: {speedup:.1f}×, compression: {compression:.1f}×")
 
     print("\n" + "=" * 70)

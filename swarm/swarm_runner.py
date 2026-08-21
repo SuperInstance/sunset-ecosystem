@@ -29,6 +29,7 @@ class SwarmStatus:
         avg_latency_ms: Average processing latency.
         backtests_run: Total backtests completed.
     """
+
     total_agents: int = 0
     active_agents: int = 0
     adaptation_score: float = 0.0
@@ -150,6 +151,7 @@ class SwarmRunner:
         Yields: status dict per tick.
         """
         import numpy as np
+
         ticks = 0
         while max_ticks < 0 or ticks < max_ticks:
             signal = np.random.randn(grid.l).astype(np.float32)
@@ -198,16 +200,13 @@ class SwarmRunner:
             else 0.0
         )
         throughput = (
-            self._tasks_processed / max(1, self._ticks)
-            if self._ticks > 0
-            else 0.0
+            self._tasks_processed / max(1, self._ticks) if self._ticks > 0 else 0.0
         )
 
         return SwarmStatus(
             total_agents=len(self._positions),
             active_agents=sum(
-                1 for f in self._fibers.values()
-                if f.state.value != "compiled"
+                1 for f in self._fibers.values() if f.state.value != "compiled"
             ),
             adaptation_score=self._engine.adaptation_score,
             hint_level=0,

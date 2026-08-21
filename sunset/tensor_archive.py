@@ -136,7 +136,9 @@ class TensorArchive:
         for entry in self._entries.values():
             f = 3  # base: score, generation, num_connections
             if entry.summary:
-                f += len(entry.summary.key_insights) + len(entry.summary.failed_approaches)
+                f += len(entry.summary.key_insights) + len(
+                    entry.summary.failed_approaches
+                )
             if entry.epilogue:
                 f += 2  # tried + found
             features_per.append(f)
@@ -153,7 +155,13 @@ def _entry_text(entry: SunsetEntry) -> str:
     """Build a searchable text blob from an entry."""
     parts = [entry.content_blob]
     if entry.epilogue:
-        parts.extend([entry.epilogue.what_i_tried, entry.epilogue.what_i_found, entry.epilogue.why_not_relevant])
+        parts.extend(
+            [
+                entry.epilogue.what_i_tried,
+                entry.epilogue.what_i_found,
+                entry.epilogue.why_not_relevant,
+            ]
+        )
     if entry.summary:
         parts.append(entry.summary.work_from_my_perspective)
         parts.extend(entry.summary.key_insights)

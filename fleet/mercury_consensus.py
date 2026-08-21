@@ -30,20 +30,24 @@ logger = logging.getLogger(__name__)
 
 # ── Mercury-style determinism annotations ───────────────────────────
 
+
 class Determinism:
     """Mercury determinism modes."""
-    DET = "det"          # Exactly one solution
+
+    DET = "det"  # Exactly one solution
     SEMIDET = "semidet"  # Zero or one solution
-    MULTI = "multi"      # One or more solutions
-    NONDET = "nondet"    # Zero or more solutions
+    MULTI = "multi"  # One or more solutions
+    NONDET = "nondet"  # Zero or more solutions
     FAILURE = "failure"  # No solutions (always fails)
 
 
 # ── Data structures ───────────────────────────────────────────────────
 
+
 @dataclass
 class NodeState:
     """State of a consensus node."""
+
     node_id: str
     view: int = 0
     committed_value: Optional[str] = None
@@ -54,10 +58,13 @@ class NodeState:
 @dataclass
 class ConsensusSpec:
     """Formal specification of BFT-QD consensus."""
+
     nodes: List[str]
     f: int  # max Byzantine faults
     states: Dict[str, NodeState] = field(default_factory=dict)
-    committed_log: List[Tuple[str, str, int]] = field(default_factory=list)  # (node, value, view)
+    committed_log: List[Tuple[str, str, int]] = field(
+        default_factory=list
+    )  # (node, value, view)
 
     def __post_init__(self):
         for nid in self.nodes:
@@ -130,21 +137,30 @@ class ConsensusSpec:
         # Simulate: all correct nodes should commit within max_views
         correct_nodes = [n for n in self.nodes if not self.states[n].is_byzantine]
         for nid in correct_nodes:
-            if self.states[nid].view >= max_views and self.states[nid].committed_value is None:
-                logger.warning("Liveness violation: %s did not commit in %d views", nid, max_views)
+            if (
+                self.states[nid].view >= max_views
+                and self.states[nid].committed_value is None
+            ):
+                logger.warning(
+                    "Liveness violation: %s did not commit in %d views", nid, max_views
+                )
                 return False
         return True
 
     def liveness_proof(self, max_views: int = 10) -> str:
         """Generate a human-readable liveness proof."""
         lines = ["Liveness Proof:", "==============="]
-        lines.append(f"Nodes: {self.n}, f={self.f}, threshold: f < n/3 = {self.n/3:.1f}")
+        lines.append(
+            f"Nodes: {self.n}, f={self.f}, threshold: f < n/3 = {self.n / 3:.1f}"
+        )
         if self.f < self.n / 3:
-            lines.append(f"✅ Fault tolerance: f={self.f} < {self.n/3:.1f}")
+            lines.append(f"✅ Fault tolerance: f={self.f} < {self.n / 3:.1f}")
         else:
-            lines.append(f"❌ Fault tolerance violated: f={self.f} >= {self.n/3:.1f}")
+            lines.append(f"❌ Fault tolerance violated: f={self.f} >= {self.n / 3:.1f}")
         if self.check_liveness(max_views):
-            lines.append(f"✅ Liveness holds: All correct nodes terminate within {max_views} views.")
+            lines.append(
+                f"✅ Liveness holds: All correct nodes terminate within {max_views} views."
+            )
         else:
             lines.append(f"❌ Liveness violated: Some correct nodes did not terminate.")
         return "\n".join(lines)
@@ -164,7 +180,7 @@ class ConsensusSpec:
             return True
         # Check that coverage (number of occupied cells) increases
         for i in range(1, len(archive)):
-            if archive[i].get("coverage", 0) < archive[i-1].get("coverage", 0):
+            if archive[i].get("coverage", 0) < archive[i - 1].get("coverage", 0):
                 logger.warning("QD violation: coverage decreased at step %d", i)
                 return False
         return True

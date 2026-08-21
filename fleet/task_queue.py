@@ -10,6 +10,7 @@ Usage:
     queue.enqueue("task-2", priority=0)
     task = queue.dequeue()  # task-2 first (higher priority)
 """
+
 from __future__ import annotations
 
 import heapq
@@ -72,7 +73,9 @@ class TaskQueue:
     # Dequeue
     # ------------------------------------------------------------------
 
-    def dequeue(self, block: bool = False, timeout: Optional[float] = None) -> Optional[Dict[str, Any]]:
+    def dequeue(
+        self, block: bool = False, timeout: Optional[float] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Get the next available task.
 

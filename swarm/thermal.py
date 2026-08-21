@@ -51,6 +51,7 @@ class DeviceBudget:
         max_agents: Maximum concurrent agents.
         current_agents: Currently allocated agents.
     """
+
     device_type: DeviceType
     max_agents: int
     current_agents: int = 0
@@ -310,7 +311,9 @@ class ThermalBudget:
             next `tick()` that triggers an auction run.
         """
         if not self._use_auction:
-            return self.spawn_with_thermal_check(agent_id, preferred_device, fallback_devices)
+            return self.spawn_with_thermal_check(
+                agent_id, preferred_device, fallback_devices
+            )
 
         # Auction mode: queue a bid
         from swarm.thermal_auction import Bid
@@ -382,7 +385,9 @@ class ThermalBudget:
         # Build ordered candidate list
         all_devices = list(DeviceType)
         candidates = [preferred_device]
-        fallbacks = fallback_devices or [d for d in all_devices if d != preferred_device]
+        fallbacks = fallback_devices or [
+            d for d in all_devices if d != preferred_device
+        ]
         for d in fallbacks:
             if d not in candidates:
                 candidates.append(d)

@@ -10,6 +10,7 @@ Coverage targets:
 - Integration: FleetVectorIndex migration
 - Edge cases: empty, single entry, k > n, zero vectors
 """
+
 import tempfile
 from pathlib import Path
 
@@ -30,6 +31,7 @@ from swarm.fleet_turbovec import (
 @pytest.fixture
 def make_entries():
     """Factory for creating TurboVecEntry lists."""
+
     def _make(n: int = 50, dim: int = 32, seed: int = 42) -> list:
         rng = np.random.RandomState(seed)
         return [
@@ -42,6 +44,7 @@ def make_entries():
             )
             for i in range(n)
         ]
+
     return _make
 
 
@@ -64,6 +67,7 @@ class TestBackend:
         # Check if turbovec module is available
         try:
             import turbovec
+
             assert inst._index is not None
             assert "turbovec" in repr(inst)
         except ImportError:
@@ -73,12 +77,14 @@ class TestBackend:
     def test_numpy_fallback(self, monkeypatch):
         """Force numpy fallback by hiding turbovec."""
         import sys
+
         monkeypatch.setitem(sys.modules, "turbovec", None)
         # Need to reimport to pick up the hidden module
         for key in list(sys.modules.keys()):
             if "fleet_turbovec" in key:
                 del sys.modules[key]
         from swarm.fleet_turbovec import FleetTurboVecIndex, TurboVecConfig
+
         inst = FleetTurboVecIndex(TurboVecConfig(dim=16))
         assert inst._index is None
         assert "numpy" in repr(inst)
@@ -161,10 +167,7 @@ class TestSearch:
         query = np.ones(32, dtype=np.float32)
 
         # Filter: only generation 0
-        results = index.search(
-            query, k=10,
-            filter_fn=lambda e: e.generation == 0
-        )
+        results = index.search(query, k=10, filter_fn=lambda e: e.generation == 0)
         assert len(results) <= 10
         assert all(index._entries[r.agent_id].generation == 0 for r in results)
 
@@ -172,15 +175,18 @@ class TestSearch:
         entries = make_entries(n=10)
         index.add_entries(entries)
         query = np.ones(32, dtype=np.float32)
-        results = index.search(
-            query, k=5,
-            filter_fn=lambda e: e.generation == 999
-        )
+        results = index.search(query, k=5, filter_fn=lambda e: e.generation == 999)
         assert results == []
 
     def test_search_diversity_rerank(self, make_entries):
         inst = FleetTurboVecIndex(
-            TurboVecConfig(dim=32, bit_width=4, diversity_rerank=True, diversity_k=20, diversity_lambda=0.7)
+            TurboVecConfig(
+                dim=32,
+                bit_width=4,
+                diversity_rerank=True,
+                diversity_k=20,
+                diversity_lambda=0.7,
+            )
         )
         entries = make_entries(n=50)
         inst.add_entries(entries)
@@ -234,6 +240,7 @@ class TestSaveLoad:
             # We verify the metadata is always written.
             with open(Path(tmpdir) / "metadata.json") as f:
                 import json as _json
+
                 meta = _json.load(f)
             assert meta["n_entries"] == 20
             assert meta["config"]["bit_width"] == 4
@@ -252,7 +259,9 @@ class TestSaveLoad:
         inst.add_entries(entries)
         # Manually clear backend to force fallback save
         inst._index = None
-        inst._fallback_vectors = np.stack([e.vector for e in entries]).astype(np.float32)
+        inst._fallback_vectors = np.stack([e.vector for e in entries]).astype(
+            np.float32
+        )
         inst._fallback_ids = [e.agent_id for e in entries]
         with tempfile.TemporaryDirectory() as tmpdir:
             inst.save(tmpdir)
@@ -291,6 +300,7 @@ class TestFleetVectorIndexIntegration:
         class MockIdentity:
             def sign_task(self, task):
                 return "mock_signature_123"
+
             def verify_task(self, payload, sig):
                 return True
 
@@ -322,6 +332,7 @@ class TestFleetVectorIndexIntegration:
 
     def test_to_fleet_entries(self, index, make_entries):
         from swarm.mesh_vector_tables import VectorTableEntry
+
         entries = make_entries(n=10)
         index.add_entries(entries)
         fleet_entries = index.to_fleet_entries()

@@ -101,7 +101,9 @@ class TestHarborRegistration:
 
     def test_get_module_health(self) -> None:
         harbor = Harbor()
-        harbor.register_module(ModuleEntry("A", "a.py", status="healthy", test_count=10, test_passed=10))
+        harbor.register_module(
+            ModuleEntry("A", "a.py", status="healthy", test_count=10, test_passed=10)
+        )
         health = harbor.get_module_health("A")
         assert health["status"] == "healthy"
         assert health["test_coverage"] == 1.0
@@ -115,8 +117,12 @@ class TestHarborRegistration:
 class TestFleetReport:
     def test_generate_report(self) -> None:
         harbor = Harbor()
-        harbor.register_module(ModuleEntry("A", "a.py", status="healthy", test_count=10, test_passed=10))
-        harbor.register_module(ModuleEntry("B", "b.py", status="critical", test_count=5, test_passed=0))
+        harbor.register_module(
+            ModuleEntry("A", "a.py", status="healthy", test_count=10, test_passed=10)
+        )
+        harbor.register_module(
+            ModuleEntry("B", "b.py", status="critical", test_count=5, test_passed=0)
+        )
         report = harbor.generate_fleet_report()
         assert report["total_modules"] == 2
         assert report["healthy"] == 1
@@ -146,7 +152,9 @@ class TestFleetReport:
 
     def test_module_details(self) -> None:
         harbor = Harbor()
-        harbor.register_module(ModuleEntry("A", "a.py", status="healthy", test_count=5, test_passed=5))
+        harbor.register_module(
+            ModuleEntry("A", "a.py", status="healthy", test_count=5, test_passed=5)
+        )
         report = harbor.generate_fleet_report()
         assert len(report["module_details"]) == 1
         assert report["module_details"][0]["name"] == "A"
@@ -230,8 +238,12 @@ class TestDependencyAnalysis:
 class TestStats:
     def test_get_stats(self) -> None:
         harbor = Harbor()
-        harbor.register_module(ModuleEntry("A", "a.py", status="healthy", test_count=10))
-        harbor.register_module(ModuleEntry("B", "b.py", status="critical", test_count=5))
+        harbor.register_module(
+            ModuleEntry("A", "a.py", status="healthy", test_count=10)
+        )
+        harbor.register_module(
+            ModuleEntry("B", "b.py", status="critical", test_count=5)
+        )
         stats = harbor.get_stats()
         assert stats["modules"] == 2
         assert stats["tests"] == 15

@@ -26,9 +26,11 @@ logger = logging.getLogger(__name__)
 # Stress fixtures
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.fixture
 def stress_scheduler():
     """Scheduler with configurable beat_number / bpm for stress."""
+
     class _StressScheduler:
         def __init__(self, beat_number: int = 0, bpm: float = 120.0):
             self.beat_number = beat_number
@@ -60,7 +62,10 @@ def room_grid_100():
 @pytest.fixture
 def fast_conductor(stress_scheduler):
     """Factory: returns a FleetConductor with a stress scheduler registered."""
-    def _make(node_id: str, beat: int = 0, bpm: float = 120.0, max_drift_ms: float = 5.0):
+
+    def _make(
+        node_id: str, beat: int = 0, bpm: float = 120.0, max_drift_ms: float = 5.0
+    ):
         conductor = FleetConductor(
             node_id=node_id,
             nexus_endpoint="http://nexus.test:4047",
@@ -71,12 +76,14 @@ def fast_conductor(stress_scheduler):
         conductor.register_local_scheduler(scheduler)
         conductor._local_beat_state = BeatState.now(beat_number=beat)
         return conductor, scheduler
+
     return _make
 
 
 # ═══════════════════════════════════════════════════════════════
 # 1. 100-room grid
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestHundredRoomGrid:
     """FleetConductor must sync across 100 virtual nodes in <30 s."""
@@ -114,7 +121,9 @@ class TestHundredRoomGrid:
         for c, s in zip(nodes, schedulers):
             if s.jump_count > 0:
                 # They jump to max peer beat they could see
-                assert s.beat_number >= s.last_jump_beat, f"Jump didn't raise beat for {c.node_id}"
+                assert s.beat_number >= s.last_jump_beat, (
+                    f"Jump didn't raise beat for {c.node_id}"
+                )
                 assert s.last_jump_beat > 0
 
         # Wall-clock budget check: on modest hardware this finishes in <2 s
@@ -132,7 +141,9 @@ class TestHundredRoomGrid:
         highest_peer = BeatState(beat_number=200, wall_time_ns=0, perf_counter_ns=0)
 
         async def _sync_one(c: FleetConductor) -> BeatState:
-            with patch.object(c, "_fetch_peer_beats", return_value={"hub": highest_peer}):
+            with patch.object(
+                c, "_fetch_peer_beats", return_value={"hub": highest_peer}
+            ):
                 return await c.sync_beat()
 
         t0 = time.perf_counter()
@@ -169,6 +180,7 @@ class TestHundredRoomGrid:
 # 2. 50-agent spawn storm
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestFiftyAgentSpawnStorm:
     """Rapidly spawn 50 conductors and verify stability in <30 s."""
 
@@ -189,7 +201,9 @@ class TestFiftyAgentSpawnStorm:
         """Spawn 50 agents, then sync all concurrently; <30 s."""
         agents: list[FleetConductor] = []
         for i in range(50):
-            c, _ = fast_conductor(f"agent-{i:02d}", beat=random.randint(0, 1000), bpm=120)
+            c, _ = fast_conductor(
+                f"agent-{i:02d}", beat=random.randint(0, 1000), bpm=120
+            )
             agents.append(c)
 
         consensus = BeatState(beat_number=500, wall_time_ns=0, perf_counter_ns=0)
@@ -214,7 +228,9 @@ class TestFiftyAgentSpawnStorm:
         for c, r in zip(agents, results):
             local_beat = c._get_local_beat_state().beat_number
             expected = max(local_beat, 500)
-            assert r.beat_number == expected, f"{c.node_id}: local={local_beat} peer=500 got {r.beat_number}"
+            assert r.beat_number == expected, (
+                f"{c.node_id}: local={local_beat} peer=500 got {r.beat_number}"
+            )
         assert elapsed < 30.0, f"50-agent sync storm took {elapsed:.2f}s"
 
     def test_spawn_storm_drift_correction(self, fast_conductor):
@@ -222,7 +238,9 @@ class TestFiftyAgentSpawnStorm:
         agents: list[FleetConductor] = []
         schedulers = []
         for i in range(50):
-            c, s = fast_conductor(f"agent-{i:02d}", beat=random.randint(0, 500), bpm=120)
+            c, s = fast_conductor(
+                f"agent-{i:02d}", beat=random.randint(0, 500), bpm=120
+            )
             agents.append(c)
             schedulers.append(s)
 
@@ -230,7 +248,8 @@ class TestFiftyAgentSpawnStorm:
         for i, c in enumerate(agents):
             peers = {
                 agents[j].node_id: agents[j]._get_local_beat_state()
-                for j in range(50) if j != i
+                for j in range(50)
+                if j != i
             }
             c.correct_drift(peers)
 
@@ -261,6 +280,7 @@ class TestFiftyAgentSpawnStorm:
 # ═══════════════════════════════════════════════════════════════
 # 3. Thermal overload scenario
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestThermalOverload:
     """Simulate thermal throttling under sync load."""
@@ -342,6 +362,7 @@ class TestThermalOverload:
 # 4. Network partition simulation
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestNetworkPartition:
     """Simulate network partitions, splits, and heal events."""
 
@@ -404,7 +425,9 @@ class TestNetworkPartition:
 
         # Alive cluster should not be in partition (20 nodes, need 11, have 20)
         for n in alive_nodes:
-            assert n._running_solo is False, f"{n.node_id} should not be solo in 20-node cluster"
+            assert n._running_solo is False, (
+                f"{n.node_id} should not be solo in 20-node cluster"
+            )
 
         # Partitioned nodes (no peers) should be solo
         for i in partitioned_indices:
@@ -474,6 +497,7 @@ class TestNetworkPartition:
 # ═══════════════════════════════════════════════════════════════
 # 5. Room-grid × conductor integration (bonus coverage)
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestRoomGridConductorIntegration:
     """RoomGrid as a peer topology for FleetConductor."""

@@ -1,7 +1,13 @@
 """Tests for fleet.bridge — Bridge interface and registry."""
 
 import pytest
-from fleet.bridge import Bridge, BridgeRegistry, BridgeStatus, BridgeEvent, BridgeCompiler
+from fleet.bridge import (
+    Bridge,
+    BridgeRegistry,
+    BridgeStatus,
+    BridgeEvent,
+    BridgeCompiler,
+)
 
 
 class _FakeBridge(Bridge):
@@ -109,17 +115,25 @@ class TestBridgeRegistry:
         assert events[key].status == BridgeStatus.CONNECTED
 
 
-
 class TestBridgeCompiler:
     def test_compile_schema_not_implemented(self):
         reg = BridgeRegistry()
         bc = BridgeCompiler(registry=reg)
         with pytest.raises(NotImplementedError):
-            bc.compile_from_schema("TestBridge", {"connect": ["host", "port"], "push": ["data"]})
+            bc.compile_from_schema(
+                "TestBridge", {"connect": ["host", "port"], "push": ["data"]}
+            )
 
     def test_compile_returns_bridge_subclass_not_implemented(self):
         reg = BridgeRegistry()
         bc = BridgeCompiler(registry=reg)
         with pytest.raises(NotImplementedError):
-            bc.compile_from_schema("Dyn", {"connect": ["host"], "push": ["data"], "pull": ["query"], "disconnect": []})
-
+            bc.compile_from_schema(
+                "Dyn",
+                {
+                    "connect": ["host"],
+                    "push": ["data"],
+                    "pull": ["query"],
+                    "disconnect": [],
+                },
+            )

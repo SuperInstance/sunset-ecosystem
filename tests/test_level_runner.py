@@ -31,9 +31,11 @@ class TestLevelDefinition:
 class TestEntity:
     def test_to_vector(self) -> None:
         e = Entity(
-            entity_id="e1", entity_type="agent",
+            entity_id="e1",
+            entity_type="agent",
             position=np.array([1.0, 2.0, 3.0]),
-            health=50.0, faction="team_a",
+            health=50.0,
+            faction="team_a",
             attributes={"speed": 10.0},
         )
         vec = e.to_vector(dim=64)
@@ -62,15 +64,23 @@ class TestLevelState:
 
     def test_spatial_query(self) -> None:
         level = LevelState(LevelDefinition(name="test"))
-        level.add_entity(Entity(entity_id="e1", entity_type="agent", position=np.array([0, 0, 0])))
-        level.add_entity(Entity(entity_id="e2", entity_type="agent", position=np.array([10, 0, 0])))
-        level.add_entity(Entity(entity_id="e3", entity_type="npc", position=np.array([1, 0, 0])))
+        level.add_entity(
+            Entity(entity_id="e1", entity_type="agent", position=np.array([0, 0, 0]))
+        )
+        level.add_entity(
+            Entity(entity_id="e2", entity_type="agent", position=np.array([10, 0, 0]))
+        )
+        level.add_entity(
+            Entity(entity_id="e3", entity_type="npc", position=np.array([1, 0, 0]))
+        )
 
         near = level.get_entities_near(np.array([0, 0, 0]), radius=5.0)
         assert len(near) == 2  # e1 and e3
         assert all(e.entity_id in ("e1", "e3") for e in near)
 
-        near_agents = level.get_entities_near(np.array([0, 0, 0]), radius=5.0, entity_type="agent")
+        near_agents = level.get_entities_near(
+            np.array([0, 0, 0]), radius=5.0, entity_type="agent"
+        )
         assert len(near_agents) == 1
         assert near_agents[0].entity_id == "e1"
 
@@ -84,10 +94,12 @@ class TestLevelState:
         assert len(team_a) == 2
 
     def test_victory_eliminate_faction(self) -> None:
-        level = LevelState(LevelDefinition(
-            name="test",
-            victory_conditions=[{"type": "eliminate_faction", "faction": "team_b"}],
-        ))
+        level = LevelState(
+            LevelDefinition(
+                name="test",
+                victory_conditions=[{"type": "eliminate_faction", "faction": "team_b"}],
+            )
+        )
         level.add_entity(Entity(entity_id="e1", entity_type="agent", faction="team_a"))
         level.add_entity(Entity(entity_id="e2", entity_type="agent", faction="team_b"))
         assert level.check_victory() is None
@@ -98,10 +110,12 @@ class TestLevelState:
         assert result["victory"] is True
 
     def test_victory_survive_ticks(self) -> None:
-        level = LevelState(LevelDefinition(
-            name="test",
-            victory_conditions=[{"type": "survive_ticks", "ticks": 10}],
-        ))
+        level = LevelState(
+            LevelDefinition(
+                name="test",
+                victory_conditions=[{"type": "survive_ticks", "ticks": 10}],
+            )
+        )
         level.tick_count = 5
         assert level.check_victory() is None
         level.tick_count = 10
@@ -110,11 +124,27 @@ class TestLevelState:
         assert result["victory"] is True
 
     def test_victory_reach_position(self) -> None:
-        level = LevelState(LevelDefinition(
-            name="test",
-            victory_conditions=[{"type": "reach_position", "position": [10, 0, 0], "radius": 2.0, "faction": "team_a"}],
-        ))
-        level.add_entity(Entity(entity_id="e1", entity_type="agent", faction="team_a", position=np.array([0, 0, 0])))
+        level = LevelState(
+            LevelDefinition(
+                name="test",
+                victory_conditions=[
+                    {
+                        "type": "reach_position",
+                        "position": [10, 0, 0],
+                        "radius": 2.0,
+                        "faction": "team_a",
+                    }
+                ],
+            )
+        )
+        level.add_entity(
+            Entity(
+                entity_id="e1",
+                entity_type="agent",
+                faction="team_a",
+                position=np.array([0, 0, 0]),
+            )
+        )
         assert level.check_victory() is None
 
         level.entities["e1"].position = np.array([10, 0, 0])
@@ -129,7 +159,10 @@ class TestLevelRunner:
         level_id = runner.load_level(LevelDefinition(name="test"))
         assert level_id.startswith("test_")
 
-        assert runner.spawn_entity(level_id, "agent_1", "agent", (0, 0, 0), "team_a") is True
+        assert (
+            runner.spawn_entity(level_id, "agent_1", "agent", (0, 0, 0), "team_a")
+            is True
+        )
         state = runner.get_level_state(level_id)
         assert state is not None
         assert len(state.entities) == 1
@@ -144,6 +177,7 @@ class TestLevelRunner:
 
         # Let it run for a few ticks
         import time
+
         time.sleep(0.15)
 
         assert runner.stop_level(level_id) is True
@@ -169,7 +203,9 @@ class TestLevelRunner:
 
     def test_physics_update(self) -> None:
         runner = LevelRunner()
-        level_id = runner.load_level(LevelDefinition(name="test", bounds=(0, 0, 0, 100, 100, 100)))
+        level_id = runner.load_level(
+            LevelDefinition(name="test", bounds=(0, 0, 0, 100, 100, 100))
+        )
         runner.spawn_entity(level_id, "a", "agent", (50, 50, 50))
 
         state = runner.get_level_state(level_id)
@@ -185,7 +221,9 @@ class TestLevelRunner:
 
     def test_bounds_clamping(self) -> None:
         runner = LevelRunner()
-        level_id = runner.load_level(LevelDefinition(name="test", bounds=(0, 0, 0, 10, 10, 10)))
+        level_id = runner.load_level(
+            LevelDefinition(name="test", bounds=(0, 0, 0, 10, 10, 10))
+        )
         runner.spawn_entity(level_id, "a", "agent", (9, 5, 5))
 
         state = runner.get_level_state(level_id)
@@ -203,6 +241,7 @@ class TestLevelRunner:
         runner.spawn_entity(level_id, "a", "agent")
         runner.start_level(level_id)
         import time
+
         time.sleep(0.1)
         runner.stop_level(level_id)
 

@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class ConfigEntry:
     """A single configuration entry."""
+
     key: str
     value: Any
     source: str
@@ -49,8 +50,13 @@ class ConfigManager:
             "mesh.gossip_interval_ms": 5000,
         }
 
-    def set(self, key: str, value: Any, source: str = "manual",
-            metadata: Optional[Dict[str, Any]] = None):
+    def set(
+        self,
+        key: str,
+        value: Any,
+        source: str = "manual",
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
         """Set a configuration value."""
         entry = ConfigEntry(
             key=key,
@@ -97,19 +103,18 @@ class ConfigManager:
 
     def get_by_prefix(self, prefix: str) -> Dict[str, Any]:
         """Get all configs with a given prefix."""
-        return {
-            k: e.value
-            for k, e in self._configs.items()
-            if k.startswith(prefix)
-        }
+        return {k: e.value for k, e in self._configs.items() if k.startswith(prefix)}
 
     def export_json(self) -> str:
         """Export all configs as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "configs": {k: e.to_dict() for k, e in self._configs.items()},
-            "defaults": self._defaults,
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "configs": {k: e.to_dict() for k, e in self._configs.items()},
+                "defaults": self._defaults,
+            },
+            indent=2,
+        )
 
     def load_json(self, json_str: str):
         """Load configs from JSON."""

@@ -38,27 +38,36 @@ from swarm.meta_breeder import (
 # Fixtures
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @pytest.fixture
 def simple_evaluator():
     """A simple sphere fitness function."""
+
     def fn(g: Genome) -> float:
-        return -sum(x ** 2 for x in g.genes)
+        return -sum(x**2 for x in g.genes)
+
     return CallableEvaluator(fn)
 
 
 @pytest.fixture
 def multimodal_evaluator():
     """A multimodal Rastrigin-like function."""
+
     def fn(g: Genome) -> float:
-        return -(10 + sum(x ** 2 - 10 * math.cos(2 * math.pi * x) for x in g.genes))
+        return -(10 + sum(x**2 - 10 * math.cos(2 * math.pi * x) for x in g.genes))
+
     return CallableEvaluator(fn)
 
 
 @pytest.fixture
 def random_population():
     """Generate a random population of genomes."""
+
     def _make(n=10, dim=3):
-        return [Genome(genes=[random.uniform(-1, 1) for _ in range(dim)]) for _ in range(n)]
+        return [
+            Genome(genes=[random.uniform(-1, 1) for _ in range(dim)]) for _ in range(n)
+        ]
+
     return _make
 
 
@@ -74,6 +83,7 @@ def portfolio(simple_evaluator, random_population):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. Landscape analysis tests
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def test_landscape_analyzer_unknown_with_empty_history():
     """Test that empty fitness history returns UNKNOWN."""
@@ -159,7 +169,10 @@ def test_landscape_analyzer_modality_computation():
 # 2. Breeder selection based on landscape type
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def test_portfolio_selects_breeder_for_smooth_landscape(portfolio, simple_evaluator, random_population):
+
+def test_portfolio_selects_breeder_for_smooth_landscape(
+    portfolio, simple_evaluator, random_population
+):
     """The portfolio should select EXPLOITATION for smooth landscapes."""
     # Warm up all breeders with some QD scores
     for name, record in portfolio.breeders.items():
@@ -174,9 +187,15 @@ def test_portfolio_selects_breeder_for_smooth_landscape(portfolio, simple_evalua
 
 def test_portfolio_landscape_match_bonus(portfolio):
     """EXPLOITATION should get a bonus for SMOOTH, EXPLORATION for RUGGED."""
-    bonus_exploit = portfolio._landscape_match_bonus(BreedingPreset.EXPLOITATION, LandscapeType.SMOOTH)
-    bonus_explore = portfolio._landscape_match_bonus(BreedingPreset.EXPLORATION, LandscapeType.RUGGED)
-    bonus_none = portfolio._landscape_match_bonus(BreedingPreset.EXPLOITATION, LandscapeType.RUGGED)
+    bonus_exploit = portfolio._landscape_match_bonus(
+        BreedingPreset.EXPLOITATION, LandscapeType.SMOOTH
+    )
+    bonus_explore = portfolio._landscape_match_bonus(
+        BreedingPreset.EXPLORATION, LandscapeType.RUGGED
+    )
+    bonus_none = portfolio._landscape_match_bonus(
+        BreedingPreset.EXPLOITATION, LandscapeType.RUGGED
+    )
 
     assert bonus_exploit == 2.0
     assert bonus_explore == 2.0
@@ -193,6 +212,7 @@ def test_portfolio_empty_raises(portfolio):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 3. Stall detection tests
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def test_stall_detector_fitness_plateau():
     """Stall should be detected when fitness stays flat."""
@@ -218,7 +238,9 @@ def test_stall_detector_diversity_collapse():
 def test_stall_detector_too_early_not_stalled():
     """Stall should not be detected before min_generations."""
     sd = StallDetector(min_generations=5)
-    stalled, reason = sd.is_stalled([1.0, 1.0, 1.0], [0.0, 0.0, 0.0], generations_active=2)
+    stalled, reason = sd.is_stalled(
+        [1.0, 1.0, 1.0], [0.0, 0.0, 0.0], generations_active=2
+    )
     assert stalled is False
     assert reason == "too_early"
 
@@ -247,6 +269,7 @@ def test_stall_detector_active_when_improving():
 # 4. Breeder switching logic
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def test_meta_breeder_switch_on_stall(portfolio, simple_evaluator):
     """MetaBreeder should switch breeders when the current one stalls."""
     mb = MetaBreeder(portfolio, evaluator=simple_evaluator, max_stall_switches=3)
@@ -264,7 +287,11 @@ def test_meta_breeder_switch_on_stall(portfolio, simple_evaluator):
     record.generations_active = 20
 
     events = mb.step()
-    switch_events = [e for e in events if isinstance(e, MetaBreedingEvent) and e.event_type == "breeder_switched"]
+    switch_events = [
+        e
+        for e in events
+        if isinstance(e, MetaBreedingEvent) and e.event_type == "breeder_switched"
+    ]
     assert len(switch_events) >= 1
 
 
@@ -284,7 +311,11 @@ def test_meta_breeder_switch_forces_different_breeder(portfolio, simple_evaluato
     record.generations_active = 20
 
     events = mb.step()
-    switch_events = [e for e in events if isinstance(e, MetaBreedingEvent) and e.event_type == "breeder_switched"]
+    switch_events = [
+        e
+        for e in events
+        if isinstance(e, MetaBreedingEvent) and e.event_type == "breeder_switched"
+    ]
     if switch_events:
         assert switch_events[-1].selected_breeder != first_name
 
@@ -310,7 +341,11 @@ def test_meta_breeder_max_stall_limit(portfolio, simple_evaluator):
     record.breeder._diversity_history = [0.5] * 20
     record.generations_active = 20
     events = mb.step()
-    limit_events = [e for e in events if isinstance(e, MetaBreedingEvent) and e.event_type == "stall_limit_reached"]
+    limit_events = [
+        e
+        for e in events
+        if isinstance(e, MetaBreedingEvent) and e.event_type == "stall_limit_reached"
+    ]
     assert len(limit_events) >= 1
 
 
@@ -329,9 +364,12 @@ def test_meta_breeder_single_breeder(portfolio, simple_evaluator):
 # 5. Warm-start from previous breeder's population
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def test_warm_start_population_blended(portfolio, simple_evaluator):
     """Warm-start should blend old population with new random individuals."""
-    mb = MetaBreeder(portfolio, evaluator=simple_evaluator, warm_start_ratio=0.5, pop_size=20)
+    mb = MetaBreeder(
+        portfolio, evaluator=simple_evaluator, warm_start_ratio=0.5, pop_size=20
+    )
 
     # Run a few generations to build up a population
     mb.run(3)
@@ -349,7 +387,9 @@ def test_warm_start_population_blended(portfolio, simple_evaluator):
 
 def test_warm_start_selects_diverse_subset(portfolio, simple_evaluator):
     """Warm-start should select a diverse subset, not just the best."""
-    mb = MetaBreeder(portfolio, evaluator=simple_evaluator, warm_start_ratio=0.6, pop_size=10)
+    mb = MetaBreeder(
+        portfolio, evaluator=simple_evaluator, warm_start_ratio=0.6, pop_size=10
+    )
     mb.run(3)
 
     old_pop = mb.current_breeder_record.breeder.population
@@ -361,7 +401,9 @@ def test_warm_start_selects_diverse_subset(portfolio, simple_evaluator):
 
 def test_warm_start_empty_population(portfolio, simple_evaluator):
     """Warm-start with empty population should still produce a valid population."""
-    mb = MetaBreeder(portfolio, evaluator=simple_evaluator, warm_start_ratio=0.5, pop_size=10)
+    mb = MetaBreeder(
+        portfolio, evaluator=simple_evaluator, warm_start_ratio=0.5, pop_size=10
+    )
     next_name = [n for n in portfolio.breeders if n != mb.current_breeder_name][0]
     event = mb._activate_breeder(next_name, warm_start_population=[])
     new_pop = mb.current_breeder_record.breeder.population
@@ -372,6 +414,7 @@ def test_warm_start_empty_population(portfolio, simple_evaluator):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 6. Event emission with selection reasoning
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def test_event_emission_on_breeder_activation(portfolio, simple_evaluator):
     """Activating a breeder should emit a MetaBreedingEvent with reasoning."""
@@ -394,7 +437,11 @@ def test_event_emission_on_breeder_switch(portfolio, simple_evaluator):
     record.generations_active = 20
 
     events = mb.step()
-    switch_events = [e for e in events if isinstance(e, MetaBreedingEvent) and e.event_type == "breeder_switched"]
+    switch_events = [
+        e
+        for e in events
+        if isinstance(e, MetaBreedingEvent) and e.event_type == "breeder_switched"
+    ]
     assert len(switch_events) >= 1
     assert switch_events[0].landscape is not None
     assert "Stall detected" in switch_events[0].reasoning
@@ -411,7 +458,11 @@ def test_event_payload_contains_stall_reason(portfolio, simple_evaluator):
     record.generations_active = 20
 
     events = mb.step()
-    switch_events = [e for e in events if isinstance(e, MetaBreedingEvent) and e.event_type == "breeder_switched"]
+    switch_events = [
+        e
+        for e in events
+        if isinstance(e, MetaBreedingEvent) and e.event_type == "breeder_switched"
+    ]
     if switch_events:
         assert "stall_reason" in switch_events[0].payload
 
@@ -427,6 +478,7 @@ def test_event_list_accumulated(portfolio, simple_evaluator):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 7. Edge cases
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def test_empty_archive_qd_score(portfolio, simple_evaluator):
     """QD-score should be 0 for an empty archive."""
@@ -458,7 +510,9 @@ def test_all_breeders_stall(portfolio, simple_evaluator):
 def test_portfolio_add_existing_breeder(portfolio, simple_evaluator, random_population):
     """Adding an existing breeder should preserve its state."""
     pop = random_population(10, 3)
-    bk = BreedingKernel.from_preset(BreedingPreset.BALANCED, simple_evaluator, pop, 10, name="custom")
+    bk = BreedingKernel.from_preset(
+        BreedingPreset.BALANCED, simple_evaluator, pop, 10, name="custom"
+    )
     portfolio.add_breeder(bk, BreedingPreset.BALANCED)
     assert "custom" in portfolio.breeders
     assert portfolio.breeders["custom"].breeder.name == "custom"
@@ -478,7 +532,11 @@ def test_meta_breeder_step_with_no_active_breeder(portfolio, simple_evaluator):
     mb.current_breeder_name = None
     mb.current_breeder_record = None
     events = mb.step()
-    activation_events = [e for e in events if isinstance(e, MetaBreedingEvent) and e.event_type == "breeder_activated"]
+    activation_events = [
+        e
+        for e in events
+        if isinstance(e, MetaBreedingEvent) and e.event_type == "breeder_activated"
+    ]
     assert len(activation_events) >= 1
     assert mb.current_breeder_name is not None
 
@@ -510,10 +568,13 @@ def test_breeder_record_qd_trend():
 # Integration / end-to-end
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def test_end_to_end_meta_breeder_on_multimodal(multimodal_evaluator, random_population):
     """End-to-end: MetaBreeder on a multimodal landscape should adapt over time."""
     pop = random_population(20, 3)
-    portfolio = BreederPortfolio(evaluator=multimodal_evaluator, pop_size=20, gene_dim=3)
+    portfolio = BreederPortfolio(
+        evaluator=multimodal_evaluator, pop_size=20, gene_dim=3
+    )
     for preset in BreedingPreset.all():
         portfolio.add_preset(preset, name=preset.name.lower())
 
@@ -527,7 +588,11 @@ def test_end_to_end_meta_breeder_on_multimodal(multimodal_evaluator, random_popu
     assert len(meta_events) >= 0
 
     # Best fitness should have improved (or at least not crashed)
-    fitnesses = [e.payload.get("best_fitness") for e in breeding_events if e.payload.get("best_fitness") is not None]
+    fitnesses = [
+        e.payload.get("best_fitness")
+        for e in breeding_events
+        if e.payload.get("best_fitness") is not None
+    ]
     assert len(fitnesses) > 0
 
 

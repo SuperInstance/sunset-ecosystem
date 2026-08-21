@@ -12,6 +12,7 @@ Test matrix
 - CMA-ES: sample distribution, update convergence
 - Integration: end-to-end breeding consensus
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -537,13 +538,17 @@ class TestQuorumCertificate:
 
 class TestQDArchive:
     def test_empty_archive(self):
-        archive = QDArchive(grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2)
+        archive = QDArchive(
+            grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2
+        )
         assert archive.coverage == 0.0
         assert archive.qd_score == 0.0
         assert archive.stats["n_occupied"] == 0
 
     def test_add_single_individual(self):
-        archive = QDArchive(grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2)
+        archive = QDArchive(
+            grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2
+        )
         desc = BehaviorDescriptor(values=np.array([0.5, 0.5]), names=("x", "y"))
         added = archive.add(desc, {"id": "a"}, fitness=0.8)
         assert added
@@ -551,7 +556,9 @@ class TestQDArchive:
         assert archive.qd_score == 0.8
 
     def test_add_improves_cell(self):
-        archive = QDArchive(grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2)
+        archive = QDArchive(
+            grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2
+        )
         desc = BehaviorDescriptor(values=np.array([0.5, 0.5]), names=("x", "y"))
         archive.add(desc, {"id": "a"}, fitness=0.5)
         added = archive.add(desc, {"id": "b"}, fitness=0.9)
@@ -560,7 +567,9 @@ class TestQDArchive:
         assert archive.stats["n_occupied"] == 1
 
     def test_add_does_not_improve_worse(self):
-        archive = QDArchive(grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2)
+        archive = QDArchive(
+            grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2
+        )
         desc = BehaviorDescriptor(values=np.array([0.5, 0.5]), names=("x", "y"))
         archive.add(desc, {"id": "a"}, fitness=0.9)
         added = archive.add(desc, {"id": "b"}, fitness=0.5)
@@ -568,7 +577,9 @@ class TestQDArchive:
         assert archive.qd_score == 0.9
 
     def test_coverage_increases_with_diverse_individuals(self):
-        archive = QDArchive(grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2)
+        archive = QDArchive(
+            grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2
+        )
         for i in range(5):
             desc = BehaviorDescriptor(
                 values=np.array([i / 5.0 + 0.05, 0.5]), names=("x", "y")
@@ -579,7 +590,9 @@ class TestQDArchive:
         assert archive.coverage == 5 / 25
 
     def test_get_random_elite(self):
-        archive = QDArchive(grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2)
+        archive = QDArchive(
+            grid_shape=(5, 5), bounds=[(0.0, 1.0), (0.0, 1.0)], n_dims=2
+        )
         assert archive.get_random_elite() is None
 
         desc = BehaviorDescriptor(values=np.array([0.5, 0.5]), names=("x", "y"))
@@ -710,7 +723,9 @@ class TestFleetBreederConsensus:
     def test_evaluate_offspring(self, key):
         fbc = FleetBreederConsensus("n0", ["n0", "n1", "n2", "n3"], key)
         child = {"id": "c1"}
-        added = fbc.evaluate_offspring(child, fitness=0.9, behavior=np.array([0.5, 0.5]))
+        added = fbc.evaluate_offspring(
+            child, fitness=0.9, behavior=np.array([0.5, 0.5])
+        )
         assert added
         assert fbc.archive.stats["n_occupied"] == 1
 

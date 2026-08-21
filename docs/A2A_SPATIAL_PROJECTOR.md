@@ -77,8 +77,8 @@ projector.project_state(
     state=WorldState(
         position=(0.0, 0.0, 0.0),  # Abstract room coordinates
         semantics={"room_type": "ethos", "temperature": 65.4},
-        confidence=0.95
-    )
+        confidence=0.95,
+    ),
 )
 ```
 
@@ -92,6 +92,7 @@ World model predictions pass through FLUX constraint gates before being shared:
 def thermal_feasibility(prediction, thermal_budget):
     if prediction.energy > thermal_budget.remaining:
         raise ValueError("Prediction exceeds thermal budget")
+
 
 # Soft constraint: prefer low-uncertainty predictions
 @flux_constraint(hard=False, weight=0.3)
@@ -111,7 +112,7 @@ context = SpatialBreedingContext(projector)
 parents = context.select_proximal_parents(
     agent_id="breeder-7",
     radius=5.0,  # Abstract room-distance
-    k=3
+    k=3,
 )
 ```
 
@@ -205,25 +206,34 @@ class SpatialProjector:
     def __init__(self, fleet_node_id: str, db_path: Optional[str] = None):
         """Initialize projector with LanceDB backend."""
 
-    def project_state(self, agent_id: str, room_id: str,
-                     state: WorldState, timestamp: Optional[float] = None) -> str:
+    def project_state(
+        self,
+        agent_id: str,
+        room_id: str,
+        state: WorldState,
+        timestamp: Optional[float] = None,
+    ) -> str:
         """Project an agent's state into the spatial index.
         Returns projection ID."""
 
-    def query_neighbors(self, agent_id: str, radius: float,
-                        room_filter: Optional[str] = None) -> List[WorldState]:
+    def query_neighbors(
+        self, agent_id: str, radius: float, room_filter: Optional[str] = None
+    ) -> List[WorldState]:
         """Find all agents within radius of given agent."""
 
-    def predict_trajectory(self, agent_id: str, horizon: int,
-                           model: Optional[str] = None) -> Prediction:
+    def predict_trajectory(
+        self, agent_id: str, horizon: int, model: Optional[str] = None
+    ) -> Prediction:
         """Predict agent's future trajectory using world model."""
 
-    def apply_flux_gate(self, prediction: Prediction,
-                        constraints: List[FluxConstraint]) -> Prediction:
+    def apply_flux_gate(
+        self, prediction: Prediction, constraints: List[FluxConstraint]
+    ) -> Prediction:
         """Apply FLUX constraints to prediction. Raises if hard constraint violated."""
 
-    def broadcast_prediction(self, prediction: Prediction,
-                            target_agents: Optional[List[str]] = None) -> None:
+    def broadcast_prediction(
+        self, prediction: Prediction, target_agents: Optional[List[str]] = None
+    ) -> None:
         """Broadcast validated prediction to other agents via A2A."""
 ```
 
@@ -233,7 +243,8 @@ class SpatialProjector:
 @dataclass
 class WorldState:
     """Typed perceptual state tensor."""
-    position: Tuple[float, ...]         # Spatial coordinates (2D or 3D)
+
+    position: Tuple[float, ...]  # Spatial coordinates (2D or 3D)
     velocity: Optional[Tuple[float, ...]] = None
     orientation: Optional[float] = None  # Radians (2D) or quaternion (3D)
     semantics: Dict[str, Any] = field(default_factory=dict)
@@ -249,7 +260,8 @@ class WorldState:
 @dataclass
 class Prediction:
     """World model prediction output."""
-    trajectory: List[WorldState]        # Predicted future states
+
+    trajectory: List[WorldState]  # Predicted future states
     rewards: Optional[List[float]] = None
     values: Optional[List[float]] = None
     actions: Optional[List[Any]] = None

@@ -309,21 +309,27 @@ The logos module is the fleet's memory. It provides structured decision journals
 
 ```python
 from logos.decision_journal import (
-    DecisionJournal, Decision,
-    log_spawn, log_sunset, log_breed, log_human_command,
+    DecisionJournal,
+    Decision,
+    log_spawn,
+    log_sunset,
+    log_breed,
+    log_human_command,
 )
 from logos.generation_memory import GenerationMemory
 from logos.intent_protocol import FleetState
 
 # Log a decision
 journal = DecisionJournal(path="/tmp/fleet-journal.jsonl")
-journal.log(Decision(
-    timestamp=time.time(),
-    agent_id="agent-007",
-    action="breed",
-    rationale="Pareto non-dominated for 3 generations",
-    metadata={"parent_a": "agent-003", "parent_b": "agent-005"},
-))
+journal.log(
+    Decision(
+        timestamp=time.time(),
+        agent_id="agent-007",
+        action="breed",
+        rationale="Pareto non-dominated for 3 generations",
+        metadata={"parent_a": "agent-003", "parent_b": "agent-005"},
+    )
+)
 
 # Query history
 history = journal.query(agent_id="agent-007", action="breed")
@@ -626,10 +632,13 @@ compiler.install()  # Monkey-patches hot paths
 result = some_hot_function(data)
 # Compiler may have hot-swapped to a faster backend mid-run
 
+
 # --- Hot-swap a specific function ---
 @hot_swap(backends=["numba", "cuda"])
 def expensive_computation(x):
-    return np.sum(x ** 2)
+    return np.sum(x**2)
+
+
 # Compiler selects the fastest available backend at runtime
 ```
 
@@ -660,7 +669,7 @@ from nexus.distributed_consensus import HolonomyConsensus
 # --- Fleet Conductor ---
 conductor = FleetConductorV2(node_id="node-1")
 conductor.initialize()  # Lazy-loads all subsystems
-conductor.beat_tick()   # One heartbeat — syncs, breeds, checks health
+conductor.beat_tick()  # One heartbeat — syncs, breeds, checks health
 status = conductor.status()
 print(f"Agents: {status['agent_count']}, Breeding: {status['breeding_active']}")
 
@@ -735,8 +744,9 @@ vessel.send_bottle(Bottle(to="other-agent", subject="breed request", body="...")
 from fleet.fleet_consciousness_bridge import FleetConsciousnessIndex
 
 fci = FleetConsciousnessIndex()
-score = fci.compute(room_phi_score=0.30, attention_score=0.20,
-                    learning_score=0.50, meta_score=0.00)
+score = fci.compute(
+    room_phi_score=0.30, attention_score=0.20, learning_score=0.50, meta_score=0.00
+)
 print(f"Fleet Consciousness: {score:.3f}")
 
 # --- Fence Board (Tom Sawyer Protocol) ---
@@ -765,8 +775,11 @@ for r in results:
 from fleet.conservation_spectral_bridge import SpectralBreederDiversity
 
 sbd = SpectralBreederDiversity()
-sbd.register_agent("vision_specialist", capabilities=["vision", "detection"],
-                    capability_links=[("vision", "detection", 0.9)])
+sbd.register_agent(
+    "vision_specialist",
+    capabilities=["vision", "detection"],
+    capability_links=[("vision", "detection", 0.9)],
+)
 parents = sbd.select_parents(n=2, min_diversity=0.3)
 ```
 
@@ -802,10 +815,12 @@ print(f"Dead code: {report.dead_code_files}")
 
 # --- Duplicate Issue Detection ---
 detector = DuplicateDetector()
-pairs = find_duplicates(issues=[
-    {"number": 1, "title": "Agent fails to breed", "body": "..."},
-    {"number": 2, "title": "Breeding broken for agents", "body": "..."},
-])
+pairs = find_duplicates(
+    issues=[
+        {"number": 1, "title": "Agent fails to breed", "body": "..."},
+        {"number": 2, "title": "Breeding broken for agents", "body": "..."},
+    ]
+)
 for pair in pairs:
     print(f"#{pair.issue_a} ≈ #{pair.issue_b} (similarity: {pair.similarity:.2f})")
 ```
@@ -853,10 +868,12 @@ print(f"Audio tile shape: {tile.shape}")  # (256,)
 ```python
 from compiler.hot_swap_integration import hot_swap, hot_swap_restore
 
+
 # Hot-swap a function with an optimized version
 @hot_swap(variant="optimized")
 def compute_gradient(x):
     return 2 * x  # Original
+
 
 # If the optimized version fails, auto-rollback to original
 result = compute_gradient(5.0)
@@ -941,8 +958,10 @@ ranking = UserRanking()
 store = PersonalizationStore()
 
 # Rank responses
-responses = [RankedResponse(text="Option A", score=0.8),
-             RankedResponse(text="Option B", score=0.6)]
+responses = [
+    RankedResponse(text="Option A", score=0.8),
+    RankedResponse(text="Option B", score=0.6),
+]
 ranked = ranking.rank(responses)
 print(f"Best: {ranked[0].text}")  # "Option A"
 
@@ -1174,6 +1193,7 @@ All examples are copy-paste-runnable after `pip install -e ".[dev]"`.
 
 ```python
 """examples/spawn_and_evolve.py — Full agent lifecycle demo."""
+
 import numpy as np
 from sunset.agent import SunsetAgent, AgentPhase, ResourceBudget
 from swarm.breeder_daemon_v2 import BreederDaemonV2, LifecycleState
@@ -1195,15 +1215,21 @@ daemon.step()  # Dequeues one request, checks thermal budget, spawns or waits
 
 # Score agents with trinity
 scores = [
-    AgentScore(agent_id=aid, ethos=np.random.random(),
-               pathos=np.random.random(), logos=np.random.random())
+    AgentScore(
+        agent_id=aid,
+        ethos=np.random.random(),
+        pathos=np.random.random(),
+        logos=np.random.random(),
+    )
     for aid in agents
 ]
 
 # Find sunset candidates (Pareto-dominated)
 to_sunset = sunset_candidates(scores)
 for s in to_sunset:
-    print(f"Sunsetting {s.agent_id} (ethos={s.ethos:.2f}, pathos={s.pathos:.2f}, logos={s.logos:.2f})")
+    print(
+        f"Sunsetting {s.agent_id} (ethos={s.ethos:.2f}, pathos={s.pathos:.2f}, logos={s.logos:.2f})"
+    )
     daemon.transition(s.agent_id, LifecycleState.SUNSET)
 ```
 
@@ -1211,6 +1237,7 @@ for s in to_sunset:
 
 ```python
 """examples/thermal_auction.py — Truthful slot allocation demo."""
+
 from swarm.thermal_auction import VCGAuction, Bid
 
 auction = VCGAuction(device_type="GPU", slots=3)
@@ -1225,7 +1252,9 @@ bids = [
 
 allocation = auction.resolve(bids)
 print(f"Winners: {[b.agent_id for b in allocation.winners]}")
-print(f"Prices:  {dict(zip([b.agent_id for b in allocation.winners], allocation.prices))}")
+print(
+    f"Prices:  {dict(zip([b.agent_id for b in allocation.winners], allocation.prices))}"
+)
 # delta loses — its value (0.65) is below the 3rd slot
 # Each winner pays the externality: what the loser would have gained
 ```
@@ -1234,6 +1263,7 @@ print(f"Prices:  {dict(zip([b.agent_id for b in allocation.winners], allocation.
 
 ```python
 """examples/trinity_scoring.py — Compute full trinity score for an agent."""
+
 from ethos.trinity_connection import score_ethos_connection
 from pathos.trinity_connection import score_pathos_connection, NeedState, MomentScore
 from ethos.hardware_survey import HardwareProfile
@@ -1253,7 +1283,9 @@ needs = NeedState(
     cognitive_load_before=0.8,
     cognitive_load_after=0.3,
 )
-moment = MomentScore(directly_useful=True, reduced_friction=True, surprise_insight=False)
+moment = MomentScore(
+    directly_useful=True, reduced_friction=True, surprise_insight=False
+)
 pathos = score_pathos_connection(needs, moment)
 
 # Logos: audit trail completeness (simplified)
@@ -1272,15 +1304,18 @@ print(f"Trinity (product): {trinity:.3f}")
 
 ```python
 """examples/spectral_breed.py — Evolve genomes in the Fourier domain."""
+
 import numpy as np
 from swarm.spectral_breeding import SpectralBreeder
 
 breeder = SpectralBreeder(population_size=50, spectrum_size=64)
 breeder.initialize()
 
+
 def sphere_fitness(phenotype):
     """Minimize sum of squares."""
-    return -np.sum(phenotype ** 2)
+    return -np.sum(phenotype**2)
+
 
 for generation in range(200):
     breeder.step(task_fn=sphere_fitness)
@@ -1294,14 +1329,17 @@ print(f"Final best fitness: {breeder.best_fitness():.4f}")
 
 ```python
 """examples/pythagorean_evo.py — No floating-point drift."""
+
 from swarm.pythagorean_evolution import PythagoreanBreeder
 
 breeder = PythagoreanBreeder(population_size=50, genome_length=10)
 breeder.initialize()
 
+
 def fitness(genome):
     """Maximize the hypotenuse sum."""
     return sum(t.c for t in genome.triples)
+
 
 for generation in range(100):
     breeder.step(fitness_fn=fitness)
@@ -1316,6 +1354,7 @@ for generation in range(100):
 
 ```python
 """examples/fleet_status.py — Get a snapshot of the entire fleet."""
+
 from nexus.fleet_conductor_v2 import FleetConductorV2
 from fleet.work_dashboard import FleetWorkDashboard
 from fleet.health_bridge import HealthChecker, FLEET_SERVICES
@@ -1346,6 +1385,7 @@ print(checker.report(results, format="md"))
 
 ```python
 """examples/drift_detect.py — Check repo for structural drift."""
+
 from triage.drift_detect import detect_drift
 
 report = detect_drift(".")
@@ -1381,6 +1421,7 @@ class SunsetAgent:
     budget: ResourceBudget
     # ... lifecycle management
 
+
 class AgentPhase(Enum):
     INCUBATING = "incubating"
     COMPETING = "competing"
@@ -1408,11 +1449,13 @@ class VCGAuction:
     def __init__(self, device_type: str, slots: int): ...
     def resolve(self, bids: List[Bid]) -> Allocation: ...
 
+
 @dataclass(frozen=True)
 class Bid:
     agent_id: str
     value: float
     # Optional: watts, priority
+
 
 @dataclass
 class Allocation:
@@ -1440,11 +1483,14 @@ class AgentScore:
     pathos: float  # 0.0-1.0
     logos: float  # 0.0-1.0
 
+
 def dominated_by(a: AgentScore, b: AgentScore) -> bool:
     """True if a dominates b on all trinity axes."""
 
+
 def sunset_candidates(scores: List[AgentScore]) -> List[AgentScore]:
     """Return Pareto-dominated agents eligible for sunsetting."""
+
 
 def breed(parents: List[AgentScore]) -> dict:
     """Select parents and produce crossover parameters."""

@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_adaptive_timeout.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -89,7 +90,9 @@ class TestAdaptiveTimeout:
         assert timer.latency_history() == [1.0, 2.0]
 
     def test_stats(self):
-        timer = AdaptiveTimeout(initial_sec=1.0, min_sec=0.5, max_sec=10.0, percentile=0.95, alpha=0.3)
+        timer = AdaptiveTimeout(
+            initial_sec=1.0, min_sec=0.5, max_sec=10.0, percentile=0.95, alpha=0.3
+        )
         timer.record_latency(0.8)
         stats = timer.stats()
         assert stats["initial"] == 1.0

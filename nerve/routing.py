@@ -39,6 +39,7 @@ class Route:
     Strength grows with use and successful reception. Weakens with disuse
     or failure. Never reaches exactly 0 or 1 — chaos keeps it alive.
     """
+
     source: str
     destination: str
     strength: float = 0.5
@@ -157,7 +158,9 @@ class RoutingLayer:
             self._routes_by_dest.setdefault(destination, []).append(route)
         return route
 
-    def add_channel(self, node_a: str, node_b: str, weight: float = 0.1) -> HebbianChannel:
+    def add_channel(
+        self, node_a: str, node_b: str, weight: float = 0.1
+    ) -> HebbianChannel:
         """Register a new Hebbian channel."""
         key = self._channel_key(node_a, node_b)
         channel = HebbianChannel(node_a, node_b, weight)
@@ -174,7 +177,8 @@ class RoutingLayer:
         """
         with self._lock:
             candidates = [
-                r for r in self._routes.values()
+                r
+                for r in self._routes.values()
                 if r.source == source
                 and (destinations is None or r.destination in destinations)
             ]
@@ -184,7 +188,7 @@ class RoutingLayer:
                 fired.append(route.destination)
         # Hebbian activation — O(n²)
         for i, dst_a in enumerate(fired):
-            for dst_b in fired[i + 1:]:
+            for dst_b in fired[i + 1 :]:
                 key = self._channel_key(dst_a, dst_b)
                 if key in self._channels:
                     self._channels[key].activate()
@@ -223,6 +227,7 @@ class RoutingLayer:
             return None
         try:
             import time
+
             t0 = time.perf_counter()
             probs = self._npu_router.predict(signal)
             t1 = time.perf_counter()

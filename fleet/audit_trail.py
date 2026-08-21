@@ -12,6 +12,7 @@ import numpy as np
 @dataclass
 class AuditEntry:
     """A single audit log entry."""
+
     timestamp: float
     action: str
     actor: str
@@ -54,8 +55,13 @@ class AuditTrail:
         self.entries: List[AuditEntry] = []
         self._action_counts: Dict[str, int] = {}
 
-    def log(self, action: str, actor: str, target: str,
-            details: Optional[Dict[str, Any]] = None) -> AuditEntry:
+    def log(
+        self,
+        action: str,
+        actor: str,
+        target: str,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> AuditEntry:
         """Log an action to the audit trail."""
         prev_hash = self.entries[-1].hash if self.entries else ""
         entry = AuditEntry(
@@ -71,8 +77,13 @@ class AuditTrail:
         self._action_counts[action] = self._action_counts.get(action, 0) + 1
         return entry
 
-    def log_breeding(self, generation: int, parent_ids: List[str],
-                     child_id: str, actor: str = "breeder") -> AuditEntry:
+    def log_breeding(
+        self,
+        generation: int,
+        parent_ids: List[str],
+        child_id: str,
+        actor: str = "breeder",
+    ) -> AuditEntry:
         """Log a breeding event."""
         return self.log(
             action="breeding",
@@ -84,8 +95,9 @@ class AuditTrail:
             },
         )
 
-    def log_deployment(self, model_id: str, target_node: str,
-                       actor: str = "deployer") -> AuditEntry:
+    def log_deployment(
+        self, model_id: str, target_node: str, actor: str = "deployer"
+    ) -> AuditEntry:
         """Log a deployment event."""
         return self.log(
             action="deployment",
@@ -94,8 +106,9 @@ class AuditTrail:
             details={"model_id": model_id},
         )
 
-    def log_consensus(self, proposal_id: str, votes: int,
-                      actor: str = "consensus") -> AuditEntry:
+    def log_consensus(
+        self, proposal_id: str, votes: int, actor: str = "consensus"
+    ) -> AuditEntry:
         """Log a consensus vote."""
         return self.log(
             action="consensus",
@@ -142,11 +155,14 @@ class AuditTrail:
 
     def export_json(self) -> str:
         """Export full audit trail as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "entries": [e.to_dict() for e in self.entries],
-            "stats": self.get_stats(),
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "entries": [e.to_dict() for e in self.entries],
+                "stats": self.get_stats(),
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

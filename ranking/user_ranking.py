@@ -40,6 +40,7 @@ class UserRanking:
         user_notes: Free text explaining the ranking.
         timestamp: When this ranking was collected.
     """
+
     prompt: str
     responses: list[RankedResponse] = field(default_factory=list)
     user_notes: str = ""

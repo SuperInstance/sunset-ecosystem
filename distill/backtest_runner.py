@@ -26,6 +26,7 @@ class BacktestResult:
         latency_ms: Time taken.
         improved: Whether this was better than the previous best.
     """
+
     prompt: str
     reference_response: str
     distilled_response: str
@@ -107,7 +108,9 @@ class BacktestRunner:
             similarity=similarity,
             hint_level=hint_level,
             latency_ms=latency,
-            improved=similarity > record.quality_score if record.quality_score >= 0 else True,
+            improved=similarity > record.quality_score
+            if record.quality_score >= 0
+            else True,
         )
 
         self._results.append(result)
@@ -124,7 +127,9 @@ class BacktestRunner:
         # Simple simulation: higher hints = more verbose (closer to reference)
         words = prompt.split()
         length = len(words) + hint_level * 2
-        return " ".join(words[:length]) if length <= len(words) else prompt + " processed"
+        return (
+            " ".join(words[:length]) if length <= len(words) else prompt + " processed"
+        )
 
     @staticmethod
     def _compute_similarity(a: str, b: str) -> float:

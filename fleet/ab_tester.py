@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class ABTestVariant:
     """A variant in an A/B test."""
+
     name: str
     config: Dict[str, Any]
     traffic_percentage: float
@@ -28,6 +29,7 @@ class ABTestVariant:
 @dataclass
 class ABTest:
     """An A/B test."""
+
     test_id: str
     name: str
     variants: List[ABTestVariant]
@@ -65,11 +67,13 @@ class ABTester:
         for i, v in enumerate(variants):
             pct = v.get("traffic_percentage", 100.0 / len(variants))
             total_pct += pct
-            variant_objs.append(ABTestVariant(
-                name=v["name"],
-                config=v.get("config", {}),
-                traffic_percentage=pct,
-            ))
+            variant_objs.append(
+                ABTestVariant(
+                    name=v["name"],
+                    config=v.get("config", {}),
+                    traffic_percentage=pct,
+                )
+            )
         test = ABTest(
             test_id=test_id,
             name=name,
@@ -78,8 +82,9 @@ class ABTester:
         self._tests[test_id] = test
         return test
 
-    def record_metric(self, test_id: str, variant_name: str,
-                      metric_name: str, value: float) -> bool:
+    def record_metric(
+        self, test_id: str, variant_name: str, metric_name: str, value: float
+    ) -> bool:
         """Record a metric for a variant."""
         test = self._tests.get(test_id)
         if not test:
@@ -98,7 +103,7 @@ class ABTester:
         if not test:
             return None
         best_variant = None
-        best_mean = -float('inf')
+        best_mean = -float("inf")
         for variant in test.variants:
             values = variant.metrics.get(metric_name, [])
             if values:
@@ -135,10 +140,13 @@ class ABTester:
 
     def export_json(self) -> str:
         """Export tests as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "tests": [t.to_dict() for t in self._tests.values()],
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "tests": [t.to_dict() for t in self._tests.values()],
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

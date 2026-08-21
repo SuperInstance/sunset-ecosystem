@@ -12,6 +12,7 @@ Usage:
         tracker.record("my_service")
     recent = tracker.recent(limit=10)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -60,7 +61,9 @@ class ExceptionTracker:
                 return
             exc_type = exc_type_obj.__name__
             exc_message = str(exc_value) if exc_message is None else exc_message
-            traceback_text = traceback.format_exc() if traceback_text is None else traceback_text
+            traceback_text = (
+                traceback.format_exc() if traceback_text is None else traceback_text
+            )
         self.record_manual(
             service=service,
             exc_type=exc_type,
@@ -84,15 +87,17 @@ class ExceptionTracker:
         if fingerprint in self._seen:
             return
         self._seen.add(fingerprint)
-        self._entries.append({
-            "timestamp": time.time(),
-            "service": service,
-            "exc_type": exc_type,
-            "exc_message": exc_message,
-            "traceback": traceback_text,
-            "context": context or {},
-            "fingerprint": fingerprint,
-        })
+        self._entries.append(
+            {
+                "timestamp": time.time(),
+                "service": service,
+                "exc_type": exc_type,
+                "exc_message": exc_message,
+                "traceback": traceback_text,
+                "context": context or {},
+                "fingerprint": fingerprint,
+            }
+        )
 
     # ------------------------------------------------------------------
     # Queries

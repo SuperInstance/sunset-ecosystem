@@ -15,6 +15,7 @@ from swarm.search_api import FleetSearch, SearchIntent, SearchResult
 # SearchIntent
 # ---------------------------------------------------------------------------
 
+
 class TestSearchIntent:
     def test_values(self):
         assert SearchIntent.KNOWLEDGE.value == "knowledge"
@@ -27,6 +28,7 @@ class TestSearchIntent:
 # ---------------------------------------------------------------------------
 # SearchResult
 # ---------------------------------------------------------------------------
+
 
 class TestSearchResult:
     def test_init(self):
@@ -45,6 +47,7 @@ class TestSearchResult:
 # ---------------------------------------------------------------------------
 # FleetSearch init
 # ---------------------------------------------------------------------------
+
 
 class TestFleetSearchInit:
     def test_empty(self):
@@ -65,6 +68,7 @@ class TestFleetSearchInit:
 # ---------------------------------------------------------------------------
 # Intent detection
 # ---------------------------------------------------------------------------
+
 
 class TestIntentDetection:
     def test_hardware_keywords(self):
@@ -87,7 +91,9 @@ class TestIntentDetection:
 
     def test_knowledge_default(self):
         fs = FleetSearch()
-        assert fs._detect_intent("What is the meaning of life?") == SearchIntent.KNOWLEDGE
+        assert (
+            fs._detect_intent("What is the meaning of life?") == SearchIntent.KNOWLEDGE
+        )
         assert fs._detect_intent("How does this work?") == SearchIntent.KNOWLEDGE
 
     def test_unknown(self):
@@ -98,6 +104,7 @@ class TestIntentDetection:
 # ---------------------------------------------------------------------------
 # ask() routing
 # ---------------------------------------------------------------------------
+
 
 class TestAskRouting:
     def test_no_backends(self):

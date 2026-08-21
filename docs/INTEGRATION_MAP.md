@@ -405,8 +405,10 @@ manifest = ConstructManifest(
 # Connect and run
 adapter = HarnessAdapter(manifest)
 for event in adapter.run_breeding(task_fn, generations=100):
-    print(f"Gen {event.generation}: best={event.best_fitness:.4f}, "
-          f"coverage={event.qd_coverage:.2%}")
+    print(
+        f"Gen {event.generation}: best={event.best_fitness:.4f}, "
+        f"coverage={event.qd_coverage:.2%}"
+    )
 
 # Harvest best
 best_genome, fitness = adapter.get_best()

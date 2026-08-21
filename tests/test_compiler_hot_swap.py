@@ -5,6 +5,7 @@ All tests are self-contained and runnable with::
 
     pytest tests/test_compiler_hot_swap.py -v
 """
+
 from __future__ import annotations
 
 import logging
@@ -17,6 +18,7 @@ from compiler.hot_swap_integration import CompilerHotSwap, CompileResult
 
 
 # ──────────────────────────── Helpers ────────────────────────────
+
 
 class MockGrid:
     """Minimal grid stand-in with the attributes _hash_config looks for."""
@@ -53,6 +55,7 @@ class SlowCompiledGrid:
 
     def tick(self) -> None:
         import time
+
         time.sleep(self._sleep_sec)
         self._grid.tick()
 
@@ -60,7 +63,9 @@ class SlowCompiledGrid:
 class FakeCompiler:
     """Compiler that returns a pre-configured compiled object or raises."""
 
-    def __init__(self, compiled: Any | None = None, exc: Exception | None = None) -> None:
+    def __init__(
+        self, compiled: Any | None = None, exc: Exception | None = None
+    ) -> None:
         self.compiled = compiled
         self.exc = exc
 
@@ -71,6 +76,7 @@ class FakeCompiler:
 
 
 # ──────────────────────────── Fixtures ────────────────────────────
+
 
 @pytest.fixture
 def grid() -> MockGrid:
@@ -92,6 +98,7 @@ def mock_compiler() -> MagicMock:
 # ═══════════════════════════════════════════════════════════════════
 # 1. Auto-compile triggers on config change
 # ═══════════════════════════════════════════════════════════════════
+
 
 def test_auto_compile_triggers_on_config_change(grid: MockGrid) -> None:
     """Changing grid.n after enabling auto-compile triggers recompilation."""
@@ -115,6 +122,7 @@ def test_auto_compile_triggers_on_config_change(grid: MockGrid) -> None:
 # 2. A/B test compares performance
 # ═══════════════════════════════════════════════════════════════════
 
+
 def test_ab_test_compares_performance(grid: MockGrid) -> None:
     """A/B test runs both versions and accepts fast, rejects slow."""
     # Fast version should pass
@@ -131,6 +139,7 @@ def test_ab_test_compares_performance(grid: MockGrid) -> None:
 # ═══════════════════════════════════════════════════════════════════
 # 3. Rollback on compile failure
 # ═══════════════════════════════════════════════════════════════════
+
 
 def test_rollback_on_compile_failure(grid: MockGrid) -> None:
     """If compile raises, hot_swap calls rollback and does not commit."""
@@ -149,6 +158,7 @@ def test_rollback_on_compile_failure(grid: MockGrid) -> None:
 # ═══════════════════════════════════════════════════════════════════
 # 4. Status reporting
 # ═══════════════════════════════════════════════════════════════════
+
 
 def test_status_reporting(swap: CompilerHotSwap) -> None:
     """get_status returns correct fields and values."""
@@ -177,6 +187,7 @@ def test_status_reporting(swap: CompilerHotSwap) -> None:
 # 5. Disable auto-compile
 # ═══════════════════════════════════════════════════════════════════
 
+
 def test_disable_auto_compile(grid: MockGrid) -> None:
     """When disabled, check_and_compile returns None even if config changes."""
     swap = CompilerHotSwap(grid)
@@ -198,6 +209,7 @@ def test_disable_auto_compile(grid: MockGrid) -> None:
 # ═══════════════════════════════════════════════════════════════════
 # 6. Hash config changes
 # ═══════════════════════════════════════════════════════════════════
+
 
 def test_hash_config_changes(grid: MockGrid) -> None:
     """_hash_config returns different hashes for different configs."""
@@ -230,6 +242,7 @@ def test_hash_config_changes(grid: MockGrid) -> None:
 # 7. Commit updates current version
 # ═══════════════════════════════════════════════════════════════════
 
+
 def test_commit_updates_current_version(grid: MockGrid) -> None:
     """commit stores the new version and increments swap_count."""
     swap = CompilerHotSwap(grid)
@@ -247,6 +260,7 @@ def test_commit_updates_current_version(grid: MockGrid) -> None:
 # 8. Hot-swap full cycle with mock compiler
 # ═══════════════════════════════════════════════════════════════════
 
+
 def test_hot_swap_full_cycle(grid: MockGrid) -> None:
     """End-to-end hot swap with a mock compiler: compile → A/B → commit."""
     compiled_obj = FastCompiledGrid(grid)
@@ -258,6 +272,7 @@ def test_hot_swap_full_cycle(grid: MockGrid) -> None:
     # Patch perf_counter so the fast version registers as an improvement
     fast_times = [0.0, 0.100, 0.100, 0.050]  # current=0.100, new=0.050 → 50% faster
     perf_idx = 0
+
     def fake_perf_fast() -> float:
         nonlocal perf_idx
         val = fast_times[perf_idx % len(fast_times)]
@@ -283,8 +298,14 @@ def test_hot_swap_full_cycle(grid: MockGrid) -> None:
     swap.ab_test_ticks = 50
 
     # Patch perf_counter so the slow version registers as >10% regression
-    slow_times = [0.0, 0.100, 0.100, 0.111]  # current=0.100, new=0.011*50 → 11% regression
+    slow_times = [
+        0.0,
+        0.100,
+        0.100,
+        0.111,
+    ]  # current=0.100, new=0.011*50 → 11% regression
     perf_idx = 0
+
     def fake_perf_slow() -> float:
         nonlocal perf_idx
         val = slow_times[perf_idx % len(slow_times)]
@@ -304,4 +325,3 @@ def test_hot_swap_full_cycle(grid: MockGrid) -> None:
     result3 = swap.hot_swap()
     assert result3.success is False
     assert swap._rollback_count == 2
-

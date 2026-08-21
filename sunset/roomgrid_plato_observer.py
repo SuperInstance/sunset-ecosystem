@@ -74,7 +74,9 @@ class RoomGridPlatoObserver:
         )
         return tile.tile_id
 
-    def on_agent_sunset(self, grid: RoomGrid, agent_id: str, reason: str) -> Optional[str]:
+    def on_agent_sunset(
+        self, grid: RoomGrid, agent_id: str, reason: str
+    ) -> Optional[str]:
         """Called when an agent is sunset."""
         tile = self.bridge.write_lifecycle_event(
             agent_id=agent_id,
@@ -127,7 +129,7 @@ class RoomGridPlatoObserver:
             tile_id=f"rg-thermal-{tick}",
             name=f"Thermal snapshot @ tick {tick}",
             description=f"cpu={snap.get('cpu_percent', 0):.1f}% "
-                        f"mem={snap.get('memory_percent', 0):.1f}%",
+            f"mem={snap.get('memory_percent', 0):.1f}%",
             payload=payload,
         )
 

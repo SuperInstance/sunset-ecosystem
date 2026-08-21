@@ -12,6 +12,7 @@ from fleet.plato_room_sync import (
 )
 from fleet.spatial_projector import WorldState
 
+
 def _ws():
     return WorldState(position=(0.0,))
 
@@ -19,6 +20,7 @@ def _ws():
 # ---------------------------------------------------------------------------
 # RoomTransition
 # ---------------------------------------------------------------------------
+
 
 class TestRoomTransition:
     def test_defaults(self):
@@ -41,6 +43,7 @@ class TestRoomTransition:
 # PlatoRoomSync init
 # ---------------------------------------------------------------------------
 
+
 class TestPlatoRoomSyncInit:
     def test_default(self):
         projector = MagicMock()
@@ -53,6 +56,7 @@ class TestPlatoRoomSyncInit:
 # ---------------------------------------------------------------------------
 # Enter / Exit
 # ---------------------------------------------------------------------------
+
 
 class TestEnterExit:
     def test_on_enter_tracks_room(self):
@@ -113,6 +117,7 @@ class TestEnterExit:
 # Transition
 # ---------------------------------------------------------------------------
 
+
 class TestTransition:
     def test_atomic_transition(self):
         projector = MagicMock()
@@ -135,6 +140,7 @@ class TestTransition:
 # ---------------------------------------------------------------------------
 # Callbacks
 # ---------------------------------------------------------------------------
+
 
 class TestCallbacks:
     def test_register_and_notify(self):
@@ -186,6 +192,7 @@ class TestCallbacks:
 # ---------------------------------------------------------------------------
 # History & Stats
 # ---------------------------------------------------------------------------
+
 
 class TestHistoryAndStats:
     def test_get_transitions_filtered(self):

@@ -8,6 +8,7 @@ Usage:
     ciphertext, nonce = vault.encrypt(b"secret payload")
     plaintext = vault.decrypt(ciphertext, nonce)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -20,6 +21,7 @@ from typing import Dict, Optional, Tuple
 
 try:
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
     _HAS_CRYPTOGRAPHY = True
 except ImportError:  # pragma: no cover
     _HAS_CRYPTOGRAPHY = False
@@ -75,7 +77,9 @@ class EncryptionVault:
     # Encryption
     # ------------------------------------------------------------------
 
-    def encrypt(self, plaintext: bytes, associated_data: Optional[bytes] = None) -> EncryptedPayload:
+    def encrypt(
+        self, plaintext: bytes, associated_data: Optional[bytes] = None
+    ) -> EncryptedPayload:
         """Encrypt plaintext and return payload with HMAC tag."""
         nonce = secrets.token_bytes(12)
         aesgcm = AESGCM(self._key)
@@ -157,6 +161,7 @@ class EncryptionVault:
 # ------------------------------------------------------------------
 # Factory
 # ------------------------------------------------------------------
+
 
 def generate_key() -> bytes:
     """Generate a new 32-byte key from os.urandom."""

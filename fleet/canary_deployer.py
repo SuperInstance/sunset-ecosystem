@@ -20,6 +20,7 @@ class DeploymentStatus(Enum):
 @dataclass
 class Deployment:
     """A deployment record."""
+
     deployment_id: str
     version: str
     status: DeploymentStatus
@@ -77,7 +78,9 @@ class CanaryDeployer:
             # Check health after each step
             if self._health_check and not self._health_check():
                 deploy.status = DeploymentStatus.FAILED
-                deploy.errors.append(f"Health check failed at {deploy.canary_percentage}%")
+                deploy.errors.append(
+                    f"Health check failed at {deploy.canary_percentage}%"
+                )
                 deploy.finished_at = time.time()
                 return deploy
 
@@ -118,11 +121,14 @@ class CanaryDeployer:
 
     def export_json(self) -> str:
         """Export deployments as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "current_version": self._current_version,
-            "deployments": [d.to_dict() for d in self._deployments.values()],
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "current_version": self._current_version,
+                "deployments": [d.to_dict() for d in self._deployments.values()],
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

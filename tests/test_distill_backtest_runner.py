@@ -34,11 +34,13 @@ class TestBacktestRunner:
     def _make_history(self, n=5):
         h = PromptHistory()
         for i in range(n):
-            h.add(PromptRecord(
-                prompt=f"prompt {i} with words",
-                response=f"response {i} with words",
-                quality_score=0.5,
-            ))
+            h.add(
+                PromptRecord(
+                    prompt=f"prompt {i} with words",
+                    response=f"response {i} with words",
+                    quality_score=0.5,
+                )
+            )
         return h
 
     def test_no_capacity_skips(self):

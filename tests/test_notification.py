@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_notification.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import time
@@ -50,7 +51,9 @@ class TestNotificationSystem:
         ns.add_channel("log", LogChannel())
         ns.add_rule("warning", ["log"])
         ns.notify("cpu_high", severity="warning", message="CPU at 95%")
-        sent = ns.notify("cpu_high", severity="warning", message="CPU at 95%", force=True)
+        sent = ns.notify(
+            "cpu_high", severity="warning", message="CPU at 95%", force=True
+        )
         assert len(sent) == 1
 
     def test_dedup_expires(self):
@@ -97,14 +100,18 @@ class TestNotificationSystem:
 class TestLogChannel:
     def test_send(self):
         ch = LogChannel()
-        alert = Alert(id="1", name="test", severity="warning", message="boom", timestamp=0.0)
+        alert = Alert(
+            id="1", name="test", severity="warning", message="boom", timestamp=0.0
+        )
         assert ch.send(alert) is True
 
 
 class TestWebhookChannel:
     def test_send(self):
         ch = WebhookChannel(url="https://example.com")
-        alert = Alert(id="1", name="test", severity="warning", message="boom", timestamp=0.0)
+        alert = Alert(
+            id="1", name="test", severity="warning", message="boom", timestamp=0.0
+        )
         assert ch.send(alert) is True
         assert len(ch.calls()) == 1
         assert ch.calls()[0].name == "test"

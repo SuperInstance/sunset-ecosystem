@@ -54,6 +54,7 @@ from swarm.nca_breeder import NCABreeder
 
 class SensorType(enum.Enum):
     """Types of sensor readings the agent can perceive."""
+
     TICK = "tick"  # Periodic heartbeat
     DELTA = "delta"  # Change from previous state
     ALERT = "alert"  # Critical condition
@@ -64,6 +65,7 @@ class SensorType(enum.Enum):
 @dataclasses.dataclass
 class SensorReading:
     """A sensor reading formatted for agent perception."""
+
     sensor_type: SensorType
     name: str
     value: Any
@@ -77,7 +79,9 @@ class SensorReading:
         if self.sensor_type == SensorType.TICK:
             return f"[TICK] {self.name}: {self.value}{self.unit or ''}"
         elif self.sensor_type == SensorType.DELTA:
-            return f"[DELTA] {self.name}: {self.value}{self.unit or ''} (change detected)"
+            return (
+                f"[DELTA] {self.name}: {self.value}{self.unit or ''} (change detected)"
+            )
         elif self.sensor_type == SensorType.ALERT:
             return f"[ALERT] {self.name}: {self.message} (value: {self.value})"
         elif self.sensor_type == SensorType.METRIC:
@@ -105,7 +109,9 @@ class AttachmentRegistry:
         self._active_runs: Dict[str, HarnessAdapter] = {}
         self._sensors: Dict[str, List[SensorReading]] = {}
 
-    def register(self, name: str, description: str, manifest_defaults: Dict[str, Any]) -> None:
+    def register(
+        self, name: str, description: str, manifest_defaults: Dict[str, Any]
+    ) -> None:
         """Register a new attachment type."""
         self._attachments[name] = {
             "description": description,
@@ -116,10 +122,17 @@ class AttachmentRegistry:
         """List available attachments with descriptions."""
         return [(name, info["description"]) for name, info in self._attachments.items()]
 
-    def spawn(self, name: str, manifest: ConstructManifest, coordinator: Optional[BuildCoordinator] = None) -> HarnessAdapter:
+    def spawn(
+        self,
+        name: str,
+        manifest: ConstructManifest,
+        coordinator: Optional[BuildCoordinator] = None,
+    ) -> HarnessAdapter:
         """Spawn an attachment instance (like starting the engine)."""
         if name not in self._attachments:
-            raise ValueError(f"Unknown attachment: {name}. Available: {list(self._attachments.keys())}")
+            raise ValueError(
+                f"Unknown attachment: {name}. Available: {list(self._attachments.keys())}"
+            )
         adapter = HarnessAdapter(manifest, coordinator=coordinator)
         run_id = f"{name}-{int(time.time())}"
         self._active_runs[run_id] = adapter
@@ -188,61 +201,76 @@ class SelfHealingLoop:
 
         # Check fitness collapse
         if event.best_fitness is not None and event.best_fitness < 0.01:
-            readings.append(SensorReading(
-                sensor_type=SensorType.ALERT,
-                name="fitness_collapse",
-                value=event.best_fitness,
-                timestamp=event.timestamp,
-                message="Fitness collapsed to near zero. Triggering recovery.",
-            ))
+            readings.append(
+                SensorReading(
+                    sensor_type=SensorType.ALERT,
+                    name="fitness_collapse",
+                    value=event.best_fitness,
+                    timestamp=event.timestamp,
+                    message="Fitness collapsed to near zero. Triggering recovery.",
+                )
+            )
             self._heal_fitness_collapse()
 
         # Check stagnation (no improvement for 10 generations)
         if event.generation > 10:
-            recent = [e for e in self.adapter.streamer.history
-                     if e.event_type == BreedingEventType.GENERATION_END
-                     and e.generation >= event.generation - 10]
+            recent = [
+                e
+                for e in self.adapter.streamer.history
+                if e.event_type == BreedingEventType.GENERATION_END
+                and e.generation >= event.generation - 10
+            ]
             if len(recent) >= 10:
-                best_values = [e.best_fitness for e in recent if e.best_fitness is not None]
+                best_values = [
+                    e.best_fitness for e in recent if e.best_fitness is not None
+                ]
                 if best_values and max(best_values) - min(best_values) < 0.01:
-                    readings.append(SensorReading(
-                        sensor_type=SensorType.ALERT,
-                        name="stagnation",
-                        value=max(best_values) - min(best_values),
-                        timestamp=event.timestamp,
-                        message="Stagnation detected. Increasing mutation rate.",
-                    ))
+                    readings.append(
+                        SensorReading(
+                            sensor_type=SensorType.ALERT,
+                            name="stagnation",
+                            value=max(best_values) - min(best_values),
+                            timestamp=event.timestamp,
+                            message="Stagnation detected. Increasing mutation rate.",
+                        )
+                    )
                     self._heal_stagnation()
 
         # Check consensus failure
         if event.nodes_agreed is not None and event.total_nodes is not None:
             if event.nodes_agreed < event.total_nodes / 2:
-                readings.append(SensorReading(
-                    sensor_type=SensorType.ALERT,
-                    name="consensus_failure",
-                    value=event.nodes_agreed,
-                    timestamp=event.timestamp,
-                    message=f"Consensus failed: only {event.nodes_agreed}/{event.total_nodes} nodes agreed.",
-                ))
+                readings.append(
+                    SensorReading(
+                        sensor_type=SensorType.ALERT,
+                        name="consensus_failure",
+                        value=event.nodes_agreed,
+                        timestamp=event.timestamp,
+                        message=f"Consensus failed: only {event.nodes_agreed}/{event.total_nodes} nodes agreed.",
+                    )
+                )
 
         # Normal metrics
         if event.best_fitness is not None:
-            readings.append(SensorReading(
-                sensor_type=SensorType.METRIC,
-                name="best_fitness",
-                value=event.best_fitness,
-                timestamp=event.timestamp,
-                unit="score",
-            ))
+            readings.append(
+                SensorReading(
+                    sensor_type=SensorType.METRIC,
+                    name="best_fitness",
+                    value=event.best_fitness,
+                    timestamp=event.timestamp,
+                    unit="score",
+                )
+            )
 
         if event.qd_coverage is not None:
-            readings.append(SensorReading(
-                sensor_type=SensorType.METRIC,
-                name="qd_coverage",
-                value=event.qd_coverage,
-                timestamp=event.timestamp,
-                unit="cells",
-            ))
+            readings.append(
+                SensorReading(
+                    sensor_type=SensorType.METRIC,
+                    name="qd_coverage",
+                    value=event.qd_coverage,
+                    timestamp=event.timestamp,
+                    unit="cells",
+                )
+            )
 
         return readings
 
@@ -252,16 +280,18 @@ class SelfHealingLoop:
             return
         self._recovery_count += 1
         # Increase elitism to preserve best solutions
-        if hasattr(self.adapter.manifest, 'elitism_count'):
+        if hasattr(self.adapter.manifest, "elitism_count"):
             self.adapter.manifest.elitism_count = min(
                 self.adapter.manifest.elitism_count + 2,
-                self.adapter.manifest.population_size // 2
+                self.adapter.manifest.population_size // 2,
             )
-        self.healing_log.append({
-            "action": "fitness_collapse_recovery",
-            "timestamp": time.time(),
-            "recovery_count": self._recovery_count,
-        })
+        self.healing_log.append(
+            {
+                "action": "fitness_collapse_recovery",
+                "timestamp": time.time(),
+                "recovery_count": self._recovery_count,
+            }
+        )
 
     def _heal_stagnation(self) -> None:
         """Recover from stagnation by increasing mutation rate."""
@@ -269,14 +299,15 @@ class SelfHealingLoop:
             return
         self._recovery_count += 1
         self.adapter.manifest.mutation_rate = min(
-            self.adapter.manifest.mutation_rate * 1.5,
-            0.9
+            self.adapter.manifest.mutation_rate * 1.5, 0.9
         )
-        self.healing_log.append({
-            "action": "stagnation_recovery",
-            "timestamp": time.time(),
-            "new_mutation_rate": self.adapter.manifest.mutation_rate,
-        })
+        self.healing_log.append(
+            {
+                "action": "stagnation_recovery",
+                "timestamp": time.time(),
+                "new_mutation_rate": self.adapter.manifest.mutation_rate,
+            }
+        )
 
 
 class OpenConstructShell:
@@ -288,17 +319,17 @@ class OpenConstructShell:
 
     Example:
         shell = OpenConstructShell()
-        
+
         # List available attachments
         shell.list_attachments()
-        
+
         # Spawn a breeding job
         run_id = shell.spawn("pythagorean", population_size=50, generations=100)
-        
+
         # Run and get sensor readings
         for reading in shell.run(run_id, task_fn):
             print(reading.to_agent_text())
-        
+
         # Check health
         shell.health_check(run_id)
     """
@@ -320,11 +351,11 @@ class OpenConstructShell:
 
     def spawn(self, attachment_name: str, **kwargs) -> str:
         """Spawn a breeding attachment (like starting the engine).
-        
+
         Args:
             attachment_name: Type of breeder (pythagorean, spectral, etc.)
             **kwargs: Override defaults (population_size, generations, etc.)
-            
+
         Returns:
             run_id: Unique identifier for this breeding run
         """
@@ -332,11 +363,13 @@ class OpenConstructShell:
         defaults = ATTACHMENTS._attachments.get(attachment_name, {}).get("defaults", {})
         manifest_dict = {**defaults, **kwargs}
         manifest_dict["name"] = manifest_dict.get("name", f"{attachment_name}-run")
-        manifest_dict["goal"] = manifest_dict.get("goal", f"Auto-generated goal for {attachment_name}")
+        manifest_dict["goal"] = manifest_dict.get(
+            "goal", f"Auto-generated goal for {attachment_name}"
+        )
         manifest_dict["breeder_type"] = attachment_name
-        
+
         manifest = ConstructManifest(**manifest_dict)
-        
+
         # Create multi-node coordinator if needed
         coordinator = None
         if len(self.all_nodes) > 1:
@@ -345,10 +378,10 @@ class OpenConstructShell:
                 all_nodes=self.all_nodes,
                 manifest=manifest,
             )
-        
+
         adapter, run_id = self.attachments.spawn(attachment_name, manifest, coordinator)
         healing = SelfHealingLoop(adapter, run_id)
-        
+
         with self._lock:
             self._runs[run_id] = {
                 "adapter": adapter,
@@ -357,18 +390,22 @@ class OpenConstructShell:
                 "manifest": manifest,
                 "status": "spawned",
             }
-        
+
         return run_id
 
-    def run(self, run_id: str, task_fn: Callable[[Any], float],
-            generations: Optional[int] = None) -> Iterator[SensorReading]:
+    def run(
+        self,
+        run_id: str,
+        task_fn: Callable[[Any], float],
+        generations: Optional[int] = None,
+    ) -> Iterator[SensorReading]:
         """Run a breeding job and yield sensor readings.
-        
+
         Args:
             run_id: From spawn()
             task_fn: Fitness function
             generations: Override manifest generations
-            
+
         Yields:
             SensorReading: Real-time sensor readings for agent perception
         """
@@ -383,11 +420,11 @@ class OpenConstructShell:
                     message=f"Run {run_id} not found",
                 )
                 return
-            
+
             run["status"] = "running"
             adapter = run["adapter"]
             healing = run["healing"]
-        
+
         # Run breeding and convert events to sensor readings
         for event in adapter.run_breeding(task_fn, generations):
             # Get health readings
@@ -396,7 +433,7 @@ class OpenConstructShell:
                 yield reading
                 # Record in attachment registry
                 self.attachments._record_sensor(run_id, reading)
-        
+
         with self._lock:
             run["status"] = "complete"
 
@@ -480,14 +517,16 @@ class OpenConstructShell:
         # Build Campaign objects from dicts
         campaign_objs = []
         for c in campaigns:
-            campaign_objs.append(Campaign(
-                name=c["name"],
-                attachment=c["attachment"],
-                params=c.get("params", {}),
-                task_fn=c.get("task_fn"),
-                constraints=c.get("constraints", []),
-                node_id=c.get("node_id"),
-            ))
+            campaign_objs.append(
+                Campaign(
+                    name=c["name"],
+                    attachment=c["attachment"],
+                    params=c.get("params", {}),
+                    task_fn=c.get("task_fn"),
+                    constraints=c.get("constraints", []),
+                    node_id=c.get("node_id"),
+                )
+            )
 
         orch = ParallelBreedingOrchestrator(
             repo_path=repo_path,
@@ -501,7 +540,7 @@ class OpenConstructShell:
 
     def to_skill_manual(self) -> str:
         """Generate a skill manual that teaches the agent how to operate.
-        
+
         This is like the equipment manual for heavy machinery:
         - What attachments are available
         - How to start the engine (spawn)
@@ -518,65 +557,67 @@ class OpenConstructShell:
             lines.append(f"### {name}")
             lines.append(f"{desc}")
             lines.append("")
-        
-        lines.extend([
-            "## Operating Instructions",
-            "",
-            "### 1. Spawn Attachment (Start Engine)",
-            "```python",
-            'run_id = shell.spawn("pythagorean", population_size=50, generations=100)',
-            "```",
-            "",
-            "### 2. Run Breeding (Operate Machinery)",
-            "```python",
-            "for reading in shell.run(run_id, task_fn):",
-            "    print(reading.to_agent_text())  # [TICK] best_fitness: 1.45",
-            "```",
-            "",
-            "### 3. Check Health (Read Gauges)",
-            "```python",
-            "readings = shell.health_check(run_id)",
-            "for r in readings:",
-            '    if r.sensor_type == SensorType.ALERT:',
-            "        print(f'WARNING: {r.message}')",
-            "```",
-            "",
-            "### 4. Sensor Types (What the Gauges Show)",
-            "- **TICK**: Periodic heartbeat (engine running smoothly)",
-            "- **DELTA**: Change detected (something shifted)",
-            "- **ALERT**: Critical condition (need attention)",
-            "- **METRIC**: Numeric measurement (fitness, coverage, etc.)",
-            "- **STATUS**: System state (running, complete, terminated)",
-            "",
-            "### 5. Self-Healing (Auto-Recovery)",
-            "The system automatically handles:",
-            "- Fitness collapse → Increases elitism",
-            "- Stagnation → Increases mutation rate",
-            "- Consensus failure → Retries with view change",
-            "",
-            "Recovery actions are logged in `healing_log`.",
-            "",
-            "### 6. Multi-Node Operation (Fleet Mode)",
-            "```python",
-            'shell = OpenConstructShell(node_id="node-1", all_nodes=["node-1", "node-2"])',
-            "# BFT consensus automatically coordinates breeding across nodes",
-            "```",
-            "",
-            "## Safety Notes",
-            "- Always check `health_check()` after long runs",
-            "- If ALERT readings appear, review `healing_log`",
-            "- Multi-node requires 2f+1 consensus (tolerates f < N/3 failures)",
-            "",
-            "## Quick Reference",
-            "| Command | Action |",
-            "|---------|--------|",
-            "| `shell.spawn()` | Start breeding job |",
-            "| `shell.run()` | Execute breeding |",
-            "| `shell.status()` | Check all runs |",
-            "| `shell.health_check()` | Read sensor history |",
-            "| `shell.terminate()` | Stop a run |",
-            "| `shell.get_best()` | Get best result |",
-            "| `shell.run_parallel()` | Run multiple campaigns in parallel |",
-        ])
-        
+
+        lines.extend(
+            [
+                "## Operating Instructions",
+                "",
+                "### 1. Spawn Attachment (Start Engine)",
+                "```python",
+                'run_id = shell.spawn("pythagorean", population_size=50, generations=100)',
+                "```",
+                "",
+                "### 2. Run Breeding (Operate Machinery)",
+                "```python",
+                "for reading in shell.run(run_id, task_fn):",
+                "    print(reading.to_agent_text())  # [TICK] best_fitness: 1.45",
+                "```",
+                "",
+                "### 3. Check Health (Read Gauges)",
+                "```python",
+                "readings = shell.health_check(run_id)",
+                "for r in readings:",
+                "    if r.sensor_type == SensorType.ALERT:",
+                "        print(f'WARNING: {r.message}')",
+                "```",
+                "",
+                "### 4. Sensor Types (What the Gauges Show)",
+                "- **TICK**: Periodic heartbeat (engine running smoothly)",
+                "- **DELTA**: Change detected (something shifted)",
+                "- **ALERT**: Critical condition (need attention)",
+                "- **METRIC**: Numeric measurement (fitness, coverage, etc.)",
+                "- **STATUS**: System state (running, complete, terminated)",
+                "",
+                "### 5. Self-Healing (Auto-Recovery)",
+                "The system automatically handles:",
+                "- Fitness collapse → Increases elitism",
+                "- Stagnation → Increases mutation rate",
+                "- Consensus failure → Retries with view change",
+                "",
+                "Recovery actions are logged in `healing_log`.",
+                "",
+                "### 6. Multi-Node Operation (Fleet Mode)",
+                "```python",
+                'shell = OpenConstructShell(node_id="node-1", all_nodes=["node-1", "node-2"])',
+                "# BFT consensus automatically coordinates breeding across nodes",
+                "```",
+                "",
+                "## Safety Notes",
+                "- Always check `health_check()` after long runs",
+                "- If ALERT readings appear, review `healing_log`",
+                "- Multi-node requires 2f+1 consensus (tolerates f < N/3 failures)",
+                "",
+                "## Quick Reference",
+                "| Command | Action |",
+                "|---------|--------|",
+                "| `shell.spawn()` | Start breeding job |",
+                "| `shell.run()` | Execute breeding |",
+                "| `shell.status()` | Check all runs |",
+                "| `shell.health_check()` | Read sensor history |",
+                "| `shell.terminate()` | Stop a run |",
+                "| `shell.get_best()` | Get best result |",
+                "| `shell.run_parallel()` | Run multiple campaigns in parallel |",
+            ]
+        )
+
         return "\n".join(lines)

@@ -98,7 +98,7 @@ from nerve.topology import NerveTopology
 
 topo = NerveTopology(n_rooms=1000)
 topo.enable_compiler(auto_compile_interval=50)
-topo.grid.attach_flux_checker(FluxConstraintChecker(preset='neural_bounds'))
+topo.grid.attach_flux_checker(FluxConstraintChecker(preset="neural_bounds"))
 ```
 
 **Check:** `print(topo.grid)` shows `backend=numpy` or `backend=rust_persistent`. If `backend=stub`, the `.so` wasn't found — you'll still run, but slower. This is okay for startup; compile later.
@@ -109,6 +109,7 @@ The metronome drives the tick loop. It does not have a dedicated daemon yet (see
 
 ```python
 import time
+
 
 def run_metronome(topo, bpm=60):
     interval = 60.0 / bpm
@@ -172,14 +173,14 @@ print(topo.grid.stats)
 Example output:
 ```python
 {
-  'rooms': 1000,
-  'tick_count': 1543,
-  'fired_last_tick': 47,
-  'avg_latency_ms': 28.3,
-  'backend': 'numpy',
-  'chaos_min': 0.01,
-  'chaos_max': 0.87,
-  'missed_ticks': 0,
+    "rooms": 1000,
+    "tick_count": 1543,
+    "fired_last_tick": 47,
+    "avg_latency_ms": 28.3,
+    "backend": "numpy",
+    "chaos_min": 0.01,
+    "chaos_max": 0.87,
+    "missed_ticks": 0,
 }
 ```
 
@@ -256,6 +257,7 @@ cp libjepa_cuda.so ../
 **Verification:**
 ```python
 from nerve.room_grid import PersistentCUDAGrid
+
 grid = PersistentCUDAGrid(n=100)
 print(grid.backend)  # Should print 'cuda'
 ```
@@ -303,7 +305,7 @@ WARNING: Drift detected — actual_bpm=52 target=60 delta=-13%
 
 1. **Check room count:**
    ```python
-   print(topo.grid.stats['rooms'])
+   print(topo.grid.stats["rooms"])
    ```
    If rooms > backend capacity, switch backend or reduce rooms.
 
@@ -348,6 +350,7 @@ interval = 60.0 / 30  # Halve the BPM
 ```python
 # Find rooms that haven't fired recently
 from swarm.breeder_daemon import AutoBreeder
+
 breeder = AutoBreeder(topo.grid, thermal, interval=30, cold_threshold=5)
 cold = breeder._find_cold_rooms()
 for room_id in cold[:10]:  # Kill 10 coldest
@@ -483,7 +486,7 @@ compiler.restore("batch_novelty")  # Restores original Python implementation
 print(compiler.is_swapped("batch_novelty"))  # True
 
 # Check the speedup
-print(compiler.get_speedup("batch_novelty"))   # e.g., 6.9×
+print(compiler.get_speedup("batch_novelty"))  # e.g., 6.9×
 ```
 
 ---

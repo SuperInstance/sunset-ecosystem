@@ -11,6 +11,7 @@ Usage:
     rm.deploy("v1.1", {"status": "fail"})
     assert rm.rollback() == "v1.0"
 """
+
 from __future__ import annotations
 
 import time
@@ -31,7 +32,12 @@ class RollbackManager:
     # Deployment
     # ------------------------------------------------------------------
 
-    def deploy(self, version: str, metadata: Optional[Dict[str, Any]] = None, health_check: Optional[callable] = None) -> bool:
+    def deploy(
+        self,
+        version: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        health_check: Optional[callable] = None,
+    ) -> bool:
         """
         Record a new deployment.
 
@@ -43,15 +49,17 @@ class RollbackManager:
         if health_check and not health_check():
             return False
 
-        self._versions.append({
-            "version": version,
-            "timestamp": time.time(),
-            "metadata": metadata or {},
-        })
+        self._versions.append(
+            {
+                "version": version,
+                "timestamp": time.time(),
+                "metadata": metadata or {},
+            }
+        )
 
         # Trim history
         if len(self._versions) > self._max_history:
-            self._versions = self._versions[-self._max_history:]
+            self._versions = self._versions[-self._max_history :]
 
         self._current = version
         return True
@@ -79,7 +87,7 @@ class RollbackManager:
         for i, v in enumerate(self._versions):
             if v["version"] == version:
                 # Truncate history after this version
-                self._versions = self._versions[:i + 1]
+                self._versions = self._versions[: i + 1]
                 self._current = version
                 return True
         return False
@@ -123,4 +131,6 @@ class RollbackManager:
         }
 
     def __repr__(self) -> str:
-        return f"<RollbackManager current={self._current} history={len(self._versions)}>"
+        return (
+            f"<RollbackManager current={self._current} history={len(self._versions)}>"
+        )

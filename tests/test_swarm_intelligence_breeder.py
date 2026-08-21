@@ -31,7 +31,13 @@ class TestSwarmTopology:
     def test_get_neighborhood_best(self):
         t = SwarmTopology(n_particles=5, k_neighbors=1)
         particles = [
-            Particle(genome={"g": 1.0}, velocity={"g": 0.0}, fitness=10.0, best_fitness=10.0, id=i)
+            Particle(
+                genome={"g": 1.0},
+                velocity={"g": 0.0},
+                fitness=10.0,
+                best_fitness=10.0,
+                id=i,
+            )
             for i in range(5)
         ]
         # particle 1 is neighbor of particle 0 (k=1 ring lattice), particle 2 is not
@@ -92,16 +98,14 @@ class TestSwarmIntelligenceBreeder:
         breeder = SwarmIntelligenceBreeder(population_size=10)
         breeder.initialize(
             task_fn=lambda g: {"fitness": sum(g.values())},
-            bounds={"g1": (-5, 5), "g2": (-5, 5)}
+            bounds={"g1": (-5, 5), "g2": (-5, 5)},
         )
         assert len(breeder.particles) == 10
         assert all(p.fitness >= -10 for p in breeder.particles)
 
     def test_initialize_without_bounds(self):
         breeder = SwarmIntelligenceBreeder(population_size=10)
-        breeder.initialize(
-            task_fn=lambda g: {"fitness": sum(g.values())}
-        )
+        breeder.initialize(task_fn=lambda g: {"fitness": sum(g.values())})
         assert len(breeder.particles) == 10
         assert all("gene_0" in p.genome for p in breeder.particles)
 
@@ -109,20 +113,17 @@ class TestSwarmIntelligenceBreeder:
         breeder = SwarmIntelligenceBreeder(population_size=10)
         breeder.initialize(
             task_fn=lambda g: {"fitness": sum(g.values())},
-            bounds={"g1": (-5, 5), "g2": (-5, 5)}
+            bounds={"g1": (-5, 5), "g2": (-5, 5)},
         )
 
-        pop = breeder.breed_generation(
-            task_fn=lambda g: {"fitness": sum(g.values())}
-        )
+        pop = breeder.breed_generation(task_fn=lambda g: {"fitness": sum(g.values())})
         assert len(pop) == 10
         assert breeder.generation == 1
 
     def test_global_best_updated(self):
         breeder = SwarmIntelligenceBreeder(population_size=10)
         breeder.initialize(
-            task_fn=lambda g: {"fitness": g.get("g1", 0) * 10},
-            bounds={"g1": (-5, 5)}
+            task_fn=lambda g: {"fitness": g.get("g1", 0) * 10}, bounds={"g1": (-5, 5)}
         )
         initial_best = breeder.global_best_fitness
         for _ in range(5):
@@ -132,12 +133,18 @@ class TestSwarmIntelligenceBreeder:
     def test_velocity_update(self):
         breeder = SwarmIntelligenceBreeder(population_size=5)
         particle = Particle(
-            genome={"g1": 1.0}, velocity={"g1": 0.5},
-            best_genome={"g1": 2.0}, best_fitness=10.0, id=0
+            genome={"g1": 1.0},
+            velocity={"g1": 0.5},
+            best_genome={"g1": 2.0},
+            best_fitness=10.0,
+            id=0,
         )
         neighborhood_best = Particle(
-            genome={"g1": 3.0}, velocity={"g1": 0.0},
-            best_genome={"g1": 3.0}, best_fitness=20.0, id=1
+            genome={"g1": 3.0},
+            velocity={"g1": 0.0},
+            best_genome={"g1": 3.0},
+            best_fitness=20.0,
+            id=1,
         )
         breeder._update_velocity(particle, neighborhood_best)
         assert "g1" in particle.velocity
@@ -178,8 +185,7 @@ class TestSwarmIntelligenceBreeder:
     def test_swarm_stats(self):
         breeder = SwarmIntelligenceBreeder(population_size=5)
         breeder.initialize(
-            task_fn=lambda g: {"fitness": sum(g.values())},
-            bounds={"g1": (0, 1)}
+            task_fn=lambda g: {"fitness": sum(g.values())}, bounds={"g1": (0, 1)}
         )
         stats = breeder.get_swarm_stats()
         assert "generation" in stats
@@ -190,8 +196,7 @@ class TestSwarmIntelligenceBreeder:
     def test_particle_states(self):
         breeder = SwarmIntelligenceBreeder(population_size=5)
         breeder.initialize(
-            task_fn=lambda g: {"fitness": sum(g.values())},
-            bounds={"g1": (0, 1)}
+            task_fn=lambda g: {"fitness": sum(g.values())}, bounds={"g1": (0, 1)}
         )
         states = breeder.get_particle_states()
         assert len(states) == 5
@@ -200,30 +205,32 @@ class TestSwarmIntelligenceBreeder:
 
     def test_position_update(self):
         breeder = SwarmIntelligenceBreeder(population_size=5)
-        particle = Particle(
-            genome={"g1": 1.0}, velocity={"g1": 0.5}
-        )
+        particle = Particle(genome={"g1": 1.0}, velocity={"g1": 0.5})
         breeder._update_position(particle)
         assert particle.genome["g1"] == 1.5
 
     def test_max_velocity_clamping(self):
         breeder = SwarmIntelligenceBreeder(population_size=5, max_velocity=0.5)
         particle = Particle(
-            genome={"g1": 1.0}, velocity={"g1": 0.0},
-            best_genome={"g1": 100.0}, best_fitness=10.0, id=0
+            genome={"g1": 1.0},
+            velocity={"g1": 0.0},
+            best_genome={"g1": 100.0},
+            best_fitness=10.0,
+            id=0,
         )
         neighborhood_best = Particle(
-            genome={"g1": 50.0}, velocity={"g1": 0.0},
-            best_genome={"g1": 50.0}, best_fitness=20.0, id=1
+            genome={"g1": 50.0},
+            velocity={"g1": 0.0},
+            best_genome={"g1": 50.0},
+            best_fitness=20.0,
+            id=1,
         )
         breeder._update_velocity(particle, neighborhood_best)
         assert abs(particle.velocity["g1"]) <= 0.5
 
     def test_no_neighborhood_best(self):
         breeder = SwarmIntelligenceBreeder(population_size=5)
-        particle = Particle(
-            genome={"g1": 1.0}, velocity={"g1": 0.5}
-        )
+        particle = Particle(genome={"g1": 1.0}, velocity={"g1": 0.5})
         breeder._update_velocity(particle, None)
         # Velocity should still be updated (inertia + cognitive)
         assert "g1" in particle.velocity
@@ -231,14 +238,14 @@ class TestSwarmIntelligenceBreeder:
     def test_pheromone_limit(self):
         breeder = SwarmIntelligenceBreeder(population_size=5)
         for i in range(150):
-            breeder._deposit_pheromone({"g1": i}, {"g1": i+1}, 1.0)
+            breeder._deposit_pheromone({"g1": i}, {"g1": i + 1}, 1.0)
         assert len(breeder.pheromones) <= 100
 
     def test_return_format(self):
         breeder = SwarmIntelligenceBreeder(population_size=10)
         breeder.initialize(
             task_fn=lambda g: {"fitness": sum(g.values())},
-            bounds={"g1": (0, 1), "g2": (0, 1)}
+            bounds={"g1": (0, 1), "g2": (0, 1)},
         )
         pop = breeder.breed_generation(task_fn=lambda g: {"fitness": sum(g.values())})
         assert all(isinstance(genome, dict) for genome, _ in pop)

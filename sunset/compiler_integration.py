@@ -27,6 +27,7 @@ import numpy as np
 # ── Optional agentic-compiler integration ────────────────────────
 try:
     from agentic_compiler import Compiler, JitBackend, CompilationResult
+
     _HAS_COMPILER = True
 except Exception:
     Compiler = None  # type: ignore[misc,assignment]
@@ -37,6 +38,7 @@ except Exception:
 # ── Optional nexus event bus ───────────────────────────────────
 try:
     from nexus.fleet_event_bus import FleetEventBus
+
     _HAS_BUS = True
 except Exception:
     FleetEventBus = None  # type: ignore[misc,assignment]
@@ -109,10 +111,13 @@ class RoomGridCompiler:
         )
 
         logger.info("RoomGridCompiler installed — diversity() and tick() registered")
-        self._maybe_emit("compiler_installed", {
-            "methods": ["diversity", "tick"],
-            "backends": self._backend_pref,
-        })
+        self._maybe_emit(
+            "compiler_installed",
+            {
+                "methods": ["diversity", "tick"],
+                "backends": self._backend_pref,
+            },
+        )
         return True
 
     def uninstall(self) -> None:
@@ -120,7 +125,9 @@ class RoomGridCompiler:
         for name, fn in self._original_methods.items():
             setattr(self.grid, name, fn)
         self._compiled.clear()
-        self._maybe_emit("compiler_uninstalled", {"methods": list(self._original_methods)})
+        self._maybe_emit(
+            "compiler_uninstalled", {"methods": list(self._original_methods)}
+        )
 
     # ------------------------------------------------------------------
     # Status
@@ -140,7 +147,9 @@ class RoomGridCompiler:
         if self._bus and _HAS_BUS:
             self._bus.emit({"type": event_type, **payload})
 
-    def _ab_test(self, name: str, compiled_fn: Callable, python_fn: Callable, ticks: int) -> bool:
+    def _ab_test(
+        self, name: str, compiled_fn: Callable, python_fn: Callable, ticks: int
+    ) -> bool:
         """Run A/B test: compiled vs Python.  Return True if compiled wins."""
         compiled_us = []
         python_us = []
@@ -171,7 +180,10 @@ class RoomGridCompiler:
 
         logger.info(
             "A/B %s: compiled=%.1fµs python=%.1fµs speedup=%.2fx",
-            name, median_compiled, median_python, speedup,
+            name,
+            median_compiled,
+            median_python,
+            speedup,
         )
         return speedup >= self._min_speedup
 

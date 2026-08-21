@@ -29,7 +29,9 @@ class TokenThroughput:
     avg_latency_ms: float
 
     def __repr__(self) -> str:
-        return f"TokenTP({self.tokens_per_second:.1f} tok/s, {self.avg_latency_ms:.1f}ms)"
+        return (
+            f"TokenTP({self.tokens_per_second:.1f} tok/s, {self.avg_latency_ms:.1f}ms)"
+        )
 
 
 @dataclass
@@ -91,7 +93,9 @@ class StressReport:
         return None
 
 
-def _bench_matrix_cpu(sizes: List[int], warmup: int = 2, runs: int = 5) -> List[MatrixBenchmark]:
+def _bench_matrix_cpu(
+    sizes: List[int], warmup: int = 2, runs: int = 5
+) -> List[MatrixBenchmark]:
     """Matrix multiply benchmark using numpy (CPU)."""
     try:
         import numpy as np
@@ -113,10 +117,8 @@ def _bench_matrix_cpu(sizes: List[int], warmup: int = 2, runs: int = 5) -> List[
             times.append(t1 - t0)
         avg_s = sum(times) / len(times)
         # 2*size^3 FLOPs for matmul
-        gflops = (2 * size ** 3) / (avg_s * 1e9)
-        results.append(
-            MatrixBenchmark(size=size, avg_ms=avg_s * 1000, gflops=gflops)
-        )
+        gflops = (2 * size**3) / (avg_s * 1e9)
+        results.append(MatrixBenchmark(size=size, avg_ms=avg_s * 1000, gflops=gflops))
     return results
 
 
@@ -151,14 +153,14 @@ def _bench_matrix_cuda(
             t1 = time.perf_counter()
             times.append(t1 - t0)
         avg_s = sum(times) / len(times)
-        gflops = (2 * size ** 3) / (avg_s * 1e9)
-        results.append(
-            MatrixBenchmark(size=size, avg_ms=avg_s * 1000, gflops=gflops)
-        )
+        gflops = (2 * size**3) / (avg_s * 1e9)
+        results.append(MatrixBenchmark(size=size, avg_ms=avg_s * 1000, gflops=gflops))
     return results
 
 
-def _bench_memory_bandwidth_cpu(size_mb: float = 256.0, runs: int = 5) -> Optional[MemoryBandwidth]:
+def _bench_memory_bandwidth_cpu(
+    size_mb: float = 256.0, runs: int = 5
+) -> Optional[MemoryBandwidth]:
     """Simple memory bandwidth test on CPU."""
     try:
         import numpy as np

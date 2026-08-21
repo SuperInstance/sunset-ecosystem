@@ -141,8 +141,8 @@ FLUX hooks into `RoomGrid.tick()` at three lifecycle points:
 ```python
 # RoomGrid.tick() pseudo-code
 def tick(self, x):
-    latents = self._forward(x)        # ← forward pass
-    self.latents = latents            # ← store for FLUX
+    latents = self._forward(x)  # ← forward pass
+    self.latents = latents  # ← store for FLUX
     # ... novelty + chaos gating ...
     if self._flux_checker is not None:
         apply_constraint_feedback(self, self._flux_checker)  # ← FLUX hook

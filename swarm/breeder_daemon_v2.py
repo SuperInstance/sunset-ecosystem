@@ -48,6 +48,7 @@ from swarm.inheritance_tax import InheritanceTax
 from swarm.crdt_merge import CRDTMergeEngine, Agent as CRDTAgent
 from swarm.lineage_checker import LineageSanityChecker, Agent as LineageAgent
 from swarm.trajectory_monitor import TrajectoryMonitor, SecurityEvent
+
 # Make cocapn_traps optional — graceful degrade when unavailable
 try:
     from cocapn_traps.traps.diversity_collapse_trap import DiversityCollapseTrap
@@ -55,16 +56,29 @@ except ImportError:
     # Graceful fallback: no-op diversity monitoring
     class DiversityCollapseTrap:  # type: ignore[no-redef]
         """No-op fallback when cocapn_traps is not installed."""
+
         def __init__(self, *args, **kwargs):
             self._history = []
+
         def record(self, diversity_score):
             self._history.append(diversity_score)
+
         def check(self):
             if len(self._history) >= 3:
-                return type("DiversityAlert", (), {"level": "CRITICAL", "recommended_action": "CROSS_SHIP_INJECTION"})()
+                return type(
+                    "DiversityAlert",
+                    (),
+                    {"level": "CRITICAL", "recommended_action": "CROSS_SHIP_INJECTION"},
+                )()
             if len(self._history) >= 2:
-                return type("DiversityAlert", (), {"level": "WARNING", "recommended_action": "EMERGENCY_MUTATE"})()
+                return type(
+                    "DiversityAlert",
+                    (),
+                    {"level": "WARNING", "recommended_action": "EMERGENCY_MUTATE"},
+                )()
             return None
+
+
 from nerve.distributed_metronome_bridge import MetronomeBridge
 from swarm.mesh_vector_tables import FleetVectorIndex, VectorTableEntry
 from fleet.operational_trap import TrapRegistry
@@ -77,32 +91,45 @@ from logos.decision_journal import log_spawn, log_sunset, log_breed
 try:
     from swarm.flux_gating import FluxGatingChecker, FluxGatingConfig
 except ImportError:
+
     class FluxGatingConfig:  # type: ignore[no-redef]
         """No-op fallback when swarm.flux_gating is not available."""
+
         pass
+
     class FluxGatingChecker:  # type: ignore[no-redef]
         """No-op fallback when swarm.flux_gating is not available."""
+
         def __init__(self, *args, **kwargs):
             pass
+
 
 # FLUX Path B gating — optional, graceful degrade when unavailable
 try:
     from swarm.flux_vm_gating import FluxVMGatingChecker, FluxVMConfig
 except ImportError:
+
     class FluxVMConfig:  # type: ignore[no-redef]
         """No-op fallback when swarm.flux_vm_gating is not available."""
+
         pass
+
     class FluxVMGatingChecker:  # type: ignore[no-redef]
         """No-op fallback when swarm.flux_vm_gating is not available."""
+
         def __init__(self, *args, **kwargs):
             pass
+
 
 try:
     from swarm.breeder_bft_qd_integration import BreederBFTIntegration
 except ImportError:
+
     class BreederBFTIntegration:  # type: ignore[no-redef]
         """No-op fallback when BFT-QD integration is not available."""
+
         pass
+
 
 logger = logging.getLogger(__name__)
 
@@ -138,10 +165,10 @@ class LifecycleTransition:
 class DiversityConfig:
     """How aggressively to pursue genetic diversity."""
 
-    metric: str = "cosine"          # "cosine" | "hamming" | "l2"
+    metric: str = "cosine"  # "cosine" | "hamming" | "l2"
     min_pairwise_dist: float = 0.15  # if avg dist drops below, request mesh breed
-    novelty_weight: float = 0.3      # novelty vs fitness in parent selection
-    max_inbreeding_gen: int = 3      # reject parent pairs sharing grandparent
+    novelty_weight: float = 0.3  # novelty vs fitness in parent selection
+    max_inbreeding_gen: int = 3  # reject parent pairs sharing grandparent
 
 
 @dataclass(frozen=True)
@@ -151,7 +178,7 @@ class ThermalConfig:
     max_agents: int = 65
     hysteresis_ticks: int = 10
     cooling_curve: str = "exponential"  # "exponential" | "linear" | "measured"
-    predictive_spawn: bool = True       # predict next free slot from curve
+    predictive_spawn: bool = True  # predict next free slot from curve
 
 
 class _WALSchema:
@@ -221,9 +248,7 @@ class _WALSchema:
         """Replay WAL: return FSM for every known agent."""
         conn = sqlite3.connect(self.path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
-        cur = conn.execute(
-            "SELECT agent_id, state FROM lifecycle ORDER BY entered_at"
-        )
+        cur = conn.execute("SELECT agent_id, state FROM lifecycle ORDER BY entered_at")
         fsm_map: dict[int, AgentLifecycleFSM] = {}
         for row in cur:
             agent_id = row["agent_id"]
@@ -351,9 +376,7 @@ class _WALSchema:
 
     def count_pending(self) -> int:
         conn = sqlite3.connect(self.path, check_same_thread=False)
-        cur = conn.execute(
-            "SELECT COUNT(*) FROM breed_queue WHERE processed = 0"
-        )
+        cur = conn.execute("SELECT COUNT(*) FROM breed_queue WHERE processed = 0")
         count = cur.fetchone()[0]
         conn.close()
         return count
@@ -361,9 +384,7 @@ class _WALSchema:
     def get_genealogy(self, agent_id: int) -> dict[str, Any] | None:
         conn = sqlite3.connect(self.path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
-        cur = conn.execute(
-            "SELECT * FROM genealogy WHERE agent_id = ?", (agent_id,)
-        )
+        cur = conn.execute("SELECT * FROM genealogy WHERE agent_id = ?", (agent_id,))
         row = cur.fetchone()
         conn.close()
         if row is None:
@@ -531,7 +552,11 @@ class BreederDaemonV2:
             if not result.passed:
                 return result
         # Both passed (or neither configured)
-        return result if (self._compiled_checker is not None or self._flux_checker is not None) else None
+        return (
+            result
+            if (self._compiled_checker is not None or self._flux_checker is not None)
+            else None
+        )
 
     def _flux_passed(self, result: Any | None) -> bool:
         """Return True if the FLUX check passed (or no checker configured)."""
@@ -585,8 +610,11 @@ class BreederDaemonV2:
             flux_config=flux_cfg,
             vm_config=vm_cfg,
         )
-        logger.info("FLUX VM gating checker attached (scale=%d, max_cycles=%d)",
-                    vm_cfg.scale, vm_cfg.max_cycles)
+        logger.info(
+            "FLUX VM gating checker attached (scale=%d, max_cycles=%d)",
+            vm_cfg.scale,
+            vm_cfg.max_cycles,
+        )
 
     # ── public API ──────────────────────────────────────────
 
@@ -702,17 +730,16 @@ class BreederDaemonV2:
                         except ValueError:
                             pass
             except Exception:
-                logger.exception("FleetVectorIndex.get_breedable_pool failed, using local only")
+                logger.exception(
+                    "FleetVectorIndex.get_breedable_pool failed, using local only"
+                )
 
         # Merge and deduplicate (local first, then fleet)
         merged = list(dict.fromkeys(local_candidates + fleet_candidates))
 
         # -- BFT-QD consensus gate --
         if self._consensus is not None:
-            candidates = [
-                {"id": f"agent_{aid}", "chaos": 0.3}
-                for aid in merged
-            ]
+            candidates = [{"id": f"agent_{aid}", "chaos": 0.3} for aid in merged]
             consensus_pairs = self._consensus.propose_parents(
                 candidates, batch_size=n_children
             )
@@ -769,6 +796,7 @@ class BreederDaemonV2:
                 if len(pairs) >= n_children:
                     break
         return pairs[:n_children]
+
     def step(self) -> list[LifecycleTransition]:
         """Run one scheduler tick: dequeue, check thermal, spawn or wait.
 
@@ -795,13 +823,17 @@ class BreederDaemonV2:
             logger.warning(
                 "Step %d: breeding ticket %d aborted — "
                 "anomalous trajectory in parent(s) %s",
-                tick, ticket, flagged,
+                tick,
+                ticket,
+                flagged,
             )
             return transitions
 
         # 3. Thermal budget
         device = DeviceType.GPU
-        thermal_ok = self._check_thermal(ticket, parent_a, parent_b, priority, remote, device)
+        thermal_ok = self._check_thermal(
+            ticket, parent_a, parent_b, priority, remote, device
+        )
         if not thermal_ok:
             return transitions
         self._thermal_blocked_ticks = 0
@@ -821,8 +853,15 @@ class BreederDaemonV2:
         # 6. Spawn child
         child_id = self._next_agent_id()
         spawn_result = self._spawn_child(
-            tick, child_id, room_id, parent_a, parent_b,
-            priority, remote, device, transitions,
+            tick,
+            child_id,
+            room_id,
+            parent_a,
+            parent_b,
+            priority,
+            remote,
+            device,
+            transitions,
         )
         if spawn_result is None:
             return transitions
@@ -849,7 +888,9 @@ class BreederDaemonV2:
             _, parent_b = pairs[0]
         return parent_a, parent_b
 
-    def _check_thermal(self, ticket, parent_a, parent_b, priority, remote, device) -> bool:
+    def _check_thermal(
+        self, ticket, parent_a, parent_b, priority, remote, device
+    ) -> bool:
         """Check thermal budget. Returns True if OK, False if blocked (re-queues)."""
         if self.thermal.can_spawn(device):
             return True
@@ -859,7 +900,8 @@ class BreederDaemonV2:
             return False
         parent_id = f"agent_{parent_a}"
         ok = self.thermal.parent_sacrifice_before_spawn(
-            parent_id=parent_id, child_device=device,
+            parent_id=parent_id,
+            child_device=device,
         )
         if not ok:
             self._wal.enqueue_breed(parent_a, parent_b, priority, remote)
@@ -873,7 +915,8 @@ class BreederDaemonV2:
         if not self._flux_passed(flux_result):
             logger.warning(
                 "FLUX blocked ticket %d (parents=%s): %s",
-                ticket, (parent_a, parent_b),
+                ticket,
+                (parent_a, parent_b),
                 getattr(flux_result, "violations", "unknown"),
             )
             self._wal.enqueue_breed(parent_a, parent_b, priority, remote)
@@ -904,8 +947,10 @@ class BreederDaemonV2:
             self._log_transition_to_signed_wal(sunset_tr)
             if self._decision_journal_path:
                 log_sunset(
-                    agent_id=old_agent_id, reason="room_reuse",
-                    generation=0, journal_path=self._decision_journal_path,
+                    agent_id=old_agent_id,
+                    reason="room_reuse",
+                    generation=0,
+                    journal_path=self._decision_journal_path,
                 )
             self._fsm[old_agent_id] = AgentLifecycleFSM(
                 agent_id=old_agent_id, initial_state=LifecycleState.SUNSET, strict=False
@@ -948,7 +993,9 @@ class BreederDaemonV2:
             self._slot_registry[child_id] += bonus
             logger.info(
                 "InheritanceTax: agent %d granted %d bonus slots from global pool (pool=%d)",
-                child_id, bonus, self._inheritance_tax.global_pool
+                child_id,
+                bonus,
+                self._inheritance_tax.global_pool,
             )
 
     def _flux_path_a_check(self, parent_a, parent_b, priority, remote) -> bool:
@@ -972,14 +1019,19 @@ class BreederDaemonV2:
                         if db.max_agents > 0:
                             thermal_val = db.current_agents / db.max_agents
                 res = self._flux_checker.check_candidate(
-                    weights=wvec, chaos=chaos_val, thermal_pressure=thermal_val,
+                    weights=wvec,
+                    chaos=chaos_val,
+                    thermal_pressure=thermal_val,
                 )
                 flux_results.append((pid, res))
         flux_fails = [(pid, r) for pid, r in flux_results if not r.passed]
         if flux_fails:
-            fail_str = ", ".join(f"agent_{pid}({r.violations})" for pid, r in flux_fails)
+            fail_str = ", ".join(
+                f"agent_{pid}({r.violations})" for pid, r in flux_fails
+            )
             logger.warning(
-                "FLUX-gated — parent(s) %s", fail_str,
+                "FLUX-gated — parent(s) %s",
+                fail_str,
             )
             self._wal.enqueue_breed(parent_a, parent_b, max(0, priority - 1), remote)
             return False
@@ -1004,17 +1056,24 @@ class BreederDaemonV2:
         )
         if self._decision_journal_path:
             log_breed(
-                parent_a=parent_a, parent_b=parent_b, child_id=child_id,
-                generation=generation, journal_path=self._decision_journal_path,
+                parent_a=parent_a,
+                parent_b=parent_b,
+                child_id=child_id,
+                generation=generation,
+                journal_path=self._decision_journal_path,
             )
             log_spawn(
-                agent_id=child_id, parents=(parent_a, parent_b),
-                generation=generation, reason="breeder_daemon_v2 step",
+                agent_id=child_id,
+                parents=(parent_a, parent_b),
+                generation=generation,
+                reason="breeder_daemon_v2 step",
                 journal_path=self._decision_journal_path,
             )
         return egg_tr
 
-    def _transition_to_compete(self, child_id, room_id, parent_a, parent_b, generation, remote, device):
+    def _transition_to_compete(
+        self, child_id, room_id, parent_a, parent_b, generation, remote, device
+    ):
         """Allocate room, transition to COMPETE, allocate thermal budget."""
         parent_room = self._find_room_for_agent(parent_a)
         if parent_room is not None:
@@ -1041,48 +1100,68 @@ class BreederDaemonV2:
         self._room_allocations[room_id] = child_id
         return incubate_tr
 
-    def _sync_vector_table_and_lineage(self, child_id, room_id, parent_a, parent_b, generation, transitions):
+    def _sync_vector_table_and_lineage(
+        self, child_id, room_id, parent_a, parent_b, generation, transitions
+    ):
         """Sync to vector table, record trajectory, check lineage. Returns updated transitions or None."""
         if self._vector_table is None:
             return transitions
         from swarm.vector_table import AgentVector
+
         vec = self._extract_room_vector(room_id)
         self._vector_table.add(
             AgentVector(
-                agent_id=child_id, vector=vec.tolist(), fitness=0.0,
-                generation=generation, capability_mask=0xFFFF, thermal_pressure=0.0,
+                agent_id=child_id,
+                vector=vec.tolist(),
+                fitness=0.0,
+                generation=generation,
+                capability_mask=0xFFFF,
+                thermal_pressure=0.0,
             )
         )
         self._trajectory_monitor.record(child_id, vec)
         lineage_checker = LineageSanityChecker(max_depth=5)
         population_agents = self._build_lineage_population()
         child_agent = LineageAgent(
-            id=child_id, vector=vec.tolist(), generation=generation,
-            parent_a=parent_a, parent_b=parent_b,
+            id=child_id,
+            vector=vec.tolist(),
+            generation=generation,
+            parent_a=parent_a,
+            parent_b=parent_b,
         )
         is_valid, reason = lineage_checker.verify_lineage(
             child_id, population_agents + [child_agent]
         )
         if not is_valid:
-            logger.warning("LineageSanityChecker failed for agent %d: %s", child_id, reason)
+            logger.warning(
+                "LineageSanityChecker failed for agent %d: %s", child_id, reason
+            )
             event = SecurityEvent(
-                agent_id=child_id, z_score=0.0, threshold=0.0,
+                agent_id=child_id,
+                z_score=0.0,
+                threshold=0.0,
                 generation_count=generation,
                 message=f"Lineage tamper detected for agent {child_id}: {reason}",
             )
             self._trajectory_monitor._events.append(event)
             sunset_tr = LifecycleTransition(
-                agent_id=child_id, from_state=LifecycleState.COMPETE,
-                to_state=LifecycleState.SUNSET, timestamp=time.time(),
-                generation=generation, parent_a=parent_a, parent_b=parent_b,
+                agent_id=child_id,
+                from_state=LifecycleState.COMPETE,
+                to_state=LifecycleState.SUNSET,
+                timestamp=time.time(),
+                generation=generation,
+                parent_a=parent_a,
+                parent_b=parent_b,
                 origin_node="local" if not remote else "remote",
             )
             self._wal.transition(sunset_tr)
             self._log_transition_to_signed_wal(sunset_tr)
             if self._decision_journal_path:
                 log_sunset(
-                    agent_id=child_id, reason=f"lineage_tamper: {reason}",
-                    generation=generation, journal_path=self._decision_journal_path,
+                    agent_id=child_id,
+                    reason=f"lineage_tamper: {reason}",
+                    generation=generation,
+                    journal_path=self._decision_journal_path,
                 )
             self._fsm[child_id] = AgentLifecycleFSM(
                 agent_id=child_id, initial_state=LifecycleState.SUNSET, strict=False
@@ -1101,7 +1180,10 @@ class BreederDaemonV2:
         """Diversity collapse hook and FLUX batch check."""
         logger.info(
             "Step %d: spawned agent %d in room %d (parents=%s, gen=%d)",
-            tick, child_id, room_id, (parent_a, parent_b),
+            tick,
+            child_id,
+            room_id,
+            (parent_a, parent_b),
             self._determine_generation(parent_a, parent_b),
         )
         if self._vector_table is not None:
@@ -1111,7 +1193,9 @@ class BreederDaemonV2:
             if alert is not None:
                 logger.warning(
                     "DIVERSITY %s (tick=%d): %s",
-                    alert.level, tick, alert.recommended_action,
+                    alert.level,
+                    tick,
+                    alert.recommended_action,
                 )
         if self._flux_checker is not None:
             topk = self.grid.top(k=self._flux_checker.config.top_k_batch)
@@ -1145,12 +1229,22 @@ class BreederDaemonV2:
                             self.grid.chaos[rid] += 0.1
                             logger.debug(
                                 "FLUX batch: room %d failed (%s), chaos bumped to %.3f",
-                                rid, br.violations, self.grid.chaos[rid],
+                                rid,
+                                br.violations,
+                                self.grid.chaos[rid],
                             )
 
     def _spawn_child(
-        self, tick, child_id, room_id, parent_a, parent_b,
-        priority, remote, device, transitions,
+        self,
+        tick,
+        child_id,
+        room_id,
+        parent_a,
+        parent_b,
+        priority,
+        remote,
+        device,
+        transitions,
     ):
         """Full child spawn: inheritance, generation, FLUX Path A, EGG, COMPETE, vector sync."""
         self._apply_inheritance_tax(child_id, parent_a)
@@ -1160,14 +1254,24 @@ class BreederDaemonV2:
         egg_tr = self._place_child_egg(child_id, parent_a, parent_b, generation, remote)
         transitions.append(egg_tr)
         compete_tr = self._transition_to_compete(
-            child_id, room_id, parent_a, parent_b, generation, remote, device,
+            child_id,
+            room_id,
+            parent_a,
+            parent_b,
+            generation,
+            remote,
+            device,
         )
         transitions.append(compete_tr)
         result = self._sync_vector_table_and_lineage(
-            child_id, room_id, parent_a, parent_b, generation, transitions,
+            child_id,
+            room_id,
+            parent_a,
+            parent_b,
+            generation,
+            transitions,
         )
         return result
-
 
     def _build_lineage_population(self) -> list[LineageAgent]:
         """Construct Agent records for every known agent (state + vector table + genealogy)."""
@@ -1187,7 +1291,9 @@ class BreederDaemonV2:
         # 3. Agents in genealogy table
         conn = sqlite3.connect(self._wal_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
-        cur = conn.execute("SELECT agent_id, parent_a, parent_b, generation FROM genealogy")
+        cur = conn.execute(
+            "SELECT agent_id, parent_a, parent_b, generation FROM genealogy"
+        )
         genealogy_rows: dict[int, dict[str, Any]] = {}
         for row in cur:
             aid = row["agent_id"]
@@ -1223,7 +1329,6 @@ class BreederDaemonV2:
             )
         return agents
 
-
     def merge_remote_population(
         self, remote_agents: list[CRDTAgent]
     ) -> list[CRDTAgent]:
@@ -1239,8 +1344,11 @@ class BreederDaemonV2:
         # Use the local vector table as the merge target; if none, create a
         # transient one so the engine can still perform lineage checks.
         from swarm.vector_table import FluxVectorTable
+
         if self._vector_table is None:
-            self._vector_table = FluxVectorTable(dim=64, bit_width=4, use_hdc=self._use_hdc)
+            self._vector_table = FluxVectorTable(
+                dim=64, bit_width=4, use_hdc=self._use_hdc
+            )
         vt = self._vector_table
         engine = CRDTMergeEngine(vt)
 
@@ -1319,7 +1427,8 @@ class BreederDaemonV2:
 
         # Collect vectors for all non-SUNSET agents
         agent_ids = [
-            aid for aid, fsm in self._fsm.items()
+            aid
+            for aid, fsm in self._fsm.items()
             if fsm.get_state() not in (LifecycleState.SUNSET, LifecycleState.EGG)
         ]
         if len(agent_ids) < 2:
@@ -1418,10 +1527,16 @@ class BreederDaemonV2:
         preset_name: str | None = None
         if self._flux_preset_library is not None:
             try:
-                preset_name = self._flux_preset_library.suggest_preset_for_task("breeding")
-                self._flux_preset_library.apply_preset(preset_name, {"daemon": self, "cycle": "auto_breed"})
+                preset_name = self._flux_preset_library.suggest_preset_for_task(
+                    "breeding"
+                )
+                self._flux_preset_library.apply_preset(
+                    preset_name, {"daemon": self, "cycle": "auto_breed"}
+                )
             except Exception:
-                logger.exception("FluxPresetLibrary apply_preset failed for %s", preset_name)
+                logger.exception(
+                    "FluxPresetLibrary apply_preset failed for %s", preset_name
+                )
 
         n_children = n_winners or 3
         pairs = self.select_parents(n_children)
@@ -1458,7 +1573,10 @@ class BreederDaemonV2:
                             sig = self._agent_identity.sign_task(payload)
                             self._breed_signatures[tr.agent_id] = sig
                         except Exception:
-                            logger.exception("AgentIdentity sign_task failed for agent %d", tr.agent_id)
+                            logger.exception(
+                                "AgentIdentity sign_task failed for agent %d",
+                                tr.agent_id,
+                            )
 
         # ── Operational traps ───────────────────────────────────
         if self._trap_registry is not None:
@@ -1485,7 +1603,9 @@ class BreederDaemonV2:
         status["agent_identity"] = self._agent_identity is not None
         if self._metronome_bridge is not None:
             try:
-                status["metronome_bridge_beat"] = getattr(self._metronome_bridge, "_beat_count", 0)
+                status["metronome_bridge_beat"] = getattr(
+                    self._metronome_bridge, "_beat_count", 0
+                )
             except Exception:
                 status["metronome_bridge_beat"] = -1
         if self._fleet_vector_index is not None:
@@ -1501,12 +1621,16 @@ class BreederDaemonV2:
                 status["trap_registry_results"] = -1
         if self._flux_preset_library is not None:
             try:
-                status["flux_preset_suggested"] = self._flux_preset_library.suggest_preset_for_task("breeding")
+                status["flux_preset_suggested"] = (
+                    self._flux_preset_library.suggest_preset_for_task("breeding")
+                )
             except Exception:
                 status["flux_preset_suggested"] = None
         if self._agent_identity is not None:
             try:
-                status["agent_identity_name"] = getattr(self._agent_identity, "agent_id", "unknown")
+                status["agent_identity_name"] = getattr(
+                    self._agent_identity, "agent_id", "unknown"
+                )
             except Exception:
                 status["agent_identity_name"] = None
         return status
@@ -1532,12 +1656,13 @@ class BreederDaemonV2:
         digest = hashlib.blake2b(raw.encode(), digest_size=8).digest()
         val = int.from_bytes(digest, "big")
         # SQLite INTEGER is signed 64-bit; keep us in safe range
-        return val % (2 ** 63 - 1)
+        return val % (2**63 - 1)
 
     def _get_breedable_candidates(self) -> list[int]:
         """Return agent IDs that are eligible for breeding."""
         return [
-            aid for aid, fsm in self._fsm.items()
+            aid
+            for aid, fsm in self._fsm.items()
             if fsm.get_state() in (LifecycleState.SURVIVE, LifecycleState.BREED)
         ]
 
@@ -1688,12 +1813,21 @@ class BreederDaemonV2:
                     n_results=n_children * 2
                 )
                 for a, b in diverse_pairs:
-                    if a in population and b in population and not self._is_inbred(a, b):
+                    if (
+                        a in population
+                        and b in population
+                        and not self._is_inbred(a, b)
+                    ):
                         # FLUX gating: check candidate before accepting
                         plan = {"parents": (a, b)}
                         result = self._check_flux(a, plan)
                         if not self._flux_passed(result):
-                            logger.debug("FLUX blocked diverse pair (%d, %d): %s", a, b, getattr(result, "violations", "unknown"))
+                            logger.debug(
+                                "FLUX blocked diverse pair (%d, %d): %s",
+                                a,
+                                b,
+                                getattr(result, "violations", "unknown"),
+                            )
                             continue
                         pairs.append((a, b))
                     if len(pairs) >= n_children:
@@ -1707,13 +1841,22 @@ class BreederDaemonV2:
                 rec = vector_table.recommend_breed_pair()
                 if rec is not None:
                     a, b = rec
-                    if a in population and b in population and not self._is_inbred(a, b):
+                    if (
+                        a in population
+                        and b in population
+                        and not self._is_inbred(a, b)
+                    ):
                         if (a, b) not in pairs and (b, a) not in pairs:
                             # FLUX gating
                             plan = {"parents": (a, b)}
                             result = self._check_flux(a, plan)
                             if not self._flux_passed(result):
-                                logger.debug("FLUX blocked recommend pair (%d, %d): %s", a, b, getattr(result, "violations", "unknown"))
+                                logger.debug(
+                                    "FLUX blocked recommend pair (%d, %d): %s",
+                                    a,
+                                    b,
+                                    getattr(result, "violations", "unknown"),
+                                )
                             else:
                                 pairs.append((a, b))
                         else:
@@ -1794,7 +1937,12 @@ class BreederDaemonV2:
                 plan = {"parents": (parent_a, best_b)}
                 result = self._check_flux(parent_a, plan)
                 if not self._flux_passed(result):
-                    logger.debug("FLUX blocked legacy pair (%d, %d): %s", parent_a, best_b, getattr(result, "violations", "unknown"))
+                    logger.debug(
+                        "FLUX blocked legacy pair (%d, %d): %s",
+                        parent_a,
+                        best_b,
+                        getattr(result, "violations", "unknown"),
+                    )
                     # Try next best candidate
                     for alt_aid, _, _, _ in scored[1:]:
                         if alt_aid == parent_a or alt_aid == best_b:

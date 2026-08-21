@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class FeatureFlag:
     """A feature flag with rollout rules."""
+
     name: str
     enabled: bool
     rollout_percentage: float = 100.0
@@ -31,8 +32,11 @@ class FeatureFlag:
         if self.rollout_percentage < 100.0:
             # Deterministic hash-based rollout
             import hashlib
+
             context_str = json.dumps(context, sort_keys=True)
-            hash_val = int(hashlib.sha256(f"{self.name}:{context_str}".encode()).hexdigest(), 16)
+            hash_val = int(
+                hashlib.sha256(f"{self.name}:{context_str}".encode()).hexdigest(), 16
+            )
             return (hash_val % 100) < self.rollout_percentage
 
         return True
@@ -59,9 +63,13 @@ class FeatureFlagManager:
         self.flags: Dict[str, FeatureFlag] = {}
         self._evaluations: Dict[str, int] = {"enabled": 0, "disabled": 0}
 
-    def create(self, name: str, enabled: bool = False,
-               rollout_percentage: float = 100.0,
-               targeting: Optional[Dict[str, Any]] = None) -> FeatureFlag:
+    def create(
+        self,
+        name: str,
+        enabled: bool = False,
+        rollout_percentage: float = 100.0,
+        targeting: Optional[Dict[str, Any]] = None,
+    ) -> FeatureFlag:
         """Create a feature flag."""
         flag = FeatureFlag(
             name=name,
@@ -123,11 +131,14 @@ class FeatureFlagManager:
 
     def export_json(self) -> str:
         """Export all flags as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "flags": [f.to_dict() for f in self.flags.values()],
-            "stats": self.get_stats(),
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "flags": [f.to_dict() for f in self.flags.values()],
+                "stats": self.get_stats(),
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

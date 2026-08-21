@@ -11,6 +11,7 @@ Usage:
     target = proxy.pick()
     # forward request to target
 """
+
 from __future__ import annotations
 
 import logging

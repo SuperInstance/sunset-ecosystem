@@ -12,6 +12,7 @@ import numpy as np
 @dataclass
 class ValidationError:
     """A validation error."""
+
     field: str
     message: str
     severity: str = "error"
@@ -45,51 +46,79 @@ class SchemaValidator:
         schema = self._schemas[schema_name]
         return self._validate_object(data, schema, "")
 
-    def _validate_object(self, data: Dict[str, Any], schema: Dict[str, Any],
-                         path: str) -> List[ValidationError]:
+    def _validate_object(
+        self, data: Dict[str, Any], schema: Dict[str, Any], path: str
+    ) -> List[ValidationError]:
         errors = []
         for key, spec in schema.items():
             current_path = f"{path}.{key}" if path else key
             if key not in data:
                 if spec.get("required", False):
-                    errors.append(ValidationError(current_path, f"Missing required field: {key}"))
+                    errors.append(
+                        ValidationError(current_path, f"Missing required field: {key}")
+                    )
                 continue
 
             value = data[key]
             errors.extend(self._validate_value(value, spec, current_path))
         return errors
 
-    def _validate_value(self, value: Any, spec: Dict[str, Any],
-                        path: str) -> List[ValidationError]:
+    def _validate_value(
+        self, value: Any, spec: Dict[str, Any], path: str
+    ) -> List[ValidationError]:
         errors = []
         expected_type = spec.get("type")
 
         if expected_type == "string" and not isinstance(value, str):
-            errors.append(ValidationError(path, f"Expected string, got {type(value).__name__}"))
+            errors.append(
+                ValidationError(path, f"Expected string, got {type(value).__name__}")
+            )
         elif expected_type == "number" and not isinstance(value, (int, float)):
-            errors.append(ValidationError(path, f"Expected number, got {type(value).__name__}"))
+            errors.append(
+                ValidationError(path, f"Expected number, got {type(value).__name__}")
+            )
         elif expected_type == "integer" and not isinstance(value, int):
-            errors.append(ValidationError(path, f"Expected integer, got {type(value).__name__}"))
+            errors.append(
+                ValidationError(path, f"Expected integer, got {type(value).__name__}")
+            )
         elif expected_type == "boolean" and not isinstance(value, bool):
-            errors.append(ValidationError(path, f"Expected boolean, got {type(value).__name__}"))
+            errors.append(
+                ValidationError(path, f"Expected boolean, got {type(value).__name__}")
+            )
         elif expected_type == "array" and not isinstance(value, list):
-            errors.append(ValidationError(path, f"Expected array, got {type(value).__name__}"))
+            errors.append(
+                ValidationError(path, f"Expected array, got {type(value).__name__}")
+            )
         elif expected_type == "object" and not isinstance(value, dict):
-            errors.append(ValidationError(path, f"Expected object, got {type(value).__name__}"))
+            errors.append(
+                ValidationError(path, f"Expected object, got {type(value).__name__}")
+            )
 
         # Range validation
         if expected_type in ("number", "integer") and isinstance(value, (int, float)):
             if "min" in spec and value < spec["min"]:
-                errors.append(ValidationError(path, f"Value {value} < minimum {spec['min']}"))
+                errors.append(
+                    ValidationError(path, f"Value {value} < minimum {spec['min']}")
+                )
             if "max" in spec and value > spec["max"]:
-                errors.append(ValidationError(path, f"Value {value} > maximum {spec['max']}"))
+                errors.append(
+                    ValidationError(path, f"Value {value} > maximum {spec['max']}")
+                )
 
         # String pattern validation
         if expected_type == "string" and isinstance(value, str):
             if "pattern" in spec and not re.match(spec["pattern"], value):
-                errors.append(ValidationError(path, f"Value does not match pattern {spec['pattern']}"))
+                errors.append(
+                    ValidationError(
+                        path, f"Value does not match pattern {spec['pattern']}"
+                    )
+                )
             if "min_length" in spec and len(value) < spec["min_length"]:
-                errors.append(ValidationError(path, f"String too short: {len(value)} < {spec['min_length']}"))
+                errors.append(
+                    ValidationError(
+                        path, f"String too short: {len(value)} < {spec['min_length']}"
+                    )
+                )
 
         # Nested object validation
         if expected_type == "object" and isinstance(value, dict):

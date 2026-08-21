@@ -1,4 +1,5 @@
 """Benchmark the full topology tick cycle."""
+
 import time
 import numpy as np
 from nerve.topology import NerveTopology

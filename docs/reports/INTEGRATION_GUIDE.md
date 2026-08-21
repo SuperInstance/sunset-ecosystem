@@ -25,7 +25,9 @@ harbor.register_module("MyModule", "swarm/my_module.py", ["VectorSwarm"])
 ### 2. Add Integration Paths
 
 ```python
-harbor.add_integration("MyModule", "VectorSwarm", "MyModule uses VectorSwarm for search")
+harbor.add_integration(
+    "MyModule", "VectorSwarm", "MyModule uses VectorSwarm for search"
+)
 ```
 
 ### 3. Verify Health

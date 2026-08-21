@@ -46,7 +46,13 @@ class TestFleetDashboard:
     def test_build_breeding_panel(self):
         dash = FleetDashboard()
         campaigns = [
-            {"name": "test-1", "status": "running", "generation": 5, "best_fitness": 100.0, "module": "pso"},
+            {
+                "name": "test-1",
+                "status": "running",
+                "generation": 5,
+                "best_fitness": 100.0,
+                "module": "pso",
+            },
         ]
         panel = dash.build_breeding_panel(campaigns)
         assert "test-1" in panel.content
@@ -64,7 +70,7 @@ class TestFleetDashboard:
             "rooms": {
                 "ethos": {"n_agents": 5, "avg_position": (0, 0), "entropy": 0.8},
             },
-            "total_agents": 5
+            "total_agents": 5,
         }
         panel = dash.build_spatial_panel(spatial)
         assert "ethos" in panel.content
@@ -80,7 +86,7 @@ class TestFleetDashboard:
         health = {
             "tests": {"passed": 100, "total": 120},
             "modules": [{"name": "test_mod", "status": "ok"}],
-            "commits": 50
+            "commits": 50,
         }
         panel = dash.build_health_panel(health)
         assert "100/120" in panel.content
@@ -96,7 +102,7 @@ class TestFleetDashboard:
             "avg_fitness": 80.0,
             "diversity": 0.5,
             "pheromone_trails": 20,
-            "avg_clustering": 0.3
+            "avg_clustering": 0.3,
         }
         panel = dash.build_swarm_panel(swarm)
         assert "Generation: 10" in panel.content
@@ -121,11 +127,27 @@ class TestFleetDashboard:
     def test_render(self):
         dash = FleetDashboard()
         data = {
-            "campaigns": [{"name": "c1", "status": "running", "generation": 5, "best_fitness": 100, "module": "pso"}],
+            "campaigns": [
+                {
+                    "name": "c1",
+                    "status": "running",
+                    "generation": 5,
+                    "best_fitness": 100,
+                    "module": "pso",
+                }
+            ],
             "spatial": {"rooms": {}, "total_agents": 0},
             "health": {"tests": {"passed": 0, "total": 0}, "modules": [], "commits": 0},
-            "swarm": {"generation": 0, "n_particles": 0, "best_fitness": 0, "avg_fitness": 0, "diversity": 0, "pheromone_trails": 0, "avg_clustering": 0},
-            "trinity": {}
+            "swarm": {
+                "generation": 0,
+                "n_particles": 0,
+                "best_fitness": 0,
+                "avg_fitness": 0,
+                "diversity": 0,
+                "pheromone_trails": 0,
+                "avg_clustering": 0,
+            },
+            "trinity": {},
         }
         output = dash.render(data)
         assert "COCAPN FLEET DASHBOARD" in output
@@ -140,7 +162,7 @@ class TestFleetDashboard:
         data = {
             "health": {"tests": {"passed": 100, "total": 120}},
             "swarm": {"generation": 5, "best_fitness": 99.5},
-            "spatial": {"total_agents": 10}
+            "spatial": {"total_agents": 10},
         }
         compact = dash.render_compact(data)
         assert "Fleet" in compact
@@ -160,15 +182,27 @@ class TestFleetDashboard:
         dash = FleetDashboard()
         data = {
             "campaigns": [
-                {"name": "pso-test", "status": "running", "generation": 12, "best_fitness": 150.2, "module": "swarm"},
-                {"name": "ga-test", "status": "complete", "generation": 50, "best_fitness": 200.0, "module": "standard"},
+                {
+                    "name": "pso-test",
+                    "status": "running",
+                    "generation": 12,
+                    "best_fitness": 150.2,
+                    "module": "swarm",
+                },
+                {
+                    "name": "ga-test",
+                    "status": "complete",
+                    "generation": 50,
+                    "best_fitness": 200.0,
+                    "module": "standard",
+                },
             ],
             "spatial": {
                 "rooms": {
                     "ethos": {"n_agents": 3, "avg_position": (0, 0), "entropy": 0.5},
                     "pathos": {"n_agents": 2, "avg_position": (50, 0), "entropy": 0.3},
                 },
-                "total_agents": 5
+                "total_agents": 5,
             },
             "health": {
                 "tests": {"passed": 200, "total": 210},
@@ -176,7 +210,7 @@ class TestFleetDashboard:
                     {"name": "swarm", "status": "ok"},
                     {"name": "spatial", "status": "ok"},
                 ],
-                "commits": 25
+                "commits": 25,
             },
             "swarm": {
                 "generation": 30,
@@ -185,12 +219,12 @@ class TestFleetDashboard:
                 "avg_fitness": 120.0,
                 "diversity": 0.4,
                 "pheromone_trails": 15,
-                "avg_clustering": 0.2
+                "avg_clustering": 0.2,
             },
             "trinity": {
                 "alpha": {"ethos": 0.9, "pathos": 0.8, "logos": 0.7},
                 "beta": {"ethos": 0.6, "pathos": 0.6, "logos": 0.6},
-            }
+            },
         }
         output = dash.render(data)
         assert "pso-test" in output

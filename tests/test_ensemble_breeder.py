@@ -5,6 +5,7 @@ from swarm.ensemble_breeder import BreederWeight, EnsembleBreeder
 
 class MockBreeder:
     """Mock breeder for testing."""
+
     def __init__(self, best_fitness: float = 0.0):
         self._best_fitness = best_fitness
         self.generation = 0
@@ -16,7 +17,9 @@ class MockBreeder:
         self.generation += 1
 
     def get_best(self):
-        return type('obj', (object,), {'genome': np.array([1.0]), 'fitness': self._best_fitness})()
+        return type(
+            "obj", (object,), {"genome": np.array([1.0]), "fitness": self._best_fitness}
+        )()
 
     def evaluate(self, fitness_fn):
         return self._best_fitness

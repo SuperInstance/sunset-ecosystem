@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_event_correlator.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -46,7 +47,9 @@ class TestEventCorrelator:
 
     def test_match_fields(self):
         corr = EventCorrelator()
-        corr.add_rule("alert", pattern=["A", "B"], window_sec=60, match_fields=["source"])
+        corr.add_rule(
+            "alert", pattern=["A", "B"], window_sec=60, match_fields=["source"]
+        )
         corr.add_event("A", {"source": "node-1"})
         corr.add_event("B", {"source": "node-2"})  # Different source
         assert len(corr.matches()) == 0

@@ -14,7 +14,9 @@ from triage.metrics import HealthScore, RepoHealthMetrics
 
 class TestDriftReport:
     def test_to_dict(self):
-        report = DriftReport(repo="test-repo", severity="high", stale_dependencies=["pkg1"])
+        report = DriftReport(
+            repo="test-repo", severity="high", stale_dependencies=["pkg1"]
+        )
         d = report.to_dict()
         assert d["repo"] == "test-repo"
         assert d["severity"] == "high"
@@ -69,7 +71,9 @@ class TestDriftDetector:
     def test_run_returns_report(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             # init git repo
-            os.system(f"cd {tmpdir} && git init && git config user.email t@t.com && git config user.name t && echo '# test' > README.md && git add . && git commit -m init")
+            os.system(
+                f"cd {tmpdir} && git init && git config user.email t@t.com && git config user.name t && echo '# test' > README.md && git add . && git commit -m init"
+            )
             detector = DriftDetector(tmpdir)
             report = detector.run()
             assert isinstance(report, DriftReport)
@@ -77,7 +81,9 @@ class TestDriftDetector:
 
     def test_detect_drift_function(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            os.system(f"cd {tmpdir} && git init && git config user.email t@t.com && git config user.name t && echo '# test' > README.md && git add . && git commit -m init")
+            os.system(
+                f"cd {tmpdir} && git init && git config user.email t@t.com && git config user.name t && echo '# test' > README.md && git add . && git commit -m init"
+            )
             report = detect_drift(tmpdir)
             assert isinstance(report, DriftReport)
 
@@ -85,9 +91,21 @@ class TestDriftDetector:
 class TestDuplicateDetector:
     def _make_issues(self):
         return [
-            {"number": 1, "title": "Bug in deployment pipeline", "body": "The deployment fails on staging"},
-            {"number": 2, "title": "Deploy pipeline broken", "body": "The deployment fails on staging environment"},
-            {"number": 3, "title": "Feature request: dark mode", "body": "Add dark mode to the UI"},
+            {
+                "number": 1,
+                "title": "Bug in deployment pipeline",
+                "body": "The deployment fails on staging",
+            },
+            {
+                "number": 2,
+                "title": "Deploy pipeline broken",
+                "body": "The deployment fails on staging environment",
+            },
+            {
+                "number": 3,
+                "title": "Feature request: dark mode",
+                "body": "Add dark mode to the UI",
+            },
         ]
 
     def test_finds_duplicates(self):
@@ -99,8 +117,16 @@ class TestDuplicateDetector:
 
     def test_no_duplicates(self):
         issues = [
-            {"number": 1, "title": "Fix login bug", "body": "Login button doesn't work"},
-            {"number": 2, "title": "Feature request: dark mode", "body": "Add dark mode to the UI"},
+            {
+                "number": 1,
+                "title": "Fix login bug",
+                "body": "Login button doesn't work",
+            },
+            {
+                "number": 2,
+                "title": "Feature request: dark mode",
+                "body": "Add dark mode to the UI",
+            },
         ]
         detector = DuplicateDetector(threshold=0.9)
         pairs = detector.detect(issues)
@@ -121,7 +147,9 @@ class TestDuplicateDetector:
         assert isinstance(pairs, list)
 
     def test_duplicate_pair_repr(self):
-        pair = DuplicatePair(issue_a=1, issue_b=2, similarity=0.85, shared_terms=["deploy", "fail"])
+        pair = DuplicatePair(
+            issue_a=1, issue_b=2, similarity=0.85, shared_terms=["deploy", "fail"]
+        )
         r = repr(pair)
         assert "0.85" in r
 
@@ -138,19 +166,43 @@ class TestHealthScore:
         assert score.total == 100.0
 
     def test_traffic_light_green(self):
-        score = HealthScore(freshness=30, test_coverage=25, documentation=15, dependency_health=15, issue_hygiene=15)
+        score = HealthScore(
+            freshness=30,
+            test_coverage=25,
+            documentation=15,
+            dependency_health=15,
+            issue_hygiene=15,
+        )
         assert score.traffic_light == "green"
 
     def test_traffic_light_yellow(self):
-        score = HealthScore(freshness=20, test_coverage=15, documentation=10, dependency_health=5, issue_hygiene=5)
+        score = HealthScore(
+            freshness=20,
+            test_coverage=15,
+            documentation=10,
+            dependency_health=5,
+            issue_hygiene=5,
+        )
         assert score.traffic_light == "yellow"
 
     def test_traffic_light_red(self):
-        score = HealthScore(freshness=5, test_coverage=5, documentation=0, dependency_health=0, issue_hygiene=0)
+        score = HealthScore(
+            freshness=5,
+            test_coverage=5,
+            documentation=0,
+            dependency_health=0,
+            issue_hygiene=0,
+        )
         assert score.traffic_light == "red"
 
     def test_to_dict(self):
-        score = HealthScore(freshness=20, test_coverage=10, documentation=5, dependency_health=5, issue_hygiene=5)
+        score = HealthScore(
+            freshness=20,
+            test_coverage=10,
+            documentation=5,
+            dependency_health=5,
+            issue_hygiene=5,
+        )
         d = score.to_dict()
         assert "total" in d
         assert "traffic_light" in d
@@ -182,6 +234,7 @@ class TestRepoHealthMetrics:
     def test_run_returns_health_score(self):
         # Use the actual sunset-ecosystem repo for a real test
         import os
+
         repo_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         metrics = RepoHealthMetrics(repo_path)
         score = metrics.run()

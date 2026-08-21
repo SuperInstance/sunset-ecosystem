@@ -8,6 +8,7 @@ Usage:
     box = Sandbox(max_memory_mb=128, max_cpu_sec=5.0)
     result = box.run(lambda: heavy_computation(), timeout=2.0)
 """
+
 from __future__ import annotations
 
 import gc
@@ -68,8 +69,15 @@ class Sandbox:
         self._max_memory_mb = max_memory_mb
         self._max_cpu_sec = max_cpu_sec
         self._allow_imports = set(allow_imports) if allow_imports is not None else None
-        self._block_builtins = set(block_builtins) if block_builtins is not None else set()
-        self._stats: Dict[str, int] = {"runs": 0, "timeouts": 0, "memory_kills": 0, "errors": 0}
+        self._block_builtins = (
+            set(block_builtins) if block_builtins is not None else set()
+        )
+        self._stats: Dict[str, int] = {
+            "runs": 0,
+            "timeouts": 0,
+            "memory_kills": 0,
+            "errors": 0,
+        }
 
     # ------------------------------------------------------------------
     # Execution

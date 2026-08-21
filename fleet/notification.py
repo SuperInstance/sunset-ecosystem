@@ -12,6 +12,7 @@ Usage:
     notifier.add_channel("webhook", WebhookChannel(url="https://..."))
     notifier.notify("cpu_high", severity="warning", message="CPU at 95%")
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Alert:
     """An alert notification."""
+
     id: str
     name: str
     severity: str
@@ -43,16 +45,20 @@ class Alert:
 
 class LogChannel:
     """Channel that logs alerts."""
+
     def __init__(self, level: int = logging.WARNING) -> None:
         self._level = level
 
     def send(self, alert: Alert) -> bool:
-        logger.log(self._level, f"[{alert.severity.upper()}] {alert.name}: {alert.message}")
+        logger.log(
+            self._level, f"[{alert.severity.upper()}] {alert.name}: {alert.message}"
+        )
         return True
 
 
 class WebhookChannel:
     """Channel that POSTs alerts to a webhook URL (stub)."""
+
     def __init__(self, url: str) -> None:
         self._url = url
         self._calls: list[Alert] = []
@@ -70,7 +76,9 @@ class NotificationSystem:
 
     def __init__(self, dedup_window: float = 300.0) -> None:
         self._channels: dict[str, Any] = {}
-        self._rules: list[tuple[str, list[str]]] = []  # (severity_pattern, [channel_names])
+        self._rules: list[
+            tuple[str, list[str]]
+        ] = []  # (severity_pattern, [channel_names])
         self._dedup_window = dedup_window
         self._recent: dict[str, float] = {}  # alert_hash -> last_sent
         self._history: list[Alert] = []
@@ -128,14 +136,16 @@ class NotificationSystem:
             self._recent[alert_id] = now
             self._history.append(alert)
             if len(self._history) > self._max_history:
-                self._history = self._history[-self._max_history:]
+                self._history = self._history[-self._max_history :]
 
         return sent
 
     def _hash_alert(self, name: str, severity: str, message: str) -> str:
         return hashlib.sha256(f"{name}:{severity}:{message}".encode()).hexdigest()[:16]
 
-    def history(self, severity: str | None = None, limit: int | None = None) -> list[Alert]:
+    def history(
+        self, severity: str | None = None, limit: int | None = None
+    ) -> list[Alert]:
         """Get notification history."""
         result = self._history
         if severity:

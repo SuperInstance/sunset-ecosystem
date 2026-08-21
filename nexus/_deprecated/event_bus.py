@@ -15,6 +15,7 @@ Usage:
     bus.subscribe("breeding.*", handler)
     bus.publish("breeding.spawn", {"agent_id": "a1"})
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class Event:
     """A fleet event."""
+
     topic: str
     payload: dict[str, Any]
     timestamp: float
@@ -44,6 +46,7 @@ class Event:
 @dataclass
 class Subscriber:
     """A subscriber with its pattern and handler."""
+
     pattern: str
     handler: Callable[[Event], None]
     name: str = ""

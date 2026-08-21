@@ -9,6 +9,7 @@ Usage:
     assert cmd.name == "breed"
     assert cmd.args["count"] == "5"
 """
+
 from __future__ import annotations
 
 import re

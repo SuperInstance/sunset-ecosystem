@@ -15,6 +15,7 @@ Usage::
     consensus.propose_state_change("room_grid_resize", {"n": 100})
     result = consensus.commit_if_quorum()
 """
+
 from __future__ import annotations
 
 __all__ = ["HolonomyConsensus", "Proposal", "Vote", "ConsensusResult"]
@@ -32,6 +33,7 @@ log = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class Proposal:
     """A proposed state change."""
+
     seq_num: int
     operation: str
     payload: dict[str, Any]
@@ -40,19 +42,23 @@ class Proposal:
 
     def digest(self) -> str:
         """Cryptographic hash of the proposal for tamper detection."""
-        data = json.dumps({
-            "seq": self.seq_num,
-            "op": self.operation,
-            "payload": self.payload,
-            "proposer": self.proposer,
-            "ts": self.timestamp,
-        }, sort_keys=True)
+        data = json.dumps(
+            {
+                "seq": self.seq_num,
+                "op": self.operation,
+                "payload": self.payload,
+                "proposer": self.proposer,
+                "ts": self.timestamp,
+            },
+            sort_keys=True,
+        )
         return hashlib.sha256(data.encode()).hexdigest()[:16]
 
 
 @dataclass(frozen=True)
 class Vote:
     """A vote on a proposal."""
+
     proposal_digest: str
     voter: str
     approve: bool
@@ -62,6 +68,7 @@ class Vote:
 @dataclass
 class ConsensusResult:
     """Outcome of a consensus round."""
+
     committed: bool
     proposal: Proposal | None
     votes_for: int
@@ -149,9 +156,12 @@ class HolonomyConsensus:
         """
         if proposal_digest not in self._proposals:
             return ConsensusResult(
-                committed=False, proposal=None,
-                votes_for=0, votes_against=0,
-                quorum_size=self.quorum, byzantine_tolerance=self.f_byzantine,
+                committed=False,
+                proposal=None,
+                votes_for=0,
+                votes_against=0,
+                quorum_size=self.quorum,
+                byzantine_tolerance=self.f_byzantine,
             )
 
         votes = self._votes.get(proposal_digest, [])
@@ -163,7 +173,12 @@ class HolonomyConsensus:
 
         if committed and proposal_digest not in self._committed:
             self._committed.add(proposal_digest)
-            log.info("Committed proposal %s (votes=%d/%d)", proposal_digest[:8], for_votes, self.quorum)
+            log.info(
+                "Committed proposal %s (votes=%d/%d)",
+                proposal_digest[:8],
+                for_votes,
+                self.quorum,
+            )
 
         return ConsensusResult(
             committed=committed,
@@ -245,7 +260,10 @@ class HolonomyConsensus:
         self._view_number += 1
         log.warning(
             "Partition detected: view=%d, n=%d, quorum=%d, reachable=%s",
-            self._view_number, self.n_nodes, self.quorum, reachable,
+            self._view_number,
+            self.n_nodes,
+            self.quorum,
+            reachable,
         )
 
     def get_status(self) -> dict[str, Any]:

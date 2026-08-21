@@ -9,6 +9,7 @@ Compares three 512-bit hypervector distance paths:
 Varying candidate counts: 10, 50, 100, 500, 1000.
 Measures per-operation mean time, std dev, and speedup ratios.
 """
+
 from __future__ import annotations
 
 import statistics
@@ -22,6 +23,7 @@ import numpy as np
 # Import the two modules we are benchmarking
 # ---------------------------------------------------------------------------
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from superinstance_ffi_mock import load_mock_ffi
@@ -41,12 +43,15 @@ SIZES = [10, 50, 100, 500, 1000]
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def fmt_ms(t: float) -> str:
     """Format time in ms with 3 sig figs."""
     return f"{t * 1000:.3f}"
 
 
-def bench(func, *args, trials: int = TRIALS, warmup: int = WARMUP) -> tuple[float, float]:
+def bench(
+    func, *args, trials: int = TRIALS, warmup: int = WARMUP
+) -> tuple[float, float]:
     """Run *func*(*args) repeatedly. Return (mean_seconds, stdev_seconds)."""
     for _ in range(warmup):
         func(*args)
@@ -58,9 +63,11 @@ def bench(func, *args, trials: int = TRIALS, warmup: int = WARMUP) -> tuple[floa
         times.append(t1 - t0)
     return statistics.mean(times), statistics.stdev(times)
 
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
+
 
 def run_numpy_hdc(query_packed, candidates_packed, scorer: HDCDiversityScorer):
     """Broadcast XOR+POPCNT over all candidates."""
@@ -90,15 +97,16 @@ def run_ffi_cascade(query_float, candidates_float, ffi, dim: int, n: int):
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> dict:
     rng = np.random.default_rng(SEED)
     ffi = load_mock_ffi()
     scorer = HDCDiversityScorer(DIM, use_avx512=False)  # isolate FFI vs pure-Py
 
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     print(f"HDC ROUND 3 — Python HDC vs mock-Rust FFI overhead")
     print(f"DIM={DIM} bits  |  TRIALS={TRIALS}  |  WARMUP={WARMUP}")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
     results = []
 
@@ -117,12 +125,16 @@ def main() -> dict:
         np_std_ms = t_std * 1000
 
         # ---- benchmark 2: mock FFI manhattan_distance (loop) -----------------
-        t_mean, t_std = bench(run_ffi_manhattan, query_float, candidates_float, ffi, DIM)
+        t_mean, t_std = bench(
+            run_ffi_manhattan, query_float, candidates_float, ffi, DIM
+        )
         man_mean_ms = t_mean * 1000
         man_std_ms = t_std * 1000
 
         # ---- benchmark 3: mock FFI cascade_match (single call) -------------
-        t_mean, t_std = bench(run_ffi_cascade, query_float, candidates_float, ffi, DIM, n)
+        t_mean, t_std = bench(
+            run_ffi_cascade, query_float, candidates_float, ffi, DIM, n
+        )
         cas_mean_ms = t_mean * 1000
         cas_std_ms = t_std * 1000
 
@@ -130,35 +142,47 @@ def main() -> dict:
         man_speedup = np_mean_ms / max(man_mean_ms, 1e-9)
         cas_speedup = np_mean_ms / max(cas_mean_ms, 1e-9)
 
-        results.append({
-            "n": n,
-            "np_ms": np_mean_ms,
-            "np_std": np_std_ms,
-            "man_ms": man_mean_ms,
-            "man_std": man_std_ms,
-            "cas_ms": cas_mean_ms,
-            "cas_std": cas_std_ms,
-            "man_speedup": man_speedup,
-            "cas_speedup": cas_speedup,
-        })
+        results.append(
+            {
+                "n": n,
+                "np_ms": np_mean_ms,
+                "np_std": np_std_ms,
+                "man_ms": man_mean_ms,
+                "man_std": man_std_ms,
+                "cas_ms": cas_mean_ms,
+                "cas_std": cas_std_ms,
+                "man_speedup": man_speedup,
+                "cas_speedup": cas_speedup,
+            }
+        )
 
         # ---- print ----------------------------------------------------------
-        print(f"--- n = {n:4d} candidates -----------------------------------------------")
-        print(f"  NumPy XOR+POPCNT       : {fmt_ms(np_mean_ms)} ms  ± {fmt_ms(np_std_ms)} ms")
-        print(f"  FFI manhattan (loop)   : {fmt_ms(man_mean_ms)} ms  ± {fmt_ms(man_std_ms)} ms  "
-              f"(speedup {man_speedup:.2f}x)")
-        print(f"  FFI cascade_match      : {fmt_ms(cas_mean_ms)} ms  ± {fmt_ms(cas_std_ms)} ms  "
-              f"(speedup {cas_speedup:.2f}x)")
+        print(
+            f"--- n = {n:4d} candidates -----------------------------------------------"
+        )
+        print(
+            f"  NumPy XOR+POPCNT       : {fmt_ms(np_mean_ms)} ms  ± {fmt_ms(np_std_ms)} ms"
+        )
+        print(
+            f"  FFI manhattan (loop)   : {fmt_ms(man_mean_ms)} ms  ± {fmt_ms(man_std_ms)} ms  "
+            f"(speedup {man_speedup:.2f}x)"
+        )
+        print(
+            f"  FFI cascade_match      : {fmt_ms(cas_mean_ms)} ms  ± {fmt_ms(cas_std_ms)} ms  "
+            f"(speedup {cas_speedup:.2f}x)"
+        )
         print()
 
     # ---- verdict -----------------------------------------------------------
     last = results[-1]
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     print("VERDICT")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     if last["cas_speedup"] > 1.0:
-        print(f"  At n={last['n']}, FFI cascade_match is {last['cas_speedup']:.2f}x faster than NumPy.")
+        print(
+            f"  At n={last['n']}, FFI cascade_match is {last['cas_speedup']:.2f}x faster than NumPy."
+        )
         verdict = f"speedup {last['cas_speedup']:.2f}x"
     else:
         print(f"  At n={last['n']}, FFI cascade_match is SLOWER than NumPy.")
@@ -184,6 +208,7 @@ def main() -> dict:
 # ---------------------------------------------------------------------------
 # Markdown report generator
 # ---------------------------------------------------------------------------
+
 
 def write_report(data: dict, path: Path) -> None:
     results = data["results"]
@@ -262,6 +287,7 @@ def write_report(data: dict, path: Path) -> None:
 
     # Emit compact JSON
     import json
+
     lines.append(json.dumps(data, indent=2))
     lines.append("```")
     lines.append("")

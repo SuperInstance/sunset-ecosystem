@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DeadlineTree:
     """A hierarchical deadline tree node."""
+
     parent_secs: float
     child_secs: float
     remaining_secs: float
@@ -49,6 +50,7 @@ class DeadlineTree:
 @dataclass
 class RateLimiter:
     """Token bucket rate limiter state."""
+
     burst: float
     rate: float
     acquired: bool
@@ -58,6 +60,7 @@ class RateLimiter:
 @dataclass
 class CronSchedule:
     """Cron schedule with next fire time."""
+
     expr: str
     next_fire: int
 
@@ -102,7 +105,9 @@ class TMinusBridge:
             if p.exists():
                 return p
 
-        raise FileNotFoundError("t_minus_bridge binary not found. Run: cargo build --example t_minus_bridge")
+        raise FileNotFoundError(
+            "t_minus_bridge binary not found. Run: cargo build --example t_minus_bridge"
+        )
 
     def _call(self, request: dict[str, Any]) -> dict[str, Any]:
         """Call the binary with a JSON request."""
@@ -139,11 +144,13 @@ class TMinusBridge:
         int
             Unix timestamp of next fire time.
         """
-        resp = self._call({
-            "op": "CronNext",
-            "expr": expr,
-            "after": after,
-        })
+        resp = self._call(
+            {
+                "op": "CronNext",
+                "expr": expr,
+                "after": after,
+            }
+        )
         if not resp.get("success"):
             raise ValueError(resp.get("error", "Cron parse failed"))
         return int(resp["result"]["next_fire"])
@@ -173,16 +180,20 @@ class TMinusBridge:
         float
             Remaining seconds (min of parent and child).
         """
-        resp = self._call({
-            "op": "DeadlineRemaining",
-            "parent_secs": int(parent_secs),
-            "child_secs": int(child_secs),
-        })
+        resp = self._call(
+            {
+                "op": "DeadlineRemaining",
+                "parent_secs": int(parent_secs),
+                "child_secs": int(child_secs),
+            }
+        )
         if not resp.get("success"):
             raise ValueError(resp.get("error", "Deadline computation failed"))
         return float(resp["result"]["remaining_secs"])
 
-    def build_deadline_tree(self, parent_secs: float, child_secs: float) -> DeadlineTree:
+    def build_deadline_tree(
+        self, parent_secs: float, child_secs: float
+    ) -> DeadlineTree:
         """Build a deadline tree and compute remaining time."""
         remaining = self.deadline_remaining(parent_secs, child_secs)
         return DeadlineTree(
@@ -210,12 +221,14 @@ class TMinusBridge:
         RateLimiter
             Result with acquired flag and remaining tokens.
         """
-        resp = self._call({
-            "op": "TokenBucket",
-            "burst": burst,
-            "rate": rate,
-            "acquire": acquire,
-        })
+        resp = self._call(
+            {
+                "op": "TokenBucket",
+                "burst": burst,
+                "rate": rate,
+                "acquire": acquire,
+            }
+        )
         if not resp.get("success"):
             raise ValueError(resp.get("error", "Token bucket failed"))
         return RateLimiter(

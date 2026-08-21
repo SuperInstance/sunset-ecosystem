@@ -11,6 +11,7 @@ Usage:
     result = sp.aggregate("cpu", avg)
     # result ~ 43.5
 """
+
 from __future__ import annotations
 
 import logging
@@ -97,14 +98,20 @@ class StreamProcessor:
         stream = self._streams.get(key)
         if not stream:
             return 0.0
-        return sum(e.data.get(key, 0) for e in stream if isinstance(e.data.get(key), (int, float)))
+        return sum(
+            e.data.get(key, 0)
+            for e in stream
+            if isinstance(e.data.get(key), (int, float))
+        )
 
     def avg(self, key: str) -> Optional[float]:
         """Average value for a numeric key."""
         stream = self._streams.get(key)
         if not stream:
             return None
-        values = [e.data.get(key) for e in stream if isinstance(e.data.get(key), (int, float))]
+        values = [
+            e.data.get(key) for e in stream if isinstance(e.data.get(key), (int, float))
+        ]
         if not values:
             return None
         return sum(values) / len(values)

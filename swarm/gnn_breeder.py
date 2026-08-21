@@ -32,6 +32,7 @@ import numpy as np
 @dataclass
 class GenomeGraph:
     """A graph representation of a genome."""
+
     nodes: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     # edges: (source, target) -> weight
     edges: Dict[Tuple[str, str], float] = field(default_factory=dict)
@@ -63,18 +64,19 @@ class GenomeGraph:
         return GenomeGraph(
             nodes={k: v.copy() for k, v in self.nodes.items()},
             edges=self.edges.copy(),
-            node_features={k: v.copy() for k, v in self.node_features.items()}
+            node_features={k: v.copy() for k, v in self.node_features.items()},
         )
 
 
-def dict_to_graph(genome: Dict[str, float], 
-                  interaction_threshold: float = 0.5) -> GenomeGraph:
+def dict_to_graph(
+    genome: Dict[str, float], interaction_threshold: float = 0.5
+) -> GenomeGraph:
     """
     Convert a genome dictionary to a GenomeGraph.
     Creates edges based on gene name similarity and values.
     """
     graph = GenomeGraph()
-    
+
     # Add all nodes
     for name, value in genome.items():
         graph.add_node(name, value)
@@ -82,7 +84,7 @@ def dict_to_graph(genome: Dict[str, float],
     # Create edges based on naming patterns (e.g., "gene_a_1" and "gene_a_2" are related)
     names = list(genome.keys())
     for i, name1 in enumerate(names):
-        for name2 in names[i+1:]:
+        for name2 in names[i + 1 :]:
             # Compute similarity: common prefix / common function patterns
             similarity = _gene_similarity(name1, name2)
             if similarity > interaction_threshold:
@@ -102,7 +104,7 @@ def _gene_similarity(name1: str, name2: str) -> float:
             common_prefix += 1
         else:
             break
-    
+
     if min_len == 0:
         return 0.0
     return common_prefix / min_len
@@ -111,7 +113,7 @@ def _gene_similarity(name1: str, name2: str) -> float:
 class SimpleGNNPredictor:
     """
     Simplified Graph Neural Network for fitness prediction.
-    
+
     Uses message passing: each node's feature is updated by
     aggregating features from neighbors.
     """
@@ -144,7 +146,9 @@ class SimpleGNNPredictor:
             feat = self._node_feature(graph, node)
             # Pad to hidden_dim
             padded = np.zeros(self.hidden_dim)
-            padded[:min(len(feat), self.hidden_dim)] = feat[:min(len(feat), self.hidden_dim)]
+            padded[: min(len(feat), self.hidden_dim)] = feat[
+                : min(len(feat), self.hidden_dim)
+            ]
             features[node] = padded
 
         # Message passing
@@ -187,7 +191,9 @@ class SimpleGNNPredictor:
         for node in graph.nodes:
             feat = self._node_feature(graph, node)
             padded = np.zeros(self.hidden_dim)
-            padded[:min(len(feat), self.hidden_dim)] = feat[:min(len(feat), self.hidden_dim)]
+            padded[: min(len(feat), self.hidden_dim)] = feat[
+                : min(len(feat), self.hidden_dim)
+            ]
             features[node] = padded
 
         total = sum(features.values())
@@ -206,10 +212,12 @@ class GNNBreeder:
     4. Graph crossover preserves topological relationships
     """
 
-    def __init__(self,
-                 population_size: int = 50,
-                 hidden_dim: int = 8,
-                 prediction_weight: float = 0.3):
+    def __init__(
+        self,
+        population_size: int = 50,
+        hidden_dim: int = 8,
+        prediction_weight: float = 0.3,
+    ):
         self.population_size = population_size
         self.gnn = SimpleGNNPredictor(hidden_dim=hidden_dim)
         self.prediction_weight = prediction_weight
@@ -237,12 +245,12 @@ class GNNBreeder:
         for graph, fitness in recent:
             self.gnn.train_step(graph, fitness)
 
-    def graph_crossover(self,
-                        parent1: Dict[str, float],
-                        parent2: Dict[str, float]) -> Dict[str, float]:
+    def graph_crossover(
+        self, parent1: Dict[str, float], parent2: Dict[str, float]
+    ) -> Dict[str, float]:
         """
         Crossover that preserves graph structure.
-        
+
         Strategy: Take subgraphs from each parent and merge,
         preferring to keep edges within subgraphs.
         """
@@ -270,7 +278,7 @@ class GNNBreeder:
     def graph_aware_mutation(self, genome: Dict[str, float]) -> Dict[str, float]:
         """
         Mutation that considers graph structure.
-        
+
         High-degree nodes (many interactions) get smaller mutations
         (they're more constrained). Low-degree nodes get larger mutations.
         """
@@ -290,11 +298,13 @@ class GNNBreeder:
             else:
                 scale = 0.1
 
-            mutated[node] *= (1 + random.gauss(0, scale))
+            mutated[node] *= 1 + random.gauss(0, scale)
 
         return mutated
 
-    def select_parents(self, population: List[Tuple[Dict, float]], k: int = 2) -> List[Tuple[Dict, float]]:
+    def select_parents(
+        self, population: List[Tuple[Dict, float]], k: int = 2
+    ) -> List[Tuple[Dict, float]]:
         """Select parents using GNN predictions."""
         if len(population) < 2:
             return population[:k]
@@ -309,9 +319,11 @@ class GNNBreeder:
         scored.sort(key=lambda x: x[2], reverse=True)
         return [(g, f) for g, f, _ in scored[:k]]
 
-    def breed_generation(self,
-                         population: List[Tuple[Dict[str, float], float]],
-                         task_fn: Callable[[Dict[str, float]], Any]) -> List[Tuple[Dict[str, float], float]]:
+    def breed_generation(
+        self,
+        population: List[Tuple[Dict[str, float], float]],
+        task_fn: Callable[[Dict[str, float]], Any],
+    ) -> List[Tuple[Dict[str, float], float]]:
         """Run one generation of GNN-guided breeding."""
         self.generation += 1
 
@@ -335,7 +347,11 @@ class GNNBreeder:
             child = self.graph_aware_mutation(child)
 
             result = task_fn(child)
-            fitness = result.get("fitness", 0.0) if isinstance(result, dict) else float(result)
+            fitness = (
+                result.get("fitness", 0.0)
+                if isinstance(result, dict)
+                else float(result)
+            )
             new_pop.append((child, fitness))
 
         return new_pop

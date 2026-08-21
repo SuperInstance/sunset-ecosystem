@@ -22,7 +22,9 @@ def bridge():
             pytest.skip("t_minus_bridge binary not available")
         return b
     except FileNotFoundError:
-        pytest.skip("t_minus_bridge binary not found — run: cargo build --example t_minus_bridge")
+        pytest.skip(
+            "t_minus_bridge binary not found — run: cargo build --example t_minus_bridge"
+        )
 
 
 class TestCronScheduling:

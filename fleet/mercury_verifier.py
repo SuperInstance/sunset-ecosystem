@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 
 # ── Mercury code generator ──────────────────────────────────────────────
 
+
 class FormulaToMercury:
     """Compile formula AST into Mercury predicate code."""
 
@@ -67,8 +68,13 @@ class FormulaToMercury:
 
     def _fleet_func_name(self, name: str) -> str:
         """Map fleet function names to Mercury predicate names."""
-        if name in ("FLEET_HEALTH", "THERMAL_AVG", "QUEUE_DEPTH",
-                    "AGENT_COUNT", "BEAT_COUNT"):
+        if name in (
+            "FLEET_HEALTH",
+            "THERMAL_AVG",
+            "QUEUE_DEPTH",
+            "AGENT_COUNT",
+            "BEAT_COUNT",
+        ):
             return f"{name.lower()}_value()"
         return self._FLEET_TO_MERCURY.get(name, name.lower())
 
@@ -155,8 +161,17 @@ evaluate(Result) :-
         if fn == "NOT" and len(args) == 1:
             return f"(not {args[0]})"
 
-        if fn in ("FLEET_HEALTH", "THERMAL_AVG", "QUEUE_DEPTH",
-                  "AGENT_COUNT", "BEAT_COUNT") and len(args) == 0:
+        if (
+            fn
+            in (
+                "FLEET_HEALTH",
+                "THERMAL_AVG",
+                "QUEUE_DEPTH",
+                "AGENT_COUNT",
+                "BEAT_COUNT",
+            )
+            and len(args) == 0
+        ):
             return self._fleet_func_name(fn)
 
         if fn in ("AVERAGE", "MAX", "MIN"):
@@ -210,6 +225,7 @@ evaluate(Result) :-
 
 # ── Verifier ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class VerificationResult:
     """Outcome of Mercury determinism analysis."""
@@ -236,9 +252,7 @@ class MercuryVerifier:
         errors: List[str] = []
         warnings: List[str] = []
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".m", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".m", delete=False) as f:
             f.write(mercury_code)
             f.flush()
             temp_path = f.name
@@ -285,6 +299,7 @@ class MercuryVerifier:
             )
         finally:
             import os
+
             try:
                 os.unlink(temp_path)
             except OSError:
@@ -335,6 +350,7 @@ class MercuryVerifier:
 
 
 # ── Batch verifier ──────────────────────────────────────────────────────
+
 
 class BatchMercuryVerifier:
     """Verify multiple formulas in one batch."""

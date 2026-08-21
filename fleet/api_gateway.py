@@ -11,6 +11,7 @@ Usage:
     gw.add_middleware("auth", lambda req: req.get("token") == "valid")
     result = gw.process({"path": "/users", "token": "valid"})
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional
@@ -54,7 +55,9 @@ class APIGateway:
         if path in self._routes:
             return self._routes[path]
         # Prefix match
-        for route_path, target in sorted(self._routes.items(), key=lambda x: -len(x[0])):
+        for route_path, target in sorted(
+            self._routes.items(), key=lambda x: -len(x[0])
+        ):
             if path.startswith(route_path):
                 return target
         return None
@@ -63,7 +66,9 @@ class APIGateway:
     # Middleware
     # ------------------------------------------------------------------
 
-    def add_middleware(self, name: str, fn: Callable[[Dict[str, Any]], bool], priority: int = 0) -> None:
+    def add_middleware(
+        self, name: str, fn: Callable[[Dict[str, Any]], bool], priority: int = 0
+    ) -> None:
         """
         Add a middleware function.
 
@@ -84,7 +89,9 @@ class APIGateway:
     # Handlers
     # ------------------------------------------------------------------
 
-    def register_handler(self, service: str, handler: Callable[[Dict[str, Any]], Any]) -> None:
+    def register_handler(
+        self, service: str, handler: Callable[[Dict[str, Any]], Any]
+    ) -> None:
         """Register a handler for a service."""
         self._handlers[service] = handler
 

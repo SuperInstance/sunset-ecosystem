@@ -79,21 +79,27 @@ class TestRememberAndRecall:
         )
 
         # Query only recent (last 1 hour)
-        results = fleet_memory.recall(TemporalQuery(
-            start_time=now - 3600,
-            end_time=now + 3600,
-            similarity_vector=np.array([1.0, 0.0], dtype=np.float32),
-            similarity_k=5,
-        ))
+        results = fleet_memory.recall(
+            TemporalQuery(
+                start_time=now - 3600,
+                end_time=now + 3600,
+                similarity_vector=np.array([1.0, 0.0], dtype=np.float32),
+                similarity_k=5,
+            )
+        )
         # Should only find recent memory
         assert all(r.entry.agent_id == "recent" for r in results)
 
     def test_recall_fitness_filter(self, fleet_memory: FleetMemory) -> None:
         fleet_memory.remember(
-            agent_id="high_fitness", vector=[1.0, 0.0], fitness=0.9,
+            agent_id="high_fitness",
+            vector=[1.0, 0.0],
+            fitness=0.9,
         )
         fleet_memory.remember(
-            agent_id="low_fitness", vector=[1.0, 0.0], fitness=0.3,
+            agent_id="low_fitness",
+            vector=[1.0, 0.0],
+            fitness=0.3,
         )
 
         results = fleet_memory.recall_similar(
@@ -108,28 +114,36 @@ class TestRememberAndRecall:
         fleet_memory.remember(agent_id="alice", vector=[1.0, 0.0], fitness=0.8)
         fleet_memory.remember(agent_id="bob", vector=[1.0, 0.0], fitness=0.8)
 
-        results = fleet_memory.recall(TemporalQuery(
-            agent_id_filter="alice",
-            similarity_vector=np.array([1.0, 0.0], dtype=np.float32),
-            similarity_k=10,
-        ))
+        results = fleet_memory.recall(
+            TemporalQuery(
+                agent_id_filter="alice",
+                similarity_vector=np.array([1.0, 0.0], dtype=np.float32),
+                similarity_k=10,
+            )
+        )
         assert all(r.entry.agent_id == "alice" for r in results)
 
     def test_recall_keyword_filter(self, fleet_memory: FleetMemory) -> None:
         fleet_memory.remember(
-            agent_id="task1", vector=[1.0, 0.0], fitness=0.8,
+            agent_id="task1",
+            vector=[1.0, 0.0],
+            fitness=0.8,
             context={"task": "deploy kubernetes", "result": "success"},
         )
         fleet_memory.remember(
-            agent_id="task2", vector=[1.0, 0.0], fitness=0.8,
+            agent_id="task2",
+            vector=[1.0, 0.0],
+            fitness=0.8,
             context={"task": "deploy lambda", "result": "failure"},
         )
 
-        results = fleet_memory.recall(TemporalQuery(
-            keyword_filter="kubernetes",
-            similarity_vector=np.array([1.0, 0.0], dtype=np.float32),
-            similarity_k=10,
-        ))
+        results = fleet_memory.recall(
+            TemporalQuery(
+                keyword_filter="kubernetes",
+                similarity_vector=np.array([1.0, 0.0], dtype=np.float32),
+                similarity_k=10,
+            )
+        )
         assert all(r.entry.agent_id == "task1" for r in results)
 
 

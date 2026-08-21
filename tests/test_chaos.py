@@ -113,6 +113,7 @@ class TestInjectChaos:
     def test_adaptation_reduces_chaos(self):
         """Higher adaptation score should result in fewer chaos events on average."""
         import random
+
         random.seed(42)
 
         total_events_low_adapt = 0

@@ -101,7 +101,9 @@ class InteractionLog:
         self._open_records: dict[int, InteractionRecord] = {}
         self._keyword_index: Counter[str] = Counter()
 
-    def start_interaction(self, query: str, tags: Optional[list[str]] = None) -> InteractionRecord:
+    def start_interaction(
+        self, query: str, tags: Optional[list[str]] = None
+    ) -> InteractionRecord:
         """Start recording a new interaction.
 
         Args:
@@ -135,7 +137,9 @@ class InteractionLog:
         record.response = response
         record.response_timestamp = time.time()
 
-    def resolve(self, record: InteractionRecord, time_to_solution: Optional[float] = None) -> None:
+    def resolve(
+        self, record: InteractionRecord, time_to_solution: Optional[float] = None
+    ) -> None:
         """Mark an interaction as resolved.
 
         Args:
@@ -177,18 +181,13 @@ class InteractionLog:
 
         # Average time to solution
         solution_times = [
-            r.time_to_solution for r in resolved
-            if r.time_to_solution is not None
+            r.time_to_solution for r in resolved if r.time_to_solution is not None
         ]
-        avg_tts = (
-            sum(solution_times) / len(solution_times)
-            if solution_times else 0.0
-        )
+        avg_tts = sum(solution_times) / len(solution_times) if solution_times else 0.0
 
         # Recurring needs: keywords appearing 2+ times
         recurring = [
-            word for word, count in self._keyword_index.most_common(20)
-            if count >= 2
+            word for word, count in self._keyword_index.most_common(20) if count >= 2
         ]
 
         # Chronic frustrations: keywords common in unresolved interactions
@@ -198,8 +197,7 @@ class InteractionLog:
                 if len(word) > 3:
                     unresolved_counter[word] += 1
         chronic = [
-            word for word, count in unresolved_counter.most_common(10)
-            if count >= 2
+            word for word, count in unresolved_counter.most_common(10) if count >= 2
         ]
 
         # Top tags

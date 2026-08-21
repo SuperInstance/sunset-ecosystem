@@ -13,6 +13,7 @@ Usage:
     coordinator.register_hook("http", stop_server, priority=2)
     coordinator.shutdown()  # Runs hooks in priority order, drains work
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -38,6 +39,7 @@ class ShutdownTimeout(Exception):
 @dataclass
 class ShutdownHook:
     """A shutdown hook with priority."""
+
     name: str
     fn: Callable[[], None]
     priority: int = 0  # Lower = earlier
@@ -67,7 +69,9 @@ class ShutdownCoordinator:
         timeout: float = 5.0,
     ) -> None:
         """Register a shutdown hook."""
-        self._hooks.append(ShutdownHook(name=name, fn=fn, priority=priority, timeout=timeout))
+        self._hooks.append(
+            ShutdownHook(name=name, fn=fn, priority=priority, timeout=timeout)
+        )
 
     def register_drain(self, fn: Callable[[], bool]) -> None:
         """Register a function that returns True when drained."""
@@ -109,7 +113,9 @@ class ShutdownCoordinator:
         # Run hooks in priority order
         for hook in sorted(self._hooks, key=lambda h: h.priority):
             if time.time() >= deadline:
-                logger.warning(f"Shutdown deadline reached, skipping hook '{hook.name}'")
+                logger.warning(
+                    f"Shutdown deadline reached, skipping hook '{hook.name}'"
+                )
                 break
             try:
                 hook_fn = hook.fn

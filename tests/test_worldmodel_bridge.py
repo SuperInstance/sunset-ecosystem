@@ -21,6 +21,7 @@ from fleet.worldmodel_bridge import (
 # SolverConfig / EnvironmentConfig
 # ---------------------------------------------------------------------------
 
+
 class TestSolverConfig:
     def test_defaults(self):
         cfg = SolverConfig(name="CEM")
@@ -41,6 +42,7 @@ class TestEnvironmentConfig:
 # ---------------------------------------------------------------------------
 # MockWorldModel
 # ---------------------------------------------------------------------------
+
 
 class TestMockWorldModel:
     def test_predict_with_velocity(self):
@@ -66,21 +68,22 @@ class TestMockWorldModel:
         state = WorldState(position=(0.0,), velocity=(1.0,))
         traj = wm.predict(state, horizon=3)
         assert traj[0].confidence == 1.0
-        assert traj[1].confidence == pytest.approx(1.0 * (0.9 ** 1))
-        assert traj[2].confidence == pytest.approx(1.0 * (0.9 ** 2))
-        assert traj[3].confidence == pytest.approx(1.0 * (0.9 ** 3))
+        assert traj[1].confidence == pytest.approx(1.0 * (0.9**1))
+        assert traj[2].confidence == pytest.approx(1.0 * (0.9**2))
+        assert traj[3].confidence == pytest.approx(1.0 * (0.9**3))
 
     def test_predict_no_velocity_decay(self):
         wm = MockWorldModel()
         state = WorldState(position=(0.0,))
         traj = wm.predict(state, horizon=2)
-        assert traj[1].confidence == pytest.approx(1.0 * (0.8 ** 1))
-        assert traj[2].confidence == pytest.approx(1.0 * (0.8 ** 2))
+        assert traj[1].confidence == pytest.approx(1.0 * (0.8**1))
+        assert traj[2].confidence == pytest.approx(1.0 * (0.8**2))
 
 
 # ---------------------------------------------------------------------------
 # WorldModelBridge
 # ---------------------------------------------------------------------------
+
 
 class TestWorldModelBridgeInit:
     def test_defaults(self):

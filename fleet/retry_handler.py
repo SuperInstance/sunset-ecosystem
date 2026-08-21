@@ -11,6 +11,7 @@ Usage:
     retry = RetryHandler(max_attempts=3, base_delay=1.0, max_delay=30.0)
     result = retry.run(lambda: flaky_api_call(), on_exception=ConnectionError)
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -36,6 +37,7 @@ class RetryExhausted(Exception):
 @dataclass
 class RetryPolicy:
     """Retry policy configuration."""
+
     max_attempts: int = 3
     base_delay: float = 1.0
     max_delay: float = 30.0
@@ -67,18 +69,24 @@ class RetryHandler:
                 if policy.retry_if is not None and policy.retry_if(result):
                     if attempt == policy.max_attempts:
                         self._total_failures += 1
-                        raise RetryExhausted(f"Retry condition matched on final attempt {attempt}")
+                        raise RetryExhausted(
+                            f"Retry condition matched on final attempt {attempt}"
+                        )
                     self._sleep(attempt, policy)
                     continue
                 self._total_successes += 1
                 return result
             except Exception as e:
                 last_exception = e
-                if policy.on_exceptions is not None and not isinstance(e, policy.on_exceptions):
+                if policy.on_exceptions is not None and not isinstance(
+                    e, policy.on_exceptions
+                ):
                     raise
                 if attempt == policy.max_attempts:
                     self._total_failures += 1
-                    raise RetryExhausted(f"All {policy.max_attempts} attempts failed") from e
+                    raise RetryExhausted(
+                        f"All {policy.max_attempts} attempts failed"
+                    ) from e
                 self._sleep(attempt, policy)
 
         # Should never reach here

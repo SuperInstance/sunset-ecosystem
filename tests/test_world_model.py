@@ -89,8 +89,11 @@ class TestWorldModel:
                 z = enc(signal)
                 latents.append(z)
         # Different seeds should produce different latents
-        distances = [(latents[i] - latents[j]).norm().item()
-                     for i in range(len(latents))
-                     for j in range(i + 1, len(latents))]
-        assert all(d > 0.001 for d in distances), \
+        distances = [
+            (latents[i] - latents[j]).norm().item()
+            for i in range(len(latents))
+            for j in range(i + 1, len(latents))
+        ]
+        assert all(d > 0.001 for d in distances), (
             "Different seeds should produce different latents"
+        )

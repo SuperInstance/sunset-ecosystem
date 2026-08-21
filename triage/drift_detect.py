@@ -7,6 +7,7 @@ Detects structural drift in a repo beyond simple freshness:
   - Dead code accumulation (unimported files)
   - Branch divergence (local vs remote)
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -64,7 +65,9 @@ class DriftDetector:
         findings: List[str] = []
 
         # Python: pip-audit or safety
-        if (self.root / "requirements.txt").exists() or (self.root / "pyproject.toml").exists():
+        if (self.root / "requirements.txt").exists() or (
+            self.root / "pyproject.toml"
+        ).exists():
             try:
                 result = subprocess.run(
                     ["pip-audit", "--desc"],
@@ -139,7 +142,9 @@ class DriftDetector:
         content = readme.read_text()
         # Find markdown links and code references
         # Pattern: `filename.py` or [text](path) or plain filenames in code blocks
-        code_refs = re.findall(r"`([^`]+\.(?:py|rs|go|js|ts|toml|json|yaml|yml))`", content)
+        code_refs = re.findall(
+            r"`([^`]+\.(?:py|rs|go|js|ts|toml|json|yaml|yml))`", content
+        )
         md_links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
 
         for ref in code_refs:
@@ -242,6 +247,7 @@ class DriftDetector:
             )
             if result.returncode == 0 and result.stdout.strip():
                 import time
+
                 ts = int(result.stdout.strip())
                 days = (time.time() - ts) / 86400
                 if days < 30:

@@ -2,6 +2,7 @@
 """Minimal turbovec benchmark — 1K agents, 2 dims, to avoid OOM kills."""
 
 import sys, time
+
 sys.path.insert(0, "/tmp/sunset-ecosystem")
 
 import numpy as np

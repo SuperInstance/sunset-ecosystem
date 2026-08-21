@@ -33,6 +33,7 @@ MICRO_PROBLEMS = [
     "Is the chaos probability helping or hurting exploration?",
 ]
 
+
 # ── Signal types to test ────────────────────────────────
 def make_signal(kind: str) -> torch.Tensor:
     """Generate different signal types."""
@@ -64,11 +65,11 @@ def run_chaos_experiment() -> None:
     # Create swarm with rooms for each micro-problem
     n_rooms = len(MICRO_PROBLEMS)
     swarm = JEPASwarm(n_fibers=12, n_rooms=n_rooms, input_dim=64, latent_dim=16)
-    
+
     # Override room problem statements
     for i, room in enumerate(swarm.rooms):
         room.problem_statement = MICRO_PROBLEMS[i]
-    
+
     print(f"Running swarm: {len(swarm.fibers)} fibers → {len(swarm.rooms)} rooms")
     print(f"Signal types: sine, noise, step, trend, sawtooth")
     print()
@@ -84,7 +85,7 @@ def run_chaos_experiment() -> None:
         sig_type = random.choice(signal_types)
         signal = make_signal(sig_type)
         results = swarm.tick(signal)
-        
+
         for room_id, fires in results.items():
             room_fire_counts[room_id] = room_fire_counts.get(room_id, 0) + len(fires)
             for f in fires:
@@ -97,7 +98,9 @@ def run_chaos_experiment() -> None:
         total = room_fire_counts.get(r.room_id, 0)
         chaos = chaos_fire_counts.get(r.room_id, 0)
         pct = (chaos / total * 100) if total > 0 else 0
-        print(f"  {r.room_id}: {total:3d} fires ({pct:.0f}% chaos) — {r.problem_statement[:40]}...")
+        print(
+            f"  {r.room_id}: {total:3d} fires ({pct:.0f}% chaos) — {r.problem_statement[:40]}..."
+        )
     print()
 
     # ── Phase 2: Find distillation candidates ─────────
@@ -105,7 +108,7 @@ def run_chaos_experiment() -> None:
     print("-" * 50)
     candidates = swarm.distill_candidates(min_fires=10)
     print(f"Room candidates (fires > 10): {candidates}")
-    
+
     for room_id in candidates:
         room = next(r for r in swarm.rooms if r.room_id == room_id)
         print(f"  {room_id} — {room.problem_statement}")
@@ -118,17 +121,19 @@ def run_chaos_experiment() -> None:
     print("-" * 50)
     cold_rooms = [r for r in swarm.rooms if room_fire_counts.get(r.room_id, 0) < 5]
     hot_rooms = [r for r in swarm.rooms if room_fire_counts.get(r.room_id, 0) >= 5]
-    
+
     print(f"Hot rooms (keep): {len(hot_rooms)}")
     print(f"Cold rooms (prune): {len(cold_rooms)}")
-    
+
     for cold in cold_rooms:
         print(f"  Pruning {cold.room_id} ({cold.problem_statement[:40]}...)")
         # In real system: sacrifice parent, spawn child with hot room's latent
-    
+
     for hot in hot_rooms:
         print(f"  Keeping {hot.room_id} ({hot.problem_statement[:40]}...)")
-        print(f"    Top fibers: {sorted(hot._connections.items(), key=lambda x: x[1], reverse=True)[:3]}")
+        print(
+            f"    Top fibers: {sorted(hot._connections.items(), key=lambda x: x[1], reverse=True)[:3]}"
+        )
     print()
 
     # ── Summary ────────────────────────────────────────
@@ -137,10 +142,12 @@ def run_chaos_experiment() -> None:
     s = swarm.stats
     print(f"Signals processed: {s['signals_processed']}")
     print(f"Distill candidates: {s['distill_candidates']}")
-    
+
     # What each room learned (its connection profile = its fingerprint)
     print(f"\nRoom latent fingerprints (connection weights):")
-    for r in sorted(swarm.rooms, key=lambda r: room_fire_counts.get(r.room_id, 0), reverse=True):
+    for r in sorted(
+        swarm.rooms, key=lambda r: room_fire_counts.get(r.room_id, 0), reverse=True
+    ):
         top = sorted(r._connections.items(), key=lambda x: x[1], reverse=True)[:3]
         weights = ", ".join(f"{f}:{w:.2f}" for f, w in top)
         print(f"  {r.room_id}: [{weights}]")

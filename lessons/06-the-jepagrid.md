@@ -45,7 +45,7 @@ for _ in range(50):
     g.tick(x)
 elapsed = (time.perf_counter() - t0) / 50
 
-print(f"1000 rooms: {elapsed*1000:.2f} ms/tick")
+print(f"1000 rooms: {elapsed * 1000:.2f} ms/tick")
 print(f"Active rooms: {g.stats['active']}")
 print(f"Cold rooms: {g.stats['cold']}")
 ```

@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_mesh_table_store.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import os
@@ -16,6 +17,7 @@ from swarm.mesh_vector_tables import MeshVectorTable, VectorTableEntry, FleetVec
 
 
 # ── fixtures ──────────────────────────────────────────────────
+
 
 @pytest.fixture
 def store():
@@ -43,6 +45,7 @@ def sample_entries():
 
 
 # ── save / load roundtrip ───────────────────────────────────
+
 
 class TestSaveLoad:
     def test_save_and_load_table(self, store, sample_entries):
@@ -89,6 +92,7 @@ class TestSaveLoad:
 
 # ── FleetVectorIndex ────────────────────────────────────────
 
+
 class TestFleetVectorIndex:
     def test_save_and_load_index(self, store, sample_entries):
         index = FleetVectorIndex("TestNode")
@@ -124,6 +128,7 @@ class TestFleetVectorIndex:
 
 # ── query ───────────────────────────────────────────────────
 
+
 class TestQuery:
     def test_query_by_fitness(self, store, sample_entries):
         table = MeshVectorTable(table_id="pool")
@@ -150,6 +155,7 @@ class TestQuery:
 
 
 # ── delete ──────────────────────────────────────────────────
+
 
 class TestDelete:
     def test_drop_table(self, store, sample_entries):
@@ -204,6 +210,7 @@ class TestDelete:
 
 
 # ── edge cases ──────────────────────────────────────────────
+
 
 class TestEdgeCases:
     def test_nonexistent_table(self, store):

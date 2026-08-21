@@ -224,6 +224,7 @@ import ctypes
 from pathlib import Path
 import numpy as np
 
+
 class FluxVMBridge:
     """Python wrapper for the full FLUX VM (not just check_batch)."""
 
@@ -233,7 +234,9 @@ class FluxVMBridge:
         self._lib.flux_vm_new.argtypes = []
         self._lib.flux_vm_new.restype = ctypes.c_void_p
         self._lib.flux_vm_load_bytecode.argtypes = [
-            ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_uint8),
+            ctypes.c_size_t,
         ]
         self._lib.flux_vm_run.argtypes = [ctypes.c_void_p]
         self._lib.flux_vm_run.restype = ctypes.c_int
@@ -249,7 +252,7 @@ class FluxVMBridge:
         return self._lib.flux_vm_run(self._vm)
 
     def __del__(self):
-        if hasattr(self, '_vm') and self._vm:
+        if hasattr(self, "_vm") and self._vm:
             self._lib.flux_vm_free(self._vm)
 ```
 

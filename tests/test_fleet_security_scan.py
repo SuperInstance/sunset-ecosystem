@@ -7,6 +7,7 @@ Covers:
 - RiskReport filtering (findings_above)
 - OperationalTrap payload generation
 """
+
 import json
 import os
 from pathlib import Path
@@ -40,14 +41,26 @@ def sample_report():
             ScanResult(
                 scanner_name="env_keys",
                 findings=[
-                    Finding("env_keys", "OPENAI_API_KEY", Severity.HIGH, "OpenAI key in env"),
-                    Finding("env_keys", "AWS_SECRET_ACCESS_KEY", Severity.CRITICAL, "AWS root key"),
+                    Finding(
+                        "env_keys", "OPENAI_API_KEY", Severity.HIGH, "OpenAI key in env"
+                    ),
+                    Finding(
+                        "env_keys",
+                        "AWS_SECRET_ACCESS_KEY",
+                        Severity.CRITICAL,
+                        "AWS root key",
+                    ),
                 ],
             ),
             ScanResult(
                 scanner_name="docker",
                 findings=[
-                    Finding("docker", "/var/run/docker.sock", Severity.MODERATE, "Docker socket"),
+                    Finding(
+                        "docker",
+                        "/var/run/docker.sock",
+                        Severity.MODERATE,
+                        "Docker socket",
+                    ),
                 ],
             ),
         ],
@@ -123,7 +136,9 @@ class TestFiltering:
     def test_findings_above_high(self, sample_report):
         high_plus = sample_report.findings_above(Severity.HIGH)
         assert len(high_plus) == 2  # one CRITICAL + one HIGH
-        assert all(Severity.rank(f.severity) >= Severity.rank(Severity.HIGH) for f in high_plus)
+        assert all(
+            Severity.rank(f.severity) >= Severity.rank(Severity.HIGH) for f in high_plus
+        )
 
     def test_findings_above_critical(self, sample_report):
         crit = sample_report.findings_above(Severity.CRITICAL)
@@ -155,9 +170,7 @@ class TestFallback:
             assert findings == []
 
     def test_custom_env_keys(self):
-        scanner = FleetSecurityScanner(
-            extra_env_keys=["MY_CUSTOM_TOKEN"]
-        )
+        scanner = FleetSecurityScanner(extra_env_keys=["MY_CUSTOM_TOKEN"])
         with patch.dict(os.environ, {"MY_CUSTOM_TOKEN": "abc"}, clear=False):
             findings = scanner._scan_env_keys()
             assert any(f.resource == "MY_CUSTOM_TOKEN" for f in findings)
@@ -219,7 +232,7 @@ class TestOperationalTrap:
                     scanner_name="aws",
                     findings=[
                         Finding("aws", "root", Severity.CRITICAL, "AWS root key"),
-                    ]
+                    ],
                 )
             ],
         )
@@ -237,7 +250,7 @@ class TestOperationalTrap:
                     scanner_name="api",
                     findings=[
                         Finding("api", "OPENAI_KEY", Severity.HIGH, "OpenAI"),
-                    ]
+                    ],
                 )
             ],
         )
@@ -282,6 +295,9 @@ class TestFullScan:
         scanner = FleetSecurityScanner()
         report = scanner.scan()
         env_findings = [
-            f for r in report.scan_results for f in r.findings if f.scanner == "env_keys"
+            f
+            for r in report.scan_results
+            for f in r.findings
+            if f.scanner == "env_keys"
         ]
         assert any(f.resource == "OPENAI_API_KEY" for f in env_findings)

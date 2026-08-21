@@ -10,6 +10,7 @@ Provides:
   - CognitionLoop: observe → reason → act cycle for RoomGrid agents
   - AgentConfig: configuration for autonomous agent behavior
 """
+
 from __future__ import annotations
 
 __all__ = [

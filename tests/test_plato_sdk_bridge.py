@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for fleet/plato_sdk_bridge.py."""
+
 import pytest
 
 from fleet.plato_sdk_bridge import PlatoSDKBridge, TileResult
@@ -28,6 +29,7 @@ class TestPlatoSDKBridge:
     def test_fallback_client_exists(self):
         # Ensure fallback is importable
         from fleet.plato_sdk_bridge import _FallbackPlatoClient
+
         client = _FallbackPlatoClient(base_url="http://test:8847")
         assert client.base_url == "http://test:8847"
 

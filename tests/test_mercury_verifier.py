@@ -19,6 +19,7 @@ from fleet.mercury_verifier import (
 # Code generation
 # ---------------------------------------------------------------------------
 
+
 class TestCodeGeneration:
     def test_number(self):
         gen = FormulaToMercury()
@@ -33,7 +34,7 @@ class TestCodeGeneration:
 
     def test_if_then_else(self):
         gen = FormulaToMercury()
-        code = gen.compile('=IF(1 < 2, 10, 20)')
+        code = gen.compile("=IF(1 < 2, 10, 20)")
         assert "if" in code
         assert "then" in code
         assert "else" in code
@@ -105,6 +106,7 @@ class TestCodeGeneration:
 # Mercury syntax validation
 # ---------------------------------------------------------------------------
 
+
 class TestSyntaxValidation:
     def test_valid_mercury_module_structure(self):
         gen = FormulaToMercury()
@@ -129,6 +131,7 @@ class TestSyntaxValidation:
 # ---------------------------------------------------------------------------
 # MercuryVerifier (mock / without mmc)
 # ---------------------------------------------------------------------------
+
 
 class TestMercuryVerifier:
     def test_is_available_false_when_mmc_missing(self):
@@ -183,6 +186,7 @@ class TestMercuryVerifier:
 # Batch verifier
 # ---------------------------------------------------------------------------
 
+
 class TestBatchVerifier:
     def test_verify_batch(self):
         verifier = MercuryVerifier(mmc_path="/nonexistent/mmc")
@@ -209,6 +213,7 @@ class TestBatchVerifier:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_empty_formula(self):

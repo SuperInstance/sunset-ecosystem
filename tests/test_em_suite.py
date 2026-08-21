@@ -1,4 +1,5 @@
 """Tests for EMBenchmarkSuite."""
+
 from __future__ import annotations
 
 import pytest
@@ -37,7 +38,9 @@ class TestThermalEmission:
     def test_thermal_emission_stricter_for_sealed(self):
         suite = EMBenchmarkSuite(seed=42)
         open_result = suite.test_thermal_emission(enclosure_type="open", power_w=100)
-        sealed_result = suite.test_thermal_emission(enclosure_type="sealed", power_w=100)
+        sealed_result = suite.test_thermal_emission(
+            enclosure_type="sealed", power_w=100
+        )
         assert sealed_result.threshold <= open_result.threshold
 
 

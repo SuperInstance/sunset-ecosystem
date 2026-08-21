@@ -64,7 +64,7 @@ manifest = ConstructManifest(
     population_size=100,
     generations=200,
     constraints=["exact_arithmetic"],
-    qd_dimensions=[(3,4,5), (5,12,13)],
+    qd_dimensions=[(3, 4, 5), (5, 12, 13)],
     resources={"nodes": 4},
 )
 adapter = HarnessAdapter(manifest)

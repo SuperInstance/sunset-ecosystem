@@ -23,6 +23,7 @@ from a2a.identity import (
 
 # ── fixtures ────────────────────────────────────────────────
 
+
 @pytest.fixture
 def valid_card_dict() -> Dict[str, Any]:
     return {
@@ -57,6 +58,7 @@ def tmp_key_dir():
 
 # ── 1. AgentCard loads valid JSON ──────────────────────────
 
+
 def test_agent_card_loads_valid_json(valid_card_json: str) -> None:
     card = AgentCard.from_json(valid_card_json)
     assert card.name == "test-agent"
@@ -68,6 +70,7 @@ def test_agent_card_loads_valid_json(valid_card_json: str) -> None:
 
 
 # ── 2. AgentCard rejects missing required fields ────────────
+
 
 def test_agent_card_rejects_missing_required() -> None:
     incomplete = {"name": "x", "version": "1.0.0"}
@@ -106,6 +109,7 @@ def test_agent_card_rejects_invalid_skill() -> None:
 
 # ── 3. Registry discovers from nexus ──────────────────────
 
+
 @pytest.mark.asyncio
 async def test_registry_discovers_from_nexus(valid_card_dict: Dict[str, Any]) -> None:
     registry = AgentRegistry()
@@ -123,7 +127,10 @@ async def test_registry_discovers_from_nexus(valid_card_dict: Dict[str, Any]) ->
 
 # ── 4. Registry negotiate_task returns handle ───────────────
 
-def test_registry_negotiate_task_returns_handle(valid_card_dict: Dict[str, Any]) -> None:
+
+def test_registry_negotiate_task_returns_handle(
+    valid_card_dict: Dict[str, Any],
+) -> None:
     registry = AgentRegistry()
     card = AgentCard.from_dict(valid_card_dict)
     registry.register("echo-agent", card)
@@ -147,7 +154,9 @@ def test_registry_negotiate_task_unknown_agent() -> None:
     assert "Unknown agent" in str(exc_info.value)
 
 
-def test_registry_negotiate_task_unsupported_skill(valid_card_dict: Dict[str, Any]) -> None:
+def test_registry_negotiate_task_unsupported_skill(
+    valid_card_dict: Dict[str, Any],
+) -> None:
     registry = AgentRegistry()
     card = AgentCard.from_dict(valid_card_dict)
     registry.register("echo-agent", card)
@@ -157,6 +166,7 @@ def test_registry_negotiate_task_unsupported_skill(valid_card_dict: Dict[str, An
 
 
 # ── 5. Stream handler receives chunks ───────────────────────
+
 
 @pytest.mark.asyncio
 async def test_stream_handler_receives_chunks(valid_card_dict: Dict[str, Any]) -> None:
@@ -188,6 +198,7 @@ async def test_stream_handler_receives_chunks(valid_card_dict: Dict[str, Any]) -
 
 # ── 6. Identity signs tasks ─────────────────────────────────
 
+
 def test_identity_signs_task(tmp_key_dir: str) -> None:
     identity = AgentIdentity("test-agent", base_dir=tmp_key_dir)
     payload = {"task": "echo", "data": [1, 2, 3]}
@@ -204,6 +215,7 @@ def test_identity_signs_task(tmp_key_dir: str) -> None:
 
 # ── 7. Identity verifies remote task ─────────────────────────
 
+
 def test_identity_verifies_remote_task(tmp_key_dir: str) -> None:
     identity = AgentIdentity("test-agent", base_dir=tmp_key_dir)
     payload = {"task": "echo", "data": [1, 2, 3]}
@@ -219,6 +231,7 @@ def test_identity_verifies_remote_task(tmp_key_dir: str) -> None:
 
 
 # ── 8. Registry fallback on nexus down ────────────────────
+
 
 @pytest.mark.asyncio
 async def test_registry_fallback_on_nexus_down(valid_card_dict: Dict[str, Any]) -> None:
@@ -251,6 +264,7 @@ async def test_registry_fallback_raises_when_no_cache() -> None:
 
 # ── 9. AgentCard round-trip serialization ───────────────────
 
+
 def test_agent_card_round_trip(valid_card_dict: Dict[str, Any]) -> None:
     card = AgentCard.from_dict(valid_card_dict)
     dumped = card.to_dict()
@@ -270,6 +284,7 @@ def test_agent_card_from_file(valid_card_dict: Dict[str, Any], tmp_path: Path) -
 
 # ── 10. AgentIdentity key persistence ───────────────────────
 
+
 def test_identity_key_persistence(tmp_key_dir: str) -> None:
     identity = AgentIdentity("persist-agent", base_dir=tmp_key_dir)
     pem_path = Path(tmp_key_dir) / "persist-agent.pem"
@@ -286,6 +301,7 @@ def test_identity_key_persistence(tmp_key_dir: str) -> None:
 
 
 # ── 11. TaskHandle chunk delivery ──────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_task_handle_chunk_delivery() -> None:
@@ -316,6 +332,7 @@ async def test_task_handle_next_chunk_timeout() -> None:
 
 
 # ── 12. Registry load_local_cards ───────────────────────────
+
 
 def test_registry_load_local_cards(tmp_path: Path) -> None:
     d = tmp_path / "cards"

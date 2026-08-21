@@ -13,6 +13,7 @@ Usage:
     gw.add_route("/health", handler=health_handler, methods=["GET"], require_auth=False)
     response = gw.handle_request(Request(path="/breed", headers={"Authorization": "Bearer ..."}))
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Request:
     """An incoming API request."""
+
     path: str
     method: str = "GET"
     headers: dict[str, str] = field(default_factory=dict)
@@ -43,6 +45,7 @@ class Request:
 @dataclass
 class Response:
     """An API response."""
+
     status: int
     body: Any = None
     headers: dict[str, str] = field(default_factory=dict)
@@ -52,6 +55,7 @@ class Response:
 @dataclass
 class Route:
     """A registered route."""
+
     path: str
     handler: Callable[[Request], Response]
     methods: list[str]
@@ -96,7 +100,9 @@ class APIGateway:
             circuit_breaker=circuit_breaker,
         )
 
-    def add_middleware(self, fn: Callable[[Request], Request | Response | None]) -> None:
+    def add_middleware(
+        self, fn: Callable[[Request], Request | Response | None]
+    ) -> None:
         """Add a middleware function."""
         self._middleware.append(fn)
 
@@ -147,9 +153,7 @@ class APIGateway:
         # Circuit breaker
         if route.circuit_breaker is not None:
             try:
-                result = route.circuit_breaker.call(
-                    lambda: route.handler(request)
-                )
+                result = route.circuit_breaker.call(lambda: route.handler(request))
                 if result is None:
                     self._error_count += 1
                     return Response(status=503, body={"error": "service unavailable"})

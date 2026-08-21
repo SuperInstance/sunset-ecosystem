@@ -34,7 +34,7 @@ would destabilize the ecosystem.
 from swarm.thermal import ThermalBudget, DeviceType
 
 budget = ThermalBudget()
-budget.add_device(DeviceType.GPU, 8_000_000)   # 8GB VRAM
+budget.add_device(DeviceType.GPU, 8_000_000)  # 8GB VRAM
 budget.add_device(DeviceType.CPU, 16_000_000)  # 16GB RAM
 
 print(f"Total budget: {budget.total()}")

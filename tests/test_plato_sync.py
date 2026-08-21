@@ -115,8 +115,12 @@ class TestPlatoRoomSync:
 
     def test_callbacks(self, sync):
         events = []
-        sync.on_enter_callback = lambda ctx: events.append(("enter", ctx.agent_id, ctx.room_id))
-        sync.on_exit_callback = lambda ctx: events.append(("exit", ctx.agent_id, ctx.room_id))
+        sync.on_enter_callback = lambda ctx: events.append(
+            ("enter", ctx.agent_id, ctx.room_id)
+        )
+        sync.on_exit_callback = lambda ctx: events.append(
+            ("exit", ctx.agent_id, ctx.room_id)
+        )
 
         sync.on_enter("agent-1", "ethos-thermal")
         sync.on_exit("agent-1", "ethos-thermal")

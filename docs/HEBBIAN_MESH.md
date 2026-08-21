@@ -55,9 +55,9 @@ Now sunset-ecosystem does.
 @dataclass
 class HebbianAffinity:
     peer_id: str
-    strength: float = 0.50          # 0.0 – 1.0
-    last_interaction: float = 0.0   # Unix timestamp
-    trust_score: float = 0.50       # EMA of recent outcomes
+    strength: float = 0.50  # 0.0 – 1.0
+    last_interaction: float = 0.0  # Unix timestamp
+    trust_score: float = 0.50  # EMA of recent outcomes
     interaction_count: int = 0
     blacklisted: bool = False
 ```
@@ -88,8 +88,8 @@ mesh.update_affinity("Jetson1", HebbianOutcome.VIOLATION)
 
 # Query state
 aff = mesh.get_affinity("ProArt")
-mesh.is_blacklisted("Jetson1")   # → True if blacklisted
-mesh.list_blacklisted()          # → ["Jetson1", ...]
+mesh.is_blacklisted("Jetson1")  # → True if blacklisted
+mesh.list_blacklisted()  # → ["Jetson1", ...]
 mesh.reset_affinity("Jetson1")  # manual recovery
 ```
 
@@ -147,7 +147,9 @@ gossip = MeshVectorGossip(
 mesh = HebbianMeshLayer(gossip)
 
 # Replace _select_peers with affinity-aware selection
-gossip._select_peers = lambda peers: mesh.select_peers_for_gossip(peers, k=gossip.max_peers_per_round)
+gossip._select_peers = lambda peers: mesh.select_peers_for_gossip(
+    peers, k=gossip.max_peers_per_round
+)
 
 # Run round, auto-track outcomes
 results = mesh.gossip_round(["ProArt", "Jetson1", "Alibaba"])

@@ -99,14 +99,17 @@ Covariance Matrix Adaptation Evolution Strategy:
 from swarm.fleet_bft_qd import PBFTNode, FleetBFTNetwork
 
 # Create 4 nodes (tolerates 1 Byzantine fault)
-nodes = [PBFTNode(f"n{i}", ["n0","n1","n2","n3"], "secret") for i in range(4)]
+nodes = [PBFTNode(f"n{i}", ["n0", "n1", "n2", "n3"], "secret") for i in range(4)]
 net = FleetBFTNetwork(nodes)
 
 # Run consensus on a breeding batch
-ok = net.broadcast_request("breed_batch", {
-    "parent_ids": ["agent_1", "agent_2"],
-    "mutation_rate": 0.3,
-})
+ok = net.broadcast_request(
+    "breed_batch",
+    {
+        "parent_ids": ["agent_1", "agent_2"],
+        "mutation_rate": 0.3,
+    },
+)
 assert ok  # 2f+1 = 3 nodes agreed
 ```
 
@@ -151,7 +154,7 @@ fbc = FleetBreederConsensus(
     node_id="n0",
     all_nodes=["n0", "n1", "n2", "n3"],
     secret_key="fleet-secret",
-    archive_dims=(10, 10),           # 2D behavior space
+    archive_dims=(10, 10),  # 2D behavior space
     behavior_bounds=[(0.0, 1.0), (0.0, 1.0)],
 )
 

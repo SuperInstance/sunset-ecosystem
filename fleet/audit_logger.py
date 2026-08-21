@@ -8,6 +8,7 @@ Usage:
     logger.record("user.login", user="alice", ip="10.0.0.1")
     entries = logger.query(action="user.login")
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -61,7 +62,9 @@ class AuditLogger:
     def _hmac(self, entry: Dict[str, Any]) -> str:
         """Compute HMAC for an entry."""
         payload = f"{entry['timestamp']}:{entry['action']}:{entry['context']}"
-        return hmac.new(self._secret, payload.encode("utf-8"), hashlib.sha256).hexdigest()
+        return hmac.new(
+            self._secret, payload.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
 
     def verify(self, entry: Dict[str, Any]) -> bool:
         """Verify an entry's HMAC."""

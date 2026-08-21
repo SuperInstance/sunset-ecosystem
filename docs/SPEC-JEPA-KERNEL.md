@@ -43,12 +43,14 @@ import numpy as np
 
 _LIB = None
 
+
 def _load_rust():
     global _LIB
     if _LIB is not None:
         return _LIB
-    lib_path = os.path.join(os.path.dirname(__file__), 
-                            "../../target/release/libnerve.so")
+    lib_path = os.path.join(
+        os.path.dirname(__file__), "../../target/release/libnerve.so"
+    )
     if not os.path.exists(lib_path):
         return None
     _LIB = ctypes.CDLL(lib_path)
@@ -61,22 +63,23 @@ def _load_rust():
         ctypes.POINTER(ctypes.c_float),  # b1
         ctypes.POINTER(ctypes.c_float),  # b2
         ctypes.POINTER(ctypes.c_float),  # b3
-        ctypes.c_size_t,                 # n
+        ctypes.c_size_t,  # n
         ctypes.POINTER(ctypes.c_float),  # out_ptr
     ]
     return _LIB
+
 
 class JEPAGrid:
     def _batch_forward(self, x: np.ndarray) -> np.ndarray:
         lib = _load_rust()
         if lib is None:
             return self._batch_forward_numpy(x)  # fallback
-        
+
         n = self.n
         w = self.w
         x_c = np.ascontiguousarray(x, dtype=np.float32)
         out = np.zeros(n * 16, dtype=np.float32)
-        
+
         lib.jpa_forward_batch(
             x_c.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
             w["w1"].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),

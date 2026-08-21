@@ -89,12 +89,12 @@ class TestMetaLearningBreeder:
         b.add_strategy("good", lambda g: g)
         b.add_strategy("bad", lambda g: g)
         fp = ProblemFingerprint(2, (), "smooth")
-        
+
         # Good always improves, bad never does
         for _ in range(20):
             b.learn(fp, "good", 0.0, 1.0)
             b.learn(fp, "bad", 1.0, 0.0)
-        
+
         # With low temperature, should strongly prefer good
         b.temperature = 0.1
         picks = [b.select_strategy(fp)[0] for _ in range(50)]
@@ -129,11 +129,11 @@ class TestMetaLearningBreeder:
         b = MetaLearningBreeder()
         b.add_strategy("add", lambda g: [x + 0.1 for x in g])
         b.add_strategy("sub", lambda g: [x - 0.1 for x in g])
-        
+
         # Fitness is sum of squares - maximize by going positive
         fitness = lambda g: sum(x * x for x in g)
         population = [[0.0, 0.0] for _ in range(10)]
-        
+
         result = b.evolve(population, fitness, [], "smooth", generations=5)
         best = max(result, key=lambda x: x[1])
         assert best[1] > 0  # should have improved from 0
@@ -142,13 +142,13 @@ class TestMetaLearningBreeder:
         b = MetaLearningBreeder()
         b.add_strategy("add", lambda g: [x + 0.5 for x in g])
         b.add_strategy("sub", lambda g: [x - 0.5 for x in g])
-        
+
         # Fitness: sum of elements - maximize by going positive
         fitness = lambda g: sum(g)
         population = [[0.0, 0.0] for _ in range(10)]
-        
+
         b.evolve(population, fitness, [], "smooth", generations=10)
-        
+
         # Should learn that "add" is better for this fitness landscape
         fp = b.fingerprint([0.0, 0.0], [], "smooth")
         stats = b.get_strategy_stats(fp)

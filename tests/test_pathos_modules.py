@@ -205,8 +205,12 @@ class TestMomentScorer:
     def test_invisibility_bonus(self):
         scorer = MomentScorer()
         state = self._make_need_state()
-        visible = scorer.score(state, resolved=True, latency_s=1.0, human_aware_of_agent=True)
-        invisible = scorer.score(state, resolved=True, latency_s=1.0, human_aware_of_agent=False)
+        visible = scorer.score(
+            state, resolved=True, latency_s=1.0, human_aware_of_agent=True
+        )
+        invisible = scorer.score(
+            state, resolved=True, latency_s=1.0, human_aware_of_agent=False
+        )
         assert invisible.invisibility_bonus > visible.invisibility_bonus
 
     def test_unresolved(self):

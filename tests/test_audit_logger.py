@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_audit_logger.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -28,6 +29,7 @@ class TestAuditLogger:
 
     def test_query_by_time(self):
         import time
+
         logger = AuditLogger(secret="key")
         before = time.time()
         logger.record("user.login")

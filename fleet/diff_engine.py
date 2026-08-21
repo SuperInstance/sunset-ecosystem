@@ -8,6 +8,7 @@ Usage:
     result = diff.compare("hello world", "hello fleet")
     # result.ratio ~ 0.5, result.chunks show differences
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -37,15 +38,8 @@ class DiffResult:
         """Similarity ratio 0.0-1.0."""
         if not self.chunks:
             return 1.0
-        equal_chars = sum(
-            len(c.old_text)
-            for c in self.chunks
-            if c.tag == "equal"
-        )
-        total_chars = sum(
-            max(len(c.old_text), len(c.new_text))
-            for c in self.chunks
-        )
+        equal_chars = sum(len(c.old_text) for c in self.chunks if c.tag == "equal")
+        total_chars = sum(max(len(c.old_text), len(c.new_text)) for c in self.chunks)
         if total_chars == 0:
             return 1.0
         return equal_chars / total_chars
@@ -142,7 +136,10 @@ class DiffEngine:
         for d in range(d_final, -1, -1):
             v = trace[d]
             k = k_final
-            if k == -d or (k != d and v[k - 1 + len(old) + len(new)] < v[k + 1 + len(old) + len(new)]):
+            if k == -d or (
+                k != d
+                and v[k - 1 + len(old) + len(new)] < v[k + 1 + len(old) + len(new)]
+            ):
                 prev_k = k + 1
             else:
                 prev_k = k - 1

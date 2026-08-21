@@ -22,6 +22,7 @@ from nerve.metronome_mesh_bridge import (
 # SyncPayload
 # ---------------------------------------------------------------------------
 
+
 class TestSyncPayload:
     def test_roundtrip(self):
         p = SyncPayload(
@@ -61,6 +62,7 @@ class TestSyncPayload:
 # BridgeConfig
 # ---------------------------------------------------------------------------
 
+
 class TestBridgeConfig:
     def test_defaults(self):
         cfg = BridgeConfig()
@@ -74,6 +76,7 @@ class TestBridgeConfig:
 # ---------------------------------------------------------------------------
 # MetronomeGossipBridge init
 # ---------------------------------------------------------------------------
+
 
 class TestBridgeInit:
     def test_defaults(self):
@@ -92,6 +95,7 @@ class TestBridgeInit:
 # ---------------------------------------------------------------------------
 # Attachment
 # ---------------------------------------------------------------------------
+
 
 class TestAttachment:
     def test_attach_metronome(self):
@@ -113,6 +117,7 @@ class TestAttachment:
 # Lifecycle
 # ---------------------------------------------------------------------------
 
+
 class TestLifecycle:
     def test_start_stop(self):
         bridge = MetronomeGossipBridge()
@@ -125,6 +130,7 @@ class TestLifecycle:
 # ---------------------------------------------------------------------------
 # Forwarding
 # ---------------------------------------------------------------------------
+
 
 class TestForwarding:
     def test_on_metronome_beat(self):
@@ -180,6 +186,7 @@ class TestForwarding:
 # Deduplication
 # ---------------------------------------------------------------------------
 
+
 class TestDeduplication:
     def test_dedup_same_key(self):
         bridge = MetronomeGossipBridge()
@@ -206,6 +213,7 @@ class TestDeduplication:
 # ---------------------------------------------------------------------------
 # Receiving
 # ---------------------------------------------------------------------------
+
 
 class TestReceiving:
     def test_beat_message(self):
@@ -275,6 +283,7 @@ class TestReceiving:
 # Announcement
 # ---------------------------------------------------------------------------
 
+
 class TestAnnouncement:
     def test_announce_node(self):
         bridge = MetronomeGossipBridge()
@@ -288,6 +297,7 @@ class TestAnnouncement:
 # ---------------------------------------------------------------------------
 # Metrics
 # ---------------------------------------------------------------------------
+
 
 class TestMetrics:
     def test_basic(self):

@@ -35,10 +35,13 @@ def cache() -> CognitiveCache:
             promotion_access_threshold=2,
         ),
     )
-    tracker = SceneTracker(base, strategy=CacheStrategy(
-        hot_threshold_accesses=2,
-        scene_timeout_seconds=1.0,
-    ))
+    tracker = SceneTracker(
+        base,
+        strategy=CacheStrategy(
+            hot_threshold_accesses=2,
+            scene_timeout_seconds=1.0,
+        ),
+    )
     return CognitiveCache(storage, tracker)
 
 

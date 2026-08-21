@@ -48,9 +48,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CachePrediction:
     """A single prediction for cache preloading."""
+
     agent_id: str
-    confidence: float          # 0.0-1.0 based on co-occurrence frequency
-    reason: str                # "cooccurrence", "hot", "scene", "recent"
+    confidence: float  # 0.0-1.0 based on co-occurrence frequency
+    reason: str  # "cooccurrence", "hot", "scene", "recent"
     predicted_queries: int = 1  # Expected number of queries
 
 
@@ -67,11 +68,14 @@ class PredictionEngine:
     recency_window_seconds : float
         Time window for recency-based predictions.
     """
+
     cooccurrence_threshold: float = 0.3
     hot_threshold: int = 3
     recency_window_seconds: float = 60.0
 
-    def predict(self, tracker: SceneTracker, recent_queries: int = 10) -> list[CachePrediction]:
+    def predict(
+        self, tracker: SceneTracker, recent_queries: int = 10
+    ) -> list[CachePrediction]:
         """Generate predictions based on tracker patterns.
 
         Parameters
@@ -175,7 +179,8 @@ class CognitiveCache:
 
         # Track query
         self.tracker.track_query(
-            "by_id", "none",
+            "by_id",
+            "none",
             result_size=1 if entry else 0,
             latency_ms=0.0,
             query_params={"agent_id": agent_id},
@@ -220,7 +225,8 @@ class CognitiveCache:
         entries = [e for _, e in distances[:k]]
 
         self.tracker.track_query(
-            "similarity", "fitness",
+            "similarity",
+            "fitness",
             result_size=len(entries),
             latency_ms=0.0,
             query_params={"k": k},
@@ -246,7 +252,9 @@ class CognitiveCache:
                 self._preload_count += 1
                 logger.debug(
                     "Preloaded %s (confidence=%.2f, reason=%s)",
-                    pred.agent_id, pred.confidence, pred.reason,
+                    pred.agent_id,
+                    pred.confidence,
+                    pred.reason,
                 )
 
     # ── maintenance ─────────────────────────────────────────────

@@ -48,7 +48,9 @@ MERCURY_AVAILABLE = False
 
 # Try to load Rust .so
 try:
-    _rust_lib_path = Path(__file__).parent / "rust" / "target" / "release" / "libplato_reasoner.so"
+    _rust_lib_path = (
+        Path(__file__).parent / "rust" / "target" / "release" / "libplato_reasoner.so"
+    )
     if _rust_lib_path.exists():
         _rust_lib = ctypes.CDLL(str(_rust_lib_path))
         RUST_AVAILABLE = True
@@ -69,7 +71,9 @@ except Exception:
 # Check Mercury
 _MMC_PATH = os.environ.get("MERCURY_COMPILER", "mmc")
 try:
-    subprocess.run([_MMC_PATH, "--version"], capture_output=True, check=True, timeout=2.0)
+    subprocess.run(
+        [_MMC_PATH, "--version"], capture_output=True, check=True, timeout=2.0
+    )
     MERCURY_AVAILABLE = True
 except Exception:
     pass
@@ -108,7 +112,9 @@ class PolyglotReasoner:
         arr = arr / (np.linalg.norm(arr) + 1e-8)
         self._tiles[tile_id] = arr
 
-    def find_similar(self, query: List[float], top_k: int = 5) -> List[Tuple[int, float]]:
+    def find_similar(
+        self, query: List[float], top_k: int = 5
+    ) -> List[Tuple[int, float]]:
         """Find most similar tiles."""
         q = np.array(query, dtype=np.float32)
         q = q / (np.linalg.norm(q) + 1e-8)
@@ -120,7 +126,9 @@ class PolyglotReasoner:
         else:
             return self._find_similar_python(q, top_k)
 
-    def _find_similar_python(self, query: np.ndarray, top_k: int) -> List[Tuple[int, float]]:
+    def _find_similar_python(
+        self, query: np.ndarray, top_k: int
+    ) -> List[Tuple[int, float]]:
         """Pure NumPy implementation."""
         results = []
         for tid, emb in self._tiles.items():
@@ -129,7 +137,9 @@ class PolyglotReasoner:
         results.sort(key=lambda x: x[1], reverse=True)
         return results[:top_k]
 
-    def _find_similar_rust(self, query: np.ndarray, top_k: int) -> List[Tuple[int, float]]:
+    def _find_similar_rust(
+        self, query: np.ndarray, top_k: int
+    ) -> List[Tuple[int, float]]:
         """Rust FFI implementation."""
         if not RUST_AVAILABLE or not self._tiles:
             return self._find_similar_python(query, top_k)
@@ -154,7 +164,9 @@ class PolyglotReasoner:
 
         return [(ids[int(indices[i])], float(scores[i])) for i in range(min(top_k, n))]
 
-    def _find_similar_cpp(self, query: np.ndarray, top_k: int) -> List[Tuple[int, float]]:
+    def _find_similar_cpp(
+        self, query: np.ndarray, top_k: int
+    ) -> List[Tuple[int, float]]:
         """C++ FFI implementation."""
         if not CPLUSPLUS_AVAILABLE or not self._tiles:
             return self._find_similar_python(query, top_k)

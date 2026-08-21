@@ -10,6 +10,7 @@ Usage:
     python scripts/demo_vision_tiles.py --source screen --region 0,0,640,480
     python scripts/demo_vision_tiles.py --source synthetic --ticks 50
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,7 +26,9 @@ sys.path.insert(0, ".")
 from perception import VisionTileEncoder, WebcamCapture, ScreenCapture
 from nerve.topology import NerveTopology
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+)
 log = logging.getLogger("demo_vision_tiles")
 
 
@@ -36,11 +39,14 @@ def synthetic_frame(seed: int, size: tuple[int, int] = (480, 640)) -> np.ndarray
     # Perlin-ish noise via smooth random walk
     base = rng.randint(0, 256, size=(h // 8, w // 8, 3), dtype=np.uint8)
     from PIL import Image
+
     img = Image.fromarray(base).resize((w, h), Image.BILINEAR)
     frame = np.array(img)
     # Add some high-frequency noise
     noise = rng.randint(0, 32, size=(h, w, 3), dtype=np.uint8)
-    frame = np.clip(frame.astype(np.int16) + noise.astype(np.int16) - 16, 0, 255).astype(np.uint8)
+    frame = np.clip(
+        frame.astype(np.int16) + noise.astype(np.int16) - 16, 0, 255
+    ).astype(np.uint8)
     return frame
 
 
@@ -55,7 +61,14 @@ def run_demo(
 ) -> None:
     """Run the vision tile → topology demo."""
     log.info("=== Vision Tile Demo ===")
-    log.info("source=%s model=%s signal_dim=%d rooms=%d fibers=%d", source, model, signal_dim, n_rooms, n_fibers)
+    log.info(
+        "source=%s model=%s signal_dim=%d rooms=%d fibers=%d",
+        source,
+        model,
+        signal_dim,
+        n_rooms,
+        n_fibers,
+    )
 
     # ── Encoder ──────────────────────────────────────────────
     encoder = VisionTileEncoder(model=model, device="cpu", target_dim=512)
@@ -105,7 +118,9 @@ def run_demo(
         elif capture is not None:
             frame = capture.read()
             if frame is None:
-                log.warning("Capture failed at tick %d — using synthetic fallback", tick)
+                log.warning(
+                    "Capture failed at tick %d — using synthetic fallback", tick
+                )
                 frame = synthetic_frame(seed=frame_idx, size=(480, 640))
         else:
             frame = synthetic_frame(seed=frame_idx, size=(480, 640))
@@ -121,7 +136,9 @@ def run_demo(
         signals = {f"fiber-0": signal}
         # Other fibers get small random noise (unattended channels)
         for i in range(1, n_fibers):
-            signals[f"fiber-{i}"] = np.random.randn(signal_dim).astype(np.float32) * 0.05
+            signals[f"fiber-{i}"] = (
+                np.random.randn(signal_dim).astype(np.float32) * 0.05
+            )
 
         result = topo.tick(signals=signals)
 
@@ -153,7 +170,9 @@ def run_demo(
     pathways = topo.compiled_pathways()
     log.info("Compiled pathways: %d", len(pathways))
     for p in pathways[:5]:
-        log.info("  %s → %s (strength %.2f)", p["source"], p["destination"], p["strength"])
+        log.info(
+            "  %s → %s (strength %.2f)", p["source"], p["destination"], p["strength"]
+        )
 
     # Cleanup
     if capture is not None:

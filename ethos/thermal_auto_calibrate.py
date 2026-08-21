@@ -13,6 +13,7 @@ Usage::
     budget = cal.predict_budget(n_agents=50)
     cal.rebalance_on_alert(current_load, threshold=0.85)
 """
+
 from __future__ import annotations
 
 __all__ = ["ThermalAutoCalibrator"]
@@ -31,6 +32,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class ThermalProfile:
     """Single observation of thermal state."""
+
     n_agents: int
     power_w: float
     temp_c: float
@@ -41,6 +43,7 @@ class ThermalProfile:
 @dataclass
 class ThermalBudget:
     """Predicted thermal budget for a given agent count."""
+
     n_agents: int
     max_safe_agents: int
     predicted_power_w: float
@@ -59,7 +62,7 @@ class ThermalAutoCalibrator:
         self.temp_threshold = temp_threshold
         self._profiles: list[ThermalProfile] = []
         self._power_per_agent: float = 5.0  # default 5W/agent
-        self._temp_per_agent: float = 0.5   # default 0.5°C/agent
+        self._temp_per_agent: float = 0.5  # default 0.5°C/agent
         self._intercept_power: float = 10.0
         self._intercept_temp: float = 35.0
         self._calibrated: bool = False
@@ -130,7 +133,9 @@ class ThermalAutoCalibrator:
 
         # Max safe agents before hitting threshold
         if self._temp_per_agent > 0:
-            max_safe = int((self.temp_threshold - self._intercept_temp) / self._temp_per_agent)
+            max_safe = int(
+                (self.temp_threshold - self._intercept_temp) / self._temp_per_agent
+            )
         else:
             max_safe = n_agents * 2  # generous fallback
 

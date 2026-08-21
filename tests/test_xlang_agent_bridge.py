@@ -28,13 +28,28 @@ class TestAgentFlowBlueprint:
     def test_from_json_graph(self) -> None:
         graph = {
             "nodes": [
-                {"id": "n1", "type": "agent", "config": {"model": "gpt-4"}, "prompt": "You are a helpful assistant"},
-                {"id": "n2", "type": "action", "action": "rest_api", "endpoint": "https://api.example.com"},
+                {
+                    "id": "n1",
+                    "type": "agent",
+                    "config": {"model": "gpt-4"},
+                    "prompt": "You are a helpful assistant",
+                },
+                {
+                    "id": "n2",
+                    "type": "action",
+                    "action": "rest_api",
+                    "endpoint": "https://api.example.com",
+                },
                 {"id": "n3", "type": "function", "function": "summarize"},
             ],
             "edges": [
                 {"source": "n1", "target": "n2", "relation": "delegates"},
-                {"source": "n2", "target": "n3", "source_pin": "output", "target_pin": "input"},
+                {
+                    "source": "n2",
+                    "target": "n3",
+                    "source_pin": "output",
+                    "target_pin": "input",
+                },
             ],
         }
         bp = AgentFlowBlueprint.from_json_graph(graph, name="test")
@@ -128,7 +143,12 @@ class TestXlangAgentBridge:
                 {"id": "process", "type": "function", "function": "uppercase"},
             ],
             "edges": [
-                {"source": "input", "target": "process", "source_pin": "output", "target_pin": "input"},
+                {
+                    "source": "input",
+                    "target": "process",
+                    "source_pin": "output",
+                    "target_pin": "input",
+                },
             ],
         }
         bridge.convert_graph(graph, name="pipeline")

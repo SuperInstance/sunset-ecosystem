@@ -9,6 +9,7 @@ Usage:
     rec.record(method="GET", url="/api", status=200, response={"x": 1})
     entry = rec.get(0)
 """
+
 from __future__ import annotations
 
 import time
@@ -42,16 +43,18 @@ class RequestRecorder:
         latency_ms: Optional[float] = None,
     ) -> None:
         """Record a request/response pair."""
-        self._entries.append({
-            "timestamp": time.time(),
-            "method": method,
-            "url": url,
-            "status": status,
-            "request": request,
-            "response": response,
-            "error": error,
-            "latency_ms": latency_ms,
-        })
+        self._entries.append(
+            {
+                "timestamp": time.time(),
+                "method": method,
+                "url": url,
+                "status": status,
+                "request": request,
+                "response": response,
+                "error": error,
+                "latency_ms": latency_ms,
+            }
+        )
 
     # ------------------------------------------------------------------
     # Queries

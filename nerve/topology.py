@@ -10,6 +10,7 @@ The COLLECT → SELECT → COMPILE lifecycle:
   FEEDBACK: Reception signal reinforces strong routes, weakens poor ones
   REGULATE: Chaos probability decays as routes compile
 """
+
 from __future__ import annotations
 
 __all__ = ["NerveTopology", "TickResult"]
@@ -33,6 +34,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class TickResult:
     """Snapshot of one topology tick."""
+
     tick: int
     fibers_perceived: int
     rooms_fired: int
@@ -93,6 +95,7 @@ class NerveTopology:
         # Hebbian channels between adjacent rooms (Penrose neighbors)
         try:
             from swarm.penrose import assign_positions
+
             positions = assign_positions([f"room-{i}" for i in range(n_rooms)])
             for i in range(len(positions) - 1):
                 a = positions[i].agent_id
@@ -122,8 +125,7 @@ class NerveTopology:
     @property
     def stats(self) -> dict[str, Any]:
         compiled_fibers = sum(
-            1 for f in self.fibers.values()
-            if f.state == FiberState.COMPILED
+            1 for f in self.fibers.values() if f.state == FiberState.COMPILED
         )
         return {
             "tick": self.tick_count,
@@ -146,6 +148,7 @@ class NerveTopology:
         """
         try:
             from sunset.compiler import Compiler
+
             self._compiler = Compiler()
             self._compiler.install("nerve")
             self._compiler.install("nerve.room_grid")  # batch_novelty lives here
@@ -161,7 +164,10 @@ class NerveTopology:
         """Check profiler and compile hot functions if needed."""
         if self._compiler is None:
             return []
-        if self.tick_count - self._compiler_last_compile_tick < self._compiler_auto_compile_interval:
+        if (
+            self.tick_count - self._compiler_last_compile_tick
+            < self._compiler_auto_compile_interval
+        ):
             return []
         if self.tick_count < 100:
             return []  # Need warmup data
@@ -176,7 +182,9 @@ class NerveTopology:
                     compiled.append(f"{name} ({r.backend}, {r.speedup:.1f}x)")
                     log.info(
                         "Auto-compiled %s -> %s (%.1fx speedup)",
-                        name, r.backend, r.speedup,
+                        name,
+                        r.backend,
+                        r.speedup,
                     )
             return compiled
         except Exception as exc:
@@ -192,16 +200,18 @@ class NerveTopology:
           eliminates RandomState creation overhead on cache miss.
         """
         cache_key = (tile.pattern_id, tile.state.value)
-        if not hasattr(self, '_tile_cache'):
+        if not hasattr(self, "_tile_cache"):
             self._tile_cache = {}
 
         cached = self._tile_cache.get(cache_key)
         if cached is None:
             # Deterministic encoding via lookup table — no RandomState alloc
             idx = abs(hash(tile.pattern_id)) % 1024
-            if not hasattr(self, '_encoding_lut'):
+            if not hasattr(self, "_encoding_lut"):
                 rng = np.random.RandomState(42)
-                self._encoding_lut = rng.randn(1024, self.signal_dim).astype(np.float32) * 0.1
+                self._encoding_lut = (
+                    rng.randn(1024, self.signal_dim).astype(np.float32) * 0.1
+                )
             cached = self._encoding_lut[idx].copy()
             self._tile_cache[cache_key] = cached
 
@@ -232,11 +242,13 @@ class NerveTopology:
             batch_signals = {}
         else:
             batch_signals = signals.copy()
-        
+
         # Generate missing signals in one numpy call
         missing = [fid for fid in self.fibers if fid not in batch_signals]
         if missing:
-            rng_batch = np.random.randn(len(missing), self.signal_dim).astype(np.float32)
+            rng_batch = np.random.randn(len(missing), self.signal_dim).astype(
+                np.float32
+            )
             for i, fid in enumerate(missing):
                 batch_signals[fid] = rng_batch[i]
 
@@ -282,10 +294,10 @@ class NerveTopology:
         fired_ids = grid_result.get("ids", [])
         n_fired = len(fired_ids)
         n_fibers = len(self.fibers)
-        
+
         # Pre-size the feedback list to avoid reallocations
         feedback_batch: list[tuple[str, str, bool]] = []
-        
+
         fid_list = list(self.fibers.keys())
         for fid in fid_list:
             for idx in fired_ids:
@@ -316,7 +328,7 @@ class NerveTopology:
         compiled_fraction = routes_compiled / max(1, len(self.routing._routes))
         self.routing.chaos = max(
             0.01,
-            self._base_chaos * (1.0 - compiled_fraction) * 0.99 ** self.tick_count,
+            self._base_chaos * (1.0 - compiled_fraction) * 0.99**self.tick_count,
         )
 
         # ── Periodic: Decay Hebbian channels ──────────────────

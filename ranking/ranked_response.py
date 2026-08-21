@@ -22,6 +22,7 @@ class RankedResponse:
         latency_ms: Time to generate this response.
         timestamp: When this response was generated.
     """
+
     response: str
     source: str = "unknown"
     rank: int = 0

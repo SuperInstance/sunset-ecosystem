@@ -101,7 +101,9 @@ class DataSource:
 class FileSource(DataSource):
     """Read records from a JSONL or text file."""
 
-    def __init__(self, path: Path | str, parser: Callable[[str], dict[str, Any]] | None = None) -> None:
+    def __init__(
+        self, path: Path | str, parser: Callable[[str], dict[str, Any]] | None = None
+    ) -> None:
         self.path = Path(path)
         self.parser = parser or self._default_parser
 
@@ -253,12 +255,16 @@ class Pincher:
             if self.quanta_bridge is not None and "vector" in record:
                 vec = np.array(record["vector"], dtype=np.float32)
                 search_results = self.quanta_bridge.search(vec, k=1)
-                if not search_results or search_results[0].get("score", 0) < query.min_confidence:
+                if (
+                    not search_results
+                    or search_results[0].get("score", 0) < query.min_confidence
+                ):
                     continue
 
             # 3. Constraint validation (if caslang available)
             if self.caslang_executor is not None and query.constraints_script:
                 from .caslang_executor import CaslangScript
+
                 try:
                     script = CaslangScript.from_jsonl(query.constraints_script)
                     # Inject record into script variables
@@ -283,7 +289,12 @@ class Pincher:
             confidence = self._compute_confidence(matched_patterns, extracted_fields)
             if confidence >= query.min_confidence:
                 result = ExtractionResult(
-                    record_id=str(record.get("id", record.get("record_id", f"rec_{self._records_filtered}"))),
+                    record_id=str(
+                        record.get(
+                            "id",
+                            record.get("record_id", f"rec_{self._records_filtered}"),
+                        )
+                    ),
                     source=source.__class__.__name__,
                     matched_patterns=matched_patterns,
                     extracted_fields=extracted_fields,
@@ -312,6 +323,7 @@ class Pincher:
 
         try:
             from .quanta_vdb_bridge import QuantaTableEntry
+
             for r in results:
                 entry = QuantaTableEntry(
                     agent_id=r.record_id,

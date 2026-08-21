@@ -29,10 +29,12 @@ _GPU = None
 _GPU_ERROR = None
 try:
     import torch
+
     _GPU = "torch"
 except ImportError:
     try:
         import cupy as cp
+
         _GPU = "cupy"
     except ImportError:
         _GPU_ERROR = "No GPU backend available (torch/cupy)"
@@ -42,9 +44,11 @@ except ImportError:
 # Cell state
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CellState:
     """Structured state for a single cell."""
+
     energy: float = 0.0
     signal: float = 0.0
     identity_hash: int = 0
@@ -53,13 +57,16 @@ class CellState:
     generation: int = 0
 
     def to_vector(self) -> np.ndarray:
-        return np.array([
-            self.energy,
-            self.signal,
-            float(self.identity_hash % 1000) / 1000.0,
-            self.neighbor_influence,
-            float(self.generation),
-        ], dtype=np.float32)
+        return np.array(
+            [
+                self.energy,
+                self.signal,
+                float(self.identity_hash % 1000) / 1000.0,
+                self.neighbor_influence,
+                float(self.generation),
+            ],
+            dtype=np.float32,
+        )
 
     @classmethod
     def from_vector(cls, v: np.ndarray) -> "CellState":
@@ -76,6 +83,7 @@ class CellState:
 # Cellular grid
 # ---------------------------------------------------------------------------
 
+
 class CellularGrid:
     """n-dimensional grid of cells, numpy-backed, optional GPU."""
 
@@ -89,7 +97,9 @@ class CellularGrid:
         self._ndim = len(shape)
         self._dtype = dtype
         self._device = device
-        self._cells = np.zeros((*shape, 5), dtype=dtype)  # [energy, signal, identity, influence, generation]
+        self._cells = np.zeros(
+            (*shape, 5), dtype=dtype
+        )  # [energy, signal, identity, influence, generation]
         self._gpu = None
         if device != "cpu" and _GPU is not None:
             if _GPU == "torch":
@@ -125,17 +135,23 @@ class CellularGrid:
         if len(idx) != self._ndim:
             raise ValueError(f"Index dimension mismatch: {len(idx)} != {self._ndim}")
         self._cells[idx] = [
-            state.energy, state.signal,
-            float(state.identity_hash), state.neighbor_influence,
+            state.energy,
+            state.signal,
+            float(state.identity_hash),
+            state.neighbor_influence,
             float(state.generation),
         ]
 
-    def randomize(self, seed: Optional[int] = None, energy_range: Tuple[float, float] = (0.0, 1.0)) -> None:
+    def randomize(
+        self, seed: Optional[int] = None, energy_range: Tuple[float, float] = (0.0, 1.0)
+    ) -> None:
         if seed is not None:
             np.random.seed(seed)
         self._cells[..., 0] = np.random.uniform(*energy_range, size=self._shape)
         self._cells[..., 1] = np.random.uniform(0.0, 0.5, size=self._shape)
-        self._cells[..., 2] = np.random.randint(0, 10000, size=self._shape).astype(self._dtype)
+        self._cells[..., 2] = np.random.randint(0, 10000, size=self._shape).astype(
+            self._dtype
+        )
         self._cells[..., 3] = np.zeros(self._shape, dtype=self._dtype)
         self._cells[..., 4] = np.zeros(self._shape, dtype=self._dtype)
         self._energy_total = float(np.sum(self._cells[..., 0]))
@@ -146,9 +162,13 @@ class CellularGrid:
     def signal_density(self) -> float:
         return float(np.mean(self._cells[..., 1]))
 
-    def high_value_cells(self, energy_threshold: float = 0.7, signal_threshold: float = 0.5) -> List[Tuple[int, ...]]:
+    def high_value_cells(
+        self, energy_threshold: float = 0.7, signal_threshold: float = 0.5
+    ) -> List[Tuple[int, ...]]:
         """Return indices of cells exceeding both thresholds."""
-        mask = (self._cells[..., 0] > energy_threshold) & (self._cells[..., 1] > signal_threshold)
+        mask = (self._cells[..., 0] > energy_threshold) & (
+            self._cells[..., 1] > signal_threshold
+        )
         indices = np.argwhere(mask)
         return [tuple(int(i) for i in idx) for idx in indices]
 
@@ -161,6 +181,7 @@ class CellularGrid:
 # ---------------------------------------------------------------------------
 # CA generation kernel
 # ---------------------------------------------------------------------------
+
 
 class CAGenerationKernel:
     """Pure CA rules: diffusion, energy decay, signal propagation, reproduction."""
@@ -258,6 +279,7 @@ class CAGenerationKernel:
 # LLM injection kernel
 # ---------------------------------------------------------------------------
 
+
 class LLMInjectionKernel:
     """Identifies high-value cell clusters and queries LLM for state transitions."""
 
@@ -285,14 +307,16 @@ class LLMInjectionKernel:
         if llm_query_fn is None:
             return grid
 
-        high_value = grid.high_value_cells(self._energy_threshold, self._signal_threshold)
+        high_value = grid.high_value_cells(
+            self._energy_threshold, self._signal_threshold
+        )
         if not high_value:
             return grid
 
         # Cluster cells into groups (simple: first 16 cells per query)
         cluster_size = 16
         for i in range(0, len(high_value), cluster_size):
-            cluster_indices = high_value[i:i + cluster_size]
+            cluster_indices = high_value[i : i + cluster_size]
             states = [grid.get(idx) for idx in cluster_indices]
             cache_key = tuple(s.identity_hash for s in states)
             if cache_key in self._query_cache:
@@ -310,6 +334,7 @@ class LLMInjectionKernel:
 # ---------------------------------------------------------------------------
 # Cellular engine
 # ---------------------------------------------------------------------------
+
 
 class CellularEngine:
     """Orchestrates CA + LLM hybrid loop."""
@@ -341,12 +366,14 @@ class CellularEngine:
         self._llm.step(self._grid, self._llm_query_fn)
         self._step_count += 1
         if self._step_count % 10 == 0:
-            self._history.append({
-                "step": self._step_count,
-                "energy": self._grid.energy(),
-                "signal_density": self._grid.signal_density(),
-                "high_value_cells": len(self._grid.high_value_cells()),
-            })
+            self._history.append(
+                {
+                    "step": self._step_count,
+                    "energy": self._grid.energy(),
+                    "signal_density": self._grid.signal_density(),
+                    "high_value_cells": len(self._grid.high_value_cells()),
+                }
+            )
 
     def run_steps(self, n: int) -> None:
         for _ in range(n):
@@ -384,6 +411,7 @@ class CellularEngine:
 # Agent-cell mapper
 # ---------------------------------------------------------------------------
 
+
 class AgentCellMapper:
     """Bidirectional map between fleet agents and grid cells."""
 
@@ -405,7 +433,9 @@ class AgentCellMapper:
                     for x in range(shape[2]):
                         yield (z, y, x)
 
-    def spawn_agent(self, agent_id: str, state: Optional[CellState] = None) -> Tuple[int, ...]:
+    def spawn_agent(
+        self, agent_id: str, state: Optional[CellState] = None
+    ) -> Tuple[int, ...]:
         if agent_id in self._agent_to_cell:
             return self._agent_to_cell[agent_id]
         try:

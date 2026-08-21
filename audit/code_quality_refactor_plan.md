@@ -54,9 +54,7 @@ def export_json(self) -> str:
 The `__repr__` format string pattern is copy-pasted across 40+ modules with only the class name changed:
 ```python
 def __repr__(self) -> str:
-    return (
-        f"ClassName(root={self.root!r}, files={self.file_count}, ..."
-    )
+    return f"ClassName(root={self.root!r}, files={self.file_count}, ..."
 ```
 
 **Fix:** Use a generic `reprlib`-style helper or a `@dataclass` decorator where possible.
@@ -118,9 +116,12 @@ def __repr__(self) -> str:
 ```python
 def step(self) -> list[LifecycleTransition]:
     request = self._dequeue_request()
-    if not request: return []
-    if not self._check_thermal(request): return []
-    if not self._check_flux_gate(request): return []
+    if not request:
+        return []
+    if not self._check_thermal(request):
+        return []
+    if not self._check_flux_gate(request):
+        return []
     room = self._find_or_evict_room(request)
     child = self._create_child(request, room)
     self._run_post_spawn_checks(child, room)
@@ -254,18 +255,20 @@ capability_mask=0xFFFF                          # "0xFFFF" is a magic number
 
 ### P2 — `logos/compression_utils.py`
 ```python
-scaled = ((flat - min_val) / (max_val - min_val) * 255.0).astype(np.uint8)   # "255.0"
-scaled = ((flat - min_val) / (max_val - min_val) * 65535.0).astype(np.uint16) # "65535.0"
+scaled = ((flat - min_val) / (max_val - min_val) * 255.0).astype(np.uint8)  # "255.0"
+scaled = ((flat - min_val) / (max_val - min_val) * 65535.0).astype(
+    np.uint16
+)  # "65535.0"
 header = struct.pack("!f f B", min_val, max_val, 8)  # "8"
-header = struct.pack("!f f B", min_val, max_val, 16) # "16"
-header = struct.pack("!f B", float(flat[0]), 32)     # "32"
+header = struct.pack("!f f B", min_val, max_val, 16)  # "16"
+header = struct.pack("!f B", float(flat[0]), 32)  # "32"
 ```
 
 ### P2 — `perception/audio_encoder.py` & `perception/vision_encoder.py`
 ```python
-SAMPLE_RATE = 16000     # appears twice in audio_encoder.py
-CHUNK_SIZE = 64         # appears in both audio and vision
-EMBED_DIM = 512         # appears in both
+SAMPLE_RATE = 16000  # appears twice in audio_encoder.py
+CHUNK_SIZE = 64  # appears in both audio and vision
+EMBED_DIM = 512  # appears in both
 ```
 
 ---
@@ -299,7 +302,7 @@ This is a meta-observation, but the fact that the codebase has a dedicated scann
 def unpack(self, data: bytes, format: Optional[str] = None) -> Any:
     ...
     if fmt == "pickle":
-        return pickle.loads(data)   # ⚠️ ARBITRARY CODE EXECUTION
+        return pickle.loads(data)  # ⚠️ ARBITRARY CODE EXECUTION
 ```
 
 **Impact:** If an attacker controls the serialized bytes, they can execute arbitrary Python code via crafted pickle payloads. This is used for inter-node communication.
@@ -311,8 +314,9 @@ def unpack(self, data: bytes, format: Optional[str] = None) -> Any:
 @staticmethod
 def decompress(compressed: CompressionResult) -> dict[str, Any]:
     import pickle
+
     raw = zlib.decompress(compressed.data)
-    return pickle.loads(raw)   # ⚠️ ARBITRARY CODE EXECUTION
+    return pickle.loads(raw)  # ⚠️ ARBITRARY CODE EXECUTION
 ```
 
 **Impact:** Same as above. `DictCompressor` is used for mesh gossip and WAL entries.

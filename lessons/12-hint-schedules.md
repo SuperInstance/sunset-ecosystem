@@ -33,10 +33,14 @@ external guidance. A teacher that never reduces hints creates dependency, not co
 ```python
 # Hint schedule simulation
 def hint_level(wins):
-    if wins < 3: return 10
-    if wins < 8: return 7
-    if wins < 15: return 3
+    if wins < 3:
+        return 10
+    if wins < 8:
+        return 7
+    if wins < 15:
+        return 3
     return 0
+
 
 for wins in [0, 2, 5, 10, 20]:
     print(f"Wins: {wins:2d} → Hint level: {hint_level(wins)}")

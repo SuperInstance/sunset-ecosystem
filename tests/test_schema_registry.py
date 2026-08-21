@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_schema_registry.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -22,8 +23,16 @@ class TestSchemaRegistry:
 
     def test_register_multiple_versions(self):
         reg = SchemaRegistry()
-        reg.register("user", {"type": "object", "properties": {"name": {"type": "string"}}})
-        v = reg.register("user", {"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}}})
+        reg.register(
+            "user", {"type": "object", "properties": {"name": {"type": "string"}}}
+        )
+        v = reg.register(
+            "user",
+            {
+                "type": "object",
+                "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+            },
+        )
         assert v == 2
         assert reg.latest_version("user") == 2
 
@@ -52,20 +61,61 @@ class TestSchemaRegistry:
     def test_set_compatibility(self):
         reg = SchemaRegistry()
         reg.set_compatibility("user", "backward")
-        reg.register("user", {"type": "object", "properties": {"name": {"type": "string"}}})
-        assert reg.is_compatible("user", {"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}}}) is True
+        reg.register(
+            "user", {"type": "object", "properties": {"name": {"type": "string"}}}
+        )
+        assert (
+            reg.is_compatible(
+                "user",
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "age": {"type": "integer"},
+                    },
+                },
+            )
+            is True
+        )
 
     def test_backward_incompatible(self):
         reg = SchemaRegistry()
         reg.set_compatibility("user", "backward")
-        reg.register("user", {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]})
+        reg.register(
+            "user",
+            {
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
+            },
+        )
         assert reg.is_compatible("user", {"type": "object", "properties": {}}) is False
 
     def test_forward_compatible(self):
         reg = SchemaRegistry()
         reg.set_compatibility("user", "forward")
-        reg.register("user", {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]})
-        assert reg.is_compatible("user", {"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}}, "required": ["name"]}) is True
+        reg.register(
+            "user",
+            {
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
+            },
+        )
+        assert (
+            reg.is_compatible(
+                "user",
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "age": {"type": "integer"},
+                    },
+                    "required": ["name"],
+                },
+            )
+            is True
+        )
 
     def test_none_compatible(self):
         reg = SchemaRegistry()

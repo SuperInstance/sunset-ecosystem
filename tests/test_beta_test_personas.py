@@ -19,6 +19,7 @@ from fleet.beta_test_personas import (
 # Persona
 # ---------------------------------------------------------------------------
 
+
 class TestPersona:
     def test_defaults(self):
         p = Persona(name="Test", role="tester", expertise_level=3)
@@ -30,16 +31,21 @@ class TestPersona:
 # BetaTestResult
 # ---------------------------------------------------------------------------
 
+
 class TestBetaTestResult:
     def test_is_passing_true(self):
         p = Persona(name="T", role="r", expertise_level=3)
-        s = BetaTestScenario(repo_name="x", repo_metadata={}, task_description="t", expected_outcome="ok")
+        s = BetaTestScenario(
+            repo_name="x", repo_metadata={}, task_description="t", expected_outcome="ok"
+        )
         r = BetaTestResult(persona=p, scenario=s, rating=3)
         assert r.is_passing()
 
     def test_is_passing_false(self):
         p = Persona(name="T", role="r", expertise_level=3)
-        s = BetaTestScenario(repo_name="x", repo_metadata={}, task_description="t", expected_outcome="ok")
+        s = BetaTestScenario(
+            repo_name="x", repo_metadata={}, task_description="t", expected_outcome="ok"
+        )
         r = BetaTestResult(persona=p, scenario=s, rating=2)
         assert not r.is_passing()
 
@@ -47,6 +53,7 @@ class TestBetaTestResult:
 # ---------------------------------------------------------------------------
 # PersonaLibrary
 # ---------------------------------------------------------------------------
+
 
 class TestPersonaLibrary:
     def test_get_devops(self):
@@ -75,6 +82,7 @@ class TestPersonaLibrary:
 # ---------------------------------------------------------------------------
 # BetaTestRunner simulate_discovery
 # ---------------------------------------------------------------------------
+
 
 class TestSimulateDiscovery:
     def test_perfect_repo(self):
@@ -115,12 +123,21 @@ class TestSimulateDiscovery:
 
     def test_junior_developer(self):
         meta = {"name": "x", "readme": "quickstart architecture", "has_examples": True}
-        result = BetaTestRunner.simulate_discovery(meta, persona_name="junior_developer")
+        result = BetaTestRunner.simulate_discovery(
+            meta, persona_name="junior_developer"
+        )
         assert result.rating == 5
 
     def test_security_auditor(self):
-        meta = {"name": "x", "has_sbom": True, "has_secrets": False, "signed_releases": True}
-        result = BetaTestRunner.simulate_discovery(meta, persona_name="security_auditor")
+        meta = {
+            "name": "x",
+            "has_sbom": True,
+            "has_secrets": False,
+            "signed_releases": True,
+        }
+        result = BetaTestRunner.simulate_discovery(
+            meta, persona_name="security_auditor"
+        )
         assert result.rating == 5
 
     def test_time_to_first(self):
@@ -145,6 +162,7 @@ class TestSimulateDiscovery:
 # run_all_tests
 # ---------------------------------------------------------------------------
 
+
 class TestRunAllTests:
     def test_all_personas(self):
         meta = {"name": "perfect", "readme": "deploy", "has_docker": True}
@@ -157,6 +175,7 @@ class TestRunAllTests:
 # ---------------------------------------------------------------------------
 # generate_report
 # ---------------------------------------------------------------------------
+
 
 class TestGenerateReport:
     def test_markdown_output(self):

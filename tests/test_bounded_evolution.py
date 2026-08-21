@@ -19,6 +19,7 @@ from fleet.bounded_evolution import (
 # BoundedParameter
 # ===================================================================
 
+
 class TestBoundedParameter:
     def test_clamp_within_range(self) -> None:
         p = BoundedParameter(value=5.0, min=0.0, max=10.0)
@@ -37,7 +38,9 @@ class TestBoundedParameter:
         assert p.range == 10.0
 
     def test_copy(self) -> None:
-        p = BoundedParameter(value=5.0, min=0.0, max=10.0, mutation_rate=0.2, fitness_score=1.0, name="x")
+        p = BoundedParameter(
+            value=5.0, min=0.0, max=10.0, mutation_rate=0.2, fitness_score=1.0, name="x"
+        )
         c = p.copy()
         assert c.value == 5.0
         assert c.min == 0.0
@@ -53,6 +56,7 @@ class TestBoundedParameter:
 # ===================================================================
 # EvolutionEngine — Initialization
 # ===================================================================
+
 
 class TestEvolutionEngineInit:
     def test_empty_params(self) -> None:
@@ -92,6 +96,7 @@ class TestEvolutionEngineInit:
 # Fitness Scoring
 # ===================================================================
 
+
 class TestFitnessScoring:
     def test_score_single_param(self) -> None:
         p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha")
@@ -116,8 +121,12 @@ class TestFitnessScoring:
         assert engine.parameters["beta"].fitness_score == 1.5
 
     def test_average_fitness(self) -> None:
-        p1 = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=1.0)
-        p2 = BoundedParameter(value=3.0, min=0.0, max=10.0, name="beta", fitness_score=3.0)
+        p1 = BoundedParameter(
+            value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=1.0
+        )
+        p2 = BoundedParameter(
+            value=3.0, min=0.0, max=10.0, name="beta", fitness_score=3.0
+        )
         engine = EvolutionEngine([p1, p2])
         assert engine.average_fitness() == 2.0
 
@@ -132,27 +141,36 @@ class TestFitnessScoring:
 # Mode Selection
 # ===================================================================
 
+
 class TestModeSelection:
     def test_auto_mode_aggressive(self) -> None:
-        p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=0.0)
+        p = BoundedParameter(
+            value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=0.0
+        )
         engine = EvolutionEngine([p], mode=EvolutionMode.NORMAL, auto_mode=True)
         engine.evolve()
         assert engine.mode == EvolutionMode.AGGRESSIVE
 
     def test_auto_mode_elite(self) -> None:
-        p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=1.0)
+        p = BoundedParameter(
+            value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=1.0
+        )
         engine = EvolutionEngine([p], mode=EvolutionMode.NORMAL, auto_mode=True)
         engine.evolve()
         assert engine.mode == EvolutionMode.ELITE
 
     def test_auto_mode_normal(self) -> None:
-        p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=0.5)
+        p = BoundedParameter(
+            value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=0.5
+        )
         engine = EvolutionEngine([p], mode=EvolutionMode.NORMAL, auto_mode=True)
         engine.evolve()
         assert engine.mode == EvolutionMode.NORMAL
 
     def test_auto_mode_disabled(self) -> None:
-        p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=0.0)
+        p = BoundedParameter(
+            value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=0.0
+        )
         engine = EvolutionEngine([p], mode=EvolutionMode.ELITE, auto_mode=False)
         engine.evolve()
         assert engine.mode == EvolutionMode.ELITE
@@ -166,6 +184,7 @@ class TestModeSelection:
 # ===================================================================
 # Snapshots & Rollback
 # ===================================================================
+
 
 class TestSnapshots:
     def test_snapshot_created(self) -> None:
@@ -226,22 +245,29 @@ class TestSnapshots:
 # Mutation Types
 # ===================================================================
 
+
 class TestMutations:
     def test_param_adjust_changes_value(self) -> None:
-        p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha", mutation_rate=1.0)
+        p = BoundedParameter(
+            value=5.0, min=0.0, max=10.0, name="alpha", mutation_rate=1.0
+        )
         engine = EvolutionEngine([p], seed=42)
         engine._apply_single_mutation("alpha", MutationType.PARAM_ADJUST, 1.0)
         assert engine.parameters["alpha"].value != 5.0
         assert 0.0 <= engine.parameters["alpha"].value <= 10.0
 
     def test_threshold_shift_changes_value(self) -> None:
-        p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha", mutation_rate=1.0)
+        p = BoundedParameter(
+            value=5.0, min=0.0, max=10.0, name="alpha", mutation_rate=1.0
+        )
         engine = EvolutionEngine([p], seed=42)
         engine._apply_single_mutation("alpha", MutationType.THRESHOLD_SHIFT, 1.0)
         assert engine.parameters["alpha"].value != 5.0
 
     def test_weight_rebalance_toward_mid(self) -> None:
-        p = BoundedParameter(value=2.0, min=0.0, max=10.0, name="alpha", mutation_rate=1.0)
+        p = BoundedParameter(
+            value=2.0, min=0.0, max=10.0, name="alpha", mutation_rate=1.0
+        )
         engine = EvolutionEngine([p], seed=42)
         engine._apply_single_mutation("alpha", MutationType.WEIGHT_REBALANCE, 1.0)
         # Should move toward midpoint (5.0)
@@ -254,7 +280,9 @@ class TestMutations:
         assert engine.parameters["alpha"].value == 8.0
 
     def test_scale(self) -> None:
-        p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha", mutation_rate=1.0)
+        p = BoundedParameter(
+            value=5.0, min=0.0, max=10.0, name="alpha", mutation_rate=1.0
+        )
         engine = EvolutionEngine([p], seed=42)
         engine._apply_single_mutation("alpha", MutationType.SCALE, 1.0)
         assert engine.parameters["alpha"].value != 5.0
@@ -299,7 +327,9 @@ class TestMutations:
         assert engine.parameters["beta"].value == 2.0
 
     def test_clamping_after_mutation(self) -> None:
-        p = BoundedParameter(value=9.0, min=0.0, max=10.0, name="alpha", mutation_rate=1.0)
+        p = BoundedParameter(
+            value=9.0, min=0.0, max=10.0, name="alpha", mutation_rate=1.0
+        )
         engine = EvolutionEngine([p], seed=42)
         # Force a big mutation that would exceed bounds
         engine._apply_single_mutation("alpha", MutationType.PARAM_ADJUST, 10.0)
@@ -323,11 +353,14 @@ class TestMutations:
 # Evolution Strategies
 # ===================================================================
 
+
 class TestEvolutionStrategies:
     def test_normal_mode_mutates_all(self) -> None:
         p1 = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha")
         p2 = BoundedParameter(value=5.0, min=0.0, max=10.0, name="beta")
-        engine = EvolutionEngine([p1, p2], mode=EvolutionMode.NORMAL, auto_mode=False, seed=42)
+        engine = EvolutionEngine(
+            [p1, p2], mode=EvolutionMode.NORMAL, auto_mode=False, seed=42
+        )
         engine.evolve()
         assert engine.generation == 1
         # At least one param should have changed
@@ -341,14 +374,22 @@ class TestEvolutionStrategies:
         p2 = BoundedParameter(value=5.0, min=0.0, max=10.0, name="beta")
         p3 = BoundedParameter(value=5.0, min=0.0, max=10.0, name="gamma")
         p4 = BoundedParameter(value=5.0, min=0.0, max=10.0, name="delta")
-        engine = EvolutionEngine([p1, p2, p3, p4], mode=EvolutionMode.AGGRESSIVE, auto_mode=False, seed=42)
+        engine = EvolutionEngine(
+            [p1, p2, p3, p4], mode=EvolutionMode.AGGRESSIVE, auto_mode=False, seed=42
+        )
         engine.evolve()
         assert engine.generation == 1
 
     def test_elite_mode_mutates_worst(self) -> None:
-        p1 = BoundedParameter(value=7.0, min=0.0, max=10.0, name="alpha", fitness_score=1.0)
-        p2 = BoundedParameter(value=3.0, min=0.0, max=10.0, name="beta", fitness_score=0.0)
-        engine = EvolutionEngine([p1, p2], mode=EvolutionMode.ELITE, auto_mode=False, seed=123)
+        p1 = BoundedParameter(
+            value=7.0, min=0.0, max=10.0, name="alpha", fitness_score=1.0
+        )
+        p2 = BoundedParameter(
+            value=3.0, min=0.0, max=10.0, name="beta", fitness_score=0.0
+        )
+        engine = EvolutionEngine(
+            [p1, p2], mode=EvolutionMode.ELITE, auto_mode=False, seed=123
+        )
         engine.evolve()
         # Beta (worst) should have mutated, alpha (best) should not
         assert engine.parameters["beta"].value != 3.0
@@ -356,7 +397,9 @@ class TestEvolutionStrategies:
 
     def test_multiple_evolutions(self) -> None:
         p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha")
-        engine = EvolutionEngine([p], mode=EvolutionMode.NORMAL, auto_mode=False, seed=42)
+        engine = EvolutionEngine(
+            [p], mode=EvolutionMode.NORMAL, auto_mode=False, seed=42
+        )
         for _ in range(10):
             engine.evolve()
         assert engine.generation == 10
@@ -367,8 +410,12 @@ class TestEvolutionStrategies:
         assert engine.generation == 1  # still increments
 
     def test_safe_mutations_in_elite(self) -> None:
-        p = BoundedParameter(value=3.0, min=0.0, max=10.0, name="alpha", fitness_score=0.0)
-        engine = EvolutionEngine([p], mode=EvolutionMode.ELITE, auto_mode=False, seed=123)
+        p = BoundedParameter(
+            value=3.0, min=0.0, max=10.0, name="alpha", fitness_score=0.0
+        )
+        engine = EvolutionEngine(
+            [p], mode=EvolutionMode.ELITE, auto_mode=False, seed=123
+        )
         engine.evolve()
         # Elite mode should only use safe mutations (no crossover/swap)
         assert engine.parameters["alpha"].value != 3.0
@@ -377,6 +424,7 @@ class TestEvolutionStrategies:
 # ===================================================================
 # Edge Cases
 # ===================================================================
+
 
 class TestEdgeCases:
     def test_repr(self) -> None:
@@ -405,14 +453,18 @@ class TestEdgeCases:
 
     def test_single_param_evolve(self) -> None:
         p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha")
-        engine = EvolutionEngine([p], mode=EvolutionMode.NORMAL, auto_mode=False, seed=42)
+        engine = EvolutionEngine(
+            [p], mode=EvolutionMode.NORMAL, auto_mode=False, seed=42
+        )
         engine.evolve()
         assert engine.generation == 1
 
     def test_two_param_aggressive(self) -> None:
         p1 = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha")
         p2 = BoundedParameter(value=5.0, min=0.0, max=10.0, name="beta")
-        engine = EvolutionEngine([p1, p2], mode=EvolutionMode.AGGRESSIVE, auto_mode=False, seed=42)
+        engine = EvolutionEngine(
+            [p1, p2], mode=EvolutionMode.AGGRESSIVE, auto_mode=False, seed=42
+        )
         engine.evolve()
         # With 2 params, crossover happens then remaining (0) get single mutation
         assert engine.generation == 1
@@ -421,21 +473,31 @@ class TestEdgeCases:
         p1 = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha")
         p2 = BoundedParameter(value=5.0, min=0.0, max=10.0, name="beta")
         p3 = BoundedParameter(value=5.0, min=0.0, max=10.0, name="gamma")
-        engine = EvolutionEngine([p1, p2, p3], mode=EvolutionMode.AGGRESSIVE, auto_mode=False, seed=42)
+        engine = EvolutionEngine(
+            [p1, p2, p3], mode=EvolutionMode.AGGRESSIVE, auto_mode=False, seed=42
+        )
         engine.evolve()
         # With 3 params: crossover pair, remaining 1 gets single mutation
         assert engine.generation == 1
 
     def test_fitness_after_evolve(self) -> None:
-        p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=0.5)
-        engine = EvolutionEngine([p], mode=EvolutionMode.NORMAL, auto_mode=True, seed=42)
+        p = BoundedParameter(
+            value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=0.5
+        )
+        engine = EvolutionEngine(
+            [p], mode=EvolutionMode.NORMAL, auto_mode=True, seed=42
+        )
         engine.evolve()
         # Fitness scores should be preserved across generations
         assert engine.parameters["alpha"].fitness_score == 0.5
 
     def test_rollback_preserves_fitness(self) -> None:
-        p = BoundedParameter(value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=1.0)
-        engine = EvolutionEngine([p], mode=EvolutionMode.NORMAL, auto_mode=False, seed=42)
+        p = BoundedParameter(
+            value=5.0, min=0.0, max=10.0, name="alpha", fitness_score=1.0
+        )
+        engine = EvolutionEngine(
+            [p], mode=EvolutionMode.NORMAL, auto_mode=False, seed=42
+        )
         engine.evolve()
         engine.score({"alpha": engine.parameters["alpha"].value}, 2.0)
         engine.evolve()

@@ -122,7 +122,9 @@ class TestBlacklist:
         mesh_layer.update_affinity("BadPeer", HebbianOutcome.VIOLATION)
         assert mesh_layer.is_blacklisted("BadPeer")
 
-    def test_blacklisted_peer_ignored_for_non_novelty(self, mesh_layer: HebbianMeshLayer):
+    def test_blacklisted_peer_ignored_for_non_novelty(
+        self, mesh_layer: HebbianMeshLayer
+    ):
         """Blacklisted peer should not get affinity updates from SUCCESS/TIMEOUT."""
         mesh_layer.update_affinity("BadPeer", HebbianOutcome.VIOLATION)
         mesh_layer.update_affinity("BadPeer", HebbianOutcome.VIOLATION)
@@ -215,7 +217,9 @@ class TestChaosFactor:
         chaos = mesh.chaos_factor
         assert chaos >= CHAOS_MAX * 0.8  # Should be near max
 
-    def test_chaos_decreases_when_diversity_recovers(self, mesh_layer: HebbianMeshLayer):
+    def test_chaos_decreases_when_diversity_recovers(
+        self, mesh_layer: HebbianMeshLayer
+    ):
         """High diversity should push chaos toward CHAOS_MIN."""
         # Default mock_table_64 has reasonably diverse vectors
         chaos = mesh_layer.chaos_factor
@@ -403,9 +407,7 @@ class TestConcurrency:
             t.start()
             t.join(timeout=1.0)
 
-        assert not t.is_alive(), (
-            "route_with_chaos() deadlocked — it is NOT lock-free"
-        )
+        assert not t.is_alive(), "route_with_chaos() deadlocked — it is NOT lock-free"
         assert result[0] is not None
         assert len(result[0]) == 3
         assert all(p in [f"peer_{i}" for i in range(10)] for p in result[0])
@@ -415,7 +417,9 @@ class TestConcurrency:
 
 
 class TestGossipWrapper:
-    def test_gossip_round_updates_affinity(self, mesh_layer: HebbianMeshLayer, mock_table_64: FluxVectorTable):
+    def test_gossip_round_updates_affinity(
+        self, mesh_layer: HebbianMeshLayer, mock_table_64: FluxVectorTable
+    ):
         """The gossip_round wrapper should auto-update affinities from results."""
         # Inject a remote delta so merge succeeds
         remote_deltas = {

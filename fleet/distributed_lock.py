@@ -12,6 +12,7 @@ import numpy as np
 @dataclass
 class LockToken:
     """A distributed lock token."""
+
     resource: str
     holder: str
     timestamp: float
@@ -44,10 +45,16 @@ class DistributedLock:
         self.default_ttl = default_ttl
         self._locks: Dict[str, LockToken] = {}
         self._lock = threading.Lock()
-        self._stats: Dict[str, int] = {"acquired": 0, "released": 0, "expired": 0, "failed": 0}
+        self._stats: Dict[str, int] = {
+            "acquired": 0,
+            "released": 0,
+            "expired": 0,
+            "failed": 0,
+        }
 
-    def acquire(self, resource: str, holder: Optional[str] = None,
-                ttl: Optional[float] = None) -> Optional[LockToken]:
+    def acquire(
+        self, resource: str, holder: Optional[str] = None, ttl: Optional[float] = None
+    ) -> Optional[LockToken]:
         """
         Acquire a lock on a resource.
         Returns token if successful, None if already locked.
@@ -70,7 +77,9 @@ class DistributedLock:
                 holder=holder,
                 timestamp=time.time(),
                 ttl=ttl,
-                token_id=hashlib.sha256(f"{resource}:{holder}:{time.time()}".encode()).hexdigest()[:16],
+                token_id=hashlib.sha256(
+                    f"{resource}:{holder}:{time.time()}".encode()
+                ).hexdigest()[:16],
             )
             self._locks[resource] = token
             self._stats["acquired"] += 1
@@ -91,8 +100,9 @@ class DistributedLock:
             self._stats["released"] += 1
             return True
 
-    def renew(self, resource: str, token_id: str,
-              extension: Optional[float] = None) -> bool:
+    def renew(
+        self, resource: str, token_id: str, extension: Optional[float] = None
+    ) -> bool:
         """Renew a lock's TTL."""
         with self._lock:
             if resource not in self._locks:

@@ -76,6 +76,7 @@ Once FM pushes the `.so`:
 # In swarm/hdc_novelty.py
 try:
     from superinstance_ffi import load_ffi  # real CDLL
+
     HAS_FFI = True
 except OSError:
     HAS_FFI = False

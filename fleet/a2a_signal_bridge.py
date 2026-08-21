@@ -67,9 +67,11 @@ from datetime import datetime, timezone
 # ConfidenceScore — first-class uncertainty
 # ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class ConfidenceScore:
     """Confidence in [0.0, 1.0]. Every result carries one."""
+
     value: float
 
     def __post_init__(self):
@@ -111,15 +113,19 @@ class ConfidenceScore:
 # SignalMessage — envelope with schema versioning
 # ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class SignalMessage:
     """A2A signal message envelope."""
+
     sender: str
     recipient: str
     body: dict[str, Any] = field(default_factory=dict)
     schema: str = "https://flux.a2a/signal/v1"
     message_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
     meta: dict[str, Any] = field(default_factory=dict)
     confidence: ConfidenceScore = field(default_factory=lambda: ConfidenceScore(1.0))
 
@@ -138,7 +144,16 @@ class SignalMessage:
     @classmethod
     def from_dict(cls, d: dict) -> SignalMessage:
         """Parse from dict. Unknown fields go into meta."""
-        known = {"sender", "recipient", "body", "message_id", "timestamp", "schema", "confidence", "meta"}
+        known = {
+            "sender",
+            "recipient",
+            "body",
+            "message_id",
+            "timestamp",
+            "schema",
+            "confidence",
+            "meta",
+        }
         meta = dict(d.get("meta", {}))
         for k, v in d.items():
             if k not in known and not k.startswith("$"):
@@ -159,9 +174,11 @@ class SignalMessage:
 # AgentPosition — multi-dimensional opinion space
 # ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class AgentPosition:
     """An agent's stance in a multi-dimensional opinion space."""
+
     agent_id: str
     vector: list[float]
     confidence: ConfidenceScore = field(default_factory=lambda: ConfidenceScore(1.0))
@@ -190,6 +207,7 @@ class AgentPosition:
 # Consensus Types
 # ─────────────────────────────────────────────────────────────
 
+
 class ConsensusType(Enum):
     UNANIMOUS = "unanimous"
     MAJORITY = "majority"
@@ -212,6 +230,7 @@ class ResolutionType(Enum):
 @dataclass
 class ConsensusResult:
     """Result of consensus detection."""
+
     type: ConsensusType
     confidence: ConfidenceScore
     positions: list[AgentPosition]
@@ -225,7 +244,9 @@ class ConsensusResult:
         return {
             "type": self.type.value,
             "confidence": self.confidence.value,
-            "winning_agent": self.winning_position.agent_id if self.winning_position else None,
+            "winning_agent": self.winning_position.agent_id
+            if self.winning_position
+            else None,
             "resolution": self.resolution.value if self.resolution else None,
             "explanation": self.explanation,
             "agreement_count": self.agreement_count,
@@ -236,6 +257,7 @@ class ConsensusResult:
 # ─────────────────────────────────────────────────────────────
 # ConsensusDetector — detect when agents agree
 # ─────────────────────────────────────────────────────────────
+
 
 class ConsensusDetector:
     """
@@ -302,7 +324,7 @@ class ConsensusDetector:
         if agreement_count == n:
             ctype = ConsensusType.UNANIMOUS
             explanation = f"All {n} agents agree"
-        elif agreement_count / n > (2/3):
+        elif agreement_count / n > (2 / 3):
             ctype = ConsensusType.SUPERMAJORITY
             explanation = f"{agreement_count}/{n} agents agree (supermajority)"
         elif agreement_count / n > 0.5:
@@ -350,7 +372,10 @@ class ConsensusDetector:
             pairs = 0
             for i in range(len(batch)):
                 for j in range(i + 1, len(batch)):
-                    if batch[i].cosine_similarity(batch[j]) >= self.similarity_threshold:
+                    if (
+                        batch[i].cosine_similarity(batch[j])
+                        >= self.similarity_threshold
+                    ):
                         agreements += 1
                     pairs += 1
             avg_agreement.append(agreements / pairs if pairs > 0 else 0.0)
@@ -366,6 +391,7 @@ class ConsensusDetector:
 # ─────────────────────────────────────────────────────────────
 # Branch — parallel exploration
 # ─────────────────────────────────────────────────────────────
+
 
 class BranchStrategy(Enum):
     PARALLEL = "parallel"
@@ -385,6 +411,7 @@ class MergeStrategyType(Enum):
 @dataclass
 class Branch:
     """Parallel exploration with configurable merge."""
+
     label: str
     body: dict[str, Any] = field(default_factory=dict)
     weight: float = 1.0
@@ -404,18 +431,23 @@ class Branch:
 @dataclass
 class BranchPoint:
     """A point where execution splits into parallel branches."""
+
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     branches: list[Branch] = field(default_factory=list)
     strategy: BranchStrategy = BranchStrategy.PARALLEL
     merge_type: MergeStrategyType = MergeStrategyType.CONSENSUS
     status: str = "pending"
 
-    def add_branch(self, label: str, body: dict[str, Any], weight: float = 1.0) -> Branch:
+    def add_branch(
+        self, label: str, body: dict[str, Any], weight: float = 1.0
+    ) -> Branch:
         b = Branch(label=label, body=body, weight=weight)
         self.branches.append(b)
         return b
 
-    def set_results(self, label: str, result: dict[str, Any], confidence: float) -> None:
+    def set_results(
+        self, label: str, result: dict[str, Any], confidence: float
+    ) -> None:
         for b in self.branches:
             if b.label == label:
                 b.result = result
@@ -430,7 +462,11 @@ class BranchPoint:
 
         if self.merge_type == MergeStrategyType.BEST:
             best = max(completed, key=lambda b: b.confidence.value)
-            return {"winner": best.label, "result": best.result, "confidence": best.confidence.value}
+            return {
+                "winner": best.label,
+                "result": best.result,
+                "confidence": best.confidence.value,
+            }
 
         if self.merge_type == MergeStrategyType.VOTE:
             counts: dict[str, int] = {}
@@ -472,6 +508,7 @@ class BranchPoint:
 # Fork — agent inheritance with state control
 # ─────────────────────────────────────────────────────────────
 
+
 class ForkOnComplete(Enum):
     COLLECT = "collect"
     DISCARD = "discard"
@@ -488,6 +525,7 @@ class ForkConflictMode(Enum):
 @dataclass
 class Fork:
     """Agent inheritance with fine-grained state control."""
+
     parent_id: str
     child_id: str
     inherited_state: dict[str, Any] = field(default_factory=dict)
@@ -514,7 +552,11 @@ class Fork:
         merged = dict(self.inherited_state)
         merged.update(self.child_state)
         for k, v in self.result.items():
-            if k in self.inherited_state and isinstance(v, (int, float)) and isinstance(self.inherited_state[k], (int, float)):
+            if (
+                k in self.inherited_state
+                and isinstance(v, (int, float))
+                and isinstance(self.inherited_state[k], (int, float))
+            ):
                 w = self.confidence.value
                 merged[k] = self.inherited_state[k] * (1 - w) + v * w
             else:
@@ -536,6 +578,7 @@ class Fork:
 # CoIterate — shared program traversal
 # ─────────────────────────────────────────────────────────────
 
+
 class SharedStateMode(Enum):
     CONFLICT = "conflict"
     MERGE = "merge"
@@ -553,6 +596,7 @@ class CoIterateMergeType(Enum):
 @dataclass
 class Cursor:
     """Position in a shared program."""
+
     agent_id: str
     position: int = 0
     modifications: int = 0
@@ -570,6 +614,7 @@ class Cursor:
 @dataclass
 class SharedProgram:
     """A program that multiple agents can traverse simultaneously."""
+
     name: str
     body: list[dict[str, Any]] = field(default_factory=list)
     cursors: list[Cursor] = field(default_factory=list)
@@ -618,6 +663,7 @@ class SharedProgram:
 # Discuss — structured agent discourse
 # ─────────────────────────────────────────────────────────────
 
+
 class DiscourseMode(Enum):
     DEBATE = "debate"
     BRAINSTORM = "brainstorm"
@@ -628,6 +674,7 @@ class DiscourseMode(Enum):
 @dataclass
 class Turn:
     """A single turn in a structured discussion."""
+
     agent_id: str
     position: AgentPosition
     confidence: ConfidenceScore
@@ -647,6 +694,7 @@ class Turn:
 @dataclass
 class Discussion:
     """Structured multi-agent discourse with a topic and rounds."""
+
     topic: str
     mode: DiscourseMode = DiscourseMode.DEBATE
     rounds: list[list[Turn]] = field(default_factory=list)
@@ -698,9 +746,11 @@ class Discussion:
 # Reflect — meta-cognition and self-assessment
 # ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Reflection:
     """Meta-cognitive assessment of an agent's own performance."""
+
     agent_id: str
     self_confidence: ConfidenceScore
     strategy: str = ""
@@ -724,7 +774,9 @@ class SelfAssessor:
         self.target_confidence = target_confidence
         self.history: list[Reflection] = []
 
-    def assess(self, agent_id: str, confidence: ConfidenceScore, context: dict[str, Any]) -> Reflection:
+    def assess(
+        self, agent_id: str, confidence: ConfidenceScore, context: dict[str, Any]
+    ) -> Reflection:
         """Assess an agent and suggest adjustments."""
         adjustments: list[str] = []
         if confidence.value < self.target_confidence * 0.5:
@@ -762,8 +814,10 @@ class SelfAssessor:
         if len(self.history) < 2:
             return "stable"
         values = [r.self_confidence.value for r in self.history]
-        first_half = sum(values[:len(values)//2]) / max(len(values)//2, 1)
-        second_half = sum(values[len(values)//2:]) / max(len(values) - len(values)//2, 1)
+        first_half = sum(values[: len(values) // 2]) / max(len(values) // 2, 1)
+        second_half = sum(values[len(values) // 2 :]) / max(
+            len(values) - len(values) // 2, 1
+        )
         if second_half > first_half + 0.1:
             return "improving"
         elif second_half < first_half - 0.1:

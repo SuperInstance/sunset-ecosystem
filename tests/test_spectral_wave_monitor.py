@@ -23,6 +23,7 @@ from fleet.spectral_wave_monitor import (
 # Graph Construction
 # ===================================================================
 
+
 class TestGraphConstruction:
     def test_empty_graph(self) -> None:
         ws = WaveState()
@@ -56,6 +57,7 @@ class TestGraphConstruction:
 # Spectral Core
 # ===================================================================
 
+
 class TestSpectralCore:
     def test_laplacian_of_triangle(self) -> None:
         # Complete graph K3 (triangle)
@@ -86,10 +88,17 @@ class TestSpectralCore:
 
     def test_fiedler_complete_graph(self) -> None:
         # Complete graph K4: λ₂ = 4
-        ws = WaveState.from_edges(4, [
-            (0, 1, 1.0), (0, 2, 1.0), (0, 3, 1.0),
-            (1, 2, 1.0), (1, 3, 1.0), (2, 3, 1.0),
-        ])
+        ws = WaveState.from_edges(
+            4,
+            [
+                (0, 1, 1.0),
+                (0, 2, 1.0),
+                (0, 3, 1.0),
+                (1, 2, 1.0),
+                (1, 3, 1.0),
+                (2, 3, 1.0),
+            ],
+        )
         lam2 = ws.fiedler_eigenvalue()
         assert lam2 == pytest.approx(4.0, abs=0.01)
 
@@ -119,6 +128,7 @@ class TestSpectralCore:
 # ===================================================================
 # Frequency Sweep & Standing Waves
 # ===================================================================
+
 
 class TestFrequencySweep:
     def test_frequency_sweep_shape(self) -> None:
@@ -160,13 +170,21 @@ class TestFrequencySweep:
 # Conservation Ratio & Coherence
 # ===================================================================
 
+
 class TestConservationRatio:
     def test_cr_complete_graph(self) -> None:
         # K4: λ₂ = 4, avg_deg = 3, CR = 4/3 ≈ 1.33 → clamped to 1.0
-        ws = WaveState.from_edges(4, [
-            (0, 1, 1.0), (0, 2, 1.0), (0, 3, 1.0),
-            (1, 2, 1.0), (1, 3, 1.0), (2, 3, 1.0),
-        ])
+        ws = WaveState.from_edges(
+            4,
+            [
+                (0, 1, 1.0),
+                (0, 2, 1.0),
+                (0, 3, 1.0),
+                (1, 2, 1.0),
+                (1, 3, 1.0),
+                (2, 3, 1.0),
+            ],
+        )
         cr = conservation_ratio(ws)
         assert cr == pytest.approx(1.0, abs=1e-10)
 
@@ -224,6 +242,7 @@ class TestConservationRatio:
 # Topology Change Detection
 # ===================================================================
 
+
 class TestTopologyChangeDetection:
     def test_no_change_same_graph(self) -> None:
         ws = WaveState.from_edges(3, [(0, 1, 1.0), (1, 2, 1.0)])
@@ -266,10 +285,13 @@ class TestTopologyChangeDetection:
 # Spectral Thermostat
 # ===================================================================
 
+
 class TestSpectralThermostat:
     def test_thermostat_noop_in_deadband(self) -> None:
         # Graph with CR ≈ 0.5, inside deadband [0.45, 0.55]
-        ws = WaveState.from_edges(4, [(0, 1, 1.0), (0, 2, 1.0), (0, 3, 1.0), (2, 3, 1.0)])
+        ws = WaveState.from_edges(
+            4, [(0, 1, 1.0), (0, 2, 1.0), (0, 3, 1.0), (2, 3, 1.0)]
+        )
         tstat = SpectralThermostat(wave_state=ws)
         action = tstat.tick()
         assert action == ThermostatAction.NoOp
@@ -291,7 +313,9 @@ class TestSpectralThermostat:
 
     def test_thermostat_topology_change_triggers_increase(self) -> None:
         # Graph with CR ≈ 0.5, then remove edge → topology change
-        ws = WaveState.from_edges(4, [(0, 1, 1.0), (0, 2, 1.0), (0, 3, 1.0), (2, 3, 1.0)])
+        ws = WaveState.from_edges(
+            4, [(0, 1, 1.0), (0, 2, 1.0), (0, 3, 1.0), (2, 3, 1.0)]
+        )
         tstat = SpectralThermostat(wave_state=ws)
         tstat.tick()  # establish baseline
         ws.remove_edge(0, 1)
@@ -299,7 +323,9 @@ class TestSpectralThermostat:
         assert action == ThermostatAction.IncreaseCR
 
     def test_thermostat_predicted_halflife(self) -> None:
-        ws = WaveState.from_edges(4, [(0, 1, 1.0), (0, 2, 1.0), (0, 3, 1.0), (2, 3, 1.0)])
+        ws = WaveState.from_edges(
+            4, [(0, 1, 1.0), (0, 2, 1.0), (0, 3, 1.0), (2, 3, 1.0)]
+        )
         tstat = SpectralThermostat(wave_state=ws)
         tstat.tick()
         hl = tstat.predicted_halflife()
@@ -325,6 +351,7 @@ class TestSpectralThermostat:
 # ===================================================================
 # Mutations
 # ===================================================================
+
 
 class TestMutations:
     def test_add_node(self) -> None:
@@ -374,6 +401,7 @@ class TestMutations:
 # ===================================================================
 # Edge Cases & Regression
 # ===================================================================
+
 
 class TestEdgeCases:
     def test_single_node(self) -> None:

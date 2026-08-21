@@ -80,13 +80,15 @@ from swarm.mesh_vector_gossip import MeshVectorGossip
 
 # Agent A discovers a bug pattern
 gossip = MeshVectorGossip(node_id="kimi1")
-gossip.publish_memory_fragment({
-    "type": "bug_pattern",
-    "agent": "kimi1",
-    "description": "pytest collection hangs when __init__.py imports heavy modules",
-    "fix": "Use lazy imports in conftest.py",
-    "timestamp": time.time(),
-})
+gossip.publish_memory_fragment(
+    {
+        "type": "bug_pattern",
+        "agent": "kimi1",
+        "description": "pytest collection hangs when __init__.py imports heavy modules",
+        "fix": "Use lazy imports in conftest.py",
+        "timestamp": time.time(),
+    }
+)
 
 # Agent B receives it via gossip
 for fragment in gossip.poll_memory_fragments():
@@ -126,9 +128,10 @@ from pathlib import Path
 from fleet.memory_consolidation import MemoryConsolidator
 from swarm.mesh_vector_gossip import MeshVectorGossip
 
+
 def main():
     agent_id = os.environ.get("AGENT_ID", "unknown")
-    
+
     # 1. Consolidate local memory
     consolidator = MemoryConsolidator(
         daily_dir=f"memory/{agent_id}/",
@@ -136,19 +139,20 @@ def main():
     )
     report = consolidator.consolidate()
     print(f"[{agent_id}] Consolidated {report['new_entries']} entries")
-    
+
     # 2. Share key insights with fleet
     gossip = MeshVectorGossip(node_id=agent_id)
     for insight in report["insights"]:
         if insight["priority"] == "high":
             gossip.publish_memory_fragment(insight)
-    
+
     # 3. Merge insights from other agents
     for fragment in gossip.poll_memory_fragments(timeout=5.0):
         if fragment["type"] == "lesson_learned":
             consolidator.import_fragment(fragment)
-    
+
     print(f"[{agent_id}] Memory sync complete")
+
 
 if __name__ == "__main__":
     main()

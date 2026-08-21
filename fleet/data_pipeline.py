@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class DataRecord:
     """A record in the data pipeline."""
+
     record_id: str
     data: Dict[str, Any]
     timestamp: float
@@ -49,8 +50,12 @@ class DataPipeline:
         """Add a destination function."""
         self._destinations.append(dest)
 
-    def ingest(self, data: Dict[str, Any], source: str = "unknown",
-               tags: Optional[Dict[str, str]] = None) -> DataRecord:
+    def ingest(
+        self,
+        data: Dict[str, Any],
+        source: str = "unknown",
+        tags: Optional[Dict[str, str]] = None,
+    ) -> DataRecord:
         """Ingest a data record."""
         record = DataRecord(
             record_id=f"rec_{int(time.time() * 1000000)}",
@@ -111,11 +116,14 @@ class DataPipeline:
 
     def export_json(self) -> str:
         """Export pipeline state as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "records": [r.to_dict() for r in self._records[-100:]],
-            "stats": self.get_stats(),
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "records": [r.to_dict() for r in self._records[-100:]],
+                "stats": self.get_stats(),
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

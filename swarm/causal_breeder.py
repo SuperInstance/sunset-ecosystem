@@ -33,6 +33,7 @@ import numpy as np
 @dataclass
 class CausalVariable:
     """A variable in the causal model."""
+
     name: str
     value: float
     type: str = "continuous"  # continuous, discrete, binary
@@ -41,6 +42,7 @@ class CausalVariable:
 @dataclass
 class CausalEdge:
     """A directed edge in the causal graph."""
+
     source: str
     target: str
     weight: float = 1.0  # Effect strength
@@ -50,6 +52,7 @@ class CausalEdge:
 @dataclass
 class CausalGraph:
     """Discovered causal graph over breeding variables."""
+
     nodes: Set[str] = field(default_factory=set)
     edges: List[CausalEdge] = field(default_factory=list)
     # Conditional independence tests performed
@@ -57,7 +60,9 @@ class CausalGraph:
     # Number of edges removed by CI testing
     edges_removed: int = 0
 
-    def add_edge(self, source: str, target: str, weight: float = 1.0, confidence: float = 0.0):
+    def add_edge(
+        self, source: str, target: str, weight: float = 1.0, confidence: float = 0.0
+    ):
         self.nodes.add(source)
         self.nodes.add(target)
         self.edges.append(CausalEdge(source, target, weight, confidence))
@@ -106,8 +111,12 @@ class CausalGraph:
         return {
             "nodes": list(self.nodes),
             "edges": [
-                {"source": e.source, "target": e.target,
-                 "weight": e.weight, "confidence": e.confidence}
+                {
+                    "source": e.source,
+                    "target": e.target,
+                    "weight": e.weight,
+                    "confidence": e.confidence,
+                }
                 for e in self.edges
             ],
             "ci_tests": self.ci_tests,
@@ -125,8 +134,9 @@ class CausalDiscoveryEngine:
         self.alpha = alpha  # Significance level for CI tests
         self.max_cond_vars = max_cond_vars
 
-    def discover(self, data: List[Dict[str, float]],
-                 variables: List[str]) -> CausalGraph:
+    def discover(
+        self, data: List[Dict[str, float]], variables: List[str]
+    ) -> CausalGraph:
         """
         Run PC algorithm on breeding history data.
 
@@ -159,11 +169,10 @@ class CausalDiscoveryEngine:
                         continue
 
                     from itertools import combinations
+
                     for cond_set in combinations(neighbors, depth):
                         ci_tests += 1
-                        if self._conditional_independence(
-                            data, x, y, list(cond_set)
-                        ):
+                        if self._conditional_independence(data, x, y, list(cond_set)):
                             adjacency[x].discard(y)
                             adjacency[y].discard(x)
                             edges_removed += 1
@@ -179,7 +188,7 @@ class CausalDiscoveryEngine:
                     parents_of_z.append(x)
 
             for i, x in enumerate(parents_of_z):
-                for y in parents_of_z[i + 1:]:
+                for y in parents_of_z[i + 1 :]:
                     if y not in adjacency.get(x, set()):
                         # X and Y are not adjacent, but both connect to Z
                         # Orient: X → Z ← Y
@@ -192,8 +201,8 @@ class CausalDiscoveryEngine:
                 if x < y:  # Avoid duplicates
                     # Check if edge already oriented
                     existing = any(
-                        (e.source == x and e.target == y) or
-                        (e.source == y and e.target == x)
+                        (e.source == x and e.target == y)
+                        or (e.source == y and e.target == x)
                         for e in graph.edges
                     )
                     if not existing:
@@ -204,8 +213,9 @@ class CausalDiscoveryEngine:
         graph.edges_removed = edges_removed
         return graph
 
-    def _conditional_independence(self, data: List[Dict[str, float]],
-                                 x: str, y: str, cond_set: List[str]) -> bool:
+    def _conditional_independence(
+        self, data: List[Dict[str, float]], x: str, y: str, cond_set: List[str]
+    ) -> bool:
         """
         Test conditional independence X ⊥ Y | Z using partial correlation.
         Returns True if independent (p-value > alpha).
@@ -234,8 +244,9 @@ class CausalDiscoveryEngine:
             z_matrix = np.array([[d.get(z, 0.0) for z in cond_set] for d in data])
             return self._partial_correlation_test(x_vals, y_vals, z_matrix)
 
-    def _partial_correlation_test(self, x: np.ndarray, y: np.ndarray,
-                                   z: np.ndarray) -> bool:
+    def _partial_correlation_test(
+        self, x: np.ndarray, y: np.ndarray, z: np.ndarray
+    ) -> bool:
         """Test partial correlation using linear regression residuals."""
         try:
             # Regress X and Y on Z, then test correlation of residuals
@@ -280,6 +291,7 @@ class CausalDiscoveryEngine:
     def _normal_cdf(self, x: float) -> float:
         """Approximate normal CDF using error function."""
         import math
+
         return 0.5 * (1 + math.erf(x / math.sqrt(2)))
 
     def _t_cdf(self, t: float, df: int) -> float:
@@ -296,6 +308,7 @@ class CausalDiscoveryEngine:
 @dataclass
 class CausalEffectEstimate:
     """Estimated causal effect of an intervention."""
+
     intervention: str  # Variable being intervened on
     target: str  # Outcome variable
     effect: float  # Estimated effect size
@@ -312,8 +325,9 @@ class DoCalculusEngine:
     def __init__(self, graph: CausalGraph):
         self.graph = graph
 
-    def estimate_effect(self, intervention: str, target: str,
-                         data: List[Dict[str, float]]) -> CausalEffectEstimate:
+    def estimate_effect(
+        self, intervention: str, target: str, data: List[Dict[str, float]]
+    ) -> CausalEffectEstimate:
         """
         Estimate causal effect of intervening on 'intervention'
         on the 'target' variable using the backdoor criterion.
@@ -327,13 +341,11 @@ class DoCalculusEngine:
                 target=target,
                 effect=0.0,
                 confidence_interval=(0.0, 0.0),
-                method="unidentified"
+                method="unidentified",
             )
 
         # Estimate effect via adjustment
-        effect = self._backdoor_adjustment(
-            data, intervention, target, adjustment_set
-        )
+        effect = self._backdoor_adjustment(data, intervention, target, adjustment_set)
 
         # Bootstrap confidence interval
         ci = self._bootstrap_ci(data, intervention, target, adjustment_set)
@@ -343,7 +355,7 @@ class DoCalculusEngine:
             target=target,
             effect=effect,
             confidence_interval=ci,
-            method="backdoor"
+            method="backdoor",
         )
 
     def _find_backdoor_set(self, intervention: str, target: str) -> Optional[List[str]]:
@@ -358,8 +370,9 @@ class DoCalculusEngine:
         # If no parents, empty adjustment set works
         return []
 
-    def _backdoor_adjustment(self, data: List[Dict[str, float]],
-                             x: str, y: str, z: List[str]) -> float:
+    def _backdoor_adjustment(
+        self, data: List[Dict[str, float]], x: str, y: str, z: List[str]
+    ) -> float:
         """
         Estimate E[Y | do(X=x)] via backdoor adjustment:
         Σ_z E[Y | X=x, Z=z] P(Z=z)
@@ -380,7 +393,7 @@ class DoCalculusEngine:
             x_mean = np.mean(x_vals)
             y_mean = np.mean(y_vals)
             numerator = np.sum((x_vals - x_mean) * (y_vals - y_mean))
-            denominator = np.sum((x_vals - x_mean)**2)
+            denominator = np.sum((x_vals - x_mean) ** 2)
 
             if denominator == 0:
                 return 0.0
@@ -403,7 +416,9 @@ class DoCalculusEngine:
 
                 # Difference in means for high vs low X
                 median_x = np.median(x_vals)
-                high_y = [y_vals[i] for i in range(len(x_vals)) if x_vals[i] >= median_x]
+                high_y = [
+                    y_vals[i] for i in range(len(x_vals)) if x_vals[i] >= median_x
+                ]
                 low_y = [y_vals[i] for i in range(len(x_vals)) if x_vals[i] < median_x]
 
                 if high_y and low_y:
@@ -412,8 +427,9 @@ class DoCalculusEngine:
 
             return total_effect
 
-    def _stratify_data(self, data: List[Dict[str, float]],
-                       z: List[str]) -> Dict[str, List[Dict]]:
+    def _stratify_data(
+        self, data: List[Dict[str, float]], z: List[str]
+    ) -> Dict[str, List[Dict]]:
         """Stratify data by values of adjustment variables."""
         strata = {}
         for d in data:
@@ -423,9 +439,14 @@ class DoCalculusEngine:
             strata[key].append(d)
         return strata
 
-    def _bootstrap_ci(self, data: List[Dict[str, float]],
-                     x: str, y: str, z: List[str],
-                     n_bootstrap: int = 100) -> Tuple[float, float]:
+    def _bootstrap_ci(
+        self,
+        data: List[Dict[str, float]],
+        x: str,
+        y: str,
+        z: List[str],
+        n_bootstrap: int = 100,
+    ) -> Tuple[float, float]:
         """Bootstrap confidence interval for causal effect."""
         effects = []
         n = len(data)
@@ -441,10 +462,14 @@ class DoCalculusEngine:
         upper = effects[int(0.975 * n_bootstrap)]
         return (lower, upper)
 
-    def counterfactual(self, data: List[Dict[str, float]],
-                       observation: Dict[str, float],
-                       intervention: str, intervention_value: float,
-                       target: str) -> float:
+    def counterfactual(
+        self,
+        data: List[Dict[str, float]],
+        observation: Dict[str, float],
+        intervention: str,
+        intervention_value: float,
+        target: str,
+    ) -> float:
         """
         Estimate counterfactual: "What would Y be if X had been x?"
         Given observed data and a causal graph.
@@ -475,8 +500,9 @@ class DoCalculusEngine:
 
         return y_from_parents + effect.effect * (intervention_value - observed_x)
 
-    def _predict_from_parents(self, observation: Dict[str, float],
-                              target: str) -> float:
+    def _predict_from_parents(
+        self, observation: Dict[str, float], target: str
+    ) -> float:
         """Predict target from its parents in the causal graph."""
         parents = self.graph.parents(target)
         if not parents:
@@ -498,11 +524,13 @@ class CausalBreeder:
     4. Updates causal graph as new data arrives
     """
 
-    def __init__(self,
-                 population_size: int = 50,
-                 mutation_rate: float = 0.1,
-                 history_window: int = 200,
-                 causal_discovery_interval: int = 10):
+    def __init__(
+        self,
+        population_size: int = 50,
+        mutation_rate: float = 0.1,
+        history_window: int = 200,
+        causal_discovery_interval: int = 10,
+    ):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.history_window = history_window
@@ -529,7 +557,9 @@ class CausalBreeder:
         self.causal_graph = engine.discover(self.history, variables)
         return self.causal_graph
 
-    def estimate_effects(self, target: str = "fitness") -> Dict[str, CausalEffectEstimate]:
+    def estimate_effects(
+        self, target: str = "fitness"
+    ) -> Dict[str, CausalEffectEstimate]:
         """Estimate causal effects of all variables on target."""
         if self.causal_graph is None or not self.history:
             return {}
@@ -575,9 +605,9 @@ class CausalBreeder:
         # Select variable with highest effect
         return max(candidates, key=lambda x: x[1])[0]
 
-    def counterfactual_fitness(self, genome: Dict[str, float],
-                               intervention_var: str,
-                               intervention_value: float) -> float:
+    def counterfactual_fitness(
+        self, genome: Dict[str, float], intervention_var: str, intervention_value: float
+    ) -> float:
         """
         Estimate counterfactual fitness if we change one variable.
         """
@@ -620,12 +650,15 @@ class CausalBreeder:
             # Fall back to random mutation
             for var in mutated:
                 if var != "fitness" and random.random() < self.mutation_rate:
-                    mutated[var] *= (1 + random.uniform(-0.1, 0.1))
+                    mutated[var] *= 1 + random.uniform(-0.1, 0.1)
 
         return mutated
 
-    def breed_generation(self, population: List[Tuple[Dict[str, float], float]],
-                        task_fn: Callable[[Dict[str, float]], Dict[str, Any]]) -> List[Tuple[Dict[str, float], float]]:
+    def breed_generation(
+        self,
+        population: List[Tuple[Dict[str, float], float]],
+        task_fn: Callable[[Dict[str, float]], Dict[str, Any]],
+    ) -> List[Tuple[Dict[str, float], float]]:
         """
         Run one generation of causal-informed breeding.
 
@@ -666,7 +699,11 @@ class CausalBreeder:
 
             # Evaluate
             result = task_fn(child)
-            fitness = result.get("fitness", 0.0) if isinstance(result, dict) else float(result)
+            fitness = (
+                result.get("fitness", 0.0)
+                if isinstance(result, dict)
+                else float(result)
+            )
 
             # Record new observation
             obs = child.copy()
@@ -677,14 +714,17 @@ class CausalBreeder:
 
         return new_population
 
-    def _select_parent(self, sorted_pop: List[Tuple[Dict, float]]) -> Tuple[Dict, float]:
+    def _select_parent(
+        self, sorted_pop: List[Tuple[Dict, float]]
+    ) -> Tuple[Dict, float]:
         """Tournament selection."""
         tournament_size = 3
         tournament = random.sample(sorted_pop, min(tournament_size, len(sorted_pop)))
         return max(tournament, key=lambda x: x[1])
 
-    def _crossover(self, parent1: Dict[str, float],
-                   parent2: Dict[str, float]) -> Dict[str, float]:
+    def _crossover(
+        self, parent1: Dict[str, float], parent2: Dict[str, float]
+    ) -> Dict[str, float]:
         """Uniform crossover."""
         child = {}
         for key in parent1:
@@ -707,12 +747,15 @@ class CausalBreeder:
             "ci_tests": self.causal_graph.ci_tests,
             "top_effects": sorted(
                 [
-                    {"variable": var, "effect": est.effect,
-                     "ci": est.confidence_interval}
+                    {
+                        "variable": var,
+                        "effect": est.effect,
+                        "ci": est.confidence_interval,
+                    }
                     for var, est in self.effect_estimates.items()
                 ],
                 key=lambda x: abs(x["effect"]),
-                reverse=True
+                reverse=True,
             )[:5],
             "topological_order": self.causal_graph.topological_sort(),
         }

@@ -128,6 +128,7 @@ source = "lambda x: x > 0 and x < 100"
 
 # B. Function AST (from inspect)
 import inspect
+
 tree = ast.parse(inspect.getsource(my_func))
 
 # C. String expression (with variable binding)
@@ -196,15 +197,15 @@ def translate(node: ast.AST) -> Expr:
             return BinOp("Mul", Const(-1.0), translate(node.operand))
         elif isinstance(node.op, ast.Not):
             return IfNode(
-                CmpOp("LE", translate(node.operand), Const(0.0)),
-                Const(1.0), Const(0.0)
+                CmpOp("LE", translate(node.operand), Const(0.0)), Const(1.0), Const(0.0)
             )
     elif isinstance(node, ast.Call):
         return translate_call(node)
     elif isinstance(node, ast.IfExp):
         return IfNode(
             CmpOp("GT", translate(node.test), Const(0.0)),
-            translate(node.body), translate(node.orelse)
+            translate(node.body),
+            translate(node.orelse),
         )
     # ... etc
 ```
@@ -226,6 +227,7 @@ This stage is **already implemented** in `swarm/flux_compiler.py`. The `FluxComp
 **Python fallback path:**
 ```python
 from swarm.flux_vm_runner import FluxVMRunner
+
 runner = FluxVMRunner(const_pool)
 result = runner.run(bytecode)  # float: 1.0 = pass, 0.0 = fail
 ```
@@ -233,6 +235,7 @@ result = runner.run(bytecode)  # float: 1.0 = pass, 0.0 = fail
 **Rust VM path:**
 ```python
 from sunset.flux_vm_bridge import FluxVMBridge
+
 bridge = FluxVMBridge()
 bridge.new()
 bridge.load_bytecode(bytecode)
@@ -304,16 +307,16 @@ ast.BoolOp(
     op=ast.And(),
     values=[
         ast.Compare(
-            left=ast.Name(id='x', ctx=ast.Load()),
+            left=ast.Name(id="x", ctx=ast.Load()),
             ops=[ast.Gt()],
-            comparators=[ast.Constant(value=0)]
+            comparators=[ast.Constant(value=0)],
         ),
         ast.Compare(
-            left=ast.Name(id='x', ctx=ast.Load()),
+            left=ast.Name(id="x", ctx=ast.Load()),
             ops=[ast.Lt()],
-            comparators=[ast.Constant(value=100)]
-        )
-    ]
+            comparators=[ast.Constant(value=100)],
+        ),
+    ],
 )
 ```
 
@@ -324,10 +327,10 @@ IfNode(
     cond=CmpOp("GT", Var("x"), Const(0.0)),  # x > 0
     then_expr=IfNode(
         cond=CmpOp("LT", Var("x"), Const(100.0)),  # x < 100
-        then_expr=Const(1.0),   # pass
-        else_expr=Const(0.0)    # fail (x ≥ 100)
+        then_expr=Const(1.0),  # pass
+        else_expr=Const(0.0),  # fail (x ≥ 100)
     ),
-    else_expr=Const(0.0)        # fail (x ≤ 0)
+    else_expr=Const(0.0),  # fail (x ≤ 0)
 )
 ```
 
@@ -396,13 +399,14 @@ from sunset.flux_vm_bridge import FluxVMBridge
 # 1. Compile
 bytecode, const_pool, disasm = compile_lambda(
     "lambda x: x > 0 and x < 100",
-    prefer_range_check=True,   # emit single RangeCheck
-    with_validate=True,        # trap on failure
+    prefer_range_check=True,  # emit single RangeCheck
+    with_validate=True,  # trap on failure
     with_halt=True,
 )
 
 # 2. Run in Python fallback
 from swarm.flux_vm_runner import FluxVMRunner
+
 runner = FluxVMRunner(const_pool)
 result = runner.run(bytecode)  # 1.0 = pass, 0.0 = fail (but Validate traps on fail)
 
@@ -411,9 +415,9 @@ bridge = FluxVMBridge()
 bridge.new()
 bridge.load_bytecode(bytecode)
 bridge.load_constraint(0, 100)  # for RangeCheck
-bridge.push_value(50)           # x = 50
-passed = bridge.run()         # True
-proof = bridge.get_proof()    # FluxVMProof with SHA-256 hash
+bridge.push_value(50)  # x = 50
+passed = bridge.run()  # True
+proof = bridge.get_proof()  # FluxVMProof with SHA-256 hash
 ```
 
 ---
@@ -436,14 +440,20 @@ from typing import Callable, Tuple, List
 from swarm.flux_compiler import (
     FluxCompiler,
     BytecodeEmitter,
-    Const, Var, BinOp, UnaryOp, RangeCheckNode,
-    IfNode, CmpOp,
+    Const,
+    Var,
+    BinOp,
+    UnaryOp,
+    RangeCheckNode,
+    IfNode,
+    CmpOp,
     Expr,
 )
 
 
 class FluxCompileError(Exception):
     """Raised when a Python construct cannot be compiled to FLUX."""
+
     pass
 
 
@@ -478,12 +488,17 @@ class PythonASTAdapter:
 
     def _binop(self, node: ast.BinOp) -> Expr:
         op_map = {
-            ast.Add: "Add", ast.Sub: "Sub", ast.Mult: "Mul", ast.Div: "Div",
+            ast.Add: "Add",
+            ast.Sub: "Sub",
+            ast.Mult: "Mul",
+            ast.Div: "Div",
             ast.Mod: "Mod",  # will raise if not in PYTHON_SAFE_OPCODES
         }
         op = op_map.get(type(node.op))
         if op is None:
-            raise FluxCompileError(f"Unsupported binary operator: {type(node.op).__name__}")
+            raise FluxCompileError(
+                f"Unsupported binary operator: {type(node.op).__name__}"
+            )
         return BinOp(op, self.translate(node.left), self.translate(node.right))
 
     def _compare(self, node: ast.Compare) -> Expr:
@@ -495,15 +510,21 @@ class PythonASTAdapter:
             left = self._single_compare(node.ops[0], node.left, node.comparators[0])
             for i in range(1, len(node.ops)):
                 right = self._single_compare(
-                    node.ops[i], node.comparators[i-1], node.comparators[i]
+                    node.ops[i], node.comparators[i - 1], node.comparators[i]
                 )
-                left = BinOp("And", left, right)  # And is not a real opcode — handled in BoolOp
+                left = BinOp(
+                    "And", left, right
+                )  # And is not a real opcode — handled in BoolOp
             return left
 
     def _single_compare(self, op: ast.cmpop, left: ast.AST, right: ast.AST) -> Expr:
         cmp_map = {
-            ast.Lt: "LT", ast.LtE: "LE", ast.Gt: "GT", ast.GtE: "GE",
-            ast.Eq: "EQ", ast.NotEq: "NE",
+            ast.Lt: "LT",
+            ast.LtE: "LE",
+            ast.Gt: "GT",
+            ast.GtE: "GE",
+            ast.Eq: "EQ",
+            ast.NotEq: "NE",
         }
         op_str = cmp_map.get(type(op))
         if op_str is None:
@@ -517,16 +538,14 @@ class PythonASTAdapter:
             result: Expr = self.translate(node.values[-1])
             for val in reversed(node.values[:-1]):
                 result = IfNode(
-                    CmpOp("GT", self.translate(val), Const(0.0)),
-                    result, Const(0.0)
+                    CmpOp("GT", self.translate(val), Const(0.0)), result, Const(0.0)
                 )
             return result
         elif isinstance(node.op, ast.Or):
             result = self.translate(node.values[-1])
             for val in reversed(node.values[:-1]):
                 result = IfNode(
-                    CmpOp("GT", self.translate(val), Const(0.0)),
-                    Const(1.0), result
+                    CmpOp("GT", self.translate(val), Const(0.0)), Const(1.0), result
                 )
             return result
         else:
@@ -540,7 +559,8 @@ class PythonASTAdapter:
         elif isinstance(node.op, ast.Not):
             return IfNode(
                 CmpOp("LE", self.translate(node.operand), Const(0.0)),
-                Const(1.0), Const(0.0)
+                Const(1.0),
+                Const(0.0),
             )
         else:
             raise FluxCompileError(f"Unsupported unary op: {type(node.op).__name__}")
@@ -548,7 +568,8 @@ class PythonASTAdapter:
     def _ifexp(self, node: ast.IfExp) -> Expr:
         return IfNode(
             CmpOp("GT", self.translate(node.test), Const(0.0)),
-            self.translate(node.body), self.translate(node.orelse)
+            self.translate(node.body),
+            self.translate(node.orelse),
         )
 
     def _call(self, node: ast.Call) -> Expr:
@@ -557,9 +578,13 @@ class PythonASTAdapter:
             if fname == "abs" and len(node.args) == 1:
                 return UnaryOp("Abs", self.translate(node.args[0]))
             elif fname == "min" and len(node.args) == 2:
-                return BinOp("Min", self.translate(node.args[0]), self.translate(node.args[1]))
+                return BinOp(
+                    "Min", self.translate(node.args[0]), self.translate(node.args[1])
+                )
             elif fname == "max" and len(node.args) == 2:
-                return BinOp("Max", self.translate(node.args[0]), self.translate(node.args[1]))
+                return BinOp(
+                    "Max", self.translate(node.args[0]), self.translate(node.args[1])
+                )
             elif fname == "saturate" and len(node.args) == 3:
                 return RangeCheckNode(
                     self.translate(node.args[0]),
@@ -597,7 +622,9 @@ def compile_lambda(
     expr = adapter.translate(lam.body)
 
     compiler = FluxCompiler(prefer_range_check=prefer_range_check)
-    emitter = compiler.compile_constraint(expr, with_validate=with_validate, with_halt=True)
+    emitter = compiler.compile_constraint(
+        expr, with_validate=with_validate, with_halt=True
+    )
     return emitter.to_bytes(), emitter.const_pool, emitter.disassemble()
 
 
@@ -629,7 +656,9 @@ def compile_function(
     expr = adapter.translate(func_def.body[0].value)
 
     compiler = FluxCompiler(prefer_range_check=prefer_range_check)
-    emitter = compiler.compile_constraint(expr, with_validate=with_validate, with_halt=True)
+    emitter = compiler.compile_constraint(
+        expr, with_validate=with_validate, with_halt=True
+    )
     return emitter.to_bytes(), emitter.const_pool, emitter.disassemble()
 ```
 

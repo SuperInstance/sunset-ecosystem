@@ -24,16 +24,20 @@ class MockGrid:
     def tick_batch(self, signals):
         self.ticks += 1
         return [
-            {"tick": self.ticks, "fired": 1, "ids": [i]}
-            for i in range(len(signals))
+            {"tick": self.ticks, "fired": 1, "ids": [i]} for i in range(len(signals))
         ]
 
 
 class TestTickMetrics:
     def test_to_dict(self):
         m = TickMetrics(
-            tick=1, n_rooms=10, fired_count=3, active_ratio=0.3,
-            thermal_pressure=0.5, backend="numpy", duration_ms=1.23,
+            tick=1,
+            n_rooms=10,
+            fired_count=3,
+            active_ratio=0.3,
+            thermal_pressure=0.5,
+            backend="numpy",
+            duration_ms=1.23,
         )
         d = m.to_dict()
         assert d["tick"] == 1
@@ -141,10 +145,14 @@ class TestRoomGridTickIntegration:
     def test_compiler_swap(self):
         grid = MockGrid(10)
         compiler = MagicMock()
-        compiler.check_and_compile.return_value = MagicMock(success=True, compile_time_ms=42.0)
+        compiler.check_and_compile.return_value = MagicMock(
+            success=True, compile_time_ms=42.0
+        )
 
         bus = MagicMock()
-        integration = RoomGridTickIntegration(grid, compiler_swap=compiler, event_bus=bus)
+        integration = RoomGridTickIntegration(
+            grid, compiler_swap=compiler, event_bus=bus
+        )
         integration.tick(np.zeros(64, dtype=np.float32))
         compiler.check_and_compile.assert_called_once()
         assert bus.emit.called
@@ -218,7 +226,9 @@ class TestRoomGridTickIntegration:
         compiler = MagicMock()
         bus = MagicMock()
 
-        integration = RoomGridTickIntegration(grid, metronome=metro, compiler_swap=compiler, event_bus=bus)
+        integration = RoomGridTickIntegration(
+            grid, metronome=metro, compiler_swap=compiler, event_bus=bus
+        )
         integration.tick(np.zeros(64, dtype=np.float32))
 
         status = integration.get_status()

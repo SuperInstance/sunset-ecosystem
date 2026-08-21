@@ -41,15 +41,19 @@ print(f"Agent A fitness: {agent_a.fitness:.3f}")
 print(f"Agent B fitness: {agent_b.fitness:.3f}")
 
 # A dominates B if A is better in ALL dimensions
-a_dominates_b = all([
-    agent_a.ethos >= agent_b.ethos,
-    agent_a.pathos >= agent_b.pathos,
-    agent_a.logos >= agent_b.logos,
-]) and any([
-    agent_a.ethos > agent_b.ethos,
-    agent_a.pathos > agent_b.pathos,
-    agent_a.logos > agent_b.logos,
-])
+a_dominates_b = all(
+    [
+        agent_a.ethos >= agent_b.ethos,
+        agent_a.pathos >= agent_b.pathos,
+        agent_a.logos >= agent_b.logos,
+    ]
+) and any(
+    [
+        agent_a.ethos > agent_b.ethos,
+        agent_a.pathos > agent_b.pathos,
+        agent_a.logos > agent_b.logos,
+    ]
+)
 print(f"A dominates B: {a_dominates_b}")
 ```
 

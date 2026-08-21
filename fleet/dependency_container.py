@@ -14,6 +14,7 @@ Usage:
     db = container.resolve("db")
     api = container.resolve("api")  # Auto-injects db
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -135,7 +136,9 @@ class DependencyContainer:
 
     def singletons(self) -> list[str]:
         """List all singleton service names."""
-        return [name for name, e in self._services.items() if e.lifecycle == "singleton"]
+        return [
+            name for name, e in self._services.items() if e.lifecycle == "singleton"
+        ]
 
     def stats(self) -> dict[str, Any]:
         return {

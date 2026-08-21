@@ -102,8 +102,7 @@ class LineageSanityChecker:
             if agent.generation != 0:
                 return (
                     False,
-                    f"Root agent {agent_id} has non-zero generation "
-                    f"{agent.generation}",
+                    f"Root agent {agent_id} has non-zero generation {agent.generation}",
                 )
 
         # Check 3: Cycle detection
@@ -244,7 +243,7 @@ class LineageSanityChecker:
         if dist > 3.0 * typical:
             return (
                 False,
-                f"Impossible jump: distance={dist:.4f} > 3×typical={3*typical:.4f}",
+                f"Impossible jump: distance={dist:.4f} > 3×typical={3 * typical:.4f}",
             )
 
         return (True, f"Jump distance {dist:.4f} within typical range")

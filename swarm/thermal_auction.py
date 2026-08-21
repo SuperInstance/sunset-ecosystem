@@ -34,6 +34,7 @@ class Bid:
         value: Agent's private value for this slot (already scaled by fitness).
         fitness: Current fitness score (used for audit / tie-breaking).
     """
+
     agent_id: str
     device_type: "DeviceType"
     value: float
@@ -55,6 +56,7 @@ class Allocation:
         device_type: Allocated device.
         price_paid: VCG price (not necessarily equal to bid value).
     """
+
     agent_id: str
     device_type: "DeviceType"
     price_paid: float
@@ -99,7 +101,9 @@ class VCGAuction:
 
         for device_type, device_bids in bids_by_device.items():
             max_slots = self.budget.device_budget(device_type).max_agents
-            device_allocs = self._run_device_auction(device_type, device_bids, max_slots)
+            device_allocs = self._run_device_auction(
+                device_type, device_bids, max_slots
+            )
             allocations.update(device_allocs)
 
         return allocations
@@ -125,9 +129,7 @@ class VCGAuction:
         sw_without_winner = self._top_k_value_sum(other_bids, max_slots)
 
         # SW of others with winner = sum of top max_slots bids minus winner's value
-        all_device_values = sorted(
-            (b.value for b in device_bids), reverse=True
-        )
+        all_device_values = sorted((b.value for b in device_bids), reverse=True)
         top_k_sum = sum(all_device_values[:max_slots])
         sw_others_with_winner = top_k_sum - winner.value
 

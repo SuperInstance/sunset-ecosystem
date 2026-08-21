@@ -16,24 +16,24 @@ from swarm.tiered_mesh_storage import TierConfig
 
 # For write-heavy workloads (ingestion, logging)
 WRITE_HEAVY = TierConfig(
-    hot_max_entries=50_000,        # More entries stay hot
-    hot_max_age_seconds=3600,      # Short age: promote quickly, demote quickly
-    hot_min_fitness=0.0,           # Don't filter by fitness
-    demotion_access_threshold=1, # Promote on first access
+    hot_max_entries=50_000,  # More entries stay hot
+    hot_max_age_seconds=3600,  # Short age: promote quickly, demote quickly
+    hot_min_fitness=0.0,  # Don't filter by fitness
+    demotion_access_threshold=1,  # Promote on first access
 )
 
 # For read-heavy workloads (query serving, search)
 READ_HEAVY = TierConfig(
-    hot_max_entries=10_000,        # Keep only the most valuable
-    hot_max_age_seconds=86400,     # 24-hour retention
-    hot_min_fitness=0.7,           # Only high-fitness entries stay hot
-    demotion_access_threshold=3, # Need multiple accesses to promote
+    hot_max_entries=10_000,  # Keep only the most valuable
+    hot_max_age_seconds=86400,  # 24-hour retention
+    hot_min_fitness=0.7,  # Only high-fitness entries stay hot
+    demotion_access_threshold=3,  # Need multiple accesses to promote
 )
 
 # For mixed workloads (most fleets)
 BALANCED = TierConfig(
     hot_max_entries=25_000,
-    hot_max_age_seconds=21600,   # 6 hours
+    hot_max_age_seconds=21600,  # 6 hours
     hot_min_fitness=0.3,
     demotion_access_threshold=2,
 )
@@ -48,8 +48,8 @@ from swarm.hnsw_mesh_table import HnswMeshTable
 HIGH_RECALL = HnswMeshTable(
     base_table=table,
     ef_construction=200,  # Higher = more accurate index, slower build
-    M=32,               # Higher = more connections, more memory
-    ef_search=100,      # Higher = more accurate search, slower
+    M=32,  # Higher = more connections, more memory
+    ef_search=100,  # Higher = more accurate search, slower
 )
 
 # For low latency (<5ms): real-time serving
@@ -165,7 +165,7 @@ print(tracker._latency_by_type)
 **Diagnosis:**
 ```python
 print(table.stats)  # Check hot/warm/cold distribution
-print(hnsw.stats)   # Check if HNSW is available
+print(hnsw.stats)  # Check if HNSW is available
 ```
 
 **Fixes:**
@@ -179,7 +179,7 @@ print(hnsw.stats)   # Check if HNSW is available
 **Diagnosis:**
 ```python
 print(memory.get_shard_report())  # Check shard count
-print(len(storage.base))          # Check hot tier size
+print(len(storage.base))  # Check hot tier size
 ```
 
 **Fixes:**
@@ -192,6 +192,7 @@ print(len(storage.base))          # Check hot tier size
 **Diagnosis:**
 ```python
 import os
+
 print(os.path.getsize("mesh.wal"))  # Check WAL size
 ```
 

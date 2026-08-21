@@ -15,6 +15,7 @@ from swarm.thermal import DeviceType, ThermalBudget
 
 # ── fixtures ────────────────────────────────────────────────
 
+
 @pytest.fixture
 def grid():
     """RoomGrid with some hot and cold rooms."""
@@ -38,6 +39,7 @@ def breeder(grid, thermal):
 
 # ── tests ───────────────────────────────────────────────────
 
+
 class TestAutoBreed:
     """Test the core auto_breed method."""
 
@@ -52,7 +54,7 @@ class TestAutoBreed:
 
     def test_returns_empty_when_no_hot_rooms(self, thermal):
         """No active rooms → no parents to breed from.
-        
+
         All rooms start at activity=0, so grid.top() returns them
         (they're all equal). The tournament still runs but all scores
         are identical. This test verifies no crash occurs and the

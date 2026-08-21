@@ -10,6 +10,7 @@ Usage:
     delay = policy.next_delay(attempt=2)  # 4.0 seconds
     can_retry = policy.should_retry(attempt=3)  # False (max reached)
 """
+
 from __future__ import annotations
 
 import random
@@ -61,9 +62,9 @@ class RetryPolicy:
         if self._backoff == "fixed":
             delay = self._base_delay
         elif self._backoff == "exponential":
-            delay = self._base_delay * (2 ** attempt)
+            delay = self._base_delay * (2**attempt)
         elif self._backoff == "jitter":
-            base = self._base_delay * (2 ** attempt)
+            base = self._base_delay * (2**attempt)
             jitter = base * self._jitter_factor * random.uniform(-1.0, 1.0)
             delay = base + jitter
         else:

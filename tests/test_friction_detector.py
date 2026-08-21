@@ -31,6 +31,7 @@ from fleet.friction_detector import (
 # Fixtures
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.fixture
 def detector():
     """Fresh FrictionDetector with default thresholds."""
@@ -42,12 +43,28 @@ def academy_bridge():
     """Mock academy bridge with 10 pre-populated cohort findings."""
     bridge = MagicMock()
     bridge.get_friction_points.return_value = [
-        {"agent": "greenhorn", "finding": "boot_camp_path_discrepancy", "severity": "high"},
+        {
+            "agent": "greenhorn",
+            "finding": "boot_camp_path_discrepancy",
+            "severity": "high",
+        },
         {"agent": "greenhorn", "finding": "plato_identity_crisis", "severity": "high"},
-        {"agent": "junior_dev", "finding": "room_creation_impossible", "severity": "medium"},
+        {
+            "agent": "junior_dev",
+            "finding": "room_creation_impossible",
+            "severity": "medium",
+        },
         {"agent": "junior_dev", "finding": "no_build_schema", "severity": "medium"},
-        {"agent": "architect", "finding": "zero_authentication", "severity": "critical"},
-        {"agent": "architect", "finding": "tile_count_discrepancy", "severity": "medium"},
+        {
+            "agent": "architect",
+            "finding": "zero_authentication",
+            "severity": "critical",
+        },
+        {
+            "agent": "architect",
+            "finding": "tile_count_discrepancy",
+            "severity": "medium",
+        },
         {"agent": "human_proxy", "finding": "no_web_ui", "severity": "high"},
         {"agent": "task_agent", "finding": "dual_submit_endpoints", "severity": "low"},
         {"agent": "captain", "finding": "no_broadcast_endpoints", "severity": "high"},
@@ -59,6 +76,7 @@ def academy_bridge():
 # ═══════════════════════════════════════════════════════════════
 # 1. Behavior observation
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestBehaviorObservation:
     def test_sense_creates_sample(self, detector):
@@ -90,7 +108,9 @@ class TestBehaviorObservation:
 
     def test_error_counting_401(self, detector):
         for _ in range(5):
-            detector.sense(endpoint="/api/auth", status_code=401, latency=0.1, retries=0)
+            detector.sense(
+                endpoint="/api/auth", status_code=401, latency=0.1, retries=0
+            )
         detector.tick()
         assert len(detector._friction_points) == 1
         key = list(detector._friction_points.keys())[0]
@@ -100,6 +120,7 @@ class TestBehaviorObservation:
 # ═══════════════════════════════════════════════════════════════
 # 2. Friction clustering
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestFrictionClustering:
     def test_auth_cluster(self, detector):
@@ -121,7 +142,9 @@ class TestFrictionClustering:
         assert any(p.category == FrictionCategory.SCHEMA for p in points)
 
     def test_routing_cluster_503(self, detector):
-        detector.sense(endpoint="/api/upstream", status_code=503, latency=0.1, retries=0)
+        detector.sense(
+            endpoint="/api/upstream", status_code=503, latency=0.1, retries=0
+        )
         detector.tick()
         points = list(detector._friction_points.values())
         assert any(p.category == FrictionCategory.ROUTING for p in points)
@@ -133,7 +156,9 @@ class TestFrictionClustering:
         assert any(p.category == FrictionCategory.PERFORMANCE for p in points)
 
     def test_api_cluster_retry_storm(self, detector):
-        detector.sense(endpoint="/api/unstable", status_code=200, latency=0.5, retries=5)
+        detector.sense(
+            endpoint="/api/unstable", status_code=200, latency=0.5, retries=5
+        )
         detector.tick()
         points = list(detector._friction_points.values())
         assert any(p.category == FrictionCategory.API for p in points)
@@ -142,9 +167,13 @@ class TestFrictionClustering:
         detector.sense(endpoint="/api/auth", status_code=401, latency=0.2, retries=0)
         detector.sense(endpoint="/dashboard", status_code=404, latency=0.1, retries=0)
         detector.sense(endpoint="/api/create", status_code=400, latency=0.1, retries=0)
-        detector.sense(endpoint="/api/upstream", status_code=503, latency=0.1, retries=0)
+        detector.sense(
+            endpoint="/api/upstream", status_code=503, latency=0.1, retries=0
+        )
         detector.sense(endpoint="/api/slow", status_code=200, latency=3.0, retries=0)
-        detector.sense(endpoint="/api/unstable", status_code=500, latency=0.5, retries=0)
+        detector.sense(
+            endpoint="/api/unstable", status_code=500, latency=0.5, retries=0
+        )
         detector.tick()
         categories = {p.category for p in detector._friction_points.values()}
         assert FrictionCategory.AUTH in categories
@@ -158,6 +187,7 @@ class TestFrictionClustering:
 # ═══════════════════════════════════════════════════════════════
 # 3. Friction map generation
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestFrictionMapGeneration:
     def test_map_has_points(self, detector):
@@ -185,7 +215,9 @@ class TestFrictionMapGeneration:
 
     def test_map_counts(self, detector):
         detector.sense(endpoint="/api/auth", status_code=401, latency=0.2, retries=3)
-        detector.sense(endpoint="/api/upstream", status_code=503, latency=0.1, retries=0)
+        detector.sense(
+            endpoint="/api/upstream", status_code=503, latency=0.1, retries=0
+        )
         fmap = detector.tick()
         assert fmap.critical_count() == 1
         assert fmap.high_count() == 1
@@ -204,6 +236,7 @@ class TestFrictionMapGeneration:
 # ═══════════════════════════════════════════════════════════════
 # 4. Fix suggestion
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestFixSuggestion:
     def test_suggest_auth_401(self):
@@ -227,7 +260,9 @@ class TestFixSuggestion:
         assert "async" in fix.lower() or "optimize" in fix.lower()
 
     def test_suggest_api_broadcast(self):
-        fix = FixSuggestionEngine.suggest(FrictionCategory.API, "no_broadcast_endpoints")
+        fix = FixSuggestionEngine.suggest(
+            FrictionCategory.API, "no_broadcast_endpoints"
+        )
         assert "WebSocket" in fix or "SSE" in fix
 
     def test_suggest_unknown_default(self):
@@ -244,6 +279,7 @@ class TestFixSuggestion:
 # ═══════════════════════════════════════════════════════════════
 # 5. Fix validation
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestFixValidation:
     def test_validate_good_fix(self, detector):
@@ -306,6 +342,7 @@ class TestFixValidation:
 # 6. Severity scoring
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestSeverityScoring:
     def test_401_no_retry_is_high(self, detector):
         detector.sense(endpoint="/api/auth", status_code=401, latency=0.2, retries=0)
@@ -320,13 +357,17 @@ class TestSeverityScoring:
         assert points[0].severity == Severity.CRITICAL
 
     def test_503_is_high(self, detector):
-        detector.sense(endpoint="/api/upstream", status_code=503, latency=0.1, retries=0)
+        detector.sense(
+            endpoint="/api/upstream", status_code=503, latency=0.1, retries=0
+        )
         detector.tick()
         points = list(detector._friction_points.values())
         assert points[0].severity == Severity.HIGH
 
     def test_502_is_medium(self, detector):
-        detector.sense(endpoint="/api/upstream", status_code=502, latency=0.1, retries=0)
+        detector.sense(
+            endpoint="/api/upstream", status_code=502, latency=0.1, retries=0
+        )
         detector.tick()
         points = list(detector._friction_points.values())
         assert points[0].severity == Severity.MEDIUM
@@ -345,13 +386,17 @@ class TestSeverityScoring:
         assert points[0].evidence == "timeout"
 
     def test_retry_storm_medium(self, detector):
-        detector.sense(endpoint="/api/unstable", status_code=200, latency=0.5, retries=3)
+        detector.sense(
+            endpoint="/api/unstable", status_code=200, latency=0.5, retries=3
+        )
         detector.tick()
         points = list(detector._friction_points.values())
         assert points[0].severity == Severity.MEDIUM
 
     def test_retry_storm_high(self, detector):
-        detector.sense(endpoint="/api/unstable", status_code=200, latency=0.5, retries=6)
+        detector.sense(
+            endpoint="/api/unstable", status_code=200, latency=0.5, retries=6
+        )
         detector.tick()
         points = list(detector._friction_points.values())
         assert points[0].severity == Severity.HIGH
@@ -360,6 +405,7 @@ class TestSeverityScoring:
 # ═══════════════════════════════════════════════════════════════
 # 7. Trend detection
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestTrendDetection:
     def test_empty_trend_is_stable(self, detector):
@@ -372,14 +418,18 @@ class TestTrendDetection:
 
     def test_increasing_trend(self, detector):
         for i in range(5):
-            detector.sense(endpoint=f"/api/auth{i}", status_code=401, latency=0.2, retries=3)
+            detector.sense(
+                endpoint=f"/api/auth{i}", status_code=401, latency=0.2, retries=3
+            )
             detector.tick()
         assert detector.get_trend() == "increasing"
 
     def test_decreasing_trend(self, detector):
         # Seed with high friction
         for _ in range(5):
-            detector.sense(endpoint="/api/auth", status_code=401, latency=0.2, retries=3)
+            detector.sense(
+                endpoint="/api/auth", status_code=401, latency=0.2, retries=3
+            )
             detector.tick()
         # Mark all as fixed
         for key in list(detector._friction_points.keys()):
@@ -390,7 +440,9 @@ class TestTrendDetection:
 
     def test_stable_trend(self, detector):
         for _ in range(5):
-            detector.sense(endpoint="/api/auth", status_code=401, latency=0.2, retries=0)
+            detector.sense(
+                endpoint="/api/auth", status_code=401, latency=0.2, retries=0
+            )
             detector.tick()
         # Score stays the same each tick (same friction point, merged)
         assert detector.get_trend() == "stable"
@@ -399,6 +451,7 @@ class TestTrendDetection:
 # ═══════════════════════════════════════════════════════════════
 # 8. Event emission
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestEventEmission:
     def test_event_callback_fires(self, detector):
@@ -442,6 +495,7 @@ class TestEventEmission:
 # 9. Academy integration
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestAcademyIntegration:
     def test_load_academy_findings(self, detector, academy_bridge):
         detector.academy_bridge = academy_bridge
@@ -477,13 +531,18 @@ class TestAcademyIntegration:
         loaded = detector.load_academy_findings()
         # The zero_authentication finding merges with the live AUTH point
         # but the key differs (endpoint vs evidence), so both exist
-        auth_points = [p for p in detector._friction_points.values() if p.category == FrictionCategory.AUTH]
+        auth_points = [
+            p
+            for p in detector._friction_points.values()
+            if p.category == FrictionCategory.AUTH
+        ]
         assert len(auth_points) >= 1
 
 
 # ═══════════════════════════════════════════════════════════════
 # 10. Edge cases
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestEdgeCases:
     def test_no_friction(self, detector):
@@ -495,7 +554,9 @@ class TestEdgeCases:
     def test_all_friction(self, detector):
         statuses = [401, 404, 400, 502, 503, 500]
         for status in statuses:
-            detector.sense(endpoint="/api/mixed", status_code=status, latency=0.1, retries=0)
+            detector.sense(
+                endpoint="/api/mixed", status_code=status, latency=0.1, retries=0
+            )
         fmap = detector.tick()
         assert len(fmap.points) == 6
         assert fmap.trend_score() > 0
@@ -510,7 +571,9 @@ class TestEdgeCases:
 
     def test_merge_same_friction(self, detector):
         for _ in range(10):
-            detector.sense(endpoint="/api/auth", status_code=401, latency=0.2, retries=0)
+            detector.sense(
+                endpoint="/api/auth", status_code=401, latency=0.2, retries=0
+            )
         detector.tick()
         assert len(detector._friction_points) == 1
         point = list(detector._friction_points.values())[0]

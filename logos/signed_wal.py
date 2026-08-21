@@ -122,7 +122,9 @@ class _Ed25519Backend:
     def sign(self, message: bytes) -> bytes:
         return self._sk.sign(message)
 
-    def verify(self, message: bytes, signature: bytes, public_key: bytes | None = None) -> bool:
+    def verify(
+        self, message: bytes, signature: bytes, public_key: bytes | None = None
+    ) -> bool:
         from cryptography.hazmat.primitives.asymmetric import ed25519
         from cryptography.exceptions import InvalidSignature
 
@@ -154,7 +156,9 @@ class _HMACBackend:
     def sign(self, message: bytes) -> bytes:
         return hmac.new(self._secret, message, hashlib.sha256).digest()
 
-    def verify(self, message: bytes, signature: bytes, public_key: bytes | None = None) -> bool:
+    def verify(
+        self, message: bytes, signature: bytes, public_key: bytes | None = None
+    ) -> bool:
         expected = self.sign(message)
         # In symmetric mode, if a different public_key is supplied we re-key
         if public_key is not None and public_key != self._secret:
@@ -293,7 +297,12 @@ class SignedWAL:
         self._entries.append(se)
         self._last_hash = se.compute_hash()
         self._persist(se)
-        logger.debug("SignedWAL append #%d: agent=%d op=%s", len(self._entries), entry.agent_id, entry.operation)
+        logger.debug(
+            "SignedWAL append #%d: agent=%d op=%s",
+            len(self._entries),
+            entry.agent_id,
+            entry.operation,
+        )
         return se
 
     def verify(self, entry: SignedEntry, public_key: bytes | None = None) -> bool:
@@ -318,7 +327,9 @@ class SignedWAL:
         pk = public_key if public_key is not None else entry.public_key
         return self._backend.verify(payload, entry.signature, pk)
 
-    def verify_chain(self, entries: list[SignedEntry] | None = None) -> tuple[bool, int]:
+    def verify_chain(
+        self, entries: list[SignedEntry] | None = None
+    ) -> tuple[bool, int]:
         """Verify entire chain.
 
         Returns (all_valid, first_invalid_index).
@@ -338,9 +349,10 @@ class SignedWAL:
             # 2. Hash chain must link correctly
             if se.previous_hash != prev_hash:
                 logger.error(
-                    "Chain verify: hash mismatch at index %d "
-                    "(expected %r, got %r)",
-                    i, prev_hash, se.previous_hash,
+                    "Chain verify: hash mismatch at index %d (expected %r, got %r)",
+                    i,
+                    prev_hash,
+                    se.previous_hash,
                 )
                 return False, i
 
@@ -348,7 +360,9 @@ class SignedWAL:
 
         return True, -1
 
-    def tamper_detect(self, entries: list[SignedEntry] | None = None) -> list[TamperReport]:
+    def tamper_detect(
+        self, entries: list[SignedEntry] | None = None
+    ) -> list[TamperReport]:
         """Detect specific tampering patterns.
 
         Patterns detected:
@@ -454,12 +468,15 @@ class _RSABackend:
         else:
             self._sk = serialization.load_pem_private_key(private_key, password=None)
         self._pk = self._sk.public_key()
-        self._padding = padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH)
+        self._padding = padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
+        )
         self._hash = hashes.SHA256()
 
     @property
     def private_key_bytes(self) -> bytes:
         from cryptography.hazmat.primitives import serialization
+
         return self._sk.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
@@ -469,6 +486,7 @@ class _RSABackend:
     @property
     def public_key_bytes(self) -> bytes:
         from cryptography.hazmat.primitives import serialization
+
         return self._pk.public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo,
@@ -477,7 +495,9 @@ class _RSABackend:
     def sign(self, message: bytes) -> bytes:
         return self._sk.sign(message, self._padding, self._hash)
 
-    def verify(self, message: bytes, signature: bytes, public_key: bytes | None = None) -> bool:
+    def verify(
+        self, message: bytes, signature: bytes, public_key: bytes | None = None
+    ) -> bool:
         from cryptography.hazmat.primitives.asymmetric import padding
         from cryptography.hazmat.primitives import hashes, serialization
         from cryptography.exceptions import InvalidSignature

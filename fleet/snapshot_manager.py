@@ -10,6 +10,7 @@ Usage:
     state = mgr.restore("state-v1")
     deltas = mgr.deltas_since("state-v1", newer_snapshot)
 """
+
 from __future__ import annotations
 
 import json
@@ -134,7 +135,9 @@ class SnapshotManager:
             return None
         return max(self._snapshots.items(), key=lambda x: x[1].timestamp)[0]
 
-    def apply_delta(self, state: Dict[str, Any], deltas: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def apply_delta(
+        self, state: Dict[str, Any], deltas: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Apply deltas to a state copy."""
         result = dict(state)
         for d in deltas:

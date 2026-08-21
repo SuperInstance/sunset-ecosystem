@@ -6,6 +6,7 @@ Tests:
 3. hardware-specific frontiers differ (Jetson prefers smaller configs than Oracle1)
 4. config serialization/deserialization roundtrip
 """
+
 from __future__ import annotations
 
 import json
@@ -34,6 +35,7 @@ from experiments.hardware_nas import (
 
 # ── Fixtures ──
 
+
 @pytest.fixture
 def nas_jetson():
     return HardwareConditionalNAS(jetson_profile, max_evals=50, seed=42)
@@ -46,10 +48,18 @@ def nas_oracle1():
 
 @pytest.fixture
 def sample_config():
-    return Config(n_rooms=100, d_latent=32, h_history=8, l_signal=8, chaos_decay=0.95, route_density=0.05)
+    return Config(
+        n_rooms=100,
+        d_latent=32,
+        h_history=8,
+        l_signal=8,
+        chaos_decay=0.95,
+        route_density=0.05,
+    )
 
 
 # ── Test 1: evaluate a single config ──
+
 
 class TestEvaluateSingle:
     def test_returns_dict_with_all_metrics(self, nas_jetson, sample_config):
@@ -70,11 +80,15 @@ class TestEvaluateSingle:
 
     def test_diversity_in_range(self, nas_jetson, sample_config):
         result = nas_jetson.evaluate(sample_config)
-        assert 0.0 <= result.diversity <= 1.0, f"diversity should be in [0,1], got {result.diversity}"
+        assert 0.0 <= result.diversity <= 1.0, (
+            f"diversity should be in [0,1], got {result.diversity}"
+        )
 
     def test_stability_in_range(self, nas_jetson, sample_config):
         result = nas_jetson.evaluate(sample_config)
-        assert 0.0 < result.stability <= 1.0, f"stability should be in (0,1], got {result.stability}"
+        assert 0.0 < result.stability <= 1.0, (
+            f"stability should be in (0,1], got {result.stability}"
+        )
 
     def test_eval_count_increments(self, nas_jetson, sample_config):
         before = nas_jetson.eval_count
@@ -84,22 +98,44 @@ class TestEvaluateSingle:
     def test_dict_output_contains_expected_keys(self, nas_jetson, sample_config):
         result = nas_jetson.evaluate(sample_config)
         d = result.to_dict()
-        expected = {"n_rooms", "d_latent", "h_history", "l_signal", "chaos_decay",
-                    "route_density", "ticks_per_second", "memory_mb", "diversity",
-                    "stability", "age"}
+        expected = {
+            "n_rooms",
+            "d_latent",
+            "h_history",
+            "l_signal",
+            "chaos_decay",
+            "route_density",
+            "ticks_per_second",
+            "memory_mb",
+            "diversity",
+            "stability",
+            "age",
+        }
         assert expected.issubset(d.keys())
 
     def test_infeasible_config_penalized(self):
         """Config exceeding RAM should return penalty result."""
-        tiny_profile = {"ram_gb": 0.05, "cpu_cores": 2, "gpu": "none"}  # ~50MB allowance
+        tiny_profile = {
+            "ram_gb": 0.05,
+            "cpu_cores": 2,
+            "gpu": "none",
+        }  # ~50MB allowance
         nas = HardwareConditionalNAS(tiny_profile, max_evals=10)
-        huge = Config(n_rooms=1000, d_latent=128, h_history=32, l_signal=64, chaos_decay=0.95, route_density=0.20)
+        huge = Config(
+            n_rooms=1000,
+            d_latent=128,
+            h_history=32,
+            l_signal=64,
+            chaos_decay=0.95,
+            route_density=0.20,
+        )
         result = nas.evaluate(huge)
         assert result.ticks_per_second == 0.0
         assert result.memory_mb >= 999000
 
 
 # ── Test 2: aging evolution → non-empty Pareto frontier ──
+
 
 @pytest.mark.slow
 class TestAgingEvolution:
@@ -115,8 +151,18 @@ class TestAgingEvolution:
 
     def test_frontier_contains_expected_keys(self, nas_jetson):
         frontier = nas_jetson.aging_evolution(population_size=5, generations=2)
-        expected = {"n_rooms", "d_latent", "h_history", "l_signal", "chaos_decay",
-                    "route_density", "ticks_per_second", "memory_mb", "diversity", "stability"}
+        expected = {
+            "n_rooms",
+            "d_latent",
+            "h_history",
+            "l_signal",
+            "chaos_decay",
+            "route_density",
+            "ticks_per_second",
+            "memory_mb",
+            "diversity",
+            "stability",
+        }
         for item in frontier:
             assert expected.issubset(item.keys())
 
@@ -128,8 +174,9 @@ class TestAgingEvolution:
         for i, a in enumerate(frontier):
             for j, b in enumerate(frontier):
                 if i != j:
-                    assert not pareto_dominates(a, b, objectives, maximize), \
+                    assert not pareto_dominates(a, b, objectives, maximize), (
                         f"Frontier point {i} dominates {j} — not a true frontier"
+                    )
 
     def test_eval_count_bounded_by_max_evals(self, nas_jetson):
         nas_jetson.aging_evolution(population_size=5, generations=5)
@@ -137,6 +184,7 @@ class TestAgingEvolution:
 
 
 # ── Test 3: hardware-specific frontiers differ ──
+
 
 @pytest.mark.slow
 class TestHardwareSpecificFrontiers:
@@ -155,11 +203,19 @@ class TestHardwareSpecificFrontiers:
         avg_n_oracle = sum(p["n_rooms"] for p in frontier_o) / len(frontier_o)
 
         # Jetson should generally prefer smaller configs (or at least not bigger)
-        assert avg_n_jetson <= avg_n_oracle * 1.5, \
+        assert avg_n_jetson <= avg_n_oracle * 1.5, (
             f"Jetson avg n={avg_n_jetson} unexpectedly larger than Oracle1 avg n={avg_n_oracle}"
+        )
 
     def test_feasibility_differs_by_hardware(self):
-        big = Config(n_rooms=1000, d_latent=128, h_history=32, l_signal=64, chaos_decay=0.95, route_density=0.20)
+        big = Config(
+            n_rooms=1000,
+            d_latent=128,
+            h_history=32,
+            l_signal=64,
+            chaos_decay=0.95,
+            route_density=0.20,
+        )
         assert _feasible_for_hardware(big, oracle1_profile)
         # Use a tiny profile to force infeasibility for the test
         tiny = {"ram_gb": 0.05, "cpu_cores": 2, "gpu": "none"}
@@ -167,6 +223,7 @@ class TestHardwareSpecificFrontiers:
 
 
 # ── Test 4: config serialization roundtrip ──
+
 
 class TestConfigSerialization:
     def test_config_to_dict_roundtrip(self, sample_config):
@@ -198,6 +255,7 @@ class TestConfigSerialization:
 
 # ── Test 5: Pareto helpers ──
 
+
 class TestParetoHelpers:
     def test_pareto_dominates_simple(self):
         a = {"x": 2, "y": 2}  # better on both
@@ -212,23 +270,40 @@ class TestParetoHelpers:
 
     def test_compute_pareto_frontier_filters_dominated(self):
         points = [
-            {"x": 1, "y": 1},   # dominated
-            {"x": 2, "y": 2},   # dominates first
-            {"x": 2, "y": 1},   # non-dominated (trade-off)
+            {"x": 1, "y": 1},  # dominated
+            {"x": 2, "y": 2},  # dominates first
+            {"x": 2, "y": 1},  # non-dominated (trade-off)
         ]
         frontier = compute_pareto_frontier(points, ["x", "y"], {"x", "y"})
         for p in frontier:
             for q in frontier:
                 if p is q:
                     continue
-                assert not (pareto_dominates(p, q, ["x", "y"], {"x", "y"}) and pareto_dominates(q, p, ["x", "y"], {"x", "y"})), \
-                    "Mutual domination in frontier"
+                assert not (
+                    pareto_dominates(p, q, ["x", "y"], {"x", "y"})
+                    and pareto_dominates(q, p, ["x", "y"], {"x", "y"})
+                ), "Mutual domination in frontier"
 
     def test_frontier_minimizes_memory(self):
         points = [
-            {"ticks_per_second": 100, "diversity": 0.5, "stability": 0.5, "memory_mb": 100},
-            {"ticks_per_second": 120, "diversity": 0.6, "stability": 0.6, "memory_mb": 50},   # dominates 1st
-            {"ticks_per_second": 80,  "diversity": 0.4, "stability": 0.4, "memory_mb": 200},  # dominated by 2nd
+            {
+                "ticks_per_second": 100,
+                "diversity": 0.5,
+                "stability": 0.5,
+                "memory_mb": 100,
+            },
+            {
+                "ticks_per_second": 120,
+                "diversity": 0.6,
+                "stability": 0.6,
+                "memory_mb": 50,
+            },  # dominates 1st
+            {
+                "ticks_per_second": 80,
+                "diversity": 0.4,
+                "stability": 0.4,
+                "memory_mb": 200,
+            },  # dominated by 2nd
         ]
         frontier = compute_pareto_frontier(points)
         assert len(frontier) == 1  # only point 2 survives
@@ -236,6 +311,7 @@ class TestParetoHelpers:
 
 
 # ── Test 6: Hardware profiles exist and are well-formed ──
+
 
 class TestHardwareProfiles:
     def test_oracle1_profile(self):

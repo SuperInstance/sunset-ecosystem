@@ -41,26 +41,39 @@ class TestEcosystemScanner:
 
     def test_compute_compatibility_python(self):
         scanner = EcosystemScanner()
-        repo = RepositoryInfo(name="test", owner="test", language="Python", has_tests=True)
+        repo = RepositoryInfo(
+            name="test", owner="test", language="Python", has_tests=True
+        )
         score = scanner.compute_compatibility(repo)
         assert score > 0.3
         assert "Python codebase" in repo.compatibility_reasons
 
     def test_compute_compatibility_no_tests(self):
         scanner = EcosystemScanner()
-        repo = RepositoryInfo(name="test", owner="test", language="Python", has_tests=False, has_ci=False, has_docs=False)
+        repo = RepositoryInfo(
+            name="test",
+            owner="test",
+            language="Python",
+            has_tests=False,
+            has_ci=False,
+            has_docs=False,
+        )
         score = scanner.compute_compatibility(repo)
         assert score < 0.5
 
     def test_compute_compatibility_rust(self):
         scanner = EcosystemScanner()
-        repo = RepositoryInfo(name="test", owner="test", language="Rust", has_tests=True)
+        repo = RepositoryInfo(
+            name="test", owner="test", language="Rust", has_tests=True
+        )
         score = scanner.compute_compatibility(repo)
         assert score < 0.5  # Less than Python
 
     def test_compute_compatibility_ai_topic(self):
         scanner = EcosystemScanner()
-        repo = RepositoryInfo(name="test", owner="test", language="Python", topics=["ai", "evolution"])
+        repo = RepositoryInfo(
+            name="test", owner="test", language="Python", topics=["ai", "evolution"]
+        )
         score = scanner.compute_compatibility(repo)
         assert score >= 0.5
         assert "AI/evolution topic match" in repo.compatibility_reasons
@@ -82,7 +95,9 @@ class TestEcosystemScanner:
 
     def test_recommend_integration_breeding(self):
         scanner = EcosystemScanner()
-        repo = RepositoryInfo(name="test", owner="test", topics=["evolution", "breeding"])
+        repo = RepositoryInfo(
+            name="test", owner="test", topics=["evolution", "breeding"]
+        )
         rec = scanner.recommend_integration(repo)
         assert rec == "swarm/breeder_daemon_v2.py"
 
@@ -94,7 +109,9 @@ class TestEcosystemScanner:
 
     def test_recommend_integration_monitoring(self):
         scanner = EcosystemScanner()
-        repo = RepositoryInfo(name="test", owner="test", topics=["monitoring", "health"])
+        repo = RepositoryInfo(
+            name="test", owner="test", topics=["monitoring", "health"]
+        )
         rec = scanner.recommend_integration(repo)
         assert rec == "fleet/cocapn_dashboard.py"
 

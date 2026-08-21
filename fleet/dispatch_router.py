@@ -40,19 +40,19 @@ from fleet.gateway_pacing import GatewayPacing
 # Seconds added per keyword / activity detected in the task description.
 # These are seeded from empirical fleet data and refined by record_actual().
 _DEFAULT_WEIGHTS: dict[str, float] = {
-    "file_creation": 60.0,     # per file mentioned
-    "test_writing": 90.0,      # per test file / test suite
-    "doc_writing": 45.0,       # per doc file
-    "research": 180.0,         # any research / investigate / look up
-    "bug_fix": 120.0,          # base bug-fix overhead
+    "file_creation": 60.0,  # per file mentioned
+    "test_writing": 90.0,  # per test file / test suite
+    "doc_writing": 45.0,  # per doc file
+    "research": 180.0,  # any research / investigate / look up
+    "bug_fix": 120.0,  # base bug-fix overhead
     "bug_fix_complex": 300.0,  # complex / deep / race-condition / memory-leak
-    "refactor": 90.0,          # per file refactored
-    "integration": 150.0,     # cross-module wiring
-    "simple_edit": 30.0,       # typo, rename, one-liner
-    "config_change": 45.0,     # yaml, json, env var
-    "merge_conflict": 60.0,    # per conflicted file
-    "dependency": 120.0,      # pip, npm, cargo, etc.
-    "architecture": 240.0,     # design / scaffold / blueprint
+    "refactor": 90.0,  # per file refactored
+    "integration": 150.0,  # cross-module wiring
+    "simple_edit": 30.0,  # typo, rename, one-liner
+    "config_change": 45.0,  # yaml, json, env var
+    "merge_conflict": 60.0,  # per conflicted file
+    "dependency": 120.0,  # pip, npm, cargo, etc.
+    "architecture": 240.0,  # design / scaffold / blueprint
 }
 
 # Regex patterns that trigger each weight category.
@@ -209,7 +209,9 @@ class DispatchRouter:
 
     # ── Public API ────────────────────────────────────────────────────
 
-    def estimate_duration(self, task_description: str, context: dict[str, Any] | None = None) -> int:
+    def estimate_duration(
+        self, task_description: str, context: dict[str, Any] | None = None
+    ) -> int:
         """Return estimated seconds for *task_description*.
 
         The estimate is built from:
@@ -234,8 +236,7 @@ class DispatchRouter:
         # or "quick", treat it as trivial unless there are explicit complex markers.
         if "simple_edit" in extra:
             has_complex_marker = any(
-                p.search(text)
-                for p in _WEIGHT_PATTERNS.get("bug_fix_complex", [])
+                p.search(text) for p in _WEIGHT_PATTERNS.get("bug_fix_complex", [])
             )
             if not has_complex_marker:
                 # Drop all non-simple categories; this is a trivial task
@@ -255,7 +256,9 @@ class DispatchRouter:
         # Round to nearest int, minimum 10 s
         return max(10, int(round(total)))
 
-    def should_delegate(self, task_description: str, context: dict[str, Any] | None = None) -> bool:
+    def should_delegate(
+        self, task_description: str, context: dict[str, Any] | None = None
+    ) -> bool:
         """True if the estimated duration exceeds the two-minute threshold."""
         return self.estimate_duration(task_description, context) > self._threshold
 

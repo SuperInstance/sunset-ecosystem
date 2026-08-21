@@ -105,7 +105,7 @@ Once ``agentcheck`` is on ``$PATH``, ``FleetSecurityScanner`` automatically uses
 
 ```python
 scanner = FleetSecurityScanner()  # auto-discovers binary
-report = scanner.scan()           # runs agentcheck --json
+report = scanner.scan()  # runs agentcheck --json
 ```
 
 ## API Reference

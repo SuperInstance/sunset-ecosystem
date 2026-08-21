@@ -27,6 +27,7 @@ import numpy as np
 @dataclass
 class PeerIdentity:
     """Identity of a peer in the fleet."""
+
     vessel_id: str
     node_id: str
     public_key: str
@@ -53,6 +54,7 @@ class PeerIdentity:
 @dataclass
 class HandshakeMessage:
     """A handshake message exchanged between vessels."""
+
     sender_id: str
     nonce: str
     timestamp: float
@@ -86,6 +88,7 @@ class HandshakeMessage:
 @dataclass
 class TopologyEdge:
     """An edge in the network topology graph."""
+
     source: str
     target: str
     weight: float = 1.0
@@ -96,6 +99,7 @@ class TopologyEdge:
 @dataclass
 class NetworkTopology:
     """Discovered network topology of the fleet."""
+
     nodes: Set[str] = field(default_factory=set)
     edges: List[TopologyEdge] = field(default_factory=list)
     # Path cache: shortest paths between nodes
@@ -106,8 +110,9 @@ class NetworkTopology:
         self.nodes.add(target)
         # Update existing edge or add new
         for edge in self.edges:
-            if (edge.source == source and edge.target == target) or \
-               (edge.source == target and edge.target == source):
+            if (edge.source == source and edge.target == target) or (
+                edge.source == target and edge.target == source
+            ):
                 edge.weight = weight
                 edge.last_seen = time.time()
                 return
@@ -167,7 +172,7 @@ class NetworkTopology:
         # Count triangles
         triangles = 0
         for i, n1 in enumerate(neighbors):
-            for n2 in neighbors[i + 1:]:
+            for n2 in neighbors[i + 1 :]:
                 if n2 in self.get_neighbors(n1):
                     triangles += 1
 
@@ -189,8 +194,12 @@ class NetworkTopology:
         return {
             "nodes": list(self.nodes),
             "edges": [
-                {"source": e.source, "target": e.target,
-                 "weight": e.weight, "last_seen": e.last_seen}
+                {
+                    "source": e.source,
+                    "target": e.target,
+                    "weight": e.weight,
+                    "last_seen": e.last_seen,
+                }
                 for e in self.edges
             ],
         }
@@ -208,12 +217,14 @@ class VesselHandshakeProtocol:
     5. Gossips new discoveries to neighbors
     """
 
-    def __init__(self,
-                 vessel_id: str,
-                 node_id: str,
-                 secret: str,
-                 peers_file: Optional[str] = None,
-                 max_hops: int = 3):
+    def __init__(
+        self,
+        vessel_id: str,
+        node_id: str,
+        secret: str,
+        peers_file: Optional[str] = None,
+        max_hops: int = 3,
+    ):
         self.vessel_id = vessel_id
         self.node_id = node_id
         self.secret = secret
@@ -245,12 +256,14 @@ class VesselHandshakeProtocol:
                     # Parse: vessel_id node_id public_key [capabilities...]
                     parts = line.split()
                     if len(parts) >= 3:
-                        peers.append(PeerIdentity(
-                            vessel_id=parts[0],
-                            node_id=parts[1],
-                            public_key=parts[2],
-                            capabilities=parts[3:] if len(parts) > 3 else []
-                        ))
+                        peers.append(
+                            PeerIdentity(
+                                vessel_id=parts[0],
+                                node_id=parts[1],
+                                public_key=parts[2],
+                                capabilities=parts[3:] if len(parts) > 3 else [],
+                            )
+                        )
         except (IOError, OSError):
             pass
 
@@ -273,20 +286,26 @@ class VesselHandshakeProtocol:
 
     # ── Handshake Protocol ──
 
-    def create_handshake(self, known_peers: Optional[List[str]] = None) -> HandshakeMessage:
+    def create_handshake(
+        self, known_peers: Optional[List[str]] = None
+    ) -> HandshakeMessage:
         """Create a handshake message to send to peers."""
-        nonce = hashlib.sha256(str(time.time() + random.random()).encode()).hexdigest()[:16]
+        nonce = hashlib.sha256(str(time.time() + random.random()).encode()).hexdigest()[
+            :16
+        ]
         msg = HandshakeMessage(
             sender_id=self.vessel_id,
             nonce=nonce,
             timestamp=time.time(),
             known_peers=known_peers or list(self.peers.keys()),
-            capabilities=["breeding", "spatial", "causal-discovery"]
+            capabilities=["breeding", "spatial", "causal-discovery"],
         )
         msg.signature = msg.compute_signature(self.secret)
         return msg
 
-    def process_handshake(self, msg: HandshakeMessage, latency_ms: float = 0.0) -> HandshakeMessage:
+    def process_handshake(
+        self, msg: HandshakeMessage, latency_ms: float = 0.0
+    ) -> HandshakeMessage:
         """
         Process incoming handshake and return response.
         Returns ACK handshake with our known peers.
@@ -362,7 +381,7 @@ class VesselHandshakeProtocol:
                 nonce=handshake.nonce,
                 timestamp=time.time(),
                 known_peers=[],
-                capabilities=["breeding"]
+                capabilities=["breeding"],
             )
             response.signature = response.compute_signature(self.secret)
 
@@ -384,8 +403,7 @@ class VesselHandshakeProtocol:
         Uses trinity score as tiebreaker.
         """
         candidates = [
-            peer for peer in self.peers.values()
-            if task_capability in peer.capabilities
+            peer for peer in self.peers.values() if task_capability in peer.capabilities
         ]
 
         if not candidates:
@@ -403,14 +421,14 @@ class VesselHandshakeProtocol:
             "topology_nodes": len(self.topology.nodes),
             "topology_edges": len(self.topology.edges),
             "network_diameter": self.topology.diameter(),
-            "avg_clustering": np.mean([
-                self.topology.cluster_coefficient(n)
-                for n in self.topology.nodes
-            ]) if self.topology.nodes else 0.0,
+            "avg_clustering": np.mean(
+                [self.topology.cluster_coefficient(n) for n in self.topology.nodes]
+            )
+            if self.topology.nodes
+            else 0.0,
             "trinity_scores": {
-                pid: peer.trinity_score
-                for pid, peer in self.peers.items()
-            }
+                pid: peer.trinity_score for pid, peer in self.peers.items()
+            },
         }
 
     def to_dict(self) -> Dict:

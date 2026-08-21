@@ -96,7 +96,7 @@ The `openconstruct_bridge` uses a manifest pattern:
 manifest = ConstructManifest(
     breeder_type="pythagorean",
     constraints=["exact_arithmetic"],
-    qd_dimensions=[(3,4,5)],
+    qd_dimensions=[(3, 4, 5)],
     resources={"nodes": 4, "agents_per_node": 50},
 )
 adapter = HarnessAdapter(manifest)

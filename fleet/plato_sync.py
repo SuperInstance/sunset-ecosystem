@@ -27,6 +27,7 @@ from fleet.spatial_projector import SpatialProjector, WorldState
 @dataclass
 class RoomContext:
     """Context for a room entry event."""
+
     room_id: str
     agent_id: str
     timestamp: float
@@ -37,6 +38,7 @@ class RoomContext:
 @dataclass
 class RoomMapping:
     """Maps Plato room IDs to spatial coordinates and semantics."""
+
     room_id: str
     default_position: tuple
     default_semantics: Dict[str, Any] = field(default_factory=dict)
@@ -55,28 +57,31 @@ def trinity_room_mapper(room_id: str) -> RoomMapping:
             room_id=room_id,
             default_position=(0.0, 0.0, 0.0),
             default_semantics={"room_type": "ethos", "domain": "values"},
-            room_type="ethos"
+            room_type="ethos",
         ),
         "pathos": RoomMapping(
             room_id=room_id,
             default_position=(100.0, 0.0, 0.0),
             default_semantics={"room_type": "pathos", "domain": "emotions"},
-            room_type="pathos"
+            room_type="pathos",
         ),
         "logos": RoomMapping(
             room_id=room_id,
             default_position=(50.0, 100.0, 0.0),
             default_semantics={"room_type": "logos", "domain": "reason"},
-            room_type="logos"
+            room_type="logos",
         ),
     }
 
-    return mappings.get(room_type, RoomMapping(
-        room_id=room_id,
-        default_position=(50.0, 50.0, 0.0),
-        default_semantics={"room_type": "general"},
-        room_type="general"
-    ))
+    return mappings.get(
+        room_type,
+        RoomMapping(
+            room_id=room_id,
+            default_position=(50.0, 50.0, 0.0),
+            default_semantics={"room_type": "general"},
+            room_type="general",
+        ),
+    )
 
 
 class PlatoRoomSync:
@@ -87,11 +92,13 @@ class PlatoRoomSync:
     On room exit: Removes or ages out the spatial projection
     """
 
-    def __init__(self,
-                 projector: SpatialProjector,
-                 room_mapper: Optional[Callable[[str], RoomMapping]] = None,
-                 auto_remove_on_exit: bool = True,
-                 age_out_seconds: float = 60.0):
+    def __init__(
+        self,
+        projector: SpatialProjector,
+        room_mapper: Optional[Callable[[str], RoomMapping]] = None,
+        auto_remove_on_exit: bool = True,
+        age_out_seconds: float = 60.0,
+    ):
         self.projector = projector
         self.room_mapper = room_mapper or trinity_room_mapper
         self.auto_remove_on_exit = auto_remove_on_exit
@@ -105,8 +112,9 @@ class PlatoRoomSync:
         self.on_enter_callback: Optional[Callable[[RoomContext], None]] = None
         self.on_exit_callback: Optional[Callable[[RoomContext], None]] = None
 
-    def on_enter(self, agent_id: str, room_id: str,
-                 context: Optional[Dict[str, Any]] = None):
+    def on_enter(
+        self, agent_id: str, room_id: str, context: Optional[Dict[str, Any]] = None
+    ):
         """
         Called when an agent enters a Plato room.
         Projects the agent's WorldState into the spatial index.
@@ -120,10 +128,7 @@ class PlatoRoomSync:
 
         # Create room context
         room_ctx = RoomContext(
-            room_id=room_id,
-            agent_id=agent_id,
-            timestamp=time.time(),
-            semantics=context
+            room_id=room_id, agent_id=agent_id, timestamp=time.time(), semantics=context
         )
         self.room_contexts[f"{agent_id}:{room_id}"] = room_ctx
 
@@ -145,8 +150,8 @@ class PlatoRoomSync:
                 position=position,
                 semantics=semantics,
                 confidence=1.0,
-                agent_id=agent_id
-            )
+                agent_id=agent_id,
+            ),
         )
 
         if self.on_enter_callback:
@@ -168,8 +173,9 @@ class PlatoRoomSync:
             room_ctx = self.room_contexts[key]
             del self.room_contexts[key]
         else:
-            room_ctx = RoomContext(room_id=room_id, agent_id=agent_id,
-                                   timestamp=time.time())
+            room_ctx = RoomContext(
+                room_id=room_id, agent_id=agent_id, timestamp=time.time()
+            )
 
         if self.auto_remove_on_exit:
             # Re-project with exit semantics (or remove)
@@ -183,11 +189,11 @@ class PlatoRoomSync:
                         **mapping.default_semantics,
                         "room_id": room_id,
                         "event": "exit",
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
                     },
                     confidence=0.5,  # Lower confidence on exit
-                    agent_id=agent_id
-                )
+                    agent_id=agent_id,
+                ),
             )
         else:
             # Just age out naturally
@@ -203,8 +209,7 @@ class PlatoRoomSync:
     def get_room_agents(self, room_id: str) -> List[str]:
         """Get all agents currently in a room."""
         return [
-            agent_id for agent_id, rooms in self.agent_rooms.items()
-            if room_id in rooms
+            agent_id for agent_id, rooms in self.agent_rooms.items() if room_id in rooms
         ]
 
     def is_in_room(self, agent_id: str, room_id: str) -> bool:

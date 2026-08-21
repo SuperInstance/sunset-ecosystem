@@ -5,6 +5,7 @@ Public API:
 
 See docs/SPEC-FLUX-RESOLUTION.md for architecture context.
 """
+
 from .compat import load_v2
 from .v3_module import Module, Instruction, ConstraintDef
 

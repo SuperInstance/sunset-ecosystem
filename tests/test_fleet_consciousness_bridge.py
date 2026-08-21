@@ -111,12 +111,14 @@ class TestFleetConsciousnessIndex:
         assert score.fci == 1.0
 
     def test_custom_weights(self):
-        fci = FleetConsciousnessIndex(weights={
-            "room_phi": 0.25,
-            "attention": 0.25,
-            "learning": 0.25,
-            "meta": 0.25,
-        })
+        fci = FleetConsciousnessIndex(
+            weights={
+                "room_phi": 0.25,
+                "attention": 0.25,
+                "learning": 0.25,
+                "meta": 0.25,
+            }
+        )
         score = fci.compute(
             room_phi_score=0.4,
             attention_score=0.4,
@@ -148,6 +150,7 @@ class TestFleetConsciousnessIndex:
         )
         json_text = fci.render_json(score)
         import json
+
         data = json.loads(json_text)
         assert "fci" in data
         assert "level" in data

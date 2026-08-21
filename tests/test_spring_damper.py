@@ -1,4 +1,5 @@
 """Tests for fleet/spring_damper.py — Spring-damper physics for smooth agent transitions."""
+
 from __future__ import annotations
 
 import math
@@ -17,6 +18,7 @@ from fleet.spring_damper import (
 # ---------------------------------------------------------------------------
 # 1. SpringDamper — basic physics
 # ---------------------------------------------------------------------------
+
 
 class TestSpringDamper:
     def test_tick_settles(self):
@@ -106,9 +108,17 @@ class TestSpringDamper:
         """8-way direction mapping from degrees."""
         sd = SpringDamper()
         test_cases = [
-            (0, "N"), (45, "NE"), (90, "E"), (135, "SE"),
-            (180, "S"), (225, "SW"), (270, "W"), (315, "NW"),
-            (360, "N"), (22.5, "N"), (22.6, "NE"),
+            (0, "N"),
+            (45, "NE"),
+            (90, "E"),
+            (135, "SE"),
+            (180, "S"),
+            (225, "SW"),
+            (270, "W"),
+            (315, "NW"),
+            (360, "N"),
+            (22.5, "N"),
+            (22.6, "NE"),
         ]
         for degrees, expected in test_cases:
             sd.set_target(degrees)
@@ -119,8 +129,12 @@ class TestSpringDamper:
         """8-way direction mapping from radians."""
         sd = SpringDamper()
         test_cases = [
-            (0, "N"), (math.pi / 4, "NE"), (math.pi / 2, "E"),
-            (math.pi, "S"), (3 * math.pi / 2, "W"), (2 * math.pi, "N"),
+            (0, "N"),
+            (math.pi / 4, "NE"),
+            (math.pi / 2, "E"),
+            (math.pi, "S"),
+            (3 * math.pi / 2, "W"),
+            (2 * math.pi, "N"),
         ]
         for radians, expected in test_cases:
             sd.set_target(radians)
@@ -147,6 +161,7 @@ class TestSpringDamper:
 # ---------------------------------------------------------------------------
 # 2. MultiDimensionalSpringDamper
 # ---------------------------------------------------------------------------
+
 
 class TestMultiDimensionalSpringDamper:
     def test_tick_settles_all(self):
@@ -209,6 +224,7 @@ class TestMultiDimensionalSpringDamper:
 # 3. AgentTransitionSmoother
 # ---------------------------------------------------------------------------
 
+
 class TestAgentTransitionSmoother:
     def test_scalar_transition(self):
         """Scalar 1D transition."""
@@ -256,6 +272,7 @@ class TestAgentTransitionSmoother:
 # 4. Configuration
 # ---------------------------------------------------------------------------
 
+
 class TestSpringDamperConfig:
     def test_defaults(self):
         cfg = SpringDamperConfig()
@@ -274,6 +291,7 @@ class TestSpringDamperConfig:
 # ---------------------------------------------------------------------------
 # 5. Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_zero_target(self):

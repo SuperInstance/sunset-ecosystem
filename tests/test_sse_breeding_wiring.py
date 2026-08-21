@@ -1,4 +1,5 @@
 """Tests for SSE breeding event wiring."""
+
 from __future__ import annotations
 
 import time
@@ -6,7 +7,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from fleet.sse_stream_dashboard import SSEStreamDashboard, DashboardConfig, StreamEvent, EventType
+from fleet.sse_stream_dashboard import (
+    SSEStreamDashboard,
+    DashboardConfig,
+    StreamEvent,
+    EventType,
+)
 from fleet.sse_breeding_wiring import SSEBreedingWiring, wire_breeder_to_sse
 
 

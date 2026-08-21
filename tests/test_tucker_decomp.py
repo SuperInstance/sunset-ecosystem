@@ -60,11 +60,14 @@ def layer(dims, ranks, dense_weight):
 
 # ── Test 1: Factorize + Reconstruct ≈ Original ──────────────────────────
 
+
 class TestFactorizeReconstruct:
     def test_reconstruction_error_small(self, layer, dense_weight):
         """HOSVD reconstruction should be close to the original tensor."""
         W_hat = layer.reconstruct()
-        rel_err = float(np.linalg.norm(dense_weight - W_hat) / np.linalg.norm(dense_weight))
+        rel_err = float(
+            np.linalg.norm(dense_weight - W_hat) / np.linalg.norm(dense_weight)
+        )
         # For a smooth, low-rank-ish tensor and ranks=16 on dims=64,
         # we expect < 5% relative error.
         assert rel_err < 0.05, f"Relative reconstruction error {rel_err:.4f} too high"
@@ -76,6 +79,7 @@ class TestFactorizeReconstruct:
 
 
 # ── Test 2: Compression Ratio > 2× ───────────────────────────────────────
+
 
 class TestCompressionRatio:
     def test_ratio_exceeds_2x(self, layer):
@@ -93,10 +97,13 @@ class TestCompressionRatio:
         """Specific expectation: (64,64,64) → (16,16,16) yields ~36.5×."""
         W = _make_smooth_tensor((64, 64, 64))
         layer = TuckerLayer((64, 64, 64), (16, 16, 16), weight=W)
-        assert layer.compression_ratio() == pytest.approx(64**3 / (16**3 + 3 * 64 * 16), rel=1e-3)
+        assert layer.compression_ratio() == pytest.approx(
+            64**3 / (16**3 + 3 * 64 * 16), rel=1e-3
+        )
 
 
 # ── Test 3: Forward Pass — Correct Output Shape ──────────────────────────
+
 
 class TestForwardPass:
     def test_single_sample_shape(self, layer, dims):
@@ -130,6 +137,7 @@ class TestForwardPass:
 
 # ── Test 4: Parameter Count Strictly Reduced ──────────────────────────────
 
+
 class TestParamCount:
     def test_tucker_less_than_dense(self, layer):
         """Tucker parameter count must be strictly smaller than dense."""
@@ -139,12 +147,7 @@ class TestParamCount:
     def test_core_and_factors_accounted(self, layer):
         """The reported count must equal the sum of individual components."""
         counts = layer.param_counts()
-        manual = (
-            layer.core.size
-            + layer.A.size
-            + layer.B.size
-            + layer.C.size
-        )
+        manual = layer.core.size + layer.A.size + layer.B.size + layer.C.size
         assert counts["tucker"] == manual
 
     def test_asymmetric_ranks(self):
@@ -158,6 +161,7 @@ class TestParamCount:
 
 
 # ── Test 5: Gradient Flow ─────────────────────────────────────────────────
+
 
 class TestGradientFlow:
     def test_numpy_numerical_gradient(self, layer, dims):
@@ -180,7 +184,9 @@ class TestGradientFlow:
         pytest.importorskip("torch")
         import torch
 
-        layer = TuckerLayer(dims, (16, 16, 16), weight=torch.from_numpy(dense_weight), backend="torch")
+        layer = TuckerLayer(
+            dims, (16, 16, 16), weight=torch.from_numpy(dense_weight), backend="torch"
+        )
         mod = layer.to_torch_module()
 
         x = torch.randn(2, dims[1], dims[2])
@@ -204,13 +210,16 @@ class TestGradientFlow:
 
 # ── Torch Module Wrapper ─────────────────────────────────────────────────
 
+
 class TestTorchModule:
     def test_wrapper_produces_same_output(self, dims, dense_weight):
         """to_torch_module() must match the standalone forward."""
         pytest.importorskip("torch")
         import torch
 
-        layer = TuckerLayer(dims, (16, 16, 16), weight=torch.from_numpy(dense_weight), backend="torch")
+        layer = TuckerLayer(
+            dims, (16, 16, 16), weight=torch.from_numpy(dense_weight), backend="torch"
+        )
         x = torch.randn(3, dims[1], dims[2])
 
         y_standalone = layer(x)
@@ -233,6 +242,7 @@ class TestTorchModule:
 
 
 # ── Edge Cases ────────────────────────────────────────────────────────────
+
 
 class TestEdgeCases:
     def test_random_init_no_weight(self, dims):

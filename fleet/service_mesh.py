@@ -9,6 +9,7 @@ Usage:
     mesh.register("users", ["http://user-1:8080", "http://user-2:8080"])
     result = mesh.call("users", "/get/123")
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional

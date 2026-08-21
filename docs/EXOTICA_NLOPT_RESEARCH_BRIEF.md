@@ -272,13 +272,15 @@ The `WorkerPool` already has thermal-aware lifecycle FSM. It maps naturally to o
 ```python
 # Spawn one DIRECT worker per thermal slot
 for i in range(pool.thermal.available_slots(DeviceType.GPU)):
-    pool.spawn_worker(config={
-        "room_id": i,
-        "algorithm": "DIRECT_L",
-        "q0_seed": random_joint_config(),
-        "maxeval": 10000,
-        "on_tick": lambda aid, info: mesh_table.insert_signed(...)
-    })
+    pool.spawn_worker(
+        config={
+            "room_id": i,
+            "algorithm": "DIRECT_L",
+            "q0_seed": random_joint_config(),
+            "maxeval": 10000,
+            "on_tick": lambda aid, info: mesh_table.insert_signed(...),
+        }
+    )
 ```
 
 - `ThermalBudget.parent_sacrifice_before_spawn()` allows hot-swapping a stale solver for a new one.

@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_metrics_pipeline.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -38,11 +39,13 @@ class TestMetricsPipeline:
     def test_batch_processing(self):
         pipe = MetricsPipeline()
         pipe.add_filter(lambda m: m.get("keep", False))
-        results = pipe.process_batch([
-            {"keep": True, "v": 1},
-            {"keep": False, "v": 2},
-            {"keep": True, "v": 3},
-        ])
+        results = pipe.process_batch(
+            [
+                {"keep": True, "v": 1},
+                {"keep": False, "v": 2},
+                {"keep": True, "v": 3},
+            ]
+        )
         assert len(results) == 2
         assert results[0]["v"] == 1
         assert results[1]["v"] == 3

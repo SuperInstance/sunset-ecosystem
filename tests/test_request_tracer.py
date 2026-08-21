@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_request_tracer.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import time
@@ -49,7 +50,9 @@ class TestRequestTracer:
     def test_nested_spans(self):
         tracer = RequestTracer()
         with tracer.span("parent") as parent:
-            with tracer.span("child", trace_id=parent.trace_id, parent_span_id=parent.span_id) as child:
+            with tracer.span(
+                "child", trace_id=parent.trace_id, parent_span_id=parent.span_id
+            ) as child:
                 assert child.parent_id == parent.span_id
 
     def test_log(self):

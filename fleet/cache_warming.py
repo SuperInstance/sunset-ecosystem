@@ -9,6 +9,7 @@ Usage:
     warmer.warm(["key-1", "key-2"], loader_fn)
     warmer.prefetch(["key-3"], loader=loader_fn)
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,9 +36,7 @@ class CacheWarmer:
     # Batch warming
     # ------------------------------------------------------------------
 
-    def warm(
-        self, keys: List[str], loader: Callable[[str], Any]
-    ) -> Dict[str, Any]:
+    def warm(self, keys: List[str], loader: Callable[[str], Any]) -> Dict[str, Any]:
         """
         Warm cache with a batch of keys.
 
@@ -66,9 +65,7 @@ class CacheWarmer:
     # Prefetch interface
     # ------------------------------------------------------------------
 
-    def prefetch(
-        self, keys: List[str], *, loader: Callable[[str], Any]
-    ) -> None:
+    def prefetch(self, keys: List[str], *, loader: Callable[[str], Any]) -> None:
         """Prefetch keys into cache (fire-and-forget)."""
         self.warm(keys, loader)
 

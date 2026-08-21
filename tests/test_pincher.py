@@ -66,28 +66,52 @@ class TestTransforms:
     def test_regex_transform(self) -> None:
         pincher = Pincher()
         record = {"log": "error: disk full at /dev/sda1"}
-        transforms = [{"from": "log", "to": "device", "type": "regex", "pattern": r"/dev/\w+"}]
+        transforms = [
+            {"from": "log", "to": "device", "type": "regex", "pattern": r"/dev/\w+"}
+        ]
         result = pincher._apply_transforms(record, transforms)
         assert result["device"] == "/dev/sda1"
 
     def test_json_path_transform(self) -> None:
         pincher = Pincher()
         record = {"data": {"user": {"name": "Bob", "id": 42}}}
-        transforms = [{"from": "data", "to": "user_name", "type": "json_path", "path": "user.name"}]
+        transforms = [
+            {
+                "from": "data",
+                "to": "user_name",
+                "type": "json_path",
+                "path": "user.name",
+            }
+        ]
         result = pincher._apply_transforms(record, transforms)
         assert result["user_name"] == "Bob"
 
     def test_map_transform(self) -> None:
         pincher = Pincher()
         record = {"status": "200"}
-        transforms = [{"from": "status", "to": "status_name", "type": "map", "mapping": {"200": "OK", "500": "ERROR"}}]
+        transforms = [
+            {
+                "from": "status",
+                "to": "status_name",
+                "type": "map",
+                "mapping": {"200": "OK", "500": "ERROR"},
+            }
+        ]
         result = pincher._apply_transforms(record, transforms)
         assert result["status_name"] == "OK"
 
     def test_concat_transform(self) -> None:
         pincher = Pincher()
         record = {"first": "John", "last": "Doe"}
-        transforms = [{"from": "", "to": "full_name", "type": "concat", "fields": ["first", "last"], "separator": " "}]
+        transforms = [
+            {
+                "from": "",
+                "to": "full_name",
+                "type": "concat",
+                "fields": ["first", "last"],
+                "separator": " ",
+            }
+        ]
         result = pincher._apply_transforms(record, transforms)
         assert result.get("full_name") == "John Doe"
 

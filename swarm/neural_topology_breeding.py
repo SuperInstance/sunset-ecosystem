@@ -17,6 +17,7 @@ marking, enabling crossover alignment.
 Reference: Stanley, K.O. & Miikkulainen, R. (2002). "Evolving Neural
 Networks through Augmenting Topologies." Evolutionary Computation.
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -41,19 +42,22 @@ logger = logging.getLogger(__name__)
 
 # ── Genome representation ─────────────────────────────────────
 
+
 @dataclass
 class NeuronGene:
     """A single neuron in the genotype."""
+
     id: int
     neuron_type: str = "hidden"  # "input", "output", "hidden"
-    activation: str = "tanh"      # "tanh", "relu", "sigmoid", "linear"
+    activation: str = "tanh"  # "tanh", "relu", "sigmoid", "linear"
     bias: float = 0.0
 
 
 @dataclass
 class ConnectionGene:
     """A weighted connection between neurons."""
-    innovation: int          # global innovation counter ID
+
+    innovation: int  # global innovation counter ID
     from_id: int
     to_id: int
     weight: float
@@ -63,6 +67,7 @@ class ConnectionGene:
 @dataclass
 class NeuralGenome:
     """Complete neural network genotype."""
+
     neurons: dict[int, NeuronGene] = field(default_factory=dict)
     connections: dict[int, ConnectionGene] = field(default_factory=dict)
     fitness: float = 0.0
@@ -77,14 +82,20 @@ class NeuralGenome:
     def copy(self) -> "NeuralGenome":
         return copy.deepcopy(self)
 
-    def add_neuron(self, neuron_type: str = "hidden", activation: str = "tanh", bias: float = 0.0) -> NeuronGene:
+    def add_neuron(
+        self, neuron_type: str = "hidden", activation: str = "tanh", bias: float = 0.0
+    ) -> NeuronGene:
         nid = self.next_neuron_id
         self.next_neuron_id += 1
-        n = NeuronGene(id=nid, neuron_type=neuron_type, activation=activation, bias=bias)
+        n = NeuronGene(
+            id=nid, neuron_type=neuron_type, activation=activation, bias=bias
+        )
         self.neurons[nid] = n
         return n
 
-    def add_connection(self, from_id: int, to_id: int, weight: float) -> ConnectionGene | None:
+    def add_connection(
+        self, from_id: int, to_id: int, weight: float
+    ) -> ConnectionGene | None:
         # Don't add if connection already exists
         for c in self.connections.values():
             if c.from_id == from_id and c.to_id == to_id:
@@ -150,7 +161,9 @@ class NeuralGenome:
                 values[n.id] = _activate(total, n.activation)
 
         # Collect outputs
-        output_ids = sorted([n.id for n in self.neurons.values() if n.neuron_type == "output"])
+        output_ids = sorted(
+            [n.id for n in self.neurons.values() if n.neuron_type == "output"]
+        )
         return np.array([values.get(oid, 0.0) for oid in output_ids])
 
 
@@ -286,6 +299,7 @@ def activation_mutation(
 
 # ── NEAT Breeder ──────────────────────────────────────────────
 
+
 class NEATBreeder:
     """NEAT-style topology-and-weight breeder for neural network agents.
 
@@ -341,7 +355,9 @@ class NEATBreeder:
             # Initial connections (fully connected)
             for i in range(self.num_inputs):
                 for j in range(self.num_outputs):
-                    g.add_connection(i, self.num_inputs + j, weight=self.rng.normal(0.0, 1.0))
+                    g.add_connection(
+                        i, self.num_inputs + j, weight=self.rng.normal(0.0, 1.0)
+                    )
 
             self._population.append(g)
 
@@ -367,7 +383,9 @@ class NEATBreeder:
             in_b = inv in innovations_b
             if in_a and in_b:
                 matching += 1
-                weight_diff += abs(innovations_a[inv].weight - innovations_b[inv].weight)
+                weight_diff += abs(
+                    innovations_a[inv].weight - innovations_b[inv].weight
+                )
             elif inv > max_innov * 0.8:
                 excess += 1
             else:
@@ -395,7 +413,10 @@ class NEATBreeder:
             for sid, members in self._species.items():
                 if members:
                     rep = members[0]
-                    if self.compatibility_distance(genome, rep) < self.compatibility_threshold:
+                    if (
+                        self.compatibility_distance(genome, rep)
+                        < self.compatibility_threshold
+                    ):
                         members.append(genome)
                         genome.species_id = sid
                         assigned = True
@@ -424,7 +445,7 @@ class NEATBreeder:
 
         # Generate rest via mutation/crossover
         while len(offspring) < len(members):
-            parent = self.rng.choice(sorted_members[:max(2, len(sorted_members) // 2)])
+            parent = self.rng.choice(sorted_members[: max(2, len(sorted_members) // 2)])
             child = parent.copy()
 
             # Apply mutations
@@ -468,7 +489,7 @@ class NEATBreeder:
 
         # Trim to population size
         if len(new_population) > self.population_size:
-            new_population = new_population[:self.population_size]
+            new_population = new_population[: self.population_size]
         elif len(new_population) < self.population_size:
             # Fill with random mutations of best genome
             best = max(self._population, key=lambda g: g.fitness)

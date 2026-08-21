@@ -11,6 +11,7 @@ Usage:
     assert f.matches({"level": "error", "service": "api"})
     assert not f.matches({"level": "info", "service": "api"})
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional
@@ -34,9 +35,7 @@ class EventFilter:
     # Conditions
     # ------------------------------------------------------------------
 
-    def add_condition(
-        self, fn: Callable[[Dict[str, Any]], bool]
-    ) -> "EventFilter":
+    def add_condition(self, fn: Callable[[Dict[str, Any]], bool]) -> "EventFilter":
         """Add a condition function."""
         self._conditions.append(fn)
         return self
@@ -48,9 +47,7 @@ class EventFilter:
 
     def add_field_contains(self, field: str, value: Any) -> "EventFilter":
         """Add a field containment condition."""
-        self._conditions.append(
-            lambda e: value in str(e.get(field, ""))
-        )
+        self._conditions.append(lambda e: value in str(e.get(field, "")))
         return self
 
     def add_field_exists(self, field: str) -> "EventFilter":
@@ -61,8 +58,7 @@ class EventFilter:
     def add_field_greater(self, field: str, value: float) -> "EventFilter":
         """Add a numeric greater-than condition."""
         self._conditions.append(
-            lambda e: isinstance(e.get(field), (int, float))
-            and e[field] > value
+            lambda e: isinstance(e.get(field), (int, float)) and e[field] > value
         )
         return self
 
@@ -82,9 +78,7 @@ class EventFilter:
             self._match_count += 1
         return result
 
-    def filter_batch(
-        self, events: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def filter_batch(self, events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Filter a batch of events."""
         return [e for e in events if self.matches(e)]
 

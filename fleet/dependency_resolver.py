@@ -12,6 +12,7 @@ Usage:
     order = resolver.resolve()
     assert order == ["provision-network", "deploy-db", "deploy-app"]
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Set
@@ -31,7 +32,9 @@ class DependencyResolver:
     # Task registration
     # ------------------------------------------------------------------
 
-    def add_task(self, task: str, deps: Optional[List[str]] = None, optional: bool = False) -> None:
+    def add_task(
+        self, task: str, deps: Optional[List[str]] = None, optional: bool = False
+    ) -> None:
         """
         Register a task with dependencies.
 

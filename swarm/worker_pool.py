@@ -46,11 +46,11 @@ logger = logging.getLogger(__name__)
 class WorkerState(Enum):
     """Runtime state of an individual breeding worker thread."""
 
-    PENDING = auto()    # Spawn requested, waiting for thermal slot
-    RUNNING = auto()   # Thread alive, worker loop executing
-    PAUSED = auto()    # Thermally throttled, loop sleeping
+    PENDING = auto()  # Spawn requested, waiting for thermal slot
+    RUNNING = auto()  # Thread alive, worker loop executing
+    PAUSED = auto()  # Thermally throttled, loop sleeping
     STOPPING = auto()  # Kill signal sent, awaiting join
-    DEAD = auto()      # Thread joined, resources released
+    DEAD = auto()  # Thread joined, resources released
 
 
 @dataclass
@@ -65,7 +65,9 @@ class WorkerConfig:
     tick_interval: float = 1.0
     max_ticks: int = 1000
     capability_mask: int = 0xFFFF
-    on_lifecycle_change: Callable[[int, LifecycleState, LifecycleState], None] | None = None
+    on_lifecycle_change: (
+        Callable[[int, LifecycleState, LifecycleState], None] | None
+    ) = None
     on_tick: Callable[[int, dict[str, Any]], None] | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -135,11 +137,15 @@ class BreedingWorker:
             try:
                 self.config.on_lifecycle_change(self.agent_id, old, value)
             except Exception:
-                logger.exception("Lifecycle callback failed for agent %d", self.agent_id)
+                logger.exception(
+                    "Lifecycle callback failed for agent %d", self.agent_id
+                )
 
     def run(self) -> None:
         """Main worker loop."""
-        logger.debug("Worker %d starting in room %d", self.agent_id, self.config.room_id)
+        logger.debug(
+            "Worker %d starting in room %d", self.agent_id, self.config.room_id
+        )
 
         # EGG → COMPETE: signal we have a room
         self.lifecycle = LifecycleState.EGG
@@ -147,7 +153,9 @@ class BreedingWorker:
         # Small random offset to desynchronize workers
         time.sleep(random.random() * self.config.tick_interval)
 
-        while not self._stop_event.is_set() and self._tick_count < self.config.max_ticks:
+        while (
+            not self._stop_event.is_set() and self._tick_count < self.config.max_ticks
+        ):
             self._tick()
             self._tick_count += 1
 
@@ -182,7 +190,9 @@ class BreedingWorker:
         if self._lifecycle != LifecycleState.SUNSET:
             self.lifecycle = LifecycleState.SUNSET
 
-        logger.debug("Worker %d exiting after %d ticks", self.agent_id, self._tick_count)
+        logger.debug(
+            "Worker %d exiting after %d ticks", self.agent_id, self._tick_count
+        )
 
     def _tick(self) -> None:
         """Execute one work tick on the assigned room."""
@@ -304,7 +314,9 @@ class WorkerPool:
                     try:
                         user_cb(aid, old, new)
                     except Exception:
-                        logger.exception("User lifecycle callback failed for agent %d", aid)
+                        logger.exception(
+                            "User lifecycle callback failed for agent %d", aid
+                        )
 
             wc = WorkerConfig(
                 room_id=config["room_id"],
@@ -410,7 +422,9 @@ class WorkerPool:
             result: dict[int, dict[str, Any]] = {}
             for agent_id, record in self._workers.items():
                 uptime = time.time() - record.start_time
-                ticks = record.worker._tick_count if record.worker else record.tick_count
+                ticks = (
+                    record.worker._tick_count if record.worker else record.tick_count
+                )
                 result[agent_id] = {
                     "worker_state": record.worker_state.name,
                     "lifecycle": (

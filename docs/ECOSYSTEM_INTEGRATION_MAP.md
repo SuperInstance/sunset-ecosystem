@@ -71,7 +71,7 @@ from fleet.worldmodel_bridge import WorldModelBridge, SolverConfig
 
 bridge = WorldModelBridge(
     solver_config=SolverConfig(name="MPPI", num_samples=500, horizon=20),
-    env_config=EnvironmentConfig(env_id="PushT-v1")
+    env_config=EnvironmentConfig(env_id="PushT-v1"),
 )
 
 # Use real CEM/MPPI solvers
@@ -112,8 +112,8 @@ projector.project_state(
     state=WorldState(
         position=(0.0, 0.0, 0.0),  # Abstract room coordinates
         semantics={"room_type": "ethos", "temperature": 65.4},
-        confidence=0.95
-    )
+        confidence=0.95,
+    ),
 )
 
 # Other agents see this via spatial queries

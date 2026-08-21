@@ -10,6 +10,7 @@ Usage:
     failed = dlq.list_failed()
     dlq.replay("msg-1", processor_fn)
 """
+
 from __future__ import annotations
 
 import time

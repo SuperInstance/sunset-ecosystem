@@ -21,12 +21,66 @@ def wal_with_entries(tmp_path):
     base_ts = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc).timestamp()
 
     entries = [
-        WALEntry(timestamp=base_ts, agent_id=1, operation="spawn", vector_hash="a" * 64, parent_ids=[], generation=0, node_id="node-alpha", room_id="forge"),
-        WALEntry(timestamp=base_ts + 3600, agent_id=2, operation="spawn", vector_hash="b" * 64, parent_ids=[], generation=0, node_id="node-beta", room_id="crucible"),
-        WALEntry(timestamp=base_ts + 7200, agent_id=1, operation="breed", vector_hash="c" * 64, parent_ids=[1], generation=1, node_id="node-alpha", room_id="forge"),
-        WALEntry(timestamp=base_ts + 10800, agent_id=3, operation="sunset", vector_hash="d" * 64, parent_ids=[2], generation=0, node_id="node-gamma", room_id="archive"),
-        WALEntry(timestamp=base_ts + 14400, agent_id=1, operation="tick", vector_hash="e" * 64, parent_ids=[], generation=1, node_id="node-alpha", room_id="forge"),
-        WALEntry(timestamp=base_ts + 18000, agent_id=4, operation="flux_violation", vector_hash="f" * 64, parent_ids=[], generation=0, node_id="node-beta", room_id="crucible"),
+        WALEntry(
+            timestamp=base_ts,
+            agent_id=1,
+            operation="spawn",
+            vector_hash="a" * 64,
+            parent_ids=[],
+            generation=0,
+            node_id="node-alpha",
+            room_id="forge",
+        ),
+        WALEntry(
+            timestamp=base_ts + 3600,
+            agent_id=2,
+            operation="spawn",
+            vector_hash="b" * 64,
+            parent_ids=[],
+            generation=0,
+            node_id="node-beta",
+            room_id="crucible",
+        ),
+        WALEntry(
+            timestamp=base_ts + 7200,
+            agent_id=1,
+            operation="breed",
+            vector_hash="c" * 64,
+            parent_ids=[1],
+            generation=1,
+            node_id="node-alpha",
+            room_id="forge",
+        ),
+        WALEntry(
+            timestamp=base_ts + 10800,
+            agent_id=3,
+            operation="sunset",
+            vector_hash="d" * 64,
+            parent_ids=[2],
+            generation=0,
+            node_id="node-gamma",
+            room_id="archive",
+        ),
+        WALEntry(
+            timestamp=base_ts + 14400,
+            agent_id=1,
+            operation="tick",
+            vector_hash="e" * 64,
+            parent_ids=[],
+            generation=1,
+            node_id="node-alpha",
+            room_id="forge",
+        ),
+        WALEntry(
+            timestamp=base_ts + 18000,
+            agent_id=4,
+            operation="flux_violation",
+            vector_hash="f" * 64,
+            parent_ids=[],
+            generation=0,
+            node_id="node-beta",
+            room_id="crucible",
+        ),
     ]
     for e in entries:
         wal.append(e)
@@ -34,6 +88,7 @@ def wal_with_entries(tmp_path):
 
 
 # ── WALIndex compound queries ───────────────────────────────
+
 
 class TestWALIndex:
     def test_rebuild_indexes_all(self, wal_with_entries):
@@ -92,18 +147,29 @@ class TestWALIndex:
         idx = WALIndex(wal)
         base = datetime(2024, 5, 20, 12, 0, 0, tzinfo=timezone.utc)
         results = idx.query(
-            filters=[{
-                "field": "time_range",
-                "start": base.isoformat().replace("+00:00", "Z"),
-                "end": base.replace(hour=14).isoformat().replace("+00:00", "Z"),
-            }]
+            filters=[
+                {
+                    "field": "time_range",
+                    "start": base.isoformat().replace("+00:00", "Z"),
+                    "end": base.replace(hour=14).isoformat().replace("+00:00", "Z"),
+                }
+            ]
         )
         assert len(results) == 2
 
     def test_update_increments_index(self, wal_with_entries):
         wal = wal_with_entries
         idx = WALIndex(wal)
-        new_entry = WALEntry(timestamp=time.time(), agent_id=5, operation="spawn", vector_hash="g" * 64, parent_ids=[], generation=0, node_id="node-delta", room_id="pool")
+        new_entry = WALEntry(
+            timestamp=time.time(),
+            agent_id=5,
+            operation="spawn",
+            vector_hash="g" * 64,
+            parent_ids=[],
+            generation=0,
+            node_id="node-delta",
+            room_id="pool",
+        )
         wal.append(new_entry)
         idx.update(wal.entries[-1])
         assert "node-delta" in idx.by_node
@@ -112,7 +178,13 @@ class TestWALIndex:
     def test_all_accessors(self, wal_with_entries):
         wal = wal_with_entries
         idx = WALIndex(wal)
-        assert set(idx.all_event_types()) == {"spawn", "breed", "sunset", "tick", "flux_violation"}
+        assert set(idx.all_event_types()) == {
+            "spawn",
+            "breed",
+            "sunset",
+            "tick",
+            "flux_violation",
+        }
         assert set(idx.all_nodes()) == {"node-alpha", "node-beta", "node-gamma"}
         assert set(idx.all_rooms()) == {"forge", "crucible", "archive"}
 
@@ -123,6 +195,7 @@ class TestWALIndex:
 
 
 # ── WALQueryIndex (secondary indexes) ───────────────────────
+
 
 class TestWALQueryIndex:
     def test_hint_agent(self, wal_with_entries):
@@ -173,6 +246,7 @@ class TestWALQueryIndex:
 
 
 # ── WALBatchQuery filter-based queries ──────────────────────
+
 
 class TestWALBatchQuery:
     def test_filter_by_agent(self, wal_with_entries):
@@ -302,6 +376,7 @@ class TestWALBatchQuery:
         assert "spawn" in ops
         assert "breed" in ops
         assert "tick" in ops
+
     def test_batch_verify(self, wal_with_entries):
         wal = wal_with_entries
         bq = WALBatchQuery(wal.entries)

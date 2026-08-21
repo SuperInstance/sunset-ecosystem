@@ -21,6 +21,7 @@ from swarm.cellular_engine import (
 # CellState
 # ---------------------------------------------------------------------------
 
+
 class TestCellState:
     def test_defaults(self):
         cs = CellState()
@@ -54,6 +55,7 @@ class TestCellState:
 # ---------------------------------------------------------------------------
 # CellularGrid
 # ---------------------------------------------------------------------------
+
 
 class TestCellularGrid:
     def test_init_2d(self):
@@ -120,6 +122,7 @@ class TestCellularGrid:
 # ---------------------------------------------------------------------------
 # CAGenerationKernel
 # ---------------------------------------------------------------------------
+
 
 class TestCAGenerationKernel:
     def test_step_no_crash(self):
@@ -192,6 +195,7 @@ class TestCAGenerationKernel:
 # LLMInjectionKernel
 # ---------------------------------------------------------------------------
 
+
 class TestLLMInjectionKernel:
     def test_no_injection_without_fn(self):
         grid = CellularGrid(shape=(8, 8))
@@ -206,10 +210,10 @@ class TestLLMInjectionKernel:
         grid = CellularGrid(shape=(8, 8))
         grid.set((1, 1), CellState(energy=0.9, signal=0.6))
         grid.set((2, 2), CellState(energy=0.9, signal=0.6))
-        
+
         def mock_llm(states):
             return [CellState(energy=0.5, signal=0.5) for _ in states]
-        
+
         kernel = LLMInjectionKernel(injection_interval=1, energy_threshold=0.7)
         kernel.step(grid, llm_query_fn=mock_llm)
         cs = grid.get((1, 1))
@@ -218,13 +222,14 @@ class TestLLMInjectionKernel:
     def test_injection_skips_low_energy(self):
         grid = CellularGrid(shape=(8, 8))
         grid.set((1, 1), CellState(energy=0.3, signal=0.6))
-        
+
         called = False
+
         def mock_llm(states):
             nonlocal called
             called = True
             return states
-        
+
         kernel = LLMInjectionKernel(injection_interval=1, energy_threshold=0.7)
         kernel.step(grid, llm_query_fn=mock_llm)
         assert not called
@@ -232,13 +237,14 @@ class TestLLMInjectionKernel:
     def test_cache_prevents_duplicate_queries(self):
         grid = CellularGrid(shape=(8, 8))
         grid.set((1, 1), CellState(energy=0.9, signal=0.6, identity_hash=123))
-        
+
         call_count = 0
+
         def mock_llm(states):
             nonlocal call_count
             call_count += 1
             return states
-        
+
         kernel = LLMInjectionKernel(injection_interval=1)
         kernel.step(grid, llm_query_fn=mock_llm)
         # Second call may or may not hit cache depending on grid state changes
@@ -249,13 +255,14 @@ class TestLLMInjectionKernel:
     def test_injection_not_every_step(self):
         grid = CellularGrid(shape=(8, 8))
         grid.set((1, 1), CellState(energy=0.9, signal=0.6))
-        
+
         call_count = 0
+
         def mock_llm(states):
             nonlocal call_count
             call_count += 1
             return states
-        
+
         kernel = LLMInjectionKernel(injection_interval=5)
         for _ in range(5):
             kernel.step(grid, llm_query_fn=mock_llm)
@@ -265,6 +272,7 @@ class TestLLMInjectionKernel:
 # ---------------------------------------------------------------------------
 # CellularEngine
 # ---------------------------------------------------------------------------
+
 
 class TestCellularEngine:
     def test_init(self):
@@ -337,6 +345,7 @@ class TestCellularEngine:
 # ---------------------------------------------------------------------------
 # AgentCellMapper
 # ---------------------------------------------------------------------------
+
 
 class TestAgentCellMapper:
     def test_spawn_agent(self):
@@ -415,6 +424,7 @@ class TestAgentCellMapper:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_zero_size_grid(self):

@@ -37,6 +37,7 @@ The forge_kernels.cu CUDA implementation provides GPU-accelerated snap for large
 ```python
 import numpy as np
 
+
 # Simplified Eisenstein snap for 1D weights
 def eisenstein_snap(w, scale=16):
     """Snap weights to Eisenstein lattice points."""
@@ -44,6 +45,7 @@ def eisenstein_snap(w, scale=16):
     w_scaled = w * scale
     w_snapped = np.round(w_scaled)
     return w_snapped / scale
+
 
 # Test compression
 w = np.random.randn(1000).astype(np.float32)

@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_cvt_map_elites.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -15,6 +16,7 @@ from swarm.cvt_map_elites import (
 
 
 # ── k-means++ ───────────────────────────────────────────────
+
 
 class TestKMeansPlusPlus:
     def test_centroids_in_data(self):
@@ -39,6 +41,7 @@ class TestKMeansPlusPlus:
 
 # ── Lloyd relaxation ────────────────────────────────────────
 
+
 class TestLloydRelaxation:
     def test_convergence(self):
         # Two Gaussian clusters
@@ -60,6 +63,7 @@ class TestLloydRelaxation:
 
 
 # ── CVTMAPArchive ───────────────────────────────────────────
+
 
 class TestCVTMAPArchive:
     def test_initialization(self):
@@ -134,7 +138,11 @@ class TestCVTMAPArchive:
             behavior_samples=500,
         )
         for i in range(5):
-            archive.add(np.array([float(i)]), fitness=0.1 * (i + 1), behavior=np.array([i / 5.0]))
+            archive.add(
+                np.array([float(i)]),
+                fitness=0.1 * (i + 1),
+                behavior=np.array([i / 5.0]),
+            )
         assert archive.qd_score == pytest.approx(0.1 + 0.2 + 0.3 + 0.4 + 0.5)
 
     def test_sample(self):

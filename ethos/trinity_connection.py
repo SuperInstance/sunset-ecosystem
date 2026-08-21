@@ -89,7 +89,9 @@ def score_ethos_connection(
         latency_fit = 0.5
     else:
         latency_fit = max(0.0, 1.0 - (agent_latency_ms / (best_device_latency * 100)))
-    notes.append(f"Agent latency {agent_latency_ms:.0f}ms vs metal {best_device_latency:.0f}ms")
+    notes.append(
+        f"Agent latency {agent_latency_ms:.0f}ms vs metal {best_device_latency:.0f}ms"
+    )
 
     # --- Thermal fit ---
     thermal_headroom = 30.0  # default
@@ -98,7 +100,11 @@ def score_ethos_connection(
         if gpu.temperature_c is not None:
             thermal_headroom = max(0.0, 85.0 - gpu.temperature_c)
     elif profile.thermal_zones:
-        temps = [z.temperature_c for z in profile.thermal_zones if z.temperature_c is not None]
+        temps = [
+            z.temperature_c
+            for z in profile.thermal_zones
+            if z.temperature_c is not None
+        ]
         if temps:
             thermal_headroom = max(0.0, 85.0 - max(temps))
 
@@ -114,7 +120,7 @@ def score_ethos_connection(
         notes.append("Thermal headroom critical!")
 
     # Adjust by agent's thermal impact
-    thermal_fit *= (1.0 - agent_thermal_impact * 0.3)
+    thermal_fit *= 1.0 - agent_thermal_impact * 0.3
     thermal_fit = max(0.0, min(1.0, thermal_fit))
 
     # --- Memory fit ---
@@ -136,10 +142,7 @@ def score_ethos_connection(
 
     # Weighted total
     total = (
-        efficiency * 0.30
-        + latency_fit * 0.25
-        + thermal_fit * 0.25
-        + memory_fit * 0.20
+        efficiency * 0.30 + latency_fit * 0.25 + thermal_fit * 0.25 + memory_fit * 0.20
     )
     total = max(0.0, min(1.0, total))
 

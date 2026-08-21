@@ -58,12 +58,14 @@ New file: `sunset-ecosystem/nerve/rust_kernel.py`
 Build: cd nerve/src && cargo build --release
        → target/release/libjepa_kernel.so
 """
+
 import ctypes
 import numpy as np
 from pathlib import Path
 
 _LIB_PATH = Path(__file__).parent / "src" / "target" / "release" / "libjepa_kernel.so"
 _lib = None
+
 
 def _load():
     global _lib
@@ -78,11 +80,12 @@ def _load():
         ctypes.POINTER(ctypes.c_float),  # b1
         ctypes.POINTER(ctypes.c_float),  # b2
         ctypes.POINTER(ctypes.c_float),  # b3
-        ctypes.c_size_t,                 # n
+        ctypes.c_size_t,  # n
         ctypes.POINTER(ctypes.c_float),  # out_ptr
     ]
     _lib.jepa_forward_batch.restype = None
     return _lib
+
 
 def forward_batch(w: dict, x: np.ndarray, n: int) -> np.ndarray:
     """Call Rust kernel for all rooms.
@@ -128,7 +131,9 @@ Current `novelty()` in `room_grid.py` is per-room, called in a Python loop. This
 Replace with vectorized batch novelty:
 
 ```python
-def batch_novelty(latents: np.ndarray, history: dict[int, list[np.ndarray]]) -> np.ndarray:
+def batch_novelty(
+    latents: np.ndarray, history: dict[int, list[np.ndarray]]
+) -> np.ndarray:
     """Vectorized novelty for all rooms.
 
     Args:
@@ -178,9 +183,7 @@ Replace with `collections.deque(maxlen=20)` or pre-allocated numpy ring.
 from collections import deque
 
 # In JEPAGrid.__init__:
-self.history: dict[int, deque[np.ndarray]] = {
-    i: deque(maxlen=20) for i in range(n)
-}
+self.history: dict[int, deque[np.ndarray]] = {i: deque(maxlen=20) for i in range(n)}
 
 # In tick():
 self.history[i].append(z.copy())  # O(1), auto-evicts oldest

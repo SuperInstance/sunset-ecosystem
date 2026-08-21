@@ -76,7 +76,9 @@ class HostRepoOrchestrator:
                 # Extract "Immutable" or "Never" sections as laws
                 for line in text.splitlines():
                     line_stripped = line.strip().lstrip("#-* ")
-                    if line_stripped.lower().startswith(("never ", "always ", "do not ", "immutable")):
+                    if line_stripped.lower().startswith(
+                        ("never ", "always ", "do not ", "immutable")
+                    ):
                         laws.append(line_stripped)
         self._immutable_laws = laws
 
@@ -134,7 +136,9 @@ class HostRepoOrchestrator:
     # ------------------------------------------------------------------
     def _detect_law_violation(self, lesson: LessonProposal) -> Optional[str]:
         """Check if lesson violates any immutable law."""
-        patch_text = (lesson.suggested_markdown_patch or "") + (lesson.suggested_code_patch or "")
+        patch_text = (lesson.suggested_markdown_patch or "") + (
+            lesson.suggested_code_patch or ""
+        )
         for law in self._immutable_laws:
             law_lower = law.lower()
             # Simple keyword matching
@@ -188,7 +192,11 @@ class HostRepoOrchestrator:
                 test_file.write_text(lesson.test_plan)
                 try:
                     proc = await asyncio.create_subprocess_exec(
-                        "python3", "-m", "pytest", str(test_file), "-v",
+                        "python3",
+                        "-m",
+                        "pytest",
+                        str(test_file),
+                        "-v",
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.PIPE,
                         cwd=str(tmpdir),
@@ -264,7 +272,9 @@ class HostRepoOrchestrator:
                 capture_output=True,
             )
             # Commit
-            msg = f"guest-lesson: {lesson.guest_agent_id} → {lesson.target_component}\n\n"
+            msg = (
+                f"guest-lesson: {lesson.guest_agent_id} → {lesson.target_component}\n\n"
+            )
             msg += f"Rationale: {lesson.architectural_rationale[:200]}"
             subprocess.run(
                 ["git", "commit", "-m", msg],

@@ -29,6 +29,7 @@ from sunset.flux_preset_library import (
 
 # ── fixtures ──────────────────────────────────────────────
 
+
 @pytest.fixture
 def library():
     return FluxPresetLibrary()
@@ -40,6 +41,7 @@ def index():
 
 
 # ── 1. All default presets load correctly ─────────────────
+
 
 class TestAllDefaultPresetsLoad:
     def test_all_10_presets_present(self, library):
@@ -75,6 +77,7 @@ class TestAllDefaultPresetsLoad:
 
 # ── 2. get_preset() returns correct preset ────────────────
 
+
 class TestGetPreset:
     def test_get_preset_by_exact_name(self, library):
         p = library.get_preset("RangeCheck")
@@ -98,6 +101,7 @@ class TestGetPreset:
 
 
 # ── 3. list_presets() filters by category ─────────────────
+
 
 class TestListPresets:
     def test_list_all_returns_everything(self, library):
@@ -141,6 +145,7 @@ class TestListPresets:
 
 # ── 4. python_safe_only filters ───────────────────────────
 
+
 class TestPythonSafeOnly:
     def test_all_default_presets_are_python_safe(self, library):
         all_presets = library.list_presets(python_safe_only=True)
@@ -180,6 +185,7 @@ class TestPythonSafeOnly:
 
 
 # ── 5. apply_preset() runs constraints ──────────────────────
+
 
 class TestApplyPreset:
     def test_apply_range_check_passes(self, library):
@@ -234,7 +240,12 @@ class TestApplyPreset:
         assert results[0]["passed"] is True
 
     def test_apply_stream_batch_ratelimit(self, library):
-        ctx = {"batch_size": 50, "max_batch_size": 64, "requests_per_second": 1200, "max_rps": 1000}
+        ctx = {
+            "batch_size": 50,
+            "max_batch_size": 64,
+            "requests_per_second": 1200,
+            "max_rps": 1000,
+        }
         results = library.apply_preset("StreamBatch", ctx)
         assert len(results) == 2
         assert results[0]["passed"] is True  # batch_size 50 <= 64
@@ -278,8 +289,8 @@ class TestApplyPreset:
         results = library.apply_preset("BreedingStandard", ctx)
         assert len(results) == 4
         assert results[0]["passed"] is False  # weight too high
-        assert results[1]["passed"] is True   # chaos ok
-        assert results[2]["passed"] is True   # thermal ok
+        assert results[1]["passed"] is True  # chaos ok
+        assert results[2]["passed"] is True  # thermal ok
         assert results[3]["passed"] is False  # diversity too low
 
     def test_apply_prove_and_hash_commit(self, library):
@@ -307,6 +318,7 @@ class TestApplyPreset:
 
 
 # ── 6. suggest_preset_for_task() ──────────────────────────
+
 
 class TestSuggestPresetForTask:
     def test_suggest_range_check(self, library):
@@ -360,6 +372,7 @@ class TestSuggestPresetForTask:
 
 # ── 7. Preset constraints use only safe opcodes ───────────
 
+
 class TestPresetOpcodesAreSafe:
     def test_all_presets_use_only_safe_opcodes(self, library, index):
         for name in library.names:
@@ -388,6 +401,7 @@ class TestPresetOpcodesAreSafe:
 
 
 # ── 8. Library properties ─────────────────────────────────
+
 
 class TestLibraryProperties:
     def test_preset_count(self, library):

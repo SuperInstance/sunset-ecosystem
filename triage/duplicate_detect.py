@@ -3,6 +3,7 @@
 Uses simple TF-IDF + cosine similarity to flag potentially
 duplicate GitHub issues before they fragment discussion.
 """
+
 from __future__ import annotations
 
 __all__ = ["DuplicateDetector", "find_duplicates"]
@@ -68,9 +69,7 @@ class DuplicateDetector:
         self.threshold = threshold
         self.min_shared_terms = min_shared_terms
 
-    def detect(
-        self, issues: List[dict]
-    ) -> List[DuplicatePair]:
+    def detect(self, issues: List[dict]) -> List[DuplicatePair]:
         """Analyze issues and return flagged duplicate pairs.
 
         Args:

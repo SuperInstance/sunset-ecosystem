@@ -12,6 +12,7 @@ Usage:
     dedup.forget("req-1")
     assert dedup.is_duplicate("req-1") is False
 """
+
 from __future__ import annotations
 
 import time
@@ -114,7 +115,9 @@ class RequestDeduplicator:
             "ttl": self._ttl,
             "hits": self._hits,
             "misses": self._misses,
-            "hit_rate": round(self._hits / (self._hits + self._misses), 4) if (self._hits + self._misses) > 0 else 0.0,
+            "hit_rate": round(self._hits / (self._hits + self._misses), 4)
+            if (self._hits + self._misses) > 0
+            else 0.0,
         }
 
     def __repr__(self) -> str:

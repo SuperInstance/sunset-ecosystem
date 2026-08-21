@@ -82,17 +82,20 @@ The Cocapn Fleet currently operates as **11 semi-independent repos** with loose 
 **Code snippet (ready to integrate):**
 ```python
 from nexus.fleet_event_bus import FleetEventBus
+
 bus = FleetEventBus()
 
 # In discussion5_monitor.py triage_comment()
 if decision == "ACT_NOW":
-    bus.emit({
-        "type": "ACT_NOW",
-        "category": classify_category(body),
-        "repo": "sunset-ecosystem",
-        "priority": "P0",
-        "source": "ccc-os/discussion5"
-    })
+    bus.emit(
+        {
+            "type": "ACT_NOW",
+            "category": classify_category(body),
+            "repo": "sunset-ecosystem",
+            "priority": "P0",
+            "source": "ccc-os/discussion5",
+        }
+    )
 ```
 
 **Estimated Effort:** 4–6 hours (already have the bus, just wire publishers)
@@ -332,13 +335,13 @@ if decision == "ACT_NOW":
 **Standard Event Schema (v1):**
 ```python
 class FleetEvent:
-    type: str           # required, dot-namespaced: "health.service_down"
-    payload: dict       # event-specific data
-    source: str         # "repo/module" format: "ccc-os/discussion5"
-    timestamp: float    # epoch seconds
-    event_id: str       # "ev-{ms_since_epoch}"
-    priority: str       # "P0" | "P1" | "P2" | "info"
-    ttl: int            # seconds to live in history (default: 3600)
+    type: str  # required, dot-namespaced: "health.service_down"
+    payload: dict  # event-specific data
+    source: str  # "repo/module" format: "ccc-os/discussion5"
+    timestamp: float  # epoch seconds
+    event_id: str  # "ev-{ms_since_epoch}"
+    priority: str  # "P0" | "P1" | "P2" | "info"
+    ttl: int  # seconds to live in history (default: 3600)
 ```
 
 **Migration Path:**
@@ -383,11 +386,12 @@ class AgentVector:
 # sunset/trinity_scorer.py
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class TrinityScore:
-    ethos: float   # values alignment
+    ethos: float  # values alignment
     pathos: float  # emotional resonance
-    logos: float   # logical relevance
+    logos: float  # logical relevance
 
     @property
     def product(self) -> float:
@@ -395,10 +399,10 @@ class TrinityScore:
 
     def dominates(self, other: "TrinityScore") -> bool:
         return (
-            self.ethos >= other.ethos and
-            self.pathos >= other.pathos and
-            self.logos >= other.logos and
-            self.product > other.product
+            self.ethos >= other.ethos
+            and self.pathos >= other.pathos
+            and self.logos >= other.logos
+            and self.product > other.product
         )
 ```
 

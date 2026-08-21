@@ -362,29 +362,35 @@ class FleetMetricsExporter:
         metrics = []
         for result in suite.results:
             safe_name = result.name.replace("-", "_").replace(" ", "_")
-            metrics.append(PrometheusMetric(
-                name=f"fleet_benchmark_{safe_name}_mean_ms",
-                value=result.mean_ms,
-                metric_type="gauge",
-                help_text=f"Mean latency for {result.name}",
-                labels={"benchmark": result.name},
-                timestamp_ms=timestamp_ms,
-            ))
-            metrics.append(PrometheusMetric(
-                name=f"fleet_benchmark_{safe_name}_ops_per_sec",
-                value=result.throughput_ops_per_sec,
-                metric_type="gauge",
-                help_text=f"Throughput for {result.name}",
-                labels={"benchmark": result.name},
-                timestamp_ms=timestamp_ms,
-            ))
-            metrics.append(PrometheusMetric(
-                name=f"fleet_benchmark_{safe_name}_memory_peak_mb",
-                value=result.memory_peak_mb,
-                metric_type="gauge",
-                help_text=f"Peak memory for {result.name}",
-                labels={"benchmark": result.name},
-                timestamp_ms=timestamp_ms,
-            ))
+            metrics.append(
+                PrometheusMetric(
+                    name=f"fleet_benchmark_{safe_name}_mean_ms",
+                    value=result.mean_ms,
+                    metric_type="gauge",
+                    help_text=f"Mean latency for {result.name}",
+                    labels={"benchmark": result.name},
+                    timestamp_ms=timestamp_ms,
+                )
+            )
+            metrics.append(
+                PrometheusMetric(
+                    name=f"fleet_benchmark_{safe_name}_ops_per_sec",
+                    value=result.throughput_ops_per_sec,
+                    metric_type="gauge",
+                    help_text=f"Throughput for {result.name}",
+                    labels={"benchmark": result.name},
+                    timestamp_ms=timestamp_ms,
+                )
+            )
+            metrics.append(
+                PrometheusMetric(
+                    name=f"fleet_benchmark_{safe_name}_memory_peak_mb",
+                    value=result.memory_peak_mb,
+                    metric_type="gauge",
+                    help_text=f"Peak memory for {result.name}",
+                    labels={"benchmark": result.name},
+                    timestamp_ms=timestamp_ms,
+                )
+            )
 
         return "".join(m.to_prometheus() for m in metrics)

@@ -1,4 +1,5 @@
 """Tests for BreederFSMV2 lifecycle state machine."""
+
 from __future__ import annotations
 
 import threading
@@ -88,6 +89,7 @@ class TestConvenienceMethods:
 class TestGuards:
     def test_entry_guard_blocks(self):
         calls = 0
+
         def guard():
             nonlocal calls
             calls += 1
@@ -103,6 +105,7 @@ class TestGuards:
 
     def test_exit_guard_blocks(self):
         calls = 0
+
         def guard():
             nonlocal calls
             calls += 1
@@ -163,6 +166,7 @@ class TestThreadSafety:
     def test_concurrent_reads(self):
         fsm = BreederFSMV2("agent-1")
         states = []
+
         def reader():
             for _ in range(100):
                 states.append(fsm.current_state)
@@ -178,6 +182,7 @@ class TestThreadSafety:
     def test_concurrent_transitions(self):
         fsm = BreederFSMV2("agent-1")
         errors = []
+
         def transitioner():
             try:
                 fsm.incubate()

@@ -116,7 +116,11 @@ def _get_thermal_headroom(profile: HardwareProfile) -> float:
             # Assume throttle at ~85°C
             return max(0.0, 85.0 - gpu.temperature_c)
     if profile.thermal_zones:
-        temps = [z.temperature_c for z in profile.thermal_zones if z.temperature_c is not None]
+        temps = [
+            z.temperature_c
+            for z in profile.thermal_zones
+            if z.temperature_c is not None
+        ]
         if temps:
             return max(0.0, 85.0 - max(temps))
     return 30.0  # conservative default
@@ -167,7 +171,9 @@ def build_allocation_plan(
     cpu_gflops = stress.cpu_gflops() or 100.0  # default estimate
 
     # Thermal budget: fraction of headroom we're willing to use (max 80%)
-    thermal_budget_frac = min(0.8, thermal_headroom / 50.0) if thermal_headroom > 0 else 0.3
+    thermal_budget_frac = (
+        min(0.8, thermal_headroom / 50.0) if thermal_headroom > 0 else 0.3
+    )
 
     # Allocate each agent type
     gpu_agents_total = 0
@@ -201,7 +207,9 @@ def build_allocation_plan(
             # How many fit in compute (assume 60% utilization target)
             per_agent_gflops = gflops * compute_pct * 0.6
             count_by_compute = (
-                max(1, int(gflops * 0.6 / per_agent_gflops)) if per_agent_gflops > 0 else 1
+                max(1, int(gflops * 0.6 / per_agent_gflops))
+                if per_agent_gflops > 0
+                else 1
             )
 
             count = min(count_by_mem, count_by_thermal, count_by_compute, 4)
@@ -222,7 +230,13 @@ def build_allocation_plan(
         else:
             # CPU allocation
             per_core_compute = cpu_gflops / cpu_cores if cpu_cores > 0 else 10.0
-            count = max(1, min(cpu_cores // 4, int(cpu_gflops * 0.4 / (compute_pct * per_core_compute + 1))))
+            count = max(
+                1,
+                min(
+                    cpu_cores // 4,
+                    int(cpu_gflops * 0.4 / (compute_pct * per_core_compute + 1)),
+                ),
+            )
             count = min(count, cpu_cores)
 
             alloc = AgentAllocation(
@@ -241,7 +255,9 @@ def build_allocation_plan(
         mem_pct = gpu_memory_used / gpu_memory.get(0, 1) * 100
         notes.append(f"GPU memory utilization: {mem_pct:.0f}%")
 
-    notes.append(f"Thermal headroom: {thermal_headroom:.1f}°C (budget: {thermal_budget_frac:.0%})")
+    notes.append(
+        f"Thermal headroom: {thermal_headroom:.1f}°C (budget: {thermal_budget_frac:.0%})"
+    )
 
     return AllocationPlan(
         allocations=allocations,

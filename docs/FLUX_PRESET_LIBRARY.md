@@ -48,11 +48,14 @@ A catalog of reusable FLUX constraint presets for the Cocapn Fleet's breeding de
 **Example:**
 ```python
 lib = FluxPresetLibrary()
-results = lib.apply_preset("RangeCheck", ctx={
-    "weights": 2.5,
-    "chaos": 0.3,
-    "thermal_headroom": 0.8,
-})
+results = lib.apply_preset(
+    "RangeCheck",
+    ctx={
+        "weights": 2.5,
+        "chaos": 0.3,
+        "thermal_headroom": 0.8,
+    },
+)
 # → [{"passed": True, "severity": "info", ...}, ...]
 ```
 
@@ -72,10 +75,13 @@ results = lib.apply_preset("RangeCheck", ctx={
 
 **Example:**
 ```python
-results = lib.apply_preset("ProveAndHashCommit", ctx={
-    "payload": "agent_state_v42",
-    "signature": "a3f2b8c1...",
-})
+results = lib.apply_preset(
+    "ProveAndHashCommit",
+    ctx={
+        "payload": "agent_state_v42",
+        "signature": "a3f2b8c1...",
+    },
+)
 ```
 
 ---
@@ -92,12 +98,15 @@ results = lib.apply_preset("ProveAndHashCommit", ctx={
 
 **Example:**
 ```python
-results = lib.apply_preset("StreamBatch", ctx={
-    "batch_size": 50,
-    "max_batch_size": 64,
-    "requests_per_second": 800,
-    "max_rps": 1000,
-})
+results = lib.apply_preset(
+    "StreamBatch",
+    ctx={
+        "batch_size": 50,
+        "max_batch_size": 64,
+        "requests_per_second": 800,
+        "max_rps": 1000,
+    },
+)
 ```
 
 ---
@@ -114,10 +123,13 @@ results = lib.apply_preset("StreamBatch", ctx={
 
 **Example:**
 ```python
-results = lib.apply_preset("MemoryBudget", ctx={
-    "memory_mb": 512,
-    "memory_cap_mb": 1024,
-})
+results = lib.apply_preset(
+    "MemoryBudget",
+    ctx={
+        "memory_mb": 512,
+        "memory_cap_mb": 1024,
+    },
+)
 ```
 
 ---
@@ -134,10 +146,13 @@ results = lib.apply_preset("MemoryBudget", ctx={
 
 **Example:**
 ```python
-results = lib.apply_preset("DiversityFloor", ctx={
-    "diversity_score": 0.35,
-    "diversity_floor": 0.1,
-})
+results = lib.apply_preset(
+    "DiversityFloor",
+    ctx={
+        "diversity_score": 0.35,
+        "diversity_floor": 0.1,
+    },
+)
 ```
 
 ---
@@ -156,9 +171,12 @@ results = lib.apply_preset("DiversityFloor", ctx={
 
 **Example:**
 ```python
-results = lib.apply_preset("ThermalCeiling", ctx={
-    "thermal_headroom": 0.97,
-})
+results = lib.apply_preset(
+    "ThermalCeiling",
+    ctx={
+        "thermal_headroom": 0.97,
+    },
+)
 # → [{"passed": False, "severity": "critical", ...}] (ceiling = 0.99, strict <)
 ```
 
@@ -178,13 +196,16 @@ results = lib.apply_preset("ThermalCeiling", ctx={
 
 **Example:**
 ```python
-results = lib.apply_preset("AgentLiveness", ctx={
-    "last_heartbeat": time.time() - 15,
-    "heartbeat_timeout_seconds": 30,
-    "now": time.time(),
-    "consecutive_failures": 1,
-    "crash_threshold": 3,
-})
+results = lib.apply_preset(
+    "AgentLiveness",
+    ctx={
+        "last_heartbeat": time.time() - 15,
+        "heartbeat_timeout_seconds": 30,
+        "now": time.time(),
+        "consecutive_failures": 1,
+        "crash_threshold": 3,
+    },
+)
 ```
 
 ---
@@ -201,10 +222,13 @@ results = lib.apply_preset("AgentLiveness", ctx={
 
 **Example:**
 ```python
-results = lib.apply_preset("CrossNodeSync", ctx={
-    "local_hash": "sha256:abc123...",
-    "gossip_hash": "sha256:abc123...",
-})
+results = lib.apply_preset(
+    "CrossNodeSync",
+    ctx={
+        "local_hash": "sha256:abc123...",
+        "gossip_hash": "sha256:abc123...",
+    },
+)
 ```
 
 ---
@@ -221,12 +245,15 @@ results = lib.apply_preset("CrossNodeSync", ctx={
 
 **Example:**
 ```python
-results = lib.apply_preset("BreedingStandard", ctx={
-    "weights": 3.0,
-    "chaos": 0.2,
-    "thermal_headroom": 0.7,
-    "diversity_score": 0.5,
-})
+results = lib.apply_preset(
+    "BreedingStandard",
+    ctx={
+        "weights": 3.0,
+        "chaos": 0.2,
+        "thermal_headroom": 0.7,
+        "diversity_score": 0.5,
+    },
+)
 ```
 
 ---
@@ -243,14 +270,17 @@ results = lib.apply_preset("BreedingStandard", ctx={
 
 **Example:**
 ```python
-results = lib.apply_preset("FleetHealth", ctx={
-    "thermal_headroom": 0.95,
-    "last_heartbeat": time.time() - 5,
-    "heartbeat_timeout_seconds": 30,
-    "now": time.time(),
-    "consecutive_failures": 0,
-    "crash_threshold": 3,
-})
+results = lib.apply_preset(
+    "FleetHealth",
+    ctx={
+        "thermal_headroom": 0.95,
+        "last_heartbeat": time.time() - 5,
+        "heartbeat_timeout_seconds": 30,
+        "now": time.time(),
+        "consecutive_failures": 0,
+        "crash_threshold": 3,
+    },
+)
 ```
 
 ---
@@ -288,11 +318,13 @@ preset_name = lib.suggest_preset_for_task("breed with weight and chaos checks")
 
 # The daemon can use the preset's constraint logic via PythonFluxFallback,
 # or extract config bounds from the context schema.
-checker = PythonFluxFallback(FluxGatingConfig(
-    weight_bounds=(0.0, 5.0),
-    chaos_limit=0.5,
-    thermal_budget_limit=0.95,
-))
+checker = PythonFluxFallback(
+    FluxGatingConfig(
+        weight_bounds=(0.0, 5.0),
+        chaos_limit=0.5,
+        thermal_budget_limit=0.95,
+    )
+)
 breeder.attach_flux_gating(checker)
 ```
 

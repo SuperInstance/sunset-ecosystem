@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class SyncEntry:
     """A cross-repo sync entry."""
+
     repo_name: str
     repo_url: str
     commit_hash: str
@@ -43,8 +44,13 @@ class CrossRepoSync:
         self._repo_index: Dict[str, List[SyncEntry]] = {}
         self._hash_index: Dict[str, SyncEntry] = {}
 
-    def push(self, repo_name: str, repo_url: str, commit_hash: str,
-             breeding_result: Dict[str, Any]) -> SyncEntry:
+    def push(
+        self,
+        repo_name: str,
+        repo_url: str,
+        commit_hash: str,
+        breeding_result: Dict[str, Any],
+    ) -> SyncEntry:
         """Push a breeding result to the sync log."""
         entry = SyncEntry(
             repo_name=repo_name,
@@ -77,8 +83,9 @@ class CrossRepoSync:
         """List all known repositories."""
         return list(self._repo_index.keys())
 
-    def find_compatible(self, repo_name: str,
-                        min_fitness: float = 0.0) -> List[SyncEntry]:
+    def find_compatible(
+        self, repo_name: str, min_fitness: float = 0.0
+    ) -> List[SyncEntry]:
         """Find entries from other repos with good fitness."""
         results = []
         for name, entries in self._repo_index.items():
@@ -100,11 +107,14 @@ class CrossRepoSync:
 
     def export_json(self) -> str:
         """Export sync log as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "entries": [e.to_dict() for e in self.entries],
-            "stats": self.get_stats(),
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "entries": [e.to_dict() for e in self.entries],
+                "stats": self.get_stats(),
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

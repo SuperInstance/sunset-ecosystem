@@ -41,9 +41,13 @@ for r in system_results:
 ```python
 from fleet.health_bridge import EventBusHealthChecker
 
+
 class MyEventBus:
     def emit(self, event_type, payload):
-        print(f"EVENT: {event_type} — {payload['name']} is {'UP' if payload['ok'] else 'DOWN'}")
+        print(
+            f"EVENT: {event_type} — {payload['name']} is {'UP' if payload['ok'] else 'DOWN'}"
+        )
+
 
 bus = MyEventBus()
 checker = EventBusHealthChecker(FLEET_SERVICES, bus=bus, emit_on_every_check=False)

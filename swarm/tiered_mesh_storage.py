@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TierConfig:
     """Configuration for tiered storage thresholds."""
+
     hot_max_entries: int = 1000
     hot_min_fitness: float = 0.5
     hot_max_age_seconds: float = 86400.0  # 24h
@@ -50,6 +51,7 @@ class TierConfig:
 @dataclass
 class PromotionPolicy:
     """Rules for tier transitions."""
+
     promote_on_access: bool = True
     promote_on_fitness_spike: bool = True
     demote_on_thermal: bool = True
@@ -92,7 +94,7 @@ class TieredMeshStorage:
 
         self._lock = threading.RLock()
         self._access_counts: dict[str, int] = {}  # agent_id -> access count
-        self._last_access: dict[str, float] = {}   # agent_id -> last access time
+        self._last_access: dict[str, float] = {}  # agent_id -> last access time
         self._warm_count: int = 0
         self._cold_count: int = 0
 
@@ -102,7 +104,8 @@ class TieredMeshStorage:
         # Maintenance thread
         self._stop_maintenance = False
         self._maintenance_thread = threading.Thread(
-            target=self._maintenance_loop, daemon=True,
+            target=self._maintenance_loop,
+            daemon=True,
         )
         self._maintenance_thread.start()
 
@@ -244,6 +247,7 @@ class TieredMeshStorage:
                 for entry_dict in data:
                     if entry_dict.get("agent_id") == agent_id:
                         from swarm.mesh_vector_tables import VectorTableEntry
+
                         return VectorTableEntry.from_dict(entry_dict)
             except Exception as exc:
                 logger.warning("Failed to read cold archive %s: %s", archive_file, exc)
@@ -325,7 +329,9 @@ class TieredMeshStorage:
             },
             "cold": {
                 "entry_count": self._cold_count,
-                "archive_count": len(list(self._cold_path.glob("cold_archive_*.jsonl.zlib"))),
+                "archive_count": len(
+                    list(self._cold_path.glob("cold_archive_*.jsonl.zlib"))
+                ),
                 "cold_path": str(self._cold_path),
             },
         }
@@ -339,7 +345,10 @@ class TieredMeshStorage:
 
     def _should_be_hot(self, entry: Any, age: float) -> bool:
         """Determine if entry should be in hot tier."""
-        if entry.fitness >= self.config.hot_min_fitness and age <= self.config.hot_max_age_seconds:
+        if (
+            entry.fitness >= self.config.hot_min_fitness
+            and age <= self.config.hot_max_age_seconds
+        ):
             return True
         if entry.thermal_pressure >= self.config.demotion_thermal_threshold:
             return False
@@ -355,7 +364,11 @@ class TieredMeshStorage:
             if len(self.base) < self.config.hot_max_entries:
                 self._warm_delete(entry.agent_id)
                 self.base.insert(entry, skip_verify=True)
-                logger.info("Promoted %s to hot tier (access count: %d)", entry.agent_id, access_count)
+                logger.info(
+                    "Promoted %s to hot tier (access count: %d)",
+                    entry.agent_id,
+                    access_count,
+                )
 
     def _demote_oldest_hot(self) -> None:
         """Demote oldest/lowest-fitness hot entry to warm."""
@@ -366,7 +379,9 @@ class TieredMeshStorage:
         victim = min(entries, key=lambda e: (e.fitness, e.timestamp))
         self.base._entries.pop(victim.agent_id, None)  # type: ignore
         self._warm_insert(victim)
-        logger.info("Demoted %s to warm tier (fitness: %.3f)", victim.agent_id, victim.fitness)
+        logger.info(
+            "Demoted %s to warm tier (fitness: %.3f)", victim.agent_id, victim.fitness
+        )
 
     # ── maintenance loop ──────────────────────────────────────
 
@@ -390,13 +405,21 @@ class TieredMeshStorage:
             age = now - entry.timestamp
             if age > self.config.hot_max_age_seconds:
                 to_demote.append(entry)
-            elif self.policy.demote_on_thermal and entry.thermal_pressure >= self.config.demotion_thermal_threshold:
+            elif (
+                self.policy.demote_on_thermal
+                and entry.thermal_pressure >= self.config.demotion_thermal_threshold
+            ):
                 to_demote.append(entry)
 
         for entry in to_demote:
             self.base._entries.pop(entry.agent_id, None)  # type: ignore
             self._warm_insert(entry)
-            logger.info("Demoted %s to warm (age: %.0fs, thermal: %.2f)", entry.agent_id, age, entry.thermal_pressure)
+            logger.info(
+                "Demoted %s to warm (age: %.0fs, thermal: %.2f)",
+                entry.agent_id,
+                age,
+                entry.thermal_pressure,
+            )
 
         # Archive old warm entries to cold
         conn = sqlite3.connect(str(self._db_path))
@@ -410,7 +433,9 @@ class TieredMeshStorage:
                 entries = [self._row_to_entry(row) for row in rows]
                 self._cold_archive(entries)
                 for row in rows:
-                    conn.execute("DELETE FROM warm_entries WHERE agent_id = ?", (row[0],))
+                    conn.execute(
+                        "DELETE FROM warm_entries WHERE agent_id = ?", (row[0],)
+                    )
                 conn.commit()
                 logger.info("Archived %d warm entries to cold tier", len(rows))
         finally:
@@ -421,17 +446,20 @@ class TieredMeshStorage:
     @staticmethod
     def _vec_to_b64(vec: np.ndarray) -> str:
         import base64
+
         return base64.b64encode(vec.astype(np.float32).tobytes()).decode("ascii")
 
     @staticmethod
     def _b64_to_vec(b64: str, dim: int) -> np.ndarray:
         import base64
+
         raw = base64.b64decode(b64)
         return np.frombuffer(raw, dtype=np.float32).copy()
 
     def _row_to_entry(self, row: tuple[Any, ...]) -> Any:
         """Convert SQLite row to VectorTableEntry."""
         from swarm.mesh_vector_tables import VectorTableEntry
+
         # row: (agent_id, vector_b64, timestamp, node_id, generation, fitness,
         #       signature, capability_mask, thermal_pressure, extra_json, tier, ...)
         extra = json.loads(row[9]) if row[9] else {}

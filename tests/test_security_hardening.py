@@ -19,6 +19,7 @@ from grammar.security_hardening import (
 # RuleValidator — rule name validation
 # ---------------------------------------------------------------------------
 
+
 class TestRuleNameValidation:
     def test_safe_name(self):
         v = RuleValidator()
@@ -67,10 +68,13 @@ class TestRuleNameValidation:
 # Production fields
 # ---------------------------------------------------------------------------
 
+
 class TestProductionFields:
     def test_valid_production(self):
         v = RuleValidator()
-        result = v.validate_production_fields({"tagline": "Hello world", "condition": "x > 5"})
+        result = v.validate_production_fields(
+            {"tagline": "Hello world", "condition": "x > 5"}
+        )
         assert result["tagline"] == "Hello world"
 
     def test_xss_in_tagline(self):
@@ -113,6 +117,7 @@ class TestProductionFields:
 # Full rule validation
 # ---------------------------------------------------------------------------
 
+
 class TestFullRuleValidation:
     def test_valid_rule(self):
         v = RuleValidator()
@@ -135,7 +140,11 @@ class TestFullRuleValidation:
         rule = {
             "name": "rule_with_provenance",
             "production": {},
-            "provenance": {"creator": "test", "creator_type": "human", "timestamp": 1234567890.0},
+            "provenance": {
+                "creator": "test",
+                "creator_type": "human",
+                "timestamp": 1234567890.0,
+            },
         }
         v.validate_full_rule(rule)
         log = v.get_provenance_log()
@@ -164,6 +173,7 @@ class TestFullRuleValidation:
 # Convenience wrapper
 # ---------------------------------------------------------------------------
 
+
 class TestCreateRuleFromDict:
     def test_valid(self):
         rule = {"name": "ok", "production": {"tagline": "OK"}}
@@ -179,9 +189,12 @@ class TestCreateRuleFromDict:
 # RuleProvenance
 # ---------------------------------------------------------------------------
 
+
 class TestRuleProvenance:
     def test_fields(self):
-        prov = RuleProvenance(creator="test", creator_type="human", timestamp=1.0, source_ip="127.0.0.1")
+        prov = RuleProvenance(
+            creator="test", creator_type="human", timestamp=1.0, source_ip="127.0.0.1"
+        )
         assert prov.creator == "test"
         assert prov.source_ip == "127.0.0.1"
 

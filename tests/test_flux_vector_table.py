@@ -15,7 +15,6 @@ import pytest
 # ── Mock turbovec before any swarm.vector_table import ──
 
 
-
 from swarm.flux_vector_table import AgentVector, FluxVectorTable
 
 
@@ -168,13 +167,22 @@ class TestSearchDiverseParents:
         vec_a = vector_table._get_vector(a)
         vec_b = vector_table._get_vector(b)
         # Cosine distance should be relatively high
-        sim = float(np.dot(vec_a, vec_b) / (np.linalg.norm(vec_a) * np.linalg.norm(vec_b) + 1e-8))
+        sim = float(
+            np.dot(vec_a, vec_b)
+            / (np.linalg.norm(vec_a) * np.linalg.norm(vec_b) + 1e-8)
+        )
         dist = 1.0 - sim
         assert dist > 0.1
 
     def test_returns_empty_for_single_agent(self):
         vt = FluxVectorTable(dim=64, bit_width=4)
-        vt.add(AgentVector(agent_id=0, vector=np.random.randn(64).astype(np.float32).tolist(), fitness=0.5))
+        vt.add(
+            AgentVector(
+                agent_id=0,
+                vector=np.random.randn(64).astype(np.float32).tolist(),
+                fitness=0.5,
+            )
+        )
         pairs = vt.search_diverse_parents(n_results=1)
         assert pairs == []
 
@@ -314,4 +322,3 @@ class TestHDCIntegration:
         assert pair is not None
         a, b = pair
         assert a != b
-

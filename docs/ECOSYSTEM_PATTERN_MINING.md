@@ -327,9 +327,13 @@ from fleet.swarm_coordinator_bridge import SwarmCoordinator, AgentRole
 
 coordinator = SwarmCoordinator(max_agents=10)
 coordinator.register_agent("scout-1", AgentRole.SCOUT, capabilities=["search"])
-coordinator.register_agent("builder-1", AgentRole.BUILDER, capabilities=["code", "test"])
+coordinator.register_agent(
+    "builder-1", AgentRole.BUILDER, capabilities=["code", "test"]
+)
 report = coordinator.resolve_conflict(["option-a", "option-b"], strategy="weighted")
-nodes = coordinator.decompose_task("Build bridge", strategy="parallel", subtasks=["Design", "Code", "Test"])
+nodes = coordinator.decompose_task(
+    "Build bridge", strategy="parallel", subtasks=["Design", "Code", "Test"]
+)
 ```
 
 ---

@@ -27,6 +27,7 @@ from swarm.thermal import DeviceType, ThermalBudget
 
 # ── helpers ─────────────────────────────────────────────
 
+
 class _DummyTrap(OperationalTrap):
     """Test-only trap that always returns a fixed result."""
 
@@ -59,8 +60,10 @@ class _CountingTrap(OperationalTrap):
 
 # ── base class ──────────────────────────────────────────
 
+
 def test_base_check_raises_not_implemented():
     """Abstract check() must raise NotImplementedError."""
+
     class _ProxyTrap(OperationalTrap):
         def __init__(self):
             super().__init__(name="proxy")
@@ -146,6 +149,7 @@ def test_escalation_routing_critical():
 
 # ── rate limiting ───────────────────────────────────────
 
+
 def test_rate_limit_suppresses_duplicate():
     """Same key within interval must be suppressed."""
     trap = _DummyTrap(
@@ -211,6 +215,7 @@ def test_rate_limit_different_keys_not_suppressed():
 
 # ── ThermalTrap ─────────────────────────────────────────
 
+
 def test_thermal_trap_detects_overcommit():
     """ThermalTrap fires when current_agents exceeds max_agents."""
     budget = ThermalBudget({DeviceType.GPU: 2})
@@ -252,15 +257,14 @@ def test_thermal_trap_no_fire_when_healthy():
 
 # ── FluxViolationTrap ───────────────────────────────────
 
+
 def test_flux_violation_trap_detects_breach():
     """FluxViolationTrap surfaces recent results with critical severity."""
     config = FluxGatingConfig()
     checker = FluxGatingChecker(config)
 
     def _get_results():
-        return [
-            FluxCheckResult(passed=False, score=0.9, violations={"bounds": 0.9})
-        ]
+        return [FluxCheckResult(passed=False, score=0.9, violations={"bounds": 0.9})]
 
     trap = FluxViolationTrap(checker=checker, get_recent_results=_get_results)
     result = trap.check()
@@ -286,9 +290,7 @@ def test_flux_violation_trap_warning_only():
     checker = FluxGatingChecker(config)
 
     def _get_results():
-        return [
-            FluxCheckResult(passed=False, score=0.4, violations={"l2_norm": 0.4})
-        ]
+        return [FluxCheckResult(passed=False, score=0.4, violations={"l2_norm": 0.4})]
 
     trap = FluxViolationTrap(checker=checker, get_recent_results=_get_results)
     result = trap.check()
@@ -298,6 +300,7 @@ def test_flux_violation_trap_warning_only():
 
 
 # ── AgentCrashTrap ──────────────────────────────────────
+
 
 def test_agent_crash_trap_detects_missing_process():
     """Missing PID for an expected agent triggers CRITICAL."""
@@ -358,6 +361,7 @@ def test_agent_crash_trap_unexpected_dead_agent():
 
 
 # ── TrapRegistry ────────────────────────────────────────
+
 
 def test_registry_runs_all_registered_traps():
     """run_all() executes every trap and returns fired results."""
@@ -426,6 +430,7 @@ def test_registry_thread_safety():
 
 # ── TrapDashboard ─────────────────────────────────────────
 
+
 def test_dashboard_shows_correct_status():
     """Dashboard aggregates registry state into a flat snapshot."""
     reg = TrapRegistry()
@@ -472,6 +477,7 @@ def test_dashboard_empty_registry():
 
 
 # ── integration-style ─────────────────────────────────────
+
 
 def test_full_pipeline_from_trap_to_dashboard():
     """End-to-end: registry → run → dashboard reflects state."""

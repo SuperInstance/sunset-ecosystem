@@ -32,6 +32,7 @@ from scipy import stats
 @dataclass
 class GenomeDistribution:
     """Represents a distribution over a genome's gene values."""
+
     mean: float
     std: float
     # Histogram representation for discrete genes
@@ -127,6 +128,7 @@ def js_divergence(p: np.ndarray, q: np.ndarray, bins: int = 10) -> float:
 @dataclass
 class InformationState:
     """Tracks information-theoretic state of the population."""
+
     population_entropy: float = 0.0
     fitness_entropy: float = 0.0
     # Per-gene entropies
@@ -138,8 +140,7 @@ class InformationState:
 
 
 def compute_population_info_state(
-    population: List[Tuple[Dict[str, float], float]],
-    gene_names: List[str]
+    population: List[Tuple[Dict[str, float], float]], gene_names: List[str]
 ) -> InformationState:
     """
     Compute information-theoretic state of a population.
@@ -192,11 +193,13 @@ class InfoTheoreticBreeder:
     5. Crossover maximizes offspring information gain
     """
 
-    def __init__(self,
-                 population_size: int = 50,
-                 entropy_target: float = 2.0,
-                 mi_threshold: float = 0.1,
-                 elitism_ratio: float = 0.1):
+    def __init__(
+        self,
+        population_size: int = 50,
+        entropy_target: float = 2.0,
+        mi_threshold: float = 0.1,
+        elitism_ratio: float = 0.1,
+    ):
         self.population_size = population_size
         self.entropy_target = entropy_target
         self.mi_threshold = mi_threshold
@@ -205,8 +208,9 @@ class InfoTheoreticBreeder:
         self.info_state: Optional[InformationState] = None
         self.generation = 0
 
-    def analyze_population(self,
-                           population: List[Tuple[Dict[str, float], float]]) -> InformationState:
+    def analyze_population(
+        self, population: List[Tuple[Dict[str, float], float]]
+    ) -> InformationState:
         """Analyze population information-theoretic state."""
         if not population:
             return InformationState()
@@ -216,9 +220,9 @@ class InfoTheoreticBreeder:
         self.info_state.generation = self.generation
         return self.info_state
 
-    def select_parents(self,
-                       population: List[Tuple[Dict[str, float], float]],
-                       k: int = 2) -> List[Tuple[Dict[str, float], float]]:
+    def select_parents(
+        self, population: List[Tuple[Dict[str, float], float]], k: int = 2
+    ) -> List[Tuple[Dict[str, float], float]]:
         """
         Select parents that maximize expected offspring information.
 
@@ -237,7 +241,7 @@ class InfoTheoreticBreeder:
 
             # Score = fitness + information diversity bonus
             best = None
-            best_score = -float('inf')
+            best_score = -float("inf")
 
             for candidate in tournament:
                 fitness_score = candidate[1]
@@ -260,8 +264,9 @@ class InfoTheoreticBreeder:
 
         return selected
 
-    def _information_distance(self, genome1: Dict[str, float],
-                              genome2: Dict[str, float]) -> float:
+    def _information_distance(
+        self, genome1: Dict[str, float], genome2: Dict[str, float]
+    ) -> float:
         """Compute information distance between two genomes."""
         # Use common keys only
         common_keys = set(genome1.keys()) & set(genome2.keys())
@@ -271,9 +276,9 @@ class InfoTheoreticBreeder:
         g2_vals = np.array([genome2[k] for k in common_keys])
         return js_divergence(g1_vals, g2_vals)
 
-    def info_maximizing_crossover(self,
-                                   parent1: Dict[str, float],
-                                   parent2: Dict[str, float]) -> Dict[str, float]:
+    def info_maximizing_crossover(
+        self, parent1: Dict[str, float], parent2: Dict[str, float]
+    ) -> Dict[str, float]:
         """
         Crossover that maximizes offspring information content.
 
@@ -300,18 +305,20 @@ class InfoTheoreticBreeder:
                         child[gene_name] = parent2[gene_name]
                 else:
                     # Low MI gene: maximize entropy by random selection
-                    child[gene_name] = random.choice([
-                        parent1[gene_name], parent2[gene_name]
-                    ])
+                    child[gene_name] = random.choice(
+                        [parent1[gene_name], parent2[gene_name]]
+                    )
             else:
                 # No MI data: uniform crossover
-                child[gene_name] = parent1[gene_name] if random.random() < 0.5 else parent2[gene_name]
+                child[gene_name] = (
+                    parent1[gene_name] if random.random() < 0.5 else parent2[gene_name]
+                )
 
         return child
 
-    def entropy_maintaining_mutation(self,
-                                      genome: Dict[str, float],
-                                      mutation_rate: float = 0.1) -> Dict[str, float]:
+    def entropy_maintaining_mutation(
+        self, genome: Dict[str, float], mutation_rate: float = 0.1
+    ) -> Dict[str, float]:
         """
         Mutation that maintains population entropy while exploring.
 
@@ -340,13 +347,15 @@ class InfoTheoreticBreeder:
                 # No data: medium perturbation
                 scale = 0.1
 
-            mutated[gene_name] *= (1 + random.gauss(0, scale))
+            mutated[gene_name] *= 1 + random.gauss(0, scale)
 
         return mutated
 
-    def breed_generation(self,
-                         population: List[Tuple[Dict[str, float], float]],
-                         task_fn: Callable[[Dict[str, float]], Any]) -> List[Tuple[Dict[str, float], float]]:
+    def breed_generation(
+        self,
+        population: List[Tuple[Dict[str, float], float]],
+        task_fn: Callable[[Dict[str, float]], Any],
+    ) -> List[Tuple[Dict[str, float], float]]:
         """
         Run one generation of information-theoretic breeding.
         """
@@ -377,14 +386,20 @@ class InfoTheoreticBreeder:
 
             # Crossover maximizing information
             child = self.info_maximizing_crossover(parents[0][0], parents[1][0])
-            child["_fitness"] = parents[0][1]  # Track parent fitness for crossover decisions
+            child["_fitness"] = parents[0][
+                1
+            ]  # Track parent fitness for crossover decisions
 
             # Mutation maintaining entropy
             child = self.entropy_maintaining_mutation(child, mutation_rate)
 
             # Evaluate
             result = task_fn(child)
-            fitness = result.get("fitness", 0.0) if isinstance(result, dict) else float(result)
+            fitness = (
+                result.get("fitness", 0.0)
+                if isinstance(result, dict)
+                else float(result)
+            )
 
             new_population.append((child, fitness))
 
@@ -403,12 +418,10 @@ class InfoTheoreticBreeder:
             "key_genes": sorted(
                 self.info_state.gene_fitness_mi.items(),
                 key=lambda x: x[1],
-                reverse=True
+                reverse=True,
             )[:5],
             "diverse_genes": sorted(
-                self.info_state.gene_entropies.items(),
-                key=lambda x: x[1],
-                reverse=True
+                self.info_state.gene_entropies.items(), key=lambda x: x[1], reverse=True
             )[:5],
             "entropy_target": self.entropy_target,
             "target_met": self.info_state.population_entropy >= self.entropy_target,

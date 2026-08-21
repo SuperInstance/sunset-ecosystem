@@ -4,6 +4,7 @@ Ensures every opcode from flux-vm-v3-temp/src/opcode.rs is registered,
 categories are correct, status queries work, and the gap report is
 well-formed.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,12 +23,14 @@ from logos.opcode_capability_index import (
 
 # ── fixture ───────────────────────────────────────────────────
 
+
 @pytest.fixture
 def index() -> OpcodeCapabilityIndex:
     return OpcodeCapabilityIndex()
 
 
 # ── 1. coverage ───────────────────────────────────────────────
+
 
 def test_all_58_opcodes_registered(index: OpcodeCapabilityIndex) -> None:
     """Every opcode from the Rust source must be in the index."""
@@ -43,7 +46,7 @@ def test_can_lookup_by_name(index: OpcodeCapabilityIndex) -> None:
 def test_can_lookup_by_number(index: OpcodeCapabilityIndex) -> None:
     assert index.get(0x09) is not None  # Add
     assert index.get(0x29) is not None  # Halt
-    assert index.get(0x3a) is not None  # StreamClose
+    assert index.get(0x3A) is not None  # StreamClose
 
 
 def test_unknown_opcode_returns_none(index: OpcodeCapabilityIndex) -> None:
@@ -52,6 +55,7 @@ def test_unknown_opcode_returns_none(index: OpcodeCapabilityIndex) -> None:
 
 
 # ── 2. category counts ────────────────────────────────────────
+
 
 def test_category_counts_match_rust_source(index: OpcodeCapabilityIndex) -> None:
     counts = index.count_by_category()
@@ -71,14 +75,36 @@ def test_category_names_are_stable(index: OpcodeCapabilityIndex) -> None:
 
 # ── 3. status queries ─────────────────────────────────────────
 
-def test_can_use_from_python_returns_false_for_rust_only(index: OpcodeCapabilityIndex) -> None:
-    rust_only = ["Prove", "SnapVerify", "ParDispatch", "VecLoad", "StreamOpen", "LoadReg"]
+
+def test_can_use_from_python_returns_false_for_rust_only(
+    index: OpcodeCapabilityIndex,
+) -> None:
+    rust_only = [
+        "Prove",
+        "SnapVerify",
+        "ParDispatch",
+        "VecLoad",
+        "StreamOpen",
+        "LoadReg",
+    ]
     for name in rust_only:
         assert index.can_use_from_python(name) is False, f"{name} should be RUST_ONLY"
 
 
-def test_can_use_from_python_returns_true_for_safe(index: OpcodeCapabilityIndex) -> None:
-    safe = ["Add", "Sub", "Push", "Pop", "Halt", "Nop", "RangeCheck", "Validate", "EmitEvent"]
+def test_can_use_from_python_returns_true_for_safe(
+    index: OpcodeCapabilityIndex,
+) -> None:
+    safe = [
+        "Add",
+        "Sub",
+        "Push",
+        "Pop",
+        "Halt",
+        "Nop",
+        "RangeCheck",
+        "Validate",
+        "EmitEvent",
+    ]
     for name in safe:
         assert index.can_use_from_python(name) is True, f"{name} should be PYTHON_SAFE"
 
@@ -96,7 +122,9 @@ def test_get_safe_opcodes_filters_by_category(index: OpcodeCapabilityIndex) -> N
         assert index.can_use_from_python(op.name)
 
 
-def test_get_rust_only_opcodes_filters_by_category(index: OpcodeCapabilityIndex) -> None:
+def test_get_rust_only_opcodes_filters_by_category(
+    index: OpcodeCapabilityIndex,
+) -> None:
     rust_io = index.get_rust_only_opcodes(category="io")
     for op in rust_io:
         assert op.category == "io"
@@ -105,12 +133,19 @@ def test_get_rust_only_opcodes_filters_by_category(index: OpcodeCapabilityIndex)
 
 # ── 4. gap report ─────────────────────────────────────────────
 
+
 def test_gap_report_includes_effort_estimates(index: OpcodeCapabilityIndex) -> None:
     gaps = index.get_gap_report()
     assert len(gaps) > 0
     for entry in gaps:
         assert "effort_estimate" in entry
-        assert entry["effort_estimate"] in ("trivial", "low", "medium", "high", "blocked")
+        assert entry["effort_estimate"] in (
+            "trivial",
+            "low",
+            "medium",
+            "high",
+            "blocked",
+        )
 
 
 def test_gap_report_covers_all_rust_only(index: OpcodeCapabilityIndex) -> None:
@@ -129,16 +164,24 @@ def test_gap_report_reason_field_is_present(index: OpcodeCapabilityIndex) -> Non
 
 # ── 5. path_a equivalents ─────────────────────────────────────
 
+
 def test_suggest_path_a_maps_to_real_functions(index: OpcodeCapabilityIndex) -> None:
     """Mapped equivalents must be real method names on PythonFluxFallback."""
-    valid_methods = {"check_candidate", "check_batch", "score_for_breeding", "record_violation"}
+    valid_methods = {
+        "check_candidate",
+        "check_batch",
+        "score_for_breeding",
+        "record_violation",
+    }
     for op in _OPCODES:
         equiv = index.suggest_path_a_equivalent(op.name)
         if equiv is not None:
             assert equiv in valid_methods, f"{op.name} maps to unknown method {equiv}"
 
 
-def test_suggest_path_a_returns_none_for_rust_only(index: OpcodeCapabilityIndex) -> None:
+def test_suggest_path_a_returns_none_for_rust_only(
+    index: OpcodeCapabilityIndex,
+) -> None:
     """Most RUST_ONLY opcodes have no Python fallback."""
     no_fallback = ["Prove", "VecLoad", "ParDispatch", "SnapHash", "StreamOpen"]
     for name in no_fallback:
@@ -147,10 +190,11 @@ def test_suggest_path_a_returns_none_for_rust_only(index: OpcodeCapabilityIndex)
 
 def test_suggest_path_a_by_number(index: OpcodeCapabilityIndex) -> None:
     assert index.suggest_path_a_equivalent(0x15) == "check_candidate"  # RangeCheck
-    assert index.suggest_path_a_equivalent(0x2c) == "record_violation"  # EmitEvent
+    assert index.suggest_path_a_equivalent(0x2C) == "record_violation"  # EmitEvent
 
 
 # ── 6. status overrides ───────────────────────────────────────
+
 
 def test_update_status_changes_effective_status(index: OpcodeCapabilityIndex) -> None:
     index.update_status("Prove", OpcodeStatus.PYTHON_SAFE)
@@ -178,6 +222,7 @@ def test_count_by_status_reflects_overrides(index: OpcodeCapabilityIndex) -> Non
 
 
 # ── 7. persistence ────────────────────────────────────────────
+
 
 def test_save_and_roundtrip(index: OpcodeCapabilityIndex) -> None:
     index.update_status("Prove", OpcodeStatus.PYTHON_SAFE)
@@ -208,6 +253,7 @@ def test_save_format_is_json(index: OpcodeCapabilityIndex) -> None:
 
 # ── 8. edge cases ─────────────────────────────────────────────
 
+
 def test_repr_is_human_readable(index: OpcodeCapabilityIndex) -> None:
     r = repr(index)
     assert "OpcodeCapabilityIndex(" in r
@@ -223,13 +269,17 @@ def test_frozen_opcode_dataclass_is_hashable(index: OpcodeCapabilityIndex) -> No
     assert len(s) == 1
 
 
-def test_div_opcode_has_overflow_guard_description(index: OpcodeCapabilityIndex) -> None:
+def test_div_opcode_has_overflow_guard_description(
+    index: OpcodeCapabilityIndex,
+) -> None:
     div = index.get("Div")
     assert div is not None
     assert "i32::MIN" in div.description or "guard" in div.description.lower()
 
 
-def test_abs_opcode_has_overflow_guard_description(index: OpcodeCapabilityIndex) -> None:
+def test_abs_opcode_has_overflow_guard_description(
+    index: OpcodeCapabilityIndex,
+) -> None:
     abs_op = index.get("Abs")
     assert abs_op is not None
     assert "i32::MIN" in abs_op.description or "guard" in abs_op.description.lower()
@@ -243,6 +293,7 @@ def test_call_bounded_has_default_note(index: OpcodeCapabilityIndex) -> None:
 
 # ── 9. batch sanity ───────────────────────────────────────────
 
+
 def test_all_opcodes_have_unique_numbers(index: OpcodeCapabilityIndex) -> None:
     numbers = [op.opcode_number for op in index._by_name.values()]
     assert len(numbers) == len(set(numbers))
@@ -250,7 +301,7 @@ def test_all_opcodes_have_unique_numbers(index: OpcodeCapabilityIndex) -> None:
 
 def test_all_opcodes_in_valid_range(index: OpcodeCapabilityIndex) -> None:
     for op in index._by_name.values():
-        assert 0x01 <= op.opcode_number <= 0x3a
+        assert 0x01 <= op.opcode_number <= 0x3A
 
 
 def test_no_deprecated_opcodes_by_default(index: OpcodeCapabilityIndex) -> None:

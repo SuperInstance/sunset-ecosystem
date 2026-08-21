@@ -7,6 +7,7 @@ These are lightweight stubs that validate payload shape and return realistic
 responses matching the agent card schemas. In production they would delegate
 to the actual service implementations.
 """
+
 import time
 
 
@@ -14,7 +15,10 @@ def _validate_required(payload, keys):
     """Return error dict if any required key is missing, else None."""
     missing = [k for k in keys if k not in payload]
     if missing:
-        return {"status": "error", "result": {"message": f"Missing required keys: {missing}"}}
+        return {
+            "status": "error",
+            "result": {"message": f"Missing required keys: {missing}"},
+        }
     return None
 
 
@@ -24,6 +28,7 @@ def _get_input(payload):
 
 
 # ── MetronomeScheduler ──
+
 
 def handle_metronome_task(payload):
     """Handle MetronomeScheduler tasks: tick, set_bpm, sync, get_status."""
@@ -48,7 +53,7 @@ def handle_metronome_task(payload):
                 "missed_beat": False,
                 "signal_length": len(signal),
                 "force": force,
-            }
+            },
         }
 
     if task_type == "set_bpm":
@@ -65,11 +70,13 @@ def handle_metronome_task(payload):
                 "actual_bpm": bpm,
                 "beat_duration_ms": beat_duration_ms,
                 "ramp_complete": ramp_ms == 0,
-            }
+            },
         }
 
     if task_type == "sync":
-        err = _validate_required(inp, ["node_id", "beat_number", "wall_time_ns", "perf_counter_ns"])
+        err = _validate_required(
+            inp, ["node_id", "beat_number", "wall_time_ns", "perf_counter_ns"]
+        )
         if err:
             return err
         return {
@@ -81,7 +88,7 @@ def handle_metronome_task(payload):
                 "perf_counter_ns": inp["perf_counter_ns"],
                 "drift_ms": 0.0,
                 "correction_applied": False,
-            }
+            },
         }
 
     if task_type == "get_status":
@@ -99,13 +106,14 @@ def handle_metronome_task(payload):
                     {"divider": 4, "callback_count": 12, "last_fired_beat": 1420}
                 ],
                 "healthy": True,
-            }
+            },
         }
 
     return {"status": "error", "result": {"message": f"Unknown task type: {task_type}"}}
 
 
 # ── BreederDaemonV2 ──
+
 
 def handle_breeder_task(payload):
     """Handle BreederDaemonV2 tasks: queue_breed, get_state, get_stats, emergency_stop."""
@@ -122,13 +130,20 @@ def handle_breeder_task(payload):
         strategy = inp.get("strategy", "trinity")
         children = []
         for i in range(offspring_count):
-            children.append({
-                "agent_id": f"agent-{i:04x}-breed",
-                "parent_ids": [f"parent-{j:04x}" for j in range(parent_count)],
-                "fitness": {"ethos": 0.87, "pathos": 0.92, "logos": 0.79, "product": 0.634},
-                "incubated": True,
-                "room_id": incubate_room,
-            })
+            children.append(
+                {
+                    "agent_id": f"agent-{i:04x}-breed",
+                    "parent_ids": [f"parent-{j:04x}" for j in range(parent_count)],
+                    "fitness": {
+                        "ethos": 0.87,
+                        "pathos": 0.92,
+                        "logos": 0.79,
+                        "product": 0.634,
+                    },
+                    "incubated": True,
+                    "room_id": incubate_room,
+                }
+            )
         return {
             "status": "ok",
             "result": {
@@ -136,7 +151,7 @@ def handle_breeder_task(payload):
                 "cycle_id": "cycle-2026-05-22-001",
                 "queue_position": 0,
                 "strategy": strategy,
-            }
+            },
         }
 
     if task_type == "get_state":
@@ -146,7 +161,12 @@ def handle_breeder_task(payload):
                 "phase": "SURVIVE",
                 "generation": 3,
                 "birth_beat": 100,
-                "fitness": {"ethos": 0.9, "pathos": 0.85, "logos": 0.88, "product": 0.6732},
+                "fitness": {
+                    "ethos": 0.9,
+                    "pathos": 0.85,
+                    "logos": 0.88,
+                    "product": 0.6732,
+                },
                 "room_id": "Forge",
             },
             {
@@ -154,7 +174,12 @@ def handle_breeder_task(payload):
                 "phase": "INCUBATE",
                 "generation": 4,
                 "birth_beat": 1200,
-                "fitness": {"ethos": 0.7, "pathos": 0.6, "logos": 0.8, "product": 0.336},
+                "fitness": {
+                    "ethos": 0.7,
+                    "pathos": 0.6,
+                    "logos": 0.8,
+                    "product": 0.336,
+                },
                 "room_id": "Forge",
             },
         ]
@@ -163,8 +188,12 @@ def handle_breeder_task(payload):
         if inp.get("phase"):
             agents = [a for a in agents if a["phase"] == inp["phase"]]
         phase_counts = {
-            "EGG": 0, "COMPETE": 1,
-            "SURVIVE": 1, "BREED": 0, "SUNSET": 0, "ARCHIVE": 0,
+            "EGG": 0,
+            "COMPETE": 1,
+            "SURVIVE": 1,
+            "BREED": 0,
+            "SUNSET": 0,
+            "ARCHIVE": 0,
         }
         return {
             "status": "ok",
@@ -172,7 +201,7 @@ def handle_breeder_task(payload):
                 "agents": agents,
                 "phase_counts": phase_counts,
                 "daemon_status": "running",
-            }
+            },
         }
 
     if task_type == "get_stats":
@@ -183,11 +212,16 @@ def handle_breeder_task(payload):
                 "total_agents_spawned": 12,
                 "total_agents_sunset": 10,
                 "survival_rate": 0.1667,
-                "average_fitness": {"ethos": 0.8, "pathos": 0.75, "logos": 0.82, "product": 0.492},
+                "average_fitness": {
+                    "ethos": 0.8,
+                    "pathos": 0.75,
+                    "logos": 0.82,
+                    "product": 0.492,
+                },
                 "tournament_count": 6,
                 "archive_size_bytes": 4096,
                 "last_breed_beat": 1200,
-            }
+            },
         }
 
     if task_type == "emergency_stop":
@@ -206,13 +240,14 @@ def handle_breeder_task(payload):
                 "resumable": True,
                 "reason": inp["reason"],
                 "preserve_incubating": preserve_incubating,
-            }
+            },
         }
 
     return {"status": "error", "result": {"message": f"Unknown task type: {task_type}"}}
 
 
 # ── RoomGrid ──
+
 
 def handle_grid_task(payload):
     """Handle RoomGrid tasks: tick, get_activity, get_room_state, rebirth_room."""
@@ -237,7 +272,7 @@ def handle_grid_task(payload):
                 "chaos_values": [0.3] * len(room_ids),
                 "signal_length": len(signal),
                 "skip_local_metronomes": skip_local,
-            }
+            },
         }
 
     if task_type == "get_activity":
@@ -262,7 +297,7 @@ def handle_grid_task(payload):
                         "local_bpm_divider": 4,
                     }
                 ],
-            }
+            },
         }
 
     if task_type == "get_room_state":
@@ -287,10 +322,7 @@ def handle_grid_task(payload):
             if include_buffer:
                 room_data["ring_buffer"] = [[0.0] * 16 for _ in range(10)]
             rooms.append(room_data)
-        return {
-            "status": "ok",
-            "result": {"rooms": rooms}
-        }
+        return {"status": "ok", "result": {"rooms": rooms}}
 
     if task_type == "rebirth_room":
         err = _validate_required(inp, ["room_id"])
@@ -306,13 +338,14 @@ def handle_grid_task(payload):
                 "new_chaos": 0.01,
                 "weight_checksum": "sha256:a1b2c3d4...",
                 "reason": inp.get("reason", "rebirth"),
-            }
+            },
         }
 
     return {"status": "error", "result": {"message": f"Unknown task type: {task_type}"}}
 
 
 # ── FLUX Constraint Checker ──
+
 
 def handle_flux_task(payload):
     """Handle FLUX tasks: check_constraints, get_violations, apply_feedback."""
@@ -339,26 +372,36 @@ def handle_flux_task(payload):
             passed = True
 
             # Simple bounds check based on preset
-            bound = 10.0 if preset == "neural_bounds" else 5.0 if preset == "safe_mode" else 50.0
+            bound = (
+                10.0
+                if preset == "neural_bounds"
+                else 5.0
+                if preset == "safe_mode"
+                else 50.0
+            )
             if max_val > bound or min_val < -bound:
                 passed = False
-                violations.append({
-                    "index": i,
-                    "constraint": "bounds",
-                    "expected": bound,
-                    "actual": max_val if max_val > bound else min_val,
-                    "severity": "error",
-                    "remediation": f"clip to [-{bound}, {bound}]"
-                })
+                violations.append(
+                    {
+                        "index": i,
+                        "constraint": "bounds",
+                        "expected": bound,
+                        "actual": max_val if max_val > bound else min_val,
+                        "severity": "error",
+                        "remediation": f"clip to [-{bound}, {bound}]",
+                    }
+                )
                 violation_count += 1
 
             if generate_cert:
-                certificates.append({
-                    "result": "PASS" if passed else "FAIL",
-                    "hash": f"sha256:{i:08x}...",
-                    "timestamp": "2026-05-22T13:00:00Z",
-                    "verified": True,
-                })
+                certificates.append(
+                    {
+                        "result": "PASS" if passed else "FAIL",
+                        "hash": f"sha256:{i:08x}...",
+                        "timestamp": "2026-05-22T13:00:00Z",
+                        "verified": True,
+                    }
+                )
 
         return {
             "status": "ok",
@@ -370,7 +413,7 @@ def handle_flux_task(payload):
                 "certificates": certificates,
                 "preset_used": preset,
                 "domain": domain,
-            }
+            },
         }
 
     if task_type == "get_violations":
@@ -386,7 +429,7 @@ def handle_flux_task(payload):
                 "actual": 12.5,
                 "severity": "error",
                 "domain": "neural",
-                "remediation": "clip to [-10, 10]"
+                "remediation": "clip to [-10, 10]",
             },
             {
                 "beat": 1410,
@@ -396,7 +439,7 @@ def handle_flux_task(payload):
                 "actual": 30.0,
                 "severity": "warning",
                 "domain": "neural",
-                "remediation": "scale by 0.83"
+                "remediation": "scale by 0.83",
             },
         ]
         if since_beat is not None:
@@ -410,7 +453,7 @@ def handle_flux_task(payload):
                 "violations": result_violations,
                 "total": len(result_violations),
                 "unique_indices": len({v["index"] for v in result_violations}),
-            }
+            },
         }
 
     if task_type == "apply_feedback":
@@ -438,7 +481,7 @@ def handle_flux_task(payload):
                 "dry_run": dry_run,
                 "target_id": target_id,
                 "rebirth_threshold": rebirth_threshold,
-            }
+            },
         }
 
     return {"status": "error", "result": {"message": f"Unknown task type: {task_type}"}}

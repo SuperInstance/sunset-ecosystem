@@ -82,13 +82,14 @@ class HDCNoveltyApproximator(nn.Module):
     def __init__(self, dim: int):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Linear(dim * 2, dim),   # concat(a,b)
+            nn.Linear(dim * 2, dim),  # concat(a,b)
             nn.ReLU(),
             nn.Linear(dim, dim // 2),
             nn.ReLU(),
             nn.Linear(dim // 2, 1),
-            nn.Sigmoid(),              # novelty in [0,1]
+            nn.Sigmoid(),  # novelty in [0,1]
         )
+
     def forward(self, a, b):
         x = torch.cat([a, b], dim=-1)
         return self.encoder(x)
@@ -118,9 +119,9 @@ HAS_AVX512 ──yes──► AVX-512 VPOPCNTDQ fast path (np.bitwise_count on u
 
 ```python
 if use_npu and HAS_XDNA2:
-    score = npu_hdc_approximator(a, b)   # optional, approximate
+    score = npu_hdc_approximator(a, b)  # optional, approximate
 else:
-    score = avx512_hdc_score(a, b)       # exact, deterministic
+    score = avx512_hdc_score(a, b)  # exact, deterministic
 ```
 
 ---

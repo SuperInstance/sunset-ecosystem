@@ -22,6 +22,7 @@ from fleet.review_code import (
 # Correctness
 # ---------------------------------------------------------------------------
 
+
 class TestCorrectness:
     def test_bare_except(self):
         code = """
@@ -68,6 +69,7 @@ def foo(a):
 # ---------------------------------------------------------------------------
 # Security
 # ---------------------------------------------------------------------------
+
 
 class TestSecurity:
     def test_eval_call(self):
@@ -133,6 +135,7 @@ for i in range(10):
 # Performance
 # ---------------------------------------------------------------------------
 
+
 class TestPerformance:
     def test_nested_loop(self):
         code = """
@@ -177,6 +180,7 @@ def foo():
 # ---------------------------------------------------------------------------
 # Simplicity
 # ---------------------------------------------------------------------------
+
 
 class TestSimplicity:
     def test_long_function(self):
@@ -257,6 +261,7 @@ except Exception:
 # Adversarial
 # ---------------------------------------------------------------------------
 
+
 class TestAdversarial:
     def test_no_validation(self):
         code = """
@@ -296,6 +301,7 @@ class Bar:
 # Integration
 # ---------------------------------------------------------------------------
 
+
 class TestIntegration:
     def test_review_all(self):
         code = """
@@ -334,6 +340,7 @@ def foo(a=[]):
 # ---------------------------------------------------------------------------
 # Visitor direct
 # ---------------------------------------------------------------------------
+
 
 class TestVisitorsDirect:
     def test_correctness_visitor(self):

@@ -25,23 +25,34 @@ from fleet.vessel_handshake import (
 class TestPeerIdentity:
     def test_trinity_score(self):
         p = PeerIdentity(
-            vessel_id="v1", node_id="n1", public_key="pk1",
-            ethos_score=0.8, pathos_score=0.9, logos_score=0.7
+            vessel_id="v1",
+            node_id="n1",
+            public_key="pk1",
+            ethos_score=0.8,
+            pathos_score=0.9,
+            logos_score=0.7,
         )
         assert p.trinity_score == 0.8 * 0.9 * 0.7
         assert abs(p.trinity_score - 0.504) < 0.001
 
     def test_zero_trinity(self):
         p = PeerIdentity(
-            vessel_id="v1", node_id="n1", public_key="pk1",
-            ethos_score=0.0, pathos_score=0.9, logos_score=0.7
+            vessel_id="v1",
+            node_id="n1",
+            public_key="pk1",
+            ethos_score=0.0,
+            pathos_score=0.9,
+            logos_score=0.7,
         )
         assert p.trinity_score == 0.0
 
     def test_to_dict(self):
         p = PeerIdentity(
-            vessel_id="v1", node_id="n1", public_key="pk1",
-            capabilities=["breeding"], latency_ms=50.0
+            vessel_id="v1",
+            node_id="n1",
+            public_key="pk1",
+            capabilities=["breeding"],
+            latency_ms=50.0,
         )
         d = p.to_dict()
         assert d["vessel_id"] == "v1"
@@ -49,8 +60,11 @@ class TestPeerIdentity:
 
     def test_from_dict(self):
         d = {
-            "vessel_id": "v1", "node_id": "n1", "public_key": "pk1",
-            "capabilities": ["spatial"], "ethos_score": 0.5
+            "vessel_id": "v1",
+            "node_id": "n1",
+            "public_key": "pk1",
+            "capabilities": ["spatial"],
+            "ethos_score": 0.5,
         }
         p = PeerIdentity.from_dict(d)
         assert p.vessel_id == "v1"
@@ -60,25 +74,24 @@ class TestPeerIdentity:
 
 class TestHandshakeMessage:
     def test_signature_computation(self):
-        msg = HandshakeMessage(
-            sender_id="v1", nonce="abc123", timestamp=12345.0
-        )
+        msg = HandshakeMessage(sender_id="v1", nonce="abc123", timestamp=12345.0)
         sig = msg.compute_signature("secret")
         assert len(sig) == 16
         assert isinstance(sig, str)
 
     def test_signature_verification(self):
-        msg = HandshakeMessage(
-            sender_id="v1", nonce="abc123", timestamp=12345.0
-        )
+        msg = HandshakeMessage(sender_id="v1", nonce="abc123", timestamp=12345.0)
         msg.signature = msg.compute_signature("secret")
         assert msg.verify("secret")
         assert not msg.verify("wrong")
 
     def test_to_dict(self):
         msg = HandshakeMessage(
-            sender_id="v1", nonce="abc123", timestamp=12345.0,
-            known_peers=["v2", "v3"], capabilities=["breeding"]
+            sender_id="v1",
+            nonce="abc123",
+            timestamp=12345.0,
+            known_peers=["v2", "v3"],
+            capabilities=["breeding"],
         )
         d = msg.to_dict()
         assert d["sender_id"] == "v1"
@@ -186,18 +199,14 @@ class TestNetworkTopology:
 
 class TestVesselHandshakeProtocol:
     def test_init(self):
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         assert v.vessel_id == "v1"
         assert v.node_id == "n1"
         assert v.secret == "sekrit"
         assert v.max_hops == 3
 
     def test_create_handshake(self):
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         msg = v.create_handshake()
         assert msg.sender_id == "v1"
         assert len(msg.nonce) == 16
@@ -205,12 +214,9 @@ class TestVesselHandshakeProtocol:
         assert "breeding" in msg.capabilities
 
     def test_process_handshake(self):
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         msg = HandshakeMessage(
-            sender_id="v2", nonce="abc", timestamp=time.time(),
-            capabilities=["spatial"]
+            sender_id="v2", nonce="abc", timestamp=time.time(), capabilities=["spatial"]
         )
         msg.signature = msg.compute_signature("sekrit")
 
@@ -221,38 +227,28 @@ class TestVesselHandshakeProtocol:
         assert response.sender_id == "v1"
 
     def test_process_handshake_invalid(self):
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
-        msg = HandshakeMessage(
-            sender_id="v2", nonce="abc", timestamp=time.time()
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
+        msg = HandshakeMessage(sender_id="v2", nonce="abc", timestamp=time.time())
         msg.signature = "invalid"
 
         with pytest.raises(ValueError, match="Invalid handshake"):
             v.process_handshake(msg)
 
     def test_discover_peers(self):
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         discovered = v.discover_peers(["v2", "v3"])
         assert len(discovered) == 2
         assert "v2" in discovered
         assert "v3" in discovered
 
     def test_discover_peers_self_skip(self):
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         discovered = v.discover_peers(["v1", "v2"])
         assert "v1" not in discovered
         assert "v2" in discovered
 
     def test_find_route(self):
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         # Simulate discovered v2 and v3
         v.topology.add_edge("v1", "v2")
         v.topology.add_edge("v2", "v3")
@@ -260,17 +256,23 @@ class TestVesselHandshakeProtocol:
         assert route == ["v1", "v2", "v3"]
 
     def test_recommend_peer(self):
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         v.peers["v2"] = PeerIdentity(
-            vessel_id="v2", node_id="n2", public_key="pk2",
-            capabilities=["breeding"], latency_ms=50.0,
-            ethos_score=0.8, pathos_score=0.8, logos_score=0.8
+            vessel_id="v2",
+            node_id="n2",
+            public_key="pk2",
+            capabilities=["breeding"],
+            latency_ms=50.0,
+            ethos_score=0.8,
+            pathos_score=0.8,
+            logos_score=0.8,
         )
         v.peers["v3"] = PeerIdentity(
-            vessel_id="v3", node_id="n3", public_key="pk3",
-            capabilities=["spatial"], latency_ms=30.0
+            vessel_id="v3",
+            node_id="n3",
+            public_key="pk3",
+            capabilities=["spatial"],
+            latency_ms=30.0,
         )
 
         rec = v.recommend_peer_for_task("breeding")
@@ -278,9 +280,7 @@ class TestVesselHandshakeProtocol:
         assert rec.vessel_id == "v2"
 
     def test_recommend_peer_none(self):
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         rec = v.recommend_peer_for_task("nonexistent")
         assert rec is None
 
@@ -292,8 +292,7 @@ v2 n2 pk2 breeding spatial
 v3 n3 pk3 spatial
 """)
         v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit",
-            peers_file=str(peers_file)
+            vessel_id="v1", node_id="n1", secret="sekrit", peers_file=str(peers_file)
         )
         peers = v.load_peers()
         assert len(peers) == 2
@@ -302,8 +301,10 @@ v3 n3 pk3 spatial
 
     def test_load_peers_missing_file(self):
         v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit",
-            peers_file="/nonexistent/peers.md"
+            vessel_id="v1",
+            node_id="n1",
+            secret="sekrit",
+            peers_file="/nonexistent/peers.md",
         )
         peers = v.load_peers()
         assert len(peers) == 0
@@ -311,12 +312,10 @@ v3 n3 pk3 spatial
     def test_save_peers(self, tmp_path):
         peers_file = tmp_path / ".i2i" / "peers.md"
         v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit",
-            peers_file=str(peers_file)
+            vessel_id="v1", node_id="n1", secret="sekrit", peers_file=str(peers_file)
         )
         v.peers["v2"] = PeerIdentity(
-            vessel_id="v2", node_id="n2", public_key="pk2",
-            capabilities=["breeding"]
+            vessel_id="v2", node_id="n2", public_key="pk2", capabilities=["breeding"]
         )
         v.save_peers()
         assert peers_file.exists()
@@ -325,12 +324,8 @@ v3 n3 pk3 spatial
         assert "breeding" in content
 
     def test_get_network_stats(self):
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
-        v.peers["v2"] = PeerIdentity(
-            vessel_id="v2", node_id="n2", public_key="pk2"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
+        v.peers["v2"] = PeerIdentity(vessel_id="v2", node_id="n2", public_key="pk2")
         v.topology.add_edge("v1", "v2")
         stats = v.get_network_stats()
         assert stats["vessel_id"] == "v1"
@@ -338,15 +333,11 @@ v3 n3 pk3 spatial
         assert stats["topology_nodes"] == 2
 
     def test_callbacks(self):
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         discovered = []
         v.on_peer_discovered = lambda p: discovered.append(p.vessel_id)
 
-        msg = HandshakeMessage(
-            sender_id="v2", nonce="abc", timestamp=time.time()
-        )
+        msg = HandshakeMessage(sender_id="v2", nonce="abc", timestamp=time.time())
         msg.signature = msg.compute_signature("sekrit")
         v.process_handshake(msg)
 
@@ -356,9 +347,7 @@ v3 n3 pk3 spatial
 class TestFleetDirectory:
     def test_register_vessel(self):
         fd = FleetDirectory()
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         v.topology.add_edge("v1", "v2")
         fd.register_vessel(v)
         assert "v1" in fd.vessels
@@ -366,12 +355,8 @@ class TestFleetDirectory:
 
     def test_lookup(self):
         fd = FleetDirectory()
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
-        v.peers["v2"] = PeerIdentity(
-            vessel_id="v2", node_id="n2", public_key="pk2"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
+        v.peers["v2"] = PeerIdentity(vessel_id="v2", node_id="n2", public_key="pk2")
         fd.register_vessel(v)
         peer = fd.lookup("v2")
         assert peer is not None
@@ -383,16 +368,12 @@ class TestFleetDirectory:
 
     def test_find_by_capability(self):
         fd = FleetDirectory()
-        v1 = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v1 = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         v1.peers["v2"] = PeerIdentity(
-            vessel_id="v2", node_id="n2", public_key="pk2",
-            capabilities=["breeding"]
+            vessel_id="v2", node_id="n2", public_key="pk2", capabilities=["breeding"]
         )
         v1.peers["v3"] = PeerIdentity(
-            vessel_id="v3", node_id="n3", public_key="pk3",
-            capabilities=["spatial"]
+            vessel_id="v3", node_id="n3", public_key="pk3", capabilities=["spatial"]
         )
         fd.register_vessel(v1)
 
@@ -402,9 +383,7 @@ class TestFleetDirectory:
 
     def test_fleet_size(self):
         fd = FleetDirectory()
-        v1 = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v1 = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         v1.topology.add_edge("v1", "v2")
         v1.topology.add_edge("v2", "v3")
         fd.register_vessel(v1)
@@ -412,9 +391,7 @@ class TestFleetDirectory:
 
     def test_connected_components(self):
         fd = FleetDirectory()
-        v1 = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v1 = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         v1.topology.add_edge("v1", "v2")
         v1.topology.add_edge("v3", "v4")
         fd.register_vessel(v1)
@@ -426,9 +403,7 @@ class TestFleetDirectory:
 
     def test_isolated_vessels(self):
         fd = FleetDirectory()
-        v1 = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v1 = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         v1.topology.add_edge("v1", "v2")
         v1.topology.nodes.add("v3")  # Isolated node
         fd.register_vessel(v1)
@@ -441,20 +416,14 @@ class TestFleetDirectory:
 
     def test_duplicate_peer_filtering(self):
         fd = FleetDirectory()
-        v1 = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v1 = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         v1.peers["v2"] = PeerIdentity(
-            vessel_id="v2", node_id="n2", public_key="pk2",
-            capabilities=["breeding"]
+            vessel_id="v2", node_id="n2", public_key="pk2", capabilities=["breeding"]
         )
 
-        v2 = VesselHandshakeProtocol(
-            vessel_id="v3", node_id="n3", secret="sekrit"
-        )
+        v2 = VesselHandshakeProtocol(vessel_id="v3", node_id="n3", secret="sekrit")
         v2.peers["v2"] = PeerIdentity(
-            vessel_id="v2", node_id="n2", public_key="pk2",
-            capabilities=["breeding"]
+            vessel_id="v2", node_id="n2", public_key="pk2", capabilities=["breeding"]
         )
 
         fd.register_vessel(v1)
@@ -492,20 +461,26 @@ class TestIntegration:
 
     def test_trinity_score_peer_selection(self):
         """Peers with higher trinity scores should be preferred."""
-        v1 = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v1 = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         v1.peers["high"] = PeerIdentity(
-            vessel_id="high", node_id="n2", public_key="pk2",
+            vessel_id="high",
+            node_id="n2",
+            public_key="pk2",
             capabilities=["breeding"],
-            ethos_score=0.9, pathos_score=0.9, logos_score=0.9,
-            latency_ms=100.0
+            ethos_score=0.9,
+            pathos_score=0.9,
+            logos_score=0.9,
+            latency_ms=100.0,
         )
         v1.peers["low"] = PeerIdentity(
-            vessel_id="low", node_id="n3", public_key="pk3",
+            vessel_id="low",
+            node_id="n3",
+            public_key="pk3",
             capabilities=["breeding"],
-            ethos_score=0.3, pathos_score=0.3, logos_score=0.3,
-            latency_ms=10.0
+            ethos_score=0.3,
+            pathos_score=0.3,
+            logos_score=0.3,
+            latency_ms=10.0,
         )
 
         # With same latency, high trinity should be selected
@@ -518,15 +493,11 @@ class TestIntegration:
         """Fleet directory merges multiple vessel topologies."""
         fd = FleetDirectory()
 
-        v1 = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v1 = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         v1.topology.add_edge("v1", "v2")
         v1.topology.add_edge("v2", "v3")
 
-        v2 = VesselHandshakeProtocol(
-            vessel_id="v4", node_id="n4", secret="sekrit"
-        )
+        v2 = VesselHandshakeProtocol(vessel_id="v4", node_id="n4", secret="sekrit")
         v2.topology.add_edge("v4", "v5")
         v2.topology.add_edge("v5", "v1")  # Connects to first component
 
@@ -539,17 +510,17 @@ class TestIntegration:
 
     def test_handshake_with_callbacks(self):
         """Full handshake with callback recording."""
-        v1 = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v1 = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
 
         events = []
         v1.on_peer_discovered = lambda p: events.append(("discovered", p.vessel_id))
         v1.on_handshake_received = lambda m: events.append(("handshake", m.sender_id))
 
         msg = HandshakeMessage(
-            sender_id="v2", nonce="abc", timestamp=time.time(),
-            capabilities=["breeding", "spatial"]
+            sender_id="v2",
+            nonce="abc",
+            timestamp=time.time(),
+            capabilities=["breeding", "spatial"],
         )
         msg.signature = msg.compute_signature("sekrit")
 
@@ -561,9 +532,7 @@ class TestIntegration:
 
     def test_gossip_ttl(self):
         """Gossip TTL limits propagation."""
-        v1 = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v1 = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
         # TTL 0 should stop immediately
         v1.gossip_new_peer("v99", ttl=0)
         # TTL 3 should propagate
@@ -574,13 +543,11 @@ class TestIntegration:
 
     def test_network_diameter_growth(self):
         """Network diameter grows with chain topology."""
-        v = VesselHandshakeProtocol(
-            vessel_id="v1", node_id="n1", secret="sekrit"
-        )
+        v = VesselHandshakeProtocol(vessel_id="v1", node_id="n1", secret="sekrit")
 
         # Chain: v1-v2-v3-v4-v5
         for i in range(1, 5):
-            v.topology.add_edge(f"v{i}", f"v{i+1}")
+            v.topology.add_edge(f"v{i}", f"v{i + 1}")
 
         assert v.topology.diameter() == 4
         assert v.get_network_stats()["network_diameter"] == 4

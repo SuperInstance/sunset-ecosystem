@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_feature_toggles.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -46,7 +47,9 @@ class TestFeatureToggles:
         result = toggles.is_enabled("new-ui", user_id=user_id)
         # Just verify it's deterministic
         assert toggles.is_enabled("new-ui", user_id=user_id) == result
-        assert toggles.is_enabled("new-ui", user_id="other-user") == toggles.is_enabled("new-ui", user_id="other-user")
+        assert toggles.is_enabled("new-ui", user_id="other-user") == toggles.is_enabled(
+            "new-ui", user_id="other-user"
+        )
 
     def test_rollout_zero(self):
         toggles = FeatureToggles()

@@ -2,7 +2,12 @@
 
 import pytest
 
-from swarm.penrose import PenrosePosition, assign_positions, compute_overlap, minimum_overlap
+from swarm.penrose import (
+    PenrosePosition,
+    assign_positions,
+    compute_overlap,
+    minimum_overlap,
+)
 from swarm.broadcast import BroadcastMessage, BroadcastingChannel
 from swarm.swarm_runner import SwarmRunner, SwarmStatus
 from nerve.fiber import NerveFiber
@@ -47,14 +52,18 @@ class TestBroadcast:
     def test_subscribe_and_broadcast(self):
         ch = BroadcastingChannel()
         ch.subscribe("agent-1", "room-1")
-        msg = BroadcastMessage(content="hello", source_agent="src", target_room="room-1")
+        msg = BroadcastMessage(
+            content="hello", source_agent="src", target_room="room-1"
+        )
         recipients = ch.broadcast(msg)
         assert "agent-1" in recipients
 
     def test_no_match(self):
         ch = BroadcastingChannel()
         ch.subscribe("agent-1", "room-1")
-        msg = BroadcastMessage(content="hello", source_agent="src", target_room="room-2")
+        msg = BroadcastMessage(
+            content="hello", source_agent="src", target_room="room-2"
+        )
         recipients = ch.broadcast(msg)
         assert "agent-1" not in recipients
 

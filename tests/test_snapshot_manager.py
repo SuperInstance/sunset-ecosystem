@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_snapshot_manager.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -71,6 +72,7 @@ class TestSnapshotManager:
         mgr = SnapshotManager()
         mgr.snapshot("v1", {}, metadata={})
         import time
+
         time.sleep(0.01)
         mgr.snapshot("v2", {}, metadata={})
         assert mgr.oldest_snapshot() == "v1"

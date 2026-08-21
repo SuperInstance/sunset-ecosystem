@@ -11,6 +11,7 @@ Usage:
     assert acl.is_allowed("192.168.1.100") is True
     assert acl.is_allowed("10.0.0.5") is False
 """
+
 from __future__ import annotations
 
 import ipaddress

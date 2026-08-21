@@ -22,24 +22,39 @@ def populated_projector():
     proj = SpatialProjector("node-test", dimension=2)
 
     # Agent at origin (ethos room)
-    proj.project_state("agent-1", "ethos",
-                       WorldState(position=(0.0, 0.0), semantics={"role": "breeder"}))
+    proj.project_state(
+        "agent-1",
+        "ethos",
+        WorldState(position=(0.0, 0.0), semantics={"role": "breeder"}),
+    )
 
     # Agent nearby (ethos room)
-    proj.project_state("agent-2", "ethos",
-                       WorldState(position=(3.0, 4.0), semantics={"role": "breeder"}))
+    proj.project_state(
+        "agent-2",
+        "ethos",
+        WorldState(position=(3.0, 4.0), semantics={"role": "breeder"}),
+    )
 
     # Agent nearby (ethos room)
-    proj.project_state("agent-3", "ethos",
-                       WorldState(position=(4.0, 3.0), semantics={"role": "solver"}))
+    proj.project_state(
+        "agent-3",
+        "ethos",
+        WorldState(position=(4.0, 3.0), semantics={"role": "solver"}),
+    )
 
     # Agent far away (pathos room)
-    proj.project_state("agent-4", "pathos",
-                       WorldState(position=(50.0, 50.0), semantics={"role": "auditor"}))
+    proj.project_state(
+        "agent-4",
+        "pathos",
+        WorldState(position=(50.0, 50.0), semantics={"role": "auditor"}),
+    )
 
     # Agent far away (logos room)
-    proj.project_state("agent-5", "logos",
-                       WorldState(position=(60.0, 40.0), semantics={"role": "tester"}))
+    proj.project_state(
+        "agent-5",
+        "logos",
+        WorldState(position=(60.0, 40.0), semantics={"role": "tester"}),
+    )
 
     return proj
 
@@ -64,8 +79,7 @@ class TestSpatialBreedingContext:
             return {"id": aid, "genes": [1, 2, 3]}
 
         parents = ctx.select_proximal_parents(
-            "agent-1", radius=10.0, k=3,
-            genome_fn=mock_genome
+            "agent-1", radius=10.0, k=3, genome_fn=mock_genome
         )
 
         assert len(parents) == 2
@@ -109,9 +123,7 @@ class TestSpatialBreedingContext:
 
     def test_select_room_affinity(self, populated_projector):
         ctx = SpatialBreedingContext(populated_projector)
-        parents = ctx.select_room_affinity_parents(
-            "agent-1", room_id="ethos", k=3
-        )
+        parents = ctx.select_room_affinity_parents("agent-1", room_id="ethos", k=3)
 
         # Should prefer agents in ethos room
         ids = [p.agent_id for p in parents]
@@ -124,8 +136,7 @@ class TestSpatialBreedingContext:
             return 1.0  # Equal base fitness
 
         parents = ctx.select_room_affinity_parents(
-            "agent-1", room_id="ethos", k=3,
-            fitness_fn=fitness_fn
+            "agent-1", room_id="ethos", k=3, fitness_fn=fitness_fn
         )
 
         # Agents in ethos should have higher adjusted fitness
@@ -139,12 +150,10 @@ class TestSpatialBreedingContext:
         ctx = SpatialBreedingContext(populated_projector)
         # Give agents velocity so trajectories differ
         populated_projector.project_state(
-            "agent-1", "ethos",
-            WorldState(position=(0.0, 0.0), velocity=(1.0, 0.0))
+            "agent-1", "ethos", WorldState(position=(0.0, 0.0), velocity=(1.0, 0.0))
         )
         populated_projector.project_state(
-            "agent-2", "ethos",
-            WorldState(position=(3.0, 4.0), velocity=(0.0, 1.0))
+            "agent-2", "ethos", WorldState(position=(3.0, 4.0), velocity=(0.0, 1.0))
         )
 
         parents = ctx.select_trajectory_compatible_parents("agent-1", k=3)
@@ -155,12 +164,10 @@ class TestSpatialBreedingContext:
         ctx = SpatialBreedingContext(populated_projector)
         # Two agents on collision course - close enough to collide
         populated_projector.project_state(
-            "agent-1", "ethos",
-            WorldState(position=(0.0, 0.0), velocity=(1.0, 0.0))
+            "agent-1", "ethos", WorldState(position=(0.0, 0.0), velocity=(1.0, 0.0))
         )
         populated_projector.project_state(
-            "agent-2", "ethos",
-            WorldState(position=(1.5, 0.0), velocity=(-1.0, 0.0))
+            "agent-2", "ethos", WorldState(position=(1.5, 0.0), velocity=(-1.0, 0.0))
         )
 
         parents = ctx.select_trajectory_compatible_parents("agent-1", k=3)
@@ -172,12 +179,18 @@ class TestSpatialBreedingContext:
         ctx = SpatialBreedingContext(populated_projector)
         candidates = [
             SpatialParentCandidate(
-                agent_id="a1", genome={"g": 1}, fitness=10.0,
-                position=(0.0, 0.0), distance=1.0
+                agent_id="a1",
+                genome={"g": 1},
+                fitness=10.0,
+                position=(0.0, 0.0),
+                distance=1.0,
             ),
             SpatialParentCandidate(
-                agent_id="a2", genome=None, fitness=5.0,
-                position=(1.0, 0.0), distance=2.0
+                agent_id="a2",
+                genome=None,
+                fitness=5.0,
+                position=(1.0, 0.0),
+                distance=2.0,
             ),
         ]
         parents = ctx.to_breeder_parents(candidates)
@@ -288,7 +301,7 @@ class TestSpatialBreedingContext:
     def test_distance_unknown_agent(self, populated_projector):
         ctx = SpatialBreedingContext(populated_projector)
         dist = ctx._distance("agent-1", "nonexistent")
-        assert dist == float('inf')
+        assert dist == float("inf")
 
     def test_get_all_agent_ids(self, populated_projector):
         ctx = SpatialBreedingContext(populated_projector)
@@ -327,8 +340,9 @@ class TestSpatialBreedingIntegration:
         # Population of agents
         for i in range(10):
             proj.project_state(
-                f"agent-{i}", "ethos",
-                WorldState(position=(float(i * 2), 0.0), semantics={"genome_id": i})
+                f"agent-{i}",
+                "ethos",
+                WorldState(position=(float(i * 2), 0.0), semantics={"genome_id": i}),
             )
 
         ctx = SpatialBreedingContext(proj)
@@ -338,8 +352,7 @@ class TestSpatialBreedingIntegration:
         fitness_fn = lambda aid: 1.0
 
         proximal = ctx.select_proximal_parents(
-            "agent-5", radius=5.0, k=3,
-            genome_fn=genome_fn, fitness_fn=fitness_fn
+            "agent-5", radius=5.0, k=3, genome_fn=genome_fn, fitness_fn=fitness_fn
         )
         assert len(proximal) > 0
 
@@ -355,8 +368,7 @@ class TestSpatialBreedingIntegration:
         # Clustered population
         for i in range(5):
             proj.project_state(
-                f"agent-{i}", "ethos",
-                WorldState(position=(float(i), 0.0))
+                f"agent-{i}", "ethos", WorldState(position=(float(i), 0.0))
             )
 
         ctx = SpatialBreedingContext(proj)
@@ -385,8 +397,7 @@ class TestSpatialBreedingIntegration:
             return 10.0  # Equal base fitness
 
         parents = ctx.select_room_affinity_parents(
-            "a1", room_id="ethos", k=2,
-            fitness_fn=fitness_fn
+            "a1", room_id="ethos", k=2, fitness_fn=fitness_fn
         )
 
         # a2 is in ethos, a3 is in pathos
@@ -397,7 +408,7 @@ class TestSpatialBreedingIntegration:
 
         if a2_parent and a3_parent:
             assert a2_parent.fitness == 12.0  # 10 * 1.2
-            assert a3_parent.fitness == 8.0   # 10 * 0.8
+            assert a3_parent.fitness == 8.0  # 10 * 0.8
             assert a2_parent.fitness > a3_parent.fitness
 
     def test_diversity_injection(self):

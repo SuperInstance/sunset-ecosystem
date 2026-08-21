@@ -34,25 +34,36 @@ logger = logging.getLogger(__name__)
 try:
     import pyarrow as pa
     import pyarrow.flight as flight
+
     HAS_PYARROW_FLIGHT = True
 except ImportError:
     pa = None  # type: ignore
     flight = None  # type: ignore
     HAS_PYARROW_FLIGHT = False
-    logger.warning("pyarrow.flight not available; arrow_flight_mesh using JSON fallback")
+    logger.warning(
+        "pyarrow.flight not available; arrow_flight_mesh using JSON fallback"
+    )
 
 
 # ── Data structures ───────────────────────────────────────────────────
 
+
 @dataclass
 class FlightTicket:
     """Identifier for a data stream in the mesh."""
+
     table_name: str
     node_id: str
     timestamp: float = field(default_factory=time.time)
 
     def to_bytes(self) -> bytes:
-        return json.dumps({"table_name": self.table_name, "node_id": self.node_id, "timestamp": self.timestamp}).encode("utf-8")
+        return json.dumps(
+            {
+                "table_name": self.table_name,
+                "node_id": self.node_id,
+                "timestamp": self.timestamp,
+            }
+        ).encode("utf-8")
 
     @classmethod
     def from_bytes(cls, data: bytes) -> "FlightTicket":
@@ -63,6 +74,7 @@ class FlightTicket:
 @dataclass
 class MeshPeer:
     """Remote node in the Arrow Flight mesh."""
+
     node_id: str
     host: str
     port: int
@@ -76,6 +88,7 @@ class MeshPeer:
 # ── Flight server (optional) ──────────────────────────────────────────
 
 if HAS_PYARROW_FLIGHT:
+
     class _FlightServer(flight.FlightServerBase):
         """Internal Flight server for receiving Arrow data."""
 
@@ -87,7 +100,9 @@ if HAS_PYARROW_FLIGHT:
             ticket_obj = FlightTicket.from_bytes(ticket.ticket)
             table = self._mesh_node._get_local_table(ticket_obj.table_name)
             if table is None:
-                raise flight.FlightUnavailableError(f"Table {ticket_obj.table_name} not found")
+                raise flight.FlightUnavailableError(
+                    f"Table {ticket_obj.table_name} not found"
+                )
             return flight.RecordBatchStream(table)
 
         def do_put(self, context, descriptor, reader, writer):
@@ -112,6 +127,7 @@ else:
 
 
 # ── Mesh node ───────────────────────────────────────────────────────────
+
 
 @dataclass
 class ArrowFlightMeshNode:
@@ -176,7 +192,9 @@ class ArrowFlightMeshNode:
         with self._lock:
             return self._local_tables.get(name)
 
-    def push_to(self, peer_id: str, table_name: str, table: Optional[Any] = None) -> bool:
+    def push_to(
+        self, peer_id: str, table_name: str, table: Optional[Any] = None
+    ) -> bool:
         """Push a table to a remote peer."""
         with self._lock:
             peer = self._peers.get(peer_id)
@@ -211,8 +229,15 @@ class ArrowFlightMeshNode:
         """JSON fallback for push."""
         try:
             import urllib.request
-            data = json.dumps({"table_name": table_name, "node_id": self.node_id, "table": table}).encode("utf-8")
-            req = urllib.request.Request(f"http://{peer.host}:{peer.port}/mesh", data=data, headers={"Content-Type": "application/json"})
+
+            data = json.dumps(
+                {"table_name": table_name, "node_id": self.node_id, "table": table}
+            ).encode("utf-8")
+            req = urllib.request.Request(
+                f"http://{peer.host}:{peer.port}/mesh",
+                data=data,
+                headers={"Content-Type": "application/json"},
+            )
             urllib.request.urlopen(req, timeout=5.0)
             return True
         except Exception as exc:
@@ -243,7 +268,10 @@ class ArrowFlightMeshNode:
         """JSON fallback for pull."""
         try:
             import urllib.request
-            req = urllib.request.Request(f"http://{peer.host}:{peer.port}/mesh?table={table_name}")
+
+            req = urllib.request.Request(
+                f"http://{peer.host}:{peer.port}/mesh?table={table_name}"
+            )
             with urllib.request.urlopen(req, timeout=5.0) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except Exception as exc:
@@ -274,6 +302,7 @@ class ArrowFlightMeshNode:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
+
 
 def _find_free_port() -> int:
     """Find a free TCP port."""

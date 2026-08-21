@@ -24,7 +24,9 @@ class TestServerConfig:
         assert config.auto_refresh == 30
 
     def test_custom(self) -> None:
-        config = ServerConfig(port=9000, host="127.0.0.1", enable_cors=False, auto_refresh=60)
+        config = ServerConfig(
+            port=9000, host="127.0.0.1", enable_cors=False, auto_refresh=60
+        )
         assert config.port == 9000
         assert config.host == "127.0.0.1"
         assert config.enable_cors is False
@@ -68,6 +70,7 @@ class TestFleetWebServer:
 
     def test_request_handler_set_cli(self) -> None:
         from fleet.fleet_cli import FleetCLI
+
         cli = FleetCLI()
         FleetRequestHandler.set_cli(cli)
         assert FleetRequestHandler._cli is cli
@@ -176,7 +179,7 @@ class TestFleetWebServerEndpoints:
 
     def test_dashboard_auto_refresh(self, server) -> None:
         response = requests.get(f"{server}/", timeout=5)
-        assert "http-equiv=\"refresh\"" in response.text or "refresh" in response.text
+        assert 'http-equiv="refresh"' in response.text or "refresh" in response.text
 
     def test_dashboard_has_api_links(self, server) -> None:
         response = requests.get(f"{server}/", timeout=5)

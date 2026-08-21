@@ -32,6 +32,7 @@ from fleet.spatial_projector import SpatialProjector, WorldState
 @dataclass
 class SpatialParentCandidate:
     """A candidate parent with spatial metadata."""
+
     agent_id: str
     genome: Any
     fitness: float
@@ -44,6 +45,7 @@ class SpatialParentCandidate:
 @dataclass
 class SpatialBreedingConfig:
     """Configuration for spatial breeding strategies."""
+
     # Proximity selection
     proximal_radius: float = 10.0
     proximal_k: int = 3
@@ -75,19 +77,24 @@ class SpatialBreedingContext:
     Wraps a SpatialProjector to enable location-aware parent selection.
     """
 
-    def __init__(self, projector: SpatialProjector,
-                 config: Optional[SpatialBreedingConfig] = None):
+    def __init__(
+        self,
+        projector: SpatialProjector,
+        config: Optional[SpatialBreedingConfig] = None,
+    ):
         self.projector = projector
         self.config = config or SpatialBreedingConfig()
 
     # ── Core Selection Strategies ──
 
-    def select_proximal_parents(self, agent_id: str,
-                                 radius: Optional[float] = None,
-                                 k: Optional[int] = None,
-                                 genome_fn: Optional[Callable[[str], Any]] = None,
-                                 fitness_fn: Optional[Callable[[str], float]] = None,
-                                 ) -> List[SpatialParentCandidate]:
+    def select_proximal_parents(
+        self,
+        agent_id: str,
+        radius: Optional[float] = None,
+        k: Optional[int] = None,
+        genome_fn: Optional[Callable[[str], Any]] = None,
+        fitness_fn: Optional[Callable[[str], float]] = None,
+    ) -> List[SpatialParentCandidate]:
         """
         Select parents spatially proximal to the given agent.
         These parents share context (same room, nearby positions).
@@ -108,25 +115,29 @@ class SpatialBreedingContext:
             genome = genome_fn(state.agent_id) if genome_fn else None
             fitness = fitness_fn(state.agent_id) if fitness_fn else 0.0
 
-            candidates.append(SpatialParentCandidate(
-                agent_id=state.agent_id,
-                genome=genome,
-                fitness=fitness,
-                position=state.position,
-                distance=dist,
-                room_id=state.room_id,
-            ))
+            candidates.append(
+                SpatialParentCandidate(
+                    agent_id=state.agent_id,
+                    genome=genome,
+                    fitness=fitness,
+                    position=state.position,
+                    distance=dist,
+                    room_id=state.room_id,
+                )
+            )
 
         # Sort by distance, take top k
         candidates.sort(key=lambda c: c.distance)
         return candidates[:k]
 
-    def select_diverse_parents(self, agent_id: str,
-                                min_distance: Optional[float] = None,
-                                k: Optional[int] = None,
-                                genome_fn: Optional[Callable[[str], Any]] = None,
-                                fitness_fn: Optional[Callable[[str], float]] = None,
-                                ) -> List[SpatialParentCandidate]:
+    def select_diverse_parents(
+        self,
+        agent_id: str,
+        min_distance: Optional[float] = None,
+        k: Optional[int] = None,
+        genome_fn: Optional[Callable[[str], Any]] = None,
+        fitness_fn: Optional[Callable[[str], float]] = None,
+    ) -> List[SpatialParentCandidate]:
         """
         Select parents that are spatially distant from the given agent.
         These parents inject diversity into the population.
@@ -144,25 +155,31 @@ class SpatialBreedingContext:
                 genome = genome_fn(other_id) if genome_fn else None
                 fitness = fitness_fn(other_id) if fitness_fn else 0.0
 
-                candidates.append(SpatialParentCandidate(
-                    agent_id=other_id,
-                    genome=genome,
-                    fitness=fitness,
-                    position=other_state.position if other_state else (0.0,),
-                    distance=dist,
-                    room_id=other_state.room_id if other_state else None,
-                    spatial_diversity_score=self.projector.get_spatial_diversity_score(other_id),
-                ))
+                candidates.append(
+                    SpatialParentCandidate(
+                        agent_id=other_id,
+                        genome=genome,
+                        fitness=fitness,
+                        position=other_state.position if other_state else (0.0,),
+                        distance=dist,
+                        room_id=other_state.room_id if other_state else None,
+                        spatial_diversity_score=self.projector.get_spatial_diversity_score(
+                            other_id
+                        ),
+                    )
+                )
 
         # Sort by distance (farthest first), take top k
         candidates.sort(key=lambda c: c.distance, reverse=True)
         return candidates[:k]
 
-    def select_hybrid_parents(self, agent_id: str,
-                               total_k: int = 5,
-                               genome_fn: Optional[Callable[[str], Any]] = None,
-                               fitness_fn: Optional[Callable[[str], float]] = None,
-                               ) -> List[SpatialParentCandidate]:
+    def select_hybrid_parents(
+        self,
+        agent_id: str,
+        total_k: int = 5,
+        genome_fn: Optional[Callable[[str], Any]] = None,
+        fitness_fn: Optional[Callable[[str], float]] = None,
+    ) -> List[SpatialParentCandidate]:
         """
         Hybrid selection: mix of proximal and diverse parents.
         Ratio controlled by config.proximity_ratio.
@@ -171,12 +188,10 @@ class SpatialBreedingContext:
         n_diverse = max(1, total_k - n_proximal)
 
         proximal = self.select_proximal_parents(
-            agent_id, k=n_proximal,
-            genome_fn=genome_fn, fitness_fn=fitness_fn
+            agent_id, k=n_proximal, genome_fn=genome_fn, fitness_fn=fitness_fn
         )
         diverse = self.select_diverse_parents(
-            agent_id, k=n_diverse,
-            genome_fn=genome_fn, fitness_fn=fitness_fn
+            agent_id, k=n_diverse, genome_fn=genome_fn, fitness_fn=fitness_fn
         )
 
         # Combine and deduplicate
@@ -189,12 +204,14 @@ class SpatialBreedingContext:
 
         return result[:total_k]
 
-    def select_room_affinity_parents(self, agent_id: str,
-                                      room_id: str,
-                                      k: int = 3,
-                                      genome_fn: Optional[Callable[[str], Any]] = None,
-                                      fitness_fn: Optional[Callable[[str], float]] = None,
-                                      ) -> List[SpatialParentCandidate]:
+    def select_room_affinity_parents(
+        self,
+        agent_id: str,
+        room_id: str,
+        k: int = 3,
+        genome_fn: Optional[Callable[[str], Any]] = None,
+        fitness_fn: Optional[Callable[[str], float]] = None,
+    ) -> List[SpatialParentCandidate]:
         """
         Select parents with affinity for a specific room.
         Agents in the same room get a bonus.
@@ -218,25 +235,28 @@ class SpatialBreedingContext:
             else:
                 affinity = self.config.cross_room_penalty
 
-            candidates.append(SpatialParentCandidate(
-                agent_id=other_id,
-                genome=genome,
-                fitness=fitness * affinity,
-                position=other_state.position,
-                distance=dist,
-                room_id=other_state.room_id,
-            ))
+            candidates.append(
+                SpatialParentCandidate(
+                    agent_id=other_id,
+                    genome=genome,
+                    fitness=fitness * affinity,
+                    position=other_state.position,
+                    distance=dist,
+                    room_id=other_state.room_id,
+                )
+            )
 
         # Sort by fitness (highest first), take top k
         candidates.sort(key=lambda c: c.fitness, reverse=True)
         return candidates[:k]
 
     def select_trajectory_compatible_parents(
-            self, agent_id: str,
-            k: int = 3,
-            genome_fn: Optional[Callable[[str], Any]] = None,
-            fitness_fn: Optional[Callable[[str], float]] = None,
-            ) -> List[SpatialParentCandidate]:
+        self,
+        agent_id: str,
+        k: int = 3,
+        genome_fn: Optional[Callable[[str], Any]] = None,
+        fitness_fn: Optional[Callable[[str], float]] = None,
+    ) -> List[SpatialParentCandidate]:
         """
         Select parents whose predicted trajectories don't collide
         with the given agent's predicted trajectory.
@@ -269,30 +289,33 @@ class SpatialBreedingContext:
                 genome = genome_fn(other_id) if genome_fn else None
                 fitness = fitness_fn(other_id) if fitness_fn else 0.0
 
-                candidates.append(SpatialParentCandidate(
-                    agent_id=other_id,
-                    genome=genome,
-                    fitness=fitness + collision_score,
-                    position=other_state.position if other_state else (0.0,),
-                    distance=self._distance(agent_id, other_id),
-                    room_id=other_state.room_id if other_state else None,
-                ))
+                candidates.append(
+                    SpatialParentCandidate(
+                        agent_id=other_id,
+                        genome=genome,
+                        fitness=fitness + collision_score,
+                        position=other_state.position if other_state else (0.0,),
+                        distance=self._distance(agent_id, other_id),
+                        room_id=other_state.room_id if other_state else None,
+                    )
+                )
 
         candidates.sort(key=lambda c: c.fitness, reverse=True)
         return candidates[:k]
 
     # ── Breeding Daemon Integration ──
 
-    def to_breeder_parents(self, candidates: List[SpatialParentCandidate],
-                           ) -> List[Tuple[Any, Any]]:
+    def to_breeder_parents(
+        self,
+        candidates: List[SpatialParentCandidate],
+    ) -> List[Tuple[Any, Any]]:
         """
         Convert spatial candidates to (genome, fitness) tuples
         suitable for BreederDaemon parent selection.
         """
         return [(c.genome, c.fitness) for c in candidates if c.genome is not None]
 
-    def spatial_fitness_adjustment(self, agent_id: str,
-                                    base_fitness: float) -> float:
+    def spatial_fitness_adjustment(self, agent_id: str, base_fitness: float) -> float:
         """
         Adjust fitness based on spatial diversity.
         Isolated agents (high diversity) get a bonus.
@@ -306,9 +329,9 @@ class SpatialBreedingContext:
 
     def population_spatial_entropy(self) -> float:
         """
- Compute spatial entropy of the population.
-        High entropy = agents are well-distributed.
-        Low entropy = agents are clustered.
+        Compute spatial entropy of the population.
+               High entropy = agents are well-distributed.
+               Low entropy = agents are clustered.
         """
         agent_ids = self._get_all_agent_ids()
         if len(agent_ids) < 2:
@@ -318,7 +341,7 @@ class SpatialBreedingContext:
         total_dist = 0.0
         count = 0
         for i, a1 in enumerate(agent_ids):
-            for a2 in agent_ids[i+1:]:
+            for a2 in agent_ids[i + 1 :]:
                 dist = self._distance(a1, a2)
                 total_dist += dist
                 count += 1
@@ -368,8 +391,9 @@ class SpatialBreedingContext:
 
         return clusters
 
-    def recommend_relocation(self, agent_id: str,
-                              target_entropy: float = 0.7) -> Optional[WorldState]:
+    def recommend_relocation(
+        self, agent_id: str, target_entropy: float = 0.7
+    ) -> Optional[WorldState]:
         """
         Recommend a new spatial position for an agent to improve
         population spatial entropy.
@@ -396,15 +420,11 @@ class SpatialBreedingContext:
         # Compute centroid
         dim = len(current.position)
         centroid = tuple(
-            sum(s.position[i] for s in all_states) / len(all_states)
-            for i in range(dim)
+            sum(s.position[i] for s in all_states) / len(all_states) for i in range(dim)
         )
 
         # Recommend position opposite to centroid
-        new_pos = tuple(
-            2 * current.position[i] - centroid[i]
-            for i in range(dim)
-        )
+        new_pos = tuple(2 * current.position[i] - centroid[i] for i in range(dim))
 
         return WorldState(
             position=new_pos,
@@ -429,7 +449,7 @@ class SpatialBreedingContext:
         s1 = self.projector.get_agent_state(agent_id1)
         s2 = self.projector.get_agent_state(agent_id2)
         if s1 is None or s2 is None:
-            return float('inf')
+            return float("inf")
         return s1.distance_to(s2)
 
     def _adapt_radius(self, agent_id: str, base_radius: float) -> float:
@@ -446,8 +466,9 @@ class SpatialBreedingContext:
             return max(self.config.min_radius, base_radius * 0.5)
         return base_radius
 
-    def _trajectory_collision_score(self, traj1: List[WorldState],
-                                     traj2: List[WorldState]) -> float:
+    def _trajectory_collision_score(
+        self, traj1: List[WorldState], traj2: List[WorldState]
+    ) -> float:
         """
         Simple trajectory collision detection.
         Returns positive score if no collision, negative if collision.

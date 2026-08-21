@@ -115,15 +115,20 @@ class FluxVectorTable:
 
         self._index = IdMapIndex(dim=dim, bit_width=bit_width)
         self._meta: dict[int, AgentMeta] = {}
-        self._vectors: dict[int, np.ndarray] = {}  # raw float32 vectors for diversity ops
+        self._vectors: dict[
+            int, np.ndarray
+        ] = {}  # raw float32 vectors for diversity ops
 
         if use_hdc:
             try:
                 from swarm.hdc_novelty import hdc_novelty_score
+
                 self._hdc_score = hdc_novelty_score
                 logger.info("FluxVectorTable using HDC novelty for diversity matrix")
             except ImportError:
-                logger.warning("HDC novelty requested but not available; falling back to cosine")
+                logger.warning(
+                    "HDC novelty requested but not available; falling back to cosine"
+                )
                 self._use_hdc = False
                 self._hdc_score = None
         else:
@@ -134,9 +139,7 @@ class FluxVectorTable:
     def add(self, av: AgentVector) -> None:
         """Add or overwrite an agent vector."""
         if av.dim != self.dim:
-            raise ValueError(
-                f"AgentVector dim {av.dim} != table dim {self.dim}"
-            )
+            raise ValueError(f"AgentVector dim {av.dim} != table dim {self.dim}")
 
         import numpy as np
 
@@ -273,7 +276,9 @@ class FluxVectorTable:
                     instance._vectors[int(aid_str)] = np.array(
                         m["vector"], dtype=np.float32
                     )
-        logger.info("Loaded vector table from %s (%d agents)", path, len(instance._meta))
+        logger.info(
+            "Loaded vector table from %s (%d agents)", path, len(instance._meta)
+        )
         return instance
 
     def __len__(self) -> int:
@@ -600,8 +605,7 @@ class FluxVectorTable:
             candidates = {
                 aid
                 for aid in candidates
-                if (self._meta[aid].capability_mask & self._capability_filter)
-                != 0
+                if (self._meta[aid].capability_mask & self._capability_filter) != 0
             }
 
         if min_fitness is not None:

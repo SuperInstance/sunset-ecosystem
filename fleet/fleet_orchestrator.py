@@ -281,42 +281,50 @@ class FleetOrchestrator:
         if health.get("critical", 0) > 0:
             for detail in health.get("module_details", []):
                 if "🔴" in detail.get("health", ""):
-                    tasks.append(TaskSpec(
-                        task_id=f"critical-{detail['name']}-{self.cycle_number}",
-                        task_type="health_check",
-                        target_module=detail["name"],
-                        priority=4,
-                        payload={"reason": "critical health status"},
-                    ))
+                    tasks.append(
+                        TaskSpec(
+                            task_id=f"critical-{detail['name']}-{self.cycle_number}",
+                            task_type="health_check",
+                            target_module=detail["name"],
+                            priority=4,
+                            payload={"reason": "critical health status"},
+                        )
+                    )
 
         # High priority: integration gaps
         if self._harbor:
             gaps = self._harbor.find_integration_gaps()
             for gap in gaps[:3]:
-                tasks.append(TaskSpec(
-                    task_id=f"gap-{gap['source']}-{gap['target']}-{self.cycle_number}",
-                    task_type="sync",
-                    priority=3,
-                    payload={"gap": gap},
-                ))
+                tasks.append(
+                    TaskSpec(
+                        task_id=f"gap-{gap['source']}-{gap['target']}-{self.cycle_number}",
+                        task_type="sync",
+                        priority=3,
+                        payload={"gap": gap},
+                    )
+                )
 
         # Medium priority: pattern mining
         if self._pattern_mine:
-            tasks.append(TaskSpec(
-                task_id=f"mine-{self.cycle_number}",
-                task_type="mine",
-                priority=2,
-                payload={"operation": "extract_patterns"},
-            ))
+            tasks.append(
+                TaskSpec(
+                    task_id=f"mine-{self.cycle_number}",
+                    task_type="mine",
+                    priority=2,
+                    payload={"operation": "extract_patterns"},
+                )
+            )
 
         # Low priority: breeding optimization
         if self._breed_optimizer:
-            tasks.append(TaskSpec(
-                task_id=f"breed-{self.cycle_number}",
-                task_type="breed",
-                priority=1,
-                payload={"operation": "optimize_archive"},
-            ))
+            tasks.append(
+                TaskSpec(
+                    task_id=f"breed-{self.cycle_number}",
+                    task_type="breed",
+                    priority=1,
+                    payload={"operation": "optimize_archive"},
+                )
+            )
 
         # Schedule deadlines if tminus available
         if self._tminus and tasks:
@@ -414,7 +422,10 @@ class FleetOrchestrator:
                 for i in range(5)
             ]
             parents = self._breed_optimizer.select_parents(pool, k=2)
-            return {"parents_selected": len(parents), "diversity_scores": [p.diversity_score for p in parents]}
+            return {
+                "parents_selected": len(parents),
+                "diversity_scores": [p.diversity_score for p in parents],
+            }
         return {"status": "no_breed_optimizer"}
 
     def _execute_sync(self, task: TaskSpec) -> dict[str, Any]:
@@ -459,31 +470,37 @@ class FleetOrchestrator:
         report = self._harbor.generate_fleet_report()
         for detail in report.get("module_details", []):
             if "🔴" in detail.get("health", ""):
-                anomalies.append({
-                    "type": "critical_module",
-                    "module": detail["name"],
-                    "severity": 4,
-                })
+                anomalies.append(
+                    {
+                        "type": "critical_module",
+                        "module": detail["name"],
+                        "severity": 4,
+                    }
+                )
 
         # Check for repeated beat failures
         if len(self.beats) >= 3:
             recent = self.beats[-3:]
             if all(b.tasks_failed > b.tasks_executed for b in recent):
-                anomalies.append({
-                    "type": "beat_failure_streak",
-                    "severity": 3,
-                    "cycles": [b.cycle_number for b in recent],
-                })
+                anomalies.append(
+                    {
+                        "type": "beat_failure_streak",
+                        "severity": 3,
+                        "cycles": [b.cycle_number for b in recent],
+                    }
+                )
 
         # Check for health degradation trend
         if len(self.beats) >= 5:
             recent_health = [b.health_status for b in self.beats[-5:]]
             if all(h == TernaryValue.NEG for h in recent_health):
-                anomalies.append({
-                    "type": "health_degradation",
-                    "severity": 4,
-                    "cycles": [b.cycle_number for b in self.beats[-5:]],
-                })
+                anomalies.append(
+                    {
+                        "type": "health_degradation",
+                        "severity": 4,
+                        "cycles": [b.cycle_number for b in self.beats[-5:]],
+                    }
+                )
 
         return anomalies
 
@@ -508,8 +525,12 @@ class FleetOrchestrator:
             "mean_duration_ms": sum(durations) / len(durations),
             "total_tasks_executed": total_tasks - total_failed,
             "total_tasks_failed": total_failed,
-            "success_rate": (total_tasks - total_failed) / total_tasks if total_tasks > 0 else 0.0,
-            "current_health": TernaryValue.to_string(self.beats[-1].health_status) if self.beats else "UNKNOWN",
+            "success_rate": (total_tasks - total_failed) / total_tasks
+            if total_tasks > 0
+            else 0.0,
+            "current_health": TernaryValue.to_string(self.beats[-1].health_status)
+            if self.beats
+            else "UNKNOWN",
         }
 
     # ── Reports ──────────────────────────────────────────────

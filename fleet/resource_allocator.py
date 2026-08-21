@@ -14,6 +14,7 @@ Usage:
         run_agent()
         allocator.release("agent-a")
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Allocation:
     """Result of a resource allocation request."""
+
     granted: bool
     cpu: float
     memory: float
@@ -42,6 +44,7 @@ class Allocation:
 @dataclass
 class ResourceUsage:
     """Current resource usage for an agent."""
+
     agent_id: str
     cpu: float = 0.0
     memory: float = 0.0
@@ -157,7 +160,9 @@ class ResourceAllocator:
     def utilization(self) -> dict[str, float]:
         return {
             "cpu": self._cpu_used / self.total_cpu if self.total_cpu else 0.0,
-            "memory": self._memory_used / self.total_memory if self.total_memory else 0.0,
+            "memory": self._memory_used / self.total_memory
+            if self.total_memory
+            else 0.0,
             "gpu": self._gpu_used / self.total_gpu if self.total_gpu else 0.0,
         }
 

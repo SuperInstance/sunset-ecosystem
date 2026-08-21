@@ -19,7 +19,7 @@ class TestPersistencePair:
         assert pair.persistence == 0.4
 
     def test_persistence_inf(self):
-        pair = PersistencePair(birth=0.1, death=float('inf'), dimension=0)
+        pair = PersistencePair(birth=0.1, death=float("inf"), dimension=0)
         assert pair.persistence == 0.0
 
     def test_significant(self):
@@ -69,7 +69,7 @@ class TestTDALandscape:
         np.random.seed(42)
         for i in range(20):
             pos = np.random.randn(2)
-            fitness = float(np.sum(pos ** 2))
+            fitness = float(np.sum(pos**2))
             tda.add_sample(pos, fitness=fitness)
         result = tda.compute_homology()
         # Should have some components
@@ -96,7 +96,7 @@ class TestTDALandscape:
         tda = TDALandscape(dimension=3)
         for i in range(10):
             pos = np.random.randn(3)
-            tda.add_sample(pos, fitness=float(np.sum(pos ** 2)))
+            tda.add_sample(pos, fitness=float(np.sum(pos**2)))
         result = tda.compute_homology()
         assert "betti_0" in result
         assert "betti_1" in result
@@ -119,7 +119,7 @@ class TestLandscapeGuide:
             tda.add_sample(pos, fitness=10.0)
         # Low fitness in center
         tda.add_sample(np.array([0.0, 0.0]), fitness=1.0)
-        
+
         guide = LandscapeGuide(tda)
         rec = guide.recommend_direction(np.array([0.0, 0.0]))
         assert rec["strategy"] in ["avoid", "explore", "ridge"]
@@ -134,7 +134,7 @@ class TestLandscapeGuide:
         for i in range(10):
             pos = np.random.randn(2) + 2.0
             tda.add_sample(pos, fitness=10.0)
-        
+
         guide = LandscapeGuide(tda)
         rec = guide.recommend_direction(np.array([0.0, 0.0]))
         assert rec["strategy"] in ["ridge", "exploit", "explore"]
@@ -160,7 +160,7 @@ class TestLandscapeGuide:
         """Test on a more complex, realistic landscape."""
         tda = TDALandscape(dimension=2)
         np.random.seed(42)
-        
+
         # Create multiple peaks
         peaks = [(-2, -2), (2, 2), (-2, 2), (2, -2)]
         for px, py in peaks:
@@ -168,20 +168,26 @@ class TestLandscapeGuide:
                 pos = np.array([px, py]) + np.random.randn(2) * 0.5
                 fitness = 100.0 - np.sum((pos - [px, py]) ** 2) * 10
                 tda.add_sample(pos, fitness=max(0, fitness))
-        
+
         # Valley points
         for _ in range(20):
             pos = np.random.randn(2) * 3
             fitness = 5.0
             tda.add_sample(pos, fitness=fitness)
-        
+
         features = tda.get_landscape_features()
         assert features["num_samples"] == 80
-        
+
         guide = LandscapeGuide(tda)
         # Check recommendations for different positions
         for pos in [np.array([0.0, 0.0]), np.array([2.0, 2.0]), np.array([-2.0, -2.0])]:
             rec = guide.recommend_direction(pos)
-            assert rec["strategy"] in ["avoid", "exploit", "explore", "ridge", "unknown"]
+            assert rec["strategy"] in [
+                "avoid",
+                "exploit",
+                "explore",
+                "ridge",
+                "unknown",
+            ]
             assert 0.0 <= rec["confidence"] <= 1.0
             assert len(rec["rationale"]) > 0

@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_health_check_chain.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import time
@@ -83,7 +84,7 @@ class TestHealthCheckChain:
 
     def test_latency_tracking(self):
         chain = HealthCheckChain()
-        chain.add("slow", lambda: (time.sleep(0.05) or (True, "ok")))
+        chain.add("slow", lambda: time.sleep(0.05) or (True, "ok"))
         status = chain.run()
         assert status.latency_ms >= 40.0
 
@@ -134,6 +135,7 @@ class TestHealthCheckChain:
 
     def test_retries(self):
         attempts = [0]
+
         def flaky():
             attempts[0] += 1
             return (attempts[0] >= 2, "retry")

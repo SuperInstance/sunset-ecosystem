@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_leader_elector.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -43,6 +44,7 @@ class TestLeaderElector:
 
     def test_expiration(self):
         fake_time = [0.0]
+
         def clock():
             return fake_time[0]
 
@@ -56,6 +58,7 @@ class TestLeaderElector:
 
     def test_heartbeat_prevents_expiration(self):
         fake_time = [0.0]
+
         def clock():
             return fake_time[0]
 
@@ -68,6 +71,7 @@ class TestLeaderElector:
 
     def test_stolen_after_expiration(self):
         fake_time = [0.0]
+
         def clock():
             return fake_time[0]
 
@@ -104,12 +108,17 @@ class TestLeaderElector:
     def test_metadata(self):
         elector = LeaderElector("node-1", ttl_seconds=5.0)
         elector.elect("coordinator", metadata={"host": "10.0.0.1", "port": "8080"})
-        assert elector.get_leader_metadata("coordinator") == {"host": "10.0.0.1", "port": "8080"}
+        assert elector.get_leader_metadata("coordinator") == {
+            "host": "10.0.0.1",
+            "port": "8080",
+        }
 
     def test_metadata_expired(self):
         fake_time = [0.0]
+
         def clock():
             return fake_time[0]
+
         elector = LeaderElector("node-1", ttl_seconds=5.0, clock=clock)
         elector.elect("coordinator", metadata={"a": "b"})
         fake_time[0] = 6.0
@@ -117,8 +126,10 @@ class TestLeaderElector:
 
     def test_cleanup_expired(self):
         fake_time = [0.0]
+
         def clock():
             return fake_time[0]
+
         elector = LeaderElector("node-1", ttl_seconds=5.0, clock=clock)
         elector.elect("coordinator")
         fake_time[0] = 6.0
@@ -133,6 +144,7 @@ class TestLeaderElector:
 
     def test_on_change_callback(self):
         events = []
+
         def cb(role, event):
             events.append((role, event))
 

@@ -13,6 +13,7 @@ Usage::
     metro.enable()
     grid.tick()  # now synchronized across devices
 """
+
 from __future__ import annotations
 
 __all__ = ["MetronomeIntegration", "DeviceStatus"]
@@ -28,6 +29,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class DeviceStatus:
     """Status of a managed device."""
+
     device_id: str
     last_heartbeat: float
     heartbeat_interval_sec: float
@@ -61,7 +63,9 @@ class MetronomeIntegration:
 
     # ── Public API ─────────────────────────────────────────────────
 
-    def register_device(self, device_id: str, heartbeat_interval_sec: float = 1.0) -> None:
+    def register_device(
+        self, device_id: str, heartbeat_interval_sec: float = 1.0
+    ) -> None:
         """Register a new device for synchronized tick dispatch."""
         self._devices[device_id] = DeviceStatus(
             device_id=device_id,
@@ -114,7 +118,11 @@ class MetronomeIntegration:
             if elapsed > self._heartbeat_timeout:
                 if dev.online:
                     dev.online = False
-                    log.warning("Device %s offline (no heartbeat for %.1fs)", dev.device_id, elapsed)
+                    log.warning(
+                        "Device %s offline (no heartbeat for %.1fs)",
+                        dev.device_id,
+                        elapsed,
+                    )
                 offline.append(dev.device_id)
             else:
                 dev.online = True
@@ -131,7 +139,9 @@ class MetronomeIntegration:
             return 0.0
         drifts = sorted(d.drift_ms for d in online_devices)
         n = len(drifts)
-        return drifts[n // 2] if n % 2 == 1 else (drifts[n // 2 - 1] + drifts[n // 2]) / 2
+        return (
+            drifts[n // 2] if n % 2 == 1 else (drifts[n // 2 - 1] + drifts[n // 2]) / 2
+        )
 
     def tick(self) -> dict[str, Any]:
         """Synchronized tick — dispatches to all online devices.

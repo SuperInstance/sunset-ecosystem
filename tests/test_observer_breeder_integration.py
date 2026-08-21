@@ -47,11 +47,21 @@ class _MockTileType:
 
 
 class _MockTrainingTile:
-    def __init__(self, tile_id: str = "", room: str = "", tile_type: str = "",
-                 state: str = "", lamport: int = 0, name: str = "",
-                 description: str = "", content_hash: str = "",
-                 base_model: str = "", source_room: str = "",
-                 parent_tile: str = "", **kwargs) -> None:
+    def __init__(
+        self,
+        tile_id: str = "",
+        room: str = "",
+        tile_type: str = "",
+        state: str = "",
+        lamport: int = 0,
+        name: str = "",
+        description: str = "",
+        content_hash: str = "",
+        base_model: str = "",
+        source_room: str = "",
+        parent_tile: str = "",
+        **kwargs,
+    ) -> None:
         self.tile_id = tile_id
         self.room = room
         self.tile_type = tile_type
@@ -89,22 +99,27 @@ _mock_cocapn_traps = types.ModuleType("cocapn_traps")
 _mock_cocapn_traps_types = types.ModuleType("cocapn_traps.traps")
 _mock_diversity_trap = types.ModuleType("cocapn_traps.traps.diversity_collapse_trap")
 
+
 class _MockDiversityAlert:
     def __init__(self, level, recommended_action):
         self.level = level
         self.recommended_action = recommended_action
 
+
 class _MockDiversityCollapseTrap:
     def __init__(self, *args, **kwargs):
         self._history = []
+
     def record(self, diversity_score):
         self._history.append(diversity_score)
+
     def check(self):
         if len(self._history) >= 3:
             return _MockDiversityAlert("CRITICAL", "CROSS_SHIP_INJECTION")
         if len(self._history) >= 2:
             return _MockDiversityAlert("WARNING", "EMERGENCY_MUTATE")
         return None
+
 
 _mock_diversity_trap.DiversityCollapseTrap = _MockDiversityCollapseTrap
 _mock_diversity_trap.DiversityAlert = _MockDiversityAlert
@@ -128,6 +143,7 @@ from swarm.thermal import DeviceType, ThermalBudget
 
 
 # ── fixtures ────────────────────────────────────────────────
+
 
 @pytest.fixture
 def grid():
@@ -167,6 +183,7 @@ def make_daemon(grid, thermal, wal_path):
 
 # ── tests ───────────────────────────────────────────────────
 
+
 class TestObserverBreederIntegration:
     """RoomGridPlatoObserver + BreederDaemonV2 lifecycle integration."""
 
@@ -182,7 +199,9 @@ class TestObserverBreederIntegration:
 
         tiles = bridge.all_tiles()
         diversity_tiles = [t for t in tiles if "diversity" in t.tile_id]
-        assert len(diversity_tiles) == 3, f"Expected 3 diversity tiles, got {len(diversity_tiles)}"
+        assert len(diversity_tiles) == 3, (
+            f"Expected 3 diversity tiles, got {len(diversity_tiles)}"
+        )
         # Each tile should have the tick number in payload
         for i, tile in enumerate(diversity_tiles):
             assert tile._payload["tick"] == i + 1
@@ -227,10 +246,14 @@ class TestObserverBreederIntegration:
 
         # Should see at least EGG → COMPETE for child
         egg_to_compete = [
-            tr for tr in transitions
-            if tr.from_state == LifecycleState.EGG and tr.to_state == LifecycleState.COMPETE
+            tr
+            for tr in transitions
+            if tr.from_state == LifecycleState.EGG
+            and tr.to_state == LifecycleState.COMPETE
         ]
-        assert len(egg_to_compete) >= 1, f"Transitions: {[(t.agent_id, t.from_state.name, t.to_state.name) for t in transitions]}"
+        assert len(egg_to_compete) >= 1, (
+            f"Transitions: {[(t.agent_id, t.from_state.name, t.to_state.name) for t in transitions]}"
+        )
 
         child_id = egg_to_compete[0].agent_id
 
@@ -271,7 +294,9 @@ class TestObserverBreederIntegration:
         child_id = egg_tr[0].agent_id
 
         # Build FSM for child and manually walk through remaining states
-        fsm = AgentLifecycleFSM(agent_id=child_id, initial_state=LifecycleState.EGG, strict=False)
+        fsm = AgentLifecycleFSM(
+            agent_id=child_id, initial_state=LifecycleState.EGG, strict=False
+        )
 
         # Canonical valid transition graph per lifecycle_fsm.py:
         # EGG→COMPETE→SURVIVE→BREED→EGG→COMPETE→SUNSET→ARCHIVE
@@ -280,7 +305,7 @@ class TestObserverBreederIntegration:
             (LifecycleState.COMPETE, "compete"),
             (LifecycleState.SURVIVE, "survive"),
             (LifecycleState.BREED, "breed"),
-            (LifecycleState.EGG, "egg_reborn"),   # BREED → EGG is valid (child spawned)
+            (LifecycleState.EGG, "egg_reborn"),  # BREED → EGG is valid (child spawned)
             (LifecycleState.COMPETE, "compete_again"),
             (LifecycleState.SUNSET, "sunset"),
             (LifecycleState.ARCHIVE, "archive"),
@@ -357,7 +382,9 @@ class TestObserverBreederIntegration:
         transitions = daemon.step()
 
         # Write lifecycle tile for the child
-        egg_transitions = [tr for tr in transitions if tr.to_state == LifecycleState.EGG]
+        egg_transitions = [
+            tr for tr in transitions if tr.to_state == LifecycleState.EGG
+        ]
         if egg_transitions:
             child_id = egg_transitions[0].agent_id
             bridge.write_lifecycle_event(
@@ -372,14 +399,22 @@ class TestObserverBreederIntegration:
         lifecycle_tiles = [t for t in all_tiles if "lifecycle" in t.tile_id]
         occupancy_tiles = [t for t in all_tiles if "occupancy" in t.tile_id]
 
-        assert len(diversity_tiles) == 2, f"Expected 2 diversity tiles, got {len(diversity_tiles)}"
-        assert len(occupancy_tiles) == 2, f"Expected 2 occupancy tiles, got {len(occupancy_tiles)}"
-        assert len(lifecycle_tiles) >= 1, f"Expected at least 1 lifecycle tile, got {len(lifecycle_tiles)}"
+        assert len(diversity_tiles) == 2, (
+            f"Expected 2 diversity tiles, got {len(diversity_tiles)}"
+        )
+        assert len(occupancy_tiles) == 2, (
+            f"Expected 2 occupancy tiles, got {len(occupancy_tiles)}"
+        )
+        assert len(lifecycle_tiles) >= 1, (
+            f"Expected at least 1 lifecycle tile, got {len(lifecycle_tiles)}"
+        )
 
         # Verify Lamport ordering across all tiles
         lamports = [t.lamport for t in all_tiles]
         assert lamports == sorted(lamports), "Lamport clocks should be monotonic"
-        assert len(set(lamports)) == len(lamports), "All lamport values should be unique"
+        assert len(set(lamports)) == len(lamports), (
+            "All lamport values should be unique"
+        )
 
         daemon.stop()
 
@@ -395,7 +430,9 @@ class TestObserverBreederIntegration:
         assert "sunset" in tile._payload.get("reason", "")
         assert "agent-77" in tile.tile_id
 
-    @pytest.mark.skip(reason="WAL replay transitions agent to SUNSET during replay — needs lifecycle timing fix")
+    @pytest.mark.skip(
+        reason="WAL replay transitions agent to SUNSET during replay — needs lifecycle timing fix"
+    )
     def test_daemon_wal_replays_lifecycle_state(self, grid, thermal, wal_path):
         """Daemon WAL records lifecycle; replay reconstructs state."""
         bridge = PlatoBridge(room="test-wal")
@@ -416,7 +453,9 @@ class TestObserverBreederIntegration:
         transitions = daemon.step()
 
         # Verify WAL recorded the EGG state
-        egg_transitions = [tr for tr in transitions if tr.to_state == LifecycleState.EGG]
+        egg_transitions = [
+            tr for tr in transitions if tr.to_state == LifecycleState.EGG
+        ]
         assert len(egg_transitions) == 1
         child_id = egg_transitions[0].agent_id
 

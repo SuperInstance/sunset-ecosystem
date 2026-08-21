@@ -38,7 +38,7 @@ tasks = [
 ]
 
 result = orch.orchestrate("/path/to/repo", tasks)
-print(result["merged"])   # tasks that passed all gates
+print(result["merged"])  # tasks that passed all gates
 print(result["cleaned"])  # worktrees removed
 ```
 
@@ -99,11 +99,13 @@ Composes all four classes + GatewayPacing integration.
 Result dict keys:
 ```python
 {
-    "spawned":   {task_id: {worktree, branch}},
-    "scheduled": {task_id: {status, worktree_path, output, retry_count, duration, error}},
-    "verified":  {task_id: {passed, gate, details}},
-    "merged":    [task_id, ...],
-    "cleaned":   [task_id, ...],
+    "spawned": {task_id: {worktree, branch}},
+    "scheduled": {
+        task_id: {status, worktree_path, output, retry_count, duration, error}
+    },
+    "verified": {task_id: {passed, gate, details}},
+    "merged": [task_id, ...],
+    "cleaned": [task_id, ...],
     "audit_entries": int,
     "aborted": bool,
     "abort_reason": str,  # if aborted

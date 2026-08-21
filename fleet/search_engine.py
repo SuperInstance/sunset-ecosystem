@@ -21,8 +21,9 @@ class SearchEngine:
         self._docs: Dict[str, Dict[str, Any]] = {}
         self._stats: Dict[str, int] = {"indexed": 0, "searched": 0}
 
-    def index(self, doc_id: str, content: str,
-              metadata: Optional[Dict[str, Any]] = None) -> None:
+    def index(
+        self, doc_id: str, content: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Index a document."""
         self._docs[doc_id] = {
             "content": content,

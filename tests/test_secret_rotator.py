@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_secret_rotator.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -11,7 +12,9 @@ from fleet.secret_rotator import SecretRotator
 
 class TestSecretRotator:
     def test_create(self):
-        rotator = SecretRotator(default_ttl_sec=3600, grace_period_sec=300, clock=lambda: 0)
+        rotator = SecretRotator(
+            default_ttl_sec=3600, grace_period_sec=300, clock=lambda: 0
+        )
         assert rotator.stats()["secrets"] == 0
 
     def test_set_get(self):

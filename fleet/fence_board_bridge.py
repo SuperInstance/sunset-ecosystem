@@ -40,6 +40,7 @@ class FenceStatus(Enum):
 @dataclass
 class Challenger:
     """A challenger with difficulty rating."""
+
     name: str
     difficulty: int  # 1-10, lower = easier for this agent
     edge: str = ""  # Why this agent has an edge
@@ -48,6 +49,7 @@ class Challenger:
 @dataclass
 class Fence:
     """A single fence (task as puzzle)."""
+
     id: str
     title: str
     brush: str  # The puzzle / challenge
@@ -70,7 +72,10 @@ class Fence:
             "title": self.title,
             "brush": self.brush,
             "view": self.view,
-            "challengers": [{"name": c.name, "difficulty": c.difficulty, "edge": c.edge} for c in self.challengers],
+            "challengers": [
+                {"name": c.name, "difficulty": c.difficulty, "edge": c.edge}
+                for c in self.challengers
+            ],
             "reward": self.reward,
             "claim_window_hours": self.claim_window_hours,
             "status": self.status.name,
@@ -78,7 +83,9 @@ class Fence:
             "claimed_by": self.claimed_by,
             "claimed_at": self.claimed_at.isoformat() if self.claimed_at else None,
             "claimed_approach": self.claimed_approach,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "completed_artifacts": self.completed_artifacts,
             "badge": self.badge,
         }
@@ -112,7 +119,9 @@ class FenceBoard:
         """Post a new fence (task as puzzle)."""
         active = self.active_fences()
         if len(active) >= self.max_active:
-            raise ValueError(f"Max {self.max_active} active fences. Complete or claim one first.")
+            raise ValueError(
+                f"Max {self.max_active} active fences. Complete or claim one first."
+            )
 
         fence_id = self._next_id()
         challenger_list = [
@@ -164,7 +173,11 @@ class FenceBoard:
 
     def active_fences(self) -> list[Fence]:
         """Return all open or claimed fences."""
-        return [f for f in self.fences.values() if f.status in (FenceStatus.OPEN, FenceStatus.CLAIMED)]
+        return [
+            f
+            for f in self.fences.values()
+            if f.status in (FenceStatus.OPEN, FenceStatus.CLAIMED)
+        ]
 
     def completed_fences(self) -> list[Fence]:
         """Return all completed fences."""

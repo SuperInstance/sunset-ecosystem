@@ -10,6 +10,7 @@ Produces:
     - /tmp/hardware_profile_<timestamp>.json   (raw data)
     - /tmp/hardware_profile_<timestamp>.md        (human-readable summary)
 """
+
 from __future__ import annotations
 
 import json
@@ -95,14 +96,27 @@ class HardwareProfiler:
         # ── NVIDIA GPUs ──
         try:
             out = subprocess.run(
-                ["nvidia-smi", "--query-gpu=name,index,power.draw,temperature.gpu", "--format=csv,noheader"],
-                capture_output=True, text=True, timeout=5, check=True,
+                [
+                    "nvidia-smi",
+                    "--query-gpu=name,index,power.draw,temperature.gpu",
+                    "--format=csv,noheader",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=True,
             )
             for line in out.stdout.strip().splitlines():
                 parts = [p.strip() for p in line.split(",")]
                 if len(parts) >= 2:
-                    has_power = len(parts) > 2 and parts[2] not in ("", "[Not Supported]")
-                    has_temp = len(parts) > 3 and parts[3] not in ("", "[Not Supported]")
+                    has_power = len(parts) > 2 and parts[2] not in (
+                        "",
+                        "[Not Supported]",
+                    )
+                    has_temp = len(parts) > 3 and parts[3] not in (
+                        "",
+                        "[Not Supported]",
+                    )
                     devices.append(
                         DeviceProfile(
                             name=parts[0],
@@ -113,14 +127,21 @@ class HardwareProfiler:
                             has_temp_sensor=has_temp,
                         )
                     )
-        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
+        except (
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            subprocess.CalledProcessError,
+        ):
             pass
 
         # ── AMD GPUs ──
         try:
             out = subprocess.run(
                 ["rocm-smi", "--showproductname", "--showpower"],
-                capture_output=True, text=True, timeout=5, check=True,
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=True,
             )
             # rocm-smi output is less structured; do a best-effort parse
             lines = out.stdout.strip().splitlines()
@@ -137,7 +158,11 @@ class HardwareProfiler:
                             has_temp_sensor=False,
                         )
                     )
-        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
+        except (
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            subprocess.CalledProcessError,
+        ):
             pass
 
         # ── CPU ──
@@ -164,7 +189,9 @@ class HardwareProfiler:
 
         # ── NPU (best-effort: look for Apple Neural Engine or Qualcomm Hexagon) ──
         # Linux path: /sys/class/npu or /dev/davinci* for Ascend
-        npu_paths = list(Path("/sys/class").glob("npu*")) + list(Path("/dev").glob("davinci*"))
+        npu_paths = list(Path("/sys/class").glob("npu*")) + list(
+            Path("/dev").glob("davinci*")
+        )
         if npu_paths:
             devices.append(
                 DeviceProfile(
@@ -228,8 +255,17 @@ class HardwareProfiler:
             if dev.device_type == "cuda" and dev.has_power_sensor:
                 try:
                     out = subprocess.run(
-                        ["nvidia-smi", "--query-gpu=power.draw", "--format=csv,noheader", "-i", str(dev.index)],
-                        capture_output=True, text=True, timeout=2, check=True,
+                        [
+                            "nvidia-smi",
+                            "--query-gpu=power.draw",
+                            "--format=csv,noheader",
+                            "-i",
+                            str(dev.index),
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=2,
+                        check=True,
                     )
                     val = out.stdout.strip().split()[0]
                     readings[f"cuda:{dev.index}"] = float(val)
@@ -240,7 +276,10 @@ class HardwareProfiler:
                 try:
                     out = subprocess.run(
                         ["rocm-smi", "--showpower", "-d", str(dev.index)],
-                        capture_output=True, text=True, timeout=2, check=True,
+                        capture_output=True,
+                        text=True,
+                        timeout=2,
+                        check=True,
                     )
                     for line in out.stdout.splitlines():
                         if "Power" in line:
@@ -278,8 +317,17 @@ class HardwareProfiler:
             if dev.device_type == "cuda" and dev.has_temp_sensor:
                 try:
                     out = subprocess.run(
-                        ["nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader", "-i", str(dev.index)],
-                        capture_output=True, text=True, timeout=2, check=True,
+                        [
+                            "nvidia-smi",
+                            "--query-gpu=temperature.gpu",
+                            "--format=csv,noheader",
+                            "-i",
+                            str(dev.index),
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=2,
+                        check=True,
                     )
                     readings[f"cuda:{dev.index}"] = float(out.stdout.strip())
                 except Exception:
@@ -288,12 +336,15 @@ class HardwareProfiler:
         # Try psutil as a generic fallback
         try:
             import psutil
+
             temps = psutil.sensors_temperatures()
             if temps:
                 for label, entries in temps.items():
                     for entry in entries:
                         if entry.current is not None:
-                            readings[f"psutil:{label}:{entry.label}"] = float(entry.current)
+                            readings[f"psutil:{label}:{entry.label}"] = float(
+                                entry.current
+                            )
         except Exception:
             pass
 
@@ -302,6 +353,7 @@ class HardwareProfiler:
     def _fallback_power_estimate(self) -> dict[str, float]:
         """When no sensors exist, estimate power from CPU utilisation × TDP."""
         import psutil
+
         estimates: dict[str, float] = {}
         cpu_util = psutil.cpu_percent(interval=0.1) / 100.0
         for dev in self.devices:
@@ -372,7 +424,9 @@ class HardwareProfiler:
         """Measure baseline power draw at idle."""
         return self._measure_during(lambda: time.sleep(0.001), duration_sec)
 
-    def measure_operation(self, operation: str, config: dict, duration_sec: float = 10.0) -> dict:
+    def measure_operation(
+        self, operation: str, config: dict, duration_sec: float = 10.0
+    ) -> dict:
         """Measure power/thermal during a specific operation.
 
         operations: 'einsum', 'novelty_scoring', 'routing', 'breeding', 'thermal_scheduling'
@@ -383,6 +437,7 @@ class HardwareProfiler:
         # ── einsum ── (core JEPA matmul)
         if operation == "einsum":
             from nerve.room_grid import RoomGrid
+
             grid = RoomGrid(n_rooms)
             signal = np.random.randn(64).astype(np.float32)
             # warmup
@@ -393,6 +448,7 @@ class HardwareProfiler:
         # ── novelty_scoring ──
         elif operation == "novelty_scoring":
             from nerve.room_grid import batch_novelty
+
             n = n_rooms
             latents = np.random.randn(n, 16).astype(np.float32)
             hist = np.random.randn(20, n, 16).astype(np.float32)
@@ -407,6 +463,7 @@ class HardwareProfiler:
         # ── routing ──
         elif operation == "routing":
             from nerve.routing import RoutingLayer
+
             layer = RoutingLayer()
             # seed with some routes
             for i in range(n_fibers):
@@ -416,14 +473,17 @@ class HardwareProfiler:
             for _ in range(5):
                 for i in range(n_fibers):
                     layer.fire_fast(f"fiber_{i}")
+
             def _route_all():
                 for i in range(n_fibers):
                     layer.fire_fast(f"fiber_{i}")
+
             return self._measure_during(_route_all, duration_sec)
 
         # ── breeding ──
         elif operation == "breeding":
             from nerve.room_grid import RoomGrid
+
             grid = RoomGrid(n_rooms)
             src = grid.spawn_room()
             dst = grid.spawn_room()
@@ -435,13 +495,20 @@ class HardwareProfiler:
         # ── thermal_scheduling ──
         elif operation == "thermal_scheduling":
             from swarm.thermal import ThermalBudget, DeviceType
+
             budget = ThermalBudget()
             # simulate a churn of allocations/deallocations
             agent_counter = [0]
             allocated: list[tuple[str, DeviceType]] = []
+
             def _thermal_churn():
                 # allocate if possible
-                for dt in (DeviceType.CPU, DeviceType.GPU, DeviceType.IGPU, DeviceType.NPU):
+                for dt in (
+                    DeviceType.CPU,
+                    DeviceType.GPU,
+                    DeviceType.IGPU,
+                    DeviceType.NPU,
+                ):
                     if budget.can_spawn(dt):
                         aid = f"agent_{agent_counter[0]}"
                         agent_counter[0] += 1
@@ -452,6 +519,7 @@ class HardwareProfiler:
                 if allocated:
                     aid, _ = allocated.pop(0)
                     budget.release(aid)
+
             # warmup
             for _ in range(20):
                 _thermal_churn()
@@ -475,8 +543,14 @@ class HardwareProfiler:
                 sensor_status.append("power")
             if d.has_temp_sensor:
                 sensor_status.append("temp")
-            sensor_str = ", ".join(sensor_status) if sensor_status else "no sensors (fallback TDP estimate)"
-            notes.append(f"  [{d.device_type}] {d.name}: TDP={d.tdp_watts:.0f}W, sensors=({sensor_str})")
+            sensor_str = (
+                ", ".join(sensor_status)
+                if sensor_status
+                else "no sensors (fallback TDP estimate)"
+            )
+            notes.append(
+                f"  [{d.device_type}] {d.name}: TDP={d.tdp_watts:.0f}W, sensors=({sensor_str})"
+            )
 
         # idle baseline
         print("[idle] measuring baseline power...")
@@ -485,7 +559,13 @@ class HardwareProfiler:
 
         # operations
         operations = []
-        ops_to_run = ["einsum", "novelty_scoring", "routing", "breeding", "thermal_scheduling"]
+        ops_to_run = [
+            "einsum",
+            "novelty_scoring",
+            "routing",
+            "breeding",
+            "thermal_scheduling",
+        ]
         for op in ops_to_run:
             print(f"[{op}] profiling...")
             try:
@@ -504,7 +584,7 @@ class HardwareProfiler:
                 operations.append(op_profile)
                 notes.append(
                     f"  {op}: {op_profile.ops_per_second:.1f} ops/s, "
-                    f"{op_profile.joules_per_op*1e3:.3f} mJ/op"
+                    f"{op_profile.joules_per_op * 1e3:.3f} mJ/op"
                 )
             except Exception as exc:
                 notes.append(f"  {op}: FAILED ({exc})")
@@ -570,7 +650,7 @@ class HardwareProfiler:
             peak_c = f"{op.peak_temp_c:.1f}" if op.peak_temp_c is not None else "N/A"
             lines.append(
                 f"| {op.operation} | {op.mean_watts:.2f} | {op.peak_watts:.2f} | "
-                f"{op.ops_per_second:.1f} | {op.joules_per_op*1e3:.3f} | "
+                f"{op.ops_per_second:.1f} | {op.joules_per_op * 1e3:.3f} | "
                 f"{mean_c} | {peak_c} | {op.samples} |"
             )
 

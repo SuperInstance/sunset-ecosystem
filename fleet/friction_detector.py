@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 class FrictionCategory(Enum):
     """Categories of friction detected in the fleet."""
+
     AUTH = auto()
     UI = auto()
     SCHEMA = auto()
@@ -50,6 +51,7 @@ class FrictionCategory(Enum):
 
 class Severity(Enum):
     """Severity levels for friction points."""
+
     CRITICAL = 4
     HIGH = 3
     MEDIUM = 2
@@ -59,6 +61,7 @@ class Severity(Enum):
 @dataclass
 class BehaviorSample:
     """Single observation of agent behavior."""
+
     endpoint: str
     status_code: int
     latency: float
@@ -72,6 +75,7 @@ class BehaviorSample:
 @dataclass
 class FrictionPoint:
     """Detected friction with evidence and suggested fix."""
+
     category: FrictionCategory
     severity: Severity
     evidence: str
@@ -87,6 +91,7 @@ class FrictionPoint:
 @dataclass
 class FrictionMap:
     """Aggregate view of all friction across the fleet."""
+
     node_id: str
     points: List[FrictionPoint] = field(default_factory=list)
     generated_at: float = field(default_factory=time.time)
@@ -140,22 +145,67 @@ class FixSuggestionEngine:
     """Maps friction categories and evidence to concrete fix recommendations."""
 
     FIXES: Dict[Tuple[FrictionCategory, str], str] = {
-        (FrictionCategory.AUTH, "401"): "Add authentication middleware or token refresh logic.",
+        (
+            FrictionCategory.AUTH,
+            "401",
+        ): "Add authentication middleware or token refresh logic.",
         (FrictionCategory.AUTH, "403"): "Check RBAC permissions and scope policies.",
-        (FrictionCategory.UI, "404"): "Verify frontend route mapping and asset bundling.",
-        (FrictionCategory.UI, "no_web_ui"): "Deploy a web UI dashboard or SPA entry point.",
-        (FrictionCategory.SCHEMA, "400"): "Validate request payload against OpenAPI schema.",
-        (FrictionCategory.SCHEMA, "422"): "Update schema definitions and client-side validators.",
-        (FrictionCategory.SCHEMA, "no_build_schema"): "Add JSON Schema for room/tile creation endpoints.",
-        (FrictionCategory.ROUTING, "502"): "Check upstream health and load balancer configuration.",
-        (FrictionCategory.ROUTING, "503"): "Add circuit breaker and retry with exponential backoff.",
-        (FrictionCategory.ROUTING, "504"): "Increase gateway timeout or optimize upstream latency.",
-        (FrictionCategory.PERFORMANCE, "timeout"): "Optimize endpoint or add async processing.",
-        (FrictionCategory.PERFORMANCE, "high_latency"): "Add caching layer or CDN for static assets.",
-        (FrictionCategory.API, "dual_submit_endpoints"): "Consolidate duplicate endpoints into a single canonical route.",
-        (FrictionCategory.API, "no_broadcast_endpoints"): "Add WebSocket or SSE broadcast endpoint.",
-        (FrictionCategory.API, "no_global_fleet_map"): "Implement fleet topology discovery API.",
-        (FrictionCategory.UNKNOWN, "default"): "Investigate logs and reproduce in staging environment.",
+        (
+            FrictionCategory.UI,
+            "404",
+        ): "Verify frontend route mapping and asset bundling.",
+        (
+            FrictionCategory.UI,
+            "no_web_ui",
+        ): "Deploy a web UI dashboard or SPA entry point.",
+        (
+            FrictionCategory.SCHEMA,
+            "400",
+        ): "Validate request payload against OpenAPI schema.",
+        (
+            FrictionCategory.SCHEMA,
+            "422",
+        ): "Update schema definitions and client-side validators.",
+        (
+            FrictionCategory.SCHEMA,
+            "no_build_schema",
+        ): "Add JSON Schema for room/tile creation endpoints.",
+        (
+            FrictionCategory.ROUTING,
+            "502",
+        ): "Check upstream health and load balancer configuration.",
+        (
+            FrictionCategory.ROUTING,
+            "503",
+        ): "Add circuit breaker and retry with exponential backoff.",
+        (
+            FrictionCategory.ROUTING,
+            "504",
+        ): "Increase gateway timeout or optimize upstream latency.",
+        (
+            FrictionCategory.PERFORMANCE,
+            "timeout",
+        ): "Optimize endpoint or add async processing.",
+        (
+            FrictionCategory.PERFORMANCE,
+            "high_latency",
+        ): "Add caching layer or CDN for static assets.",
+        (
+            FrictionCategory.API,
+            "dual_submit_endpoints",
+        ): "Consolidate duplicate endpoints into a single canonical route.",
+        (
+            FrictionCategory.API,
+            "no_broadcast_endpoints",
+        ): "Add WebSocket or SSE broadcast endpoint.",
+        (
+            FrictionCategory.API,
+            "no_global_fleet_map",
+        ): "Implement fleet topology discovery API.",
+        (
+            FrictionCategory.UNKNOWN,
+            "default",
+        ): "Investigate logs and reproduce in staging environment.",
     }
 
     @classmethod
@@ -168,7 +218,9 @@ class FixSuggestionEngine:
         if key_fallback in cls.FIXES:
             return cls.FIXES[key_fallback]
         # Final fallback
-        return cls.FIXES.get((FrictionCategory.UNKNOWN, "default"), "Investigate and document the issue.")
+        return cls.FIXES.get(
+            (FrictionCategory.UNKNOWN, "default"), "Investigate and document the issue."
+        )
 
 
 class FrictionDetector:
@@ -191,7 +243,9 @@ class FrictionDetector:
         self.academy_bridge = academy_bridge
         self._fix_validator: Optional[FixValidator] = None
 
-    def register_event_callback(self, callback: Callable[[FrictionPoint], None]) -> None:
+    def register_event_callback(
+        self, callback: Callable[[FrictionPoint], None]
+    ) -> None:
         self._event_callbacks.append(callback)
 
     def sense(
@@ -217,7 +271,11 @@ class FrictionDetector:
         self._samples.append(sample)
         logger.debug(
             "SENSE %s %s → %d in %.3fs (retries=%d)",
-            method, endpoint, status_code, latency, retries,
+            method,
+            endpoint,
+            status_code,
+            latency,
+            retries,
         )
         return sample
 
@@ -259,7 +317,9 @@ class FrictionDetector:
             )
             logger.info(
                 "ACT %s friction on %s → %s",
-                point.category.name, point.endpoint or "fleet", point.suggested_fix
+                point.category.name,
+                point.endpoint or "fleet",
+                point.suggested_fix,
             )
 
     def validate(self, points: List[FrictionPoint]) -> Dict[str, bool]:
@@ -282,14 +342,17 @@ class FrictionDetector:
         if points:
             self.validate(points)
 
-        trend_score = sum(p.severity.value for p in self._friction_points.values() if not p.fixed)
+        trend_score = sum(
+            p.severity.value for p in self._friction_points.values() if not p.fixed
+        )
         self._trend_history.append((time.time(), trend_score))
 
         return FrictionMap(
             node_id=self.node_id,
             points=list(self._friction_points.values()),
             generated_at=time.time(),
-            total_samples=len(self._samples) + sum(p.sample_count for p in self._friction_points.values()),
+            total_samples=len(self._samples)
+            + sum(p.sample_count for p in self._friction_points.values()),
         )
 
     def get_trend(self) -> str:
@@ -344,15 +407,21 @@ class FrictionDetector:
 
     def compare_with_academy(self) -> Dict[str, Any]:
         """Compare live-detected friction with academy cohort findings."""
-        live_categories = {p.category for p in self._friction_points.values() if not p.fixed}
+        live_categories = {
+            p.category for p in self._friction_points.values() if not p.fixed
+        }
         academy = self.load_academy_findings()
         academy_categories = {p.category for p in academy}
 
         return {
             "live_only": sorted([c.name for c in live_categories - academy_categories]),
-            "academy_only": sorted([c.name for c in academy_categories - live_categories]),
+            "academy_only": sorted(
+                [c.name for c in academy_categories - live_categories]
+            ),
             "overlap": sorted([c.name for c in live_categories & academy_categories]),
-            "live_points": len([p for p in self._friction_points.values() if not p.fixed]),
+            "live_points": len(
+                [p for p in self._friction_points.values() if not p.fixed]
+            ),
             "academy_points": len(academy),
         }
 
@@ -366,7 +435,9 @@ class FrictionDetector:
         if status in (401, 403):
             return FrictionPoint(
                 category=FrictionCategory.AUTH,
-                severity=Severity.CRITICAL if status == 401 and retries >= self.retry_threshold else Severity.HIGH,
+                severity=Severity.CRITICAL
+                if status == 401 and retries >= self.retry_threshold
+                else Severity.HIGH,
                 evidence=str(status),
                 suggested_fix="",
                 endpoint=sample.endpoint,
@@ -406,8 +477,12 @@ class FrictionDetector:
         if latency >= self.latency_threshold:
             return FrictionPoint(
                 category=FrictionCategory.PERFORMANCE,
-                severity=Severity.HIGH if latency >= self.latency_threshold * 3 else Severity.MEDIUM,
-                evidence="high_latency" if latency < self.latency_threshold * 3 else "timeout",
+                severity=Severity.HIGH
+                if latency >= self.latency_threshold * 3
+                else Severity.MEDIUM,
+                evidence="high_latency"
+                if latency < self.latency_threshold * 3
+                else "timeout",
                 suggested_fix="",
                 endpoint=sample.endpoint,
             )
@@ -416,7 +491,9 @@ class FrictionDetector:
         if retries >= self.retry_threshold:
             return FrictionPoint(
                 category=FrictionCategory.API,
-                severity=Severity.HIGH if retries >= self.retry_threshold * 2 else Severity.MEDIUM,
+                severity=Severity.HIGH
+                if retries >= self.retry_threshold * 2
+                else Severity.MEDIUM,
                 evidence="retry_storm",
                 suggested_fix="",
                 endpoint=sample.endpoint,
@@ -530,7 +607,9 @@ class FixValidator:
             "consolidate",
             "discovery",
         ]
-        return any(pattern.lower() in point.suggested_fix.lower() for pattern in good_patterns)
+        return any(
+            pattern.lower() in point.suggested_fix.lower() for pattern in good_patterns
+        )
 
     def get_replay_history(self) -> List[Dict[str, Any]]:
         return self._replay_results

@@ -44,11 +44,14 @@ def mock_table_64() -> FluxVectorTable:
 @pytest.fixture
 def mock_wal() -> Any:
     """Return a simple mock WAL that records append calls."""
+
     class MockWAL:
         def __init__(self):
             self.entries = []
+
         def append(self, entry):
             self.entries.append(entry)
+
     return MockWAL()
 
 
@@ -185,7 +188,9 @@ class TestDigest:
         )
         # Seed the version vector so digest has some bytes
         for i in range(4):
-            gossip.publish_delta(room_id=100 + i, vector=[0.1] * 64, score=0.5, timestamp=1.0)
+            gossip.publish_delta(
+                room_id=100 + i, vector=[0.1] * 64, score=0.5, timestamp=1.0
+            )
 
         digest = gossip.get_digest()
         assert isinstance(digest, GossipDigest)
@@ -291,7 +296,9 @@ class TestRebirth:
         alibaba_gossip._apply_remote_deltas(remote_deltas, peer_id="ProArt")
 
         assert orphan_agent_id in alibaba_table._meta
-        assert alibaba_table._meta[orphan_agent_id].fitness == pytest.approx(0.91, abs=0.001)
+        assert alibaba_table._meta[orphan_agent_id].fitness == pytest.approx(
+            0.91, abs=0.001
+        )
         assert alibaba_table._meta[orphan_agent_id].capability_mask == 0xABCD
         np.testing.assert_allclose(
             alibaba_table._vectors[orphan_agent_id],

@@ -43,6 +43,7 @@ _A2A_HANDLER_REGISTRY: dict[str, Callable[[Any, Any], A2AMetronomeResult]] = {}
 
 # ── Handler functions (free-standing, patchable in tests) ──
 
+
 def handle_beat_sync_task(
     conductor: FleetConductor,
     task: BeatSyncTask,
@@ -107,10 +108,7 @@ def handle_bpm_proposal_task(
     accepted_bpm = result.payload.get("accepted_bpm")
 
     if action == "accept" and accepted_bpm is not None:
-        if (
-            conductor._scheduler is not None
-            and hasattr(conductor._scheduler, "bpm")
-        ):
+        if conductor._scheduler is not None and hasattr(conductor._scheduler, "bpm"):
             old_bpm = conductor._scheduler.bpm
             conductor._scheduler.bpm = accepted_bpm
             logger.info(
@@ -231,6 +229,7 @@ def handle_unknown_task(
 
 # ── Registration ────────────────────────────────────────────
 
+
 def register_a2a_handlers(conductor: FleetConductor) -> None:
     """Bind A2A metronome task handlers to a FleetConductor instance.
 
@@ -260,6 +259,7 @@ def register_a2a_handlers(conductor: FleetConductor) -> None:
 
 # ── Conductor mixin / extension helpers ───────────────────
 
+
 class FleetConductorA2AExtension:
     """Mixin-style helper that adds A2A dispatch methods to FleetConductor.
 
@@ -286,12 +286,12 @@ class FleetConductorA2AExtension:
             node_id=conductor.node_id,
             target_beat=target_beat,
             timestamp_ns=time.time_ns(),
-            bpm=getattr(conductor._scheduler, "bpm", 120.0) if conductor._scheduler else 120.0,
+            bpm=getattr(conductor._scheduler, "bpm", 120.0)
+            if conductor._scheduler
+            else 120.0,
         )
         payload = task.to_dict()
-        logger.debug(
-            "dispatch_sync_task → %s: beat=%d", peer_node_id, target_beat
-        )
+        logger.debug("dispatch_sync_task → %s: beat=%d", peer_node_id, target_beat)
         return payload
 
     @staticmethod
@@ -327,7 +327,9 @@ class FleetConductorA2AExtension:
             drift_beats=drift_beats,
             threshold_ms=conductor.max_drift_ms,
             requested_action=requested_action,
-            target_beat=getattr(conductor._scheduler, "beat_number", 0) if conductor._scheduler else 0,
+            target_beat=getattr(conductor._scheduler, "beat_number", 0)
+            if conductor._scheduler
+            else 0,
         )
         return task.to_dict()
 

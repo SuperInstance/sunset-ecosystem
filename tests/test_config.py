@@ -17,6 +17,7 @@ from fleet.config import FleetConfig, _deep_merge, _resolve_env_vars, _resolve_s
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class TestHelpers:
     def test_resolve_env_vars(self, monkeypatch):
         monkeypatch.setenv("TEST_VAR", "hello")
@@ -46,6 +47,7 @@ class TestHelpers:
 # ---------------------------------------------------------------------------
 # FleetConfig defaults
 # ---------------------------------------------------------------------------
+
 
 class TestFleetConfigDefaults:
     def test_no_path(self):
@@ -100,6 +102,7 @@ class TestFleetConfigDefaults:
 # YAML loading
 # ---------------------------------------------------------------------------
 
+
 class TestFleetConfigYAML:
     def test_yaml_override(self, tmp_path):
         config_file = tmp_path / "config.yaml"
@@ -130,6 +133,7 @@ class TestFleetConfigYAML:
 # ---------------------------------------------------------------------------
 # get() method
 # ---------------------------------------------------------------------------
+
 
 class TestFleetConfigGet:
     def test_get_nested(self):

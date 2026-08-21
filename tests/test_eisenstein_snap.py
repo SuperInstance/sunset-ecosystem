@@ -30,6 +30,7 @@ RNG = np.random.default_rng(2026)
 
 # ── Test 1: Eisenstein Arithmetic ────────────────────────────────────────
 
+
 class TestEisensteinArithmetic:
     def test_addition(self):
         """(1 + 0ω) + (2 + 3ω) = (3 + 3ω)"""
@@ -68,6 +69,7 @@ class TestEisensteinArithmetic:
 
 # ── Test 2: Unit Verification ───────────────────────────────────────────
 
+
 class TestUnits:
     def test_six_units(self):
         """There are exactly six units with norm 1."""
@@ -88,6 +90,7 @@ class TestUnits:
 
 
 # ── Test 3: Snap to Lattice ────────────────────────────────────────────
+
 
 class TestSnapLattice:
     def test_snap_reduces_distance(self):
@@ -115,6 +118,7 @@ class TestSnapLattice:
 
 # ── Test 4: Mutation Shape ─────────────────────────────────────────────
 
+
 class TestMutationShape:
     def test_shape_preserved(self):
         """eisenstein_mutation preserves shape."""
@@ -141,13 +145,20 @@ class TestMutationShape:
 
 # ── Test 5: Compression Stats ──────────────────────────────────────────
 
+
 class TestCompressionStats:
     def test_stats_keys(self):
         """compression_stats returns expected keys."""
         w = np.array([1.0, 1.1, 1.2, 2.0], dtype=np.float32)
         s = snap_weights_to_eisenstein(w, scale=2.0)
         stats = compression_stats(w, s)
-        for key in ["mean_error", "max_error", "unique_before", "unique_after", "compression_ratio"]:
+        for key in [
+            "mean_error",
+            "max_error",
+            "unique_before",
+            "unique_after",
+            "compression_ratio",
+        ]:
             assert key in stats
 
     def test_high_scale_high_compression(self):
@@ -161,6 +172,7 @@ class TestCompressionStats:
 
 
 # ── Edge Cases ───────────────────────────────────────────────────────────
+
 
 class TestEdgeCases:
     def test_zero_weight(self):

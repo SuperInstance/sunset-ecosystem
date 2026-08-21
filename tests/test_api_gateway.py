@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_api_gateway.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -46,8 +47,8 @@ class TestAPIGateway:
     def test_middleware_priority(self):
         gw = APIGateway()
         order = []
-        gw.add_middleware("b", lambda req: (order.append("b") or True), priority=1)
-        gw.add_middleware("a", lambda req: (order.append("a") or True), priority=0)
+        gw.add_middleware("b", lambda req: order.append("b") or True, priority=1)
+        gw.add_middleware("a", lambda req: order.append("a") or True, priority=0)
         gw.process({"path": "/"})
         assert order == ["a", "b"]
 

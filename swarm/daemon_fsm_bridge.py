@@ -57,7 +57,9 @@ class FSMBridgedDaemon:
         upgraded: dict[int, BreederFSMV2] = {}
         for agent_id, fsm in self._daemon._fsm.items():
             # Get current state from old FSM
-            current = fsm.get_state() if hasattr(fsm, "get_state") else LifecycleState.EGG
+            current = (
+                fsm.get_state() if hasattr(fsm, "get_state") else LifecycleState.EGG
+            )
             upgraded[agent_id] = BreederFSMV2(
                 agent_id=str(agent_id),
                 initial_state=LifecycleState[current.name],
@@ -86,12 +88,15 @@ class FSMBridgedDaemon:
         remote: bool = False,
     ) -> int:
         ticket = self._daemon.queue_breed(parent_a, parent_b, priority, remote)
-        self._emit("breed_queued", {
-            "ticket": ticket,
-            "parent_a": parent_a,
-            "parent_b": parent_b,
-            "priority": priority,
-        })
+        self._emit(
+            "breed_queued",
+            {
+                "ticket": ticket,
+                "parent_a": parent_a,
+                "parent_b": parent_b,
+                "priority": priority,
+            },
+        )
         return ticket
 
     def select_parents(self, n_children: int = 1) -> list[tuple[int, int]]:
@@ -105,7 +110,9 @@ class FSMBridgedDaemon:
         for tr in raw_transitions:
             fsm = self._daemon._fsm.get(tr.agent_id)
             to_state = self._to_breeder_state(tr.to_state)
-            from_state = self._to_breeder_state(tr.from_state) if tr.from_state else None
+            from_state = (
+                self._to_breeder_state(tr.from_state) if tr.from_state else None
+            )
             if fsm is None:
                 # New agent — create FSM at from_state
                 fsm = BreederFSMV2(
@@ -116,9 +123,7 @@ class FSMBridgedDaemon:
             elif not hasattr(fsm, "transition_to"):
                 # Upgrade legacy AgentLifecycleFSM to strict BreederFSMV2
                 current = (
-                    fsm.get_state()
-                    if hasattr(fsm, "get_state")
-                    else LifecycleState.EGG
+                    fsm.get_state() if hasattr(fsm, "get_state") else LifecycleState.EGG
                 )
                 fsm = BreederFSMV2(
                     agent_id=str(tr.agent_id),
@@ -137,26 +142,32 @@ class FSMBridgedDaemon:
                     to_state.name,
                 )
                 # Record the blocked transition for audit
-                self._emit("transition_blocked", {
-                    "agent_id": tr.agent_id,
-                    "requested": to_state.name,
-                    "current": fsm.current_state.name,
-                })
+                self._emit(
+                    "transition_blocked",
+                    {
+                        "agent_id": tr.agent_id,
+                        "requested": to_state.name,
+                        "current": fsm.current_state.name,
+                    },
+                )
                 continue
 
             # Transition was valid — approve it
             validated.append(tr)
 
             # Broadcast to fleet
-            self._emit("lifecycle_transition", {
-                "agent_id": tr.agent_id,
-                "from": tr.from_state.name if tr.from_state else None,
-                "to": tr.to_state.name,
-                "generation": tr.generation,
-                "parent_a": tr.parent_a,
-                "parent_b": tr.parent_b,
-                "origin": tr.origin_node,
-            })
+            self._emit(
+                "lifecycle_transition",
+                {
+                    "agent_id": tr.agent_id,
+                    "from": tr.from_state.name if tr.from_state else None,
+                    "to": tr.to_state.name,
+                    "generation": tr.generation,
+                    "parent_a": tr.parent_a,
+                    "parent_b": tr.parent_b,
+                    "origin": tr.origin_node,
+                },
+            )
 
             # State-specific side effects
             if to_state == LifecycleState.COMPETE:
@@ -174,10 +185,7 @@ class FSMBridgedDaemon:
 
     def state(self) -> dict[int, LifecycleState]:
         """Return current state of every managed agent (validated)."""
-        return {
-            aid: fsm.current_state
-            for aid, fsm in self._daemon._fsm.items()
-        }
+        return {aid: fsm.current_state for aid, fsm in self._daemon._fsm.items()}
 
     def _emit(self, event_type: str, payload: dict[str, Any]) -> None:
         if self._bus is not None:

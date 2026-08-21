@@ -38,6 +38,7 @@ References
 - turbovec: https://github.com/RyanCodrai/turbovec
 - TurboQuant: Google Research, data-oblivious quantization
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -88,12 +89,12 @@ class TurboVecSearchResult:
 class TurboVecConfig:
     """Configuration for FleetTurboVecIndex."""
 
-    dim: Optional[int] = None       # None = lazy dimension from first add
-    bit_width: int = 4               # 2, 4, or 8 bits per dimension
-    diversity_rerank: bool = True    # Apply DPP/MMR after NN search
-    diversity_k: int = 10            # Rerank top-diversity_k from NN
+    dim: Optional[int] = None  # None = lazy dimension from first add
+    bit_width: int = 4  # 2, 4, or 8 bits per dimension
+    diversity_rerank: bool = True  # Apply DPP/MMR after NN search
+    diversity_k: int = 10  # Rerank top-diversity_k from NN
     diversity_strategy: str = "dpp"  # dpp, mmr, msd, cover, ssd
-    diversity_lambda: float = 0.5    # Diversity-relevance tradeoff
+    diversity_lambda: float = 0.5  # Diversity-relevance tradeoff
 
 
 # ── Core Adapter ────────────────────────────────────────────────────────────
@@ -112,9 +113,9 @@ class FleetTurboVecIndex:
     def __init__(self, config: Optional[TurboVecConfig] = None) -> None:
         self.config = config or TurboVecConfig()
         self._entries: Dict[str, TurboVecEntry] = {}
-        self._id_map: Dict[str, int] = {}      # agent_id → uint64 hash
-        self._rev_map: Dict[int, str] = {}      # uint64 hash → agent_id
-        self._index: Optional[Any] = None     # turbovec IdMapIndex or fallback
+        self._id_map: Dict[str, int] = {}  # agent_id → uint64 hash
+        self._rev_map: Dict[int, str] = {}  # uint64 hash → agent_id
+        self._index: Optional[Any] = None  # turbovec IdMapIndex or fallback
         self._fallback_vectors: Optional[np.ndarray] = None  # (n, dim) float32
         self._fallback_ids: List[str] = []
         self._ready: bool = False
@@ -178,7 +179,11 @@ class FleetTurboVecIndex:
         if query.ndim == 1:
             query = query.reshape(1, -1)
 
-        do_rerank = diversity_rerank if diversity_rerank is not None else self.config.diversity_rerank
+        do_rerank = (
+            diversity_rerank
+            if diversity_rerank is not None
+            else self.config.diversity_rerank
+        )
 
         # Step 1: Retrieve coarse candidates from index
         if self._index is not None:
@@ -193,7 +198,9 @@ class FleetTurboVecIndex:
                 if not allowed_ids:
                     return []
                 allowlist = np.array(allowed_ids, dtype=np.uint64)
-                scores, indices = self._index.search(query, coarse_k, allowlist=allowlist)
+                scores, indices = self._index.search(
+                    query, coarse_k, allowlist=allowlist
+                )
             else:
                 scores, indices = self._index.search(query, coarse_k)
 
@@ -220,12 +227,14 @@ class FleetTurboVecIndex:
         results = []
         for rank, (agent_id, score, _) in enumerate(candidates[:k]):
             entry = self._entries.get(agent_id)
-            results.append(TurboVecSearchResult(
-                agent_id=agent_id,
-                score=score,
-                rank=rank,
-                entry=entry,
-            ))
+            results.append(
+                TurboVecSearchResult(
+                    agent_id=agent_id,
+                    score=score,
+                    rank=rank,
+                    entry=entry,
+                )
+            )
         return results
 
     def remove(self, agent_id: str) -> bool:
@@ -267,11 +276,13 @@ class FleetTurboVecIndex:
                 if self._fallback_vectors is not None:
                     np.save(p / "vectors.npy", self._fallback_vectors)
                     import json as _json
+
                     with open(p / "ids.json", "w") as f:
                         _json.dump(self._fallback_ids, f)
         elif self._fallback_vectors is not None:
             np.save(p / "vectors.npy", self._fallback_vectors)
             import json as _json
+
             with open(p / "ids.json", "w") as f:
                 _json.dump(self._fallback_ids, f)
 
@@ -289,6 +300,7 @@ class FleetTurboVecIndex:
             "id_map": self._id_map,
         }
         import json as _json
+
         with open(p / "metadata.json", "w") as f:
             _json.dump(meta, f, indent=2)
 
@@ -301,6 +313,7 @@ class FleetTurboVecIndex:
         """
         p = Path(path)
         import json as _json
+
         with open(p / "metadata.json") as f:
             meta = _json.load(f)
 
@@ -313,6 +326,7 @@ class FleetTurboVecIndex:
         if tvim_path.exists():
             try:
                 import turbovec
+
                 inst._index = turbovec.IdMapIndex.load(str(tvim_path))
                 inst._ready = True
             except ImportError:
@@ -354,6 +368,7 @@ class FleetTurboVecIndex:
         """Try to create turbovec IdMapIndex; fall back to numpy."""
         try:
             import turbovec
+
             self._index = turbovec.IdMapIndex(
                 dim=self.config.dim,
                 bit_width=self.config.bit_width,
@@ -388,10 +403,16 @@ class FleetTurboVecIndex:
 
         # Apply filter
         if filter_fn is not None:
-            mask = np.array([
-                filter_fn(self._entries.get(aid, TurboVecEntry(agent_id=aid, vector=np.zeros(1))))
-                for aid in self._fallback_ids
-            ])
+            mask = np.array(
+                [
+                    filter_fn(
+                        self._entries.get(
+                            aid, TurboVecEntry(agent_id=aid, vector=np.zeros(1))
+                        )
+                    )
+                    for aid in self._fallback_ids
+                ]
+            )
             sims = np.where(mask, sims, -np.inf)
 
         # Top-k
@@ -413,7 +434,9 @@ class FleetTurboVecIndex:
         ]
         if remaining:
             self._fallback_ids = [aid for aid, _ in remaining]
-            self._fallback_vectors = np.stack([vec for _, vec in remaining]).astype(np.float32)
+            self._fallback_vectors = np.stack([vec for _, vec in remaining]).astype(
+                np.float32
+            )
         else:
             self._fallback_ids = []
             self._fallback_vectors = None
@@ -438,7 +461,9 @@ class FleetTurboVecIndex:
                 "cover": DiversityStrategy.COVER,
                 "ssd": DiversityStrategy.SSD,
             }
-            strategy = strategy_map.get(self.config.diversity_strategy, DiversityStrategy.DPP)
+            strategy = strategy_map.get(
+                self.config.diversity_strategy, DiversityStrategy.DPP
+            )
 
             pop = [
                 PopulationItem(
@@ -462,10 +487,7 @@ class FleetTurboVecIndex:
 
             # Preserve original scores but reorder
             score_map = {aid: score for aid, score, _ in candidates}
-            return [
-                (d.id, score_map.get(d.id, 0.0), 0)
-                for d in diverse
-            ]
+            return [(d.id, score_map.get(d.id, 0.0), 0) for d in diverse]
         except Exception as exc:
             log.warning("Diversity re-rank failed: %s; returning raw candidates", exc)
             return candidates

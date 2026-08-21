@@ -9,6 +9,7 @@ Usage:
     shipper.append({"level": "info", "message": "hello"})
     batch = shipper.flush()  # Returns current batch
 """
+
 from __future__ import annotations
 
 import time

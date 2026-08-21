@@ -115,7 +115,7 @@ Aggregate learning stats:
 ```python
 {
     "count": 42,
-    "mean_ratio": 1.15,    # we tend to under-estimate by 15 %
+    "mean_ratio": 1.15,  # we tend to under-estimate by 15 %
     "median_ratio": 0.98,
 }
 ```

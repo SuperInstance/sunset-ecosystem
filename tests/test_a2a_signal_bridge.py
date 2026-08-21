@@ -72,7 +72,9 @@ class TestSignalMessage:
         assert msg.timestamp
 
     def test_to_dict(self):
-        msg = SignalMessage(sender="A", recipient="B", body={"x": 1}, confidence=ConfidenceScore(0.9))
+        msg = SignalMessage(
+            sender="A", recipient="B", body={"x": 1}, confidence=ConfidenceScore(0.9)
+        )
         d = msg.to_dict()
         assert d["sender"] == "A"
         assert d["confidence"] == 0.9
@@ -189,32 +191,40 @@ class TestConsensusDetector:
     def test_convergence_trend(self):
         detector = ConsensusDetector(similarity_threshold=0.7)
         # First batch: 3 agents, 2 agree (0.67)
-        detector.detect([
-            AgentPosition("A", [0.8, 0.2]),
-            AgentPosition("B", [0.75, 0.25]),
-            AgentPosition("C", [0.1, 0.9]),
-        ])
+        detector.detect(
+            [
+                AgentPosition("A", [0.8, 0.2]),
+                AgentPosition("B", [0.75, 0.25]),
+                AgentPosition("C", [0.1, 0.9]),
+            ]
+        )
         # Second batch: 3 agents, 3 agree (1.0)
-        detector.detect([
-            AgentPosition("A", [0.8, 0.2]),
-            AgentPosition("B", [0.79, 0.21]),
-            AgentPosition("C", [0.78, 0.22]),
-        ])
+        detector.detect(
+            [
+                AgentPosition("A", [0.8, 0.2]),
+                AgentPosition("B", [0.79, 0.21]),
+                AgentPosition("C", [0.78, 0.22]),
+            ]
+        )
         trend = detector.convergence_trend()
         assert trend == "converging"
 
     def test_diverging_trend(self):
         detector = ConsensusDetector(similarity_threshold=0.7)
-        detector.detect([
-            AgentPosition("A", [0.8, 0.2]),
-            AgentPosition("B", [0.79, 0.21]),
-            AgentPosition("C", [0.78, 0.22]),
-        ])
-        detector.detect([
-            AgentPosition("A", [0.8, 0.2]),
-            AgentPosition("B", [0.1, 0.9]),
-            AgentPosition("C", [0.2, 0.8]),
-        ])
+        detector.detect(
+            [
+                AgentPosition("A", [0.8, 0.2]),
+                AgentPosition("B", [0.79, 0.21]),
+                AgentPosition("C", [0.78, 0.22]),
+            ]
+        )
+        detector.detect(
+            [
+                AgentPosition("A", [0.8, 0.2]),
+                AgentPosition("B", [0.1, 0.9]),
+                AgentPosition("C", [0.2, 0.8]),
+            ]
+        )
         trend = detector.convergence_trend()
         assert trend == "diverging"
 
@@ -294,8 +304,10 @@ class TestBranch:
 class TestFork:
     def test_merge_parent_wins(self):
         f = Fork(
-            parent_id="P", child_id="C",
-            inherited_state={"x": 10}, child_state={"x": 20},
+            parent_id="P",
+            child_id="C",
+            inherited_state={"x": 10},
+            child_state={"x": 20},
             conflict_mode=ForkConflictMode.PARENT_WINS,
             result={"x": 30},
         )
@@ -304,8 +316,10 @@ class TestFork:
 
     def test_merge_child_wins(self):
         f = Fork(
-            parent_id="P", child_id="C",
-            inherited_state={"x": 10}, child_state={"x": 20},
+            parent_id="P",
+            child_id="C",
+            inherited_state={"x": 10},
+            child_state={"x": 20},
             conflict_mode=ForkConflictMode.CHILD_WINS,
             result={"x": 30},
         )
@@ -314,8 +328,10 @@ class TestFork:
 
     def test_merge_negotiate(self):
         f = Fork(
-            parent_id="P", child_id="C",
-            inherited_state={"x": 10}, child_state={"x": 20},
+            parent_id="P",
+            child_id="C",
+            inherited_state={"x": 10},
+            child_state={"x": 20},
             conflict_mode=ForkConflictMode.NEGOTIATE,
             result={"x": 30},
             confidence=ConfidenceScore(0.5),
@@ -358,7 +374,9 @@ class TestSharedProgram:
         assert sp.cursors[0].modifications == 1
 
     def test_modify_conflict(self):
-        sp = SharedProgram("test", body=[{"x": 1}, {"x": 2}], state_mode=SharedStateMode.CONFLICT)
+        sp = SharedProgram(
+            "test", body=[{"x": 1}, {"x": 2}], state_mode=SharedStateMode.CONFLICT
+        )
         sp.add_cursor("A")
         sp.add_cursor("B")
         sp.modify("A", 0, {"x": 10})
@@ -367,7 +385,9 @@ class TestSharedProgram:
         assert sp.cursors[1].blocked
 
     def test_modify_merge(self):
-        sp = SharedProgram("test", body=[{"x": 1}, {"x": 2}], state_mode=SharedStateMode.MERGE)
+        sp = SharedProgram(
+            "test", body=[{"x": 1}, {"x": 2}], state_mode=SharedStateMode.MERGE
+        )
         sp.add_cursor("A")
         sp.add_cursor("B")
         assert sp.modify("A", 0, {"x": 10})

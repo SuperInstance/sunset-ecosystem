@@ -39,11 +39,21 @@ class _MockTileType:
 
 
 class _MockTrainingTile:
-    def __init__(self, tile_id: str = "", room: str = "", tile_type: str = "",
-                 state: str = "", lamport: int = 0, name: str = "",
-                 description: str = "", content_hash: str = "",
-                 base_model: str = "", source_room: str = "",
-                 parent_tile: str = "", **kwargs: Any) -> None:
+    def __init__(
+        self,
+        tile_id: str = "",
+        room: str = "",
+        tile_type: str = "",
+        state: str = "",
+        lamport: int = 0,
+        name: str = "",
+        description: str = "",
+        content_hash: str = "",
+        base_model: str = "",
+        source_room: str = "",
+        parent_tile: str = "",
+        **kwargs: Any,
+    ) -> None:
         self.tile_id = tile_id
         self.room = room
         self.tile_type = tile_type
@@ -106,10 +116,12 @@ class TestRoomGridPlatoObserver:
 
     def test_observer_writes_thermal_tile_when_thermal_available(self):
         grid = RoomGrid(n=5)
+
         # Mock thermal manager
         class MockThermal:
             def snapshot(self):
                 return {"cpu_percent": 12.5, "memory_percent": 45.0}
+
         grid.thermal = MockThermal()
 
         bridge = PlatoBridge(room="test-thermal")
@@ -203,7 +215,9 @@ class TestRoomGridPlatoObserver:
 
     def test_invalid_observer_rejected(self):
         grid = RoomGrid(n=5)
+
         class BadObserver:
             pass
+
         with pytest.raises(TypeError):
             grid.attach_plato_observer(BadObserver())

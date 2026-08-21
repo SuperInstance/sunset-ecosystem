@@ -31,6 +31,7 @@ from fleet.spatial_projector import SpatialProjector, WorldState
 @dataclass
 class WorldModelObservation:
     """Observation from the worldmodel for an agent."""
+
     agent_id: str
     position: Tuple[float, ...]
     room_id: str
@@ -47,8 +48,7 @@ class WorldModelObservation:
             "position": list(self.position),
             "room_id": self.room_id,
             "nearby_agents": [
-                {"agent_id": aid, "distance": dist}
-                for aid, dist in self.nearby_agents
+                {"agent_id": aid, "distance": dist} for aid, dist in self.nearby_agents
             ],
             "semantic_features": self.semantic_features,
             "timestamp": self.timestamp,
@@ -74,15 +74,15 @@ class WorldModelProjector:
         """Try to import stable-worldmodel, fall back to mock."""
         try:
             import stable_worldmodel
+
             self.worldmodel = stable_worldmodel
             self.mock_mode = False
         except ImportError:
             self.mock_mode = True
 
-    def initialize_fleet_space(self,
-                                n_rooms: int = 5,
-                                room_size: float = 100.0,
-                                n_agents: int = 10):
+    def initialize_fleet_space(
+        self, n_rooms: int = 5, room_size: float = 100.0, n_agents: int = 10
+    ):
         """Initialize a fleet navigation space with rooms."""
         self.rooms = {}
         for i in range(n_rooms):
@@ -110,10 +110,7 @@ class WorldModelProjector:
         room = self.rooms[room_id]
         base = room["position"]
         size = room["size"]
-        return tuple(
-            base[d] + random.uniform(0, size)
-            for d in range(3)
-        )
+        return tuple(base[d] + random.uniform(0, size) for d in range(3))
 
     def move_agent(self, agent_id: str, delta: Tuple[float, ...]) -> bool:
         """Move an agent by a delta. Returns True if move succeeded."""
@@ -166,7 +163,7 @@ class WorldModelProjector:
         for other_id, other_pos in self.agent_positions.items():
             if other_id == agent_id:
                 continue
-            dist = np.sqrt(sum((pos[d] - other_pos[d])**2 for d in range(len(pos))))
+            dist = np.sqrt(sum((pos[d] - other_pos[d]) ** 2 for d in range(len(pos))))
             if dist < 50.0:  # Perception radius
                 nearby.append((other_id, float(dist)))
 
@@ -181,7 +178,9 @@ class WorldModelProjector:
             position=pos,
             room_id=room_id,
             nearby_agents=nearby[:5],  # Top 5 nearest
-            semantic_features={k: float(v) for k, v in semantics.items() if isinstance(v, (int, float))},
+            semantic_features={
+                k: float(v) for k, v in semantics.items() if isinstance(v, (int, float))
+            },
             timestamp=random.random() * 1000,  # Mock timestamp
         )
 
@@ -189,7 +188,9 @@ class WorldModelProjector:
         """Get observations for all agents."""
         return [self.get_observation(aid) for aid in self.agent_positions]
 
-    def predict_collision(self, agent_id: str, trajectory: List[Tuple[float, ...]]) -> Optional[str]:
+    def predict_collision(
+        self, agent_id: str, trajectory: List[Tuple[float, ...]]
+    ) -> Optional[str]:
         """
         Predict if trajectory collides with another agent.
         Returns agent_id of predicted collision, or None.
@@ -201,7 +202,9 @@ class WorldModelProjector:
             for other_id, other_pos in self.agent_positions.items():
                 if other_id == agent_id:
                     continue
-                dist = np.sqrt(sum((point[d] - other_pos[d])**2 for d in range(len(point))))
+                dist = np.sqrt(
+                    sum((point[d] - other_pos[d]) ** 2 for d in range(len(point)))
+                )
                 if dist < 5.0:  # Collision threshold
                     return other_id
         return None
@@ -234,7 +237,9 @@ class WorldModelProjector:
         """Get all observations as A2A spatial cards."""
         return [obs.to_a2a_spatial_card() for obs in self.get_all_observations()]
 
-    def step(self, actions: Dict[str, Tuple[float, ...]]) -> Dict[str, WorldModelObservation]:
+    def step(
+        self, actions: Dict[str, Tuple[float, ...]]
+    ) -> Dict[str, WorldModelObservation]:
         """
         Execute one step: apply actions, update positions, return observations.
         Simulates a worldmodel step.

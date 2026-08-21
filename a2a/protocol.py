@@ -99,7 +99,9 @@ class A2AAgentCard:
 
     def to_json(self) -> str:
         """RFC 8785 JCS canonicalization (sorted keys, no whitespace)."""
-        return json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        return json.dumps(
+            self.to_dict(), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "A2AAgentCard":
@@ -111,8 +113,12 @@ class A2AAgentCard:
             capabilities=data.get("capabilities", {}),
             skills=data.get("skills", []),
             authentication=data.get("authentication", {}),
-            default_input_content_type=data.get("defaultInputContentType", "application/json"),
-            default_output_content_type=data.get("defaultOutputContentType", "application/json"),
+            default_input_content_type=data.get(
+                "defaultInputContentType", "application/json"
+            ),
+            default_output_content_type=data.get(
+                "defaultOutputContentType", "application/json"
+            ),
         )
 
     @classmethod
@@ -248,7 +254,9 @@ class A2AServer:
         """Create or update a task."""
         task_id = params.get("id") or str(uuid.uuid4())
         session_id = params.get("sessionId", str(uuid.uuid4()))
-        task = A2ATask(id=task_id, session_id=session_id, metadata=params.get("metadata", {}))
+        task = A2ATask(
+            id=task_id, session_id=session_id, metadata=params.get("metadata", {})
+        )
 
         # Store
         self._tasks[task_id] = task
@@ -294,10 +302,14 @@ class A2AServer:
 
     # ── SSE streaming ───────────────────────────────────────
 
-    def register_sse_listener(self, listener: Callable[[str, Dict[str, Any]], None]) -> None:
+    def register_sse_listener(
+        self, listener: Callable[[str, Dict[str, Any]], None]
+    ) -> None:
         self._sse_listeners.append(listener)
 
-    def unregister_sse_listener(self, listener: Callable[[str, Dict[str, Any]], None]) -> None:
+    def unregister_sse_listener(
+        self, listener: Callable[[str, Dict[str, Any]], None]
+    ) -> None:
         try:
             self._sse_listeners.remove(listener)
         except ValueError:
@@ -452,7 +464,9 @@ class A2AProtocolAdapter:
         self._servers[agent_id] = server
         self._identity = identity
 
-        logger.info("Registered A2A agent %s with %d skills", agent_id, len(card.skills))
+        logger.info(
+            "Registered A2A agent %s with %d skills", agent_id, len(card.skills)
+        )
         return card
 
     def get_agent_card(self, agent_id: str) -> A2AAgentCard | None:
@@ -468,6 +482,7 @@ class A2AProtocolAdapter:
 
         Keys: ``agent/cards``, ``tasks/send``, ``tasks/status``, ``tasks/cancel``
         """
+
         # For now, return a generic handler that routes by agent_id
         def _generic_handler(request: Dict[str, Any]) -> Dict[str, Any]:
             agent_id = request.get("agent_id", "default")
@@ -479,10 +494,18 @@ class A2AProtocolAdapter:
             return server.handle_request(request)
 
         return {
-            "/agent/cards": lambda req: _generic_handler({**req, "method": "agent/cards"}),
-            "/tasks/send": lambda req: _generic_handler({**req, "method": "tasks/send"}),
-            "/tasks/status": lambda req: _generic_handler({**req, "method": "tasks/status"}),
-            "/tasks/cancel": lambda req: _generic_handler({**req, "method": "tasks/cancel"}),
+            "/agent/cards": lambda req: _generic_handler(
+                {**req, "method": "agent/cards"}
+            ),
+            "/tasks/send": lambda req: _generic_handler(
+                {**req, "method": "tasks/send"}
+            ),
+            "/tasks/status": lambda req: _generic_handler(
+                {**req, "method": "tasks/status"}
+            ),
+            "/tasks/cancel": lambda req: _generic_handler(
+                {**req, "method": "tasks/cancel"}
+            ),
         }
 
     # ── SSE integration ─────────────────────────────────────
@@ -505,7 +528,9 @@ class A2AProtocolAdapter:
         for server in self._servers.values():
             server.register_sse_listener(_forward_a2a_event)
 
-        logger.info("A2A events wired to SSE dashboard (%d servers)", len(self._servers))
+        logger.info(
+            "A2A events wired to SSE dashboard (%d servers)", len(self._servers)
+        )
 
     # ── fleet conductor integration ─────────────────────────
 
@@ -542,6 +567,7 @@ class A2AProtocolAdapter:
 
         # If conductor has an orchestrate method, wire it
         if hasattr(fleet_conductor, "orchestrate"):
+
             def _conductor_handler(task: A2ATask) -> A2ATask:
                 try:
                     result = fleet_conductor.orchestrate(

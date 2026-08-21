@@ -8,6 +8,7 @@ Usage:
     b64 = enc.base64_encode("hello")
     assert enc.base64_decode(b64) == "hello"
 """
+
 from __future__ import annotations
 
 import base64

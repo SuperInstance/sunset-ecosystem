@@ -14,6 +14,7 @@ from swarm.cellular_gpu import GPUCellularEngine, HAS_CUDA
 # Engine init
 # ---------------------------------------------------------------------------
 
+
 class TestEngineInit:
     def test_default_size(self):
         engine = GPUCellularEngine()
@@ -36,6 +37,7 @@ class TestEngineInit:
 # ---------------------------------------------------------------------------
 # Seeding
 # ---------------------------------------------------------------------------
+
 
 class TestSeeding:
     def test_seed_single(self):
@@ -66,6 +68,7 @@ class TestSeeding:
 # ---------------------------------------------------------------------------
 # Tick (CPU fallback)
 # ---------------------------------------------------------------------------
+
 
 class TestTickCPU:
     def test_tick_empty(self):
@@ -112,6 +115,7 @@ class TestTickCPU:
 # Benchmark
 # ---------------------------------------------------------------------------
 
+
 class TestBenchmark:
     def test_benchmark_runs(self):
         engine = GPUCellularEngine(grid_size=(32, 32))
@@ -133,6 +137,7 @@ class TestBenchmark:
 # ---------------------------------------------------------------------------
 # GPU-specific (skipped if no CUDA)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.skipif(not HAS_CUDA, reason="CUDA not available")
 class TestGPU:
@@ -159,6 +164,7 @@ class TestGPU:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_single_cell_grid(self):

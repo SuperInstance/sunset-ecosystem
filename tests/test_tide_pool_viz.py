@@ -16,9 +16,30 @@ class TestTidePoolSnapshot:
     def test_snapshot_has_all_keys(self):
         viz = TidePoolVisualizer()
         agents = [
-            AgentSnapshot(id="a-001", domain="compiler", fitness=0.82, age_ticks=10, thermal_load=0.4, status="active"),
-            AgentSnapshot(id="a-002", domain="research", fitness=0.91, age_ticks=5, thermal_load=0.6, status="breeding"),
-            AgentSnapshot(id="a-003", domain="compiler", fitness=0.75, age_ticks=20, thermal_load=0.3, status="idle"),
+            AgentSnapshot(
+                id="a-001",
+                domain="compiler",
+                fitness=0.82,
+                age_ticks=10,
+                thermal_load=0.4,
+                status="active",
+            ),
+            AgentSnapshot(
+                id="a-002",
+                domain="research",
+                fitness=0.91,
+                age_ticks=5,
+                thermal_load=0.6,
+                status="breeding",
+            ),
+            AgentSnapshot(
+                id="a-003",
+                domain="compiler",
+                fitness=0.75,
+                age_ticks=20,
+                thermal_load=0.3,
+                status="idle",
+            ),
         ]
         snap = viz.generate_snapshot(
             agents=agents,
@@ -53,7 +74,14 @@ class TestTidePoolSnapshot:
         viz = TidePoolVisualizer()
         # All same domain → diversity = 0
         agents_same = [
-            AgentSnapshot(id=f"a-{i}", domain="compiler", fitness=0.5, age_ticks=1, thermal_load=0.3, status="active")
+            AgentSnapshot(
+                id=f"a-{i}",
+                domain="compiler",
+                fitness=0.5,
+                age_ticks=1,
+                thermal_load=0.3,
+                status="active",
+            )
             for i in range(10)
         ]
         snap_same = viz.generate_snapshot(agents=agents_same, n_rooms=5)
@@ -61,7 +89,14 @@ class TestTidePoolSnapshot:
 
         # Evenly split 4 domains → diversity near 1.0
         agents_mixed = [
-            AgentSnapshot(id=f"a-{i}", domain=["a", "b", "c", "d"][i % 4], fitness=0.5, age_ticks=1, thermal_load=0.3, status="active")
+            AgentSnapshot(
+                id=f"a-{i}",
+                domain=["a", "b", "c", "d"][i % 4],
+                fitness=0.5,
+                age_ticks=1,
+                thermal_load=0.3,
+                status="active",
+            )
             for i in range(40)
         ]
         snap_mixed = viz.generate_snapshot(agents=agents_mixed, n_rooms=5)
@@ -74,8 +109,22 @@ class TestTidePoolHTML:
     def test_html_contains_metrics(self):
         viz = TidePoolVisualizer()
         agents = [
-            AgentSnapshot(id="a-001", domain="compiler", fitness=0.82, age_ticks=10, thermal_load=0.4, status="active"),
-            AgentSnapshot(id="a-002", domain="research", fitness=0.91, age_ticks=5, thermal_load=0.6, status="breeding"),
+            AgentSnapshot(
+                id="a-001",
+                domain="compiler",
+                fitness=0.82,
+                age_ticks=10,
+                thermal_load=0.4,
+                status="active",
+            ),
+            AgentSnapshot(
+                id="a-002",
+                domain="research",
+                fitness=0.91,
+                age_ticks=5,
+                thermal_load=0.6,
+                status="breeding",
+            ),
         ]
         snap = viz.generate_snapshot(agents=agents, n_rooms=10)
         html = viz.render_html(snap)
@@ -87,11 +136,25 @@ class TestTidePoolHTML:
         assert "Mean Fitness" in html
         assert "Diversity" in html
         assert "Chaos" in html
-        assert "thermal" in html.lower() or "cuda" in html.lower() or "device" in html.lower()
+        assert (
+            "thermal" in html.lower()
+            or "cuda" in html.lower()
+            or "device" in html.lower()
+        )
 
     def test_html_contains_hex_grid(self):
         viz = TidePoolVisualizer()
-        agents = [AgentSnapshot(id=f"a-{i}", domain="x", fitness=0.5, age_ticks=1, thermal_load=0.3, status="active") for i in range(20)]
+        agents = [
+            AgentSnapshot(
+                id=f"a-{i}",
+                domain="x",
+                fitness=0.5,
+                age_ticks=1,
+                thermal_load=0.3,
+                status="active",
+            )
+            for i in range(20)
+        ]
         snap = viz.generate_snapshot(agents=agents, n_rooms=16)
         html = viz.render_html(snap)
         assert "hex-grid" in html or "hex" in html
@@ -99,8 +162,22 @@ class TestTidePoolHTML:
     def test_html_contains_top_agents(self):
         viz = TidePoolVisualizer()
         agents = [
-            AgentSnapshot(id="a-001", domain="compiler", fitness=0.82, age_ticks=10, thermal_load=0.4, status="active"),
-            AgentSnapshot(id="a-002", domain="research", fitness=0.91, age_ticks=5, thermal_load=0.6, status="breeding"),
+            AgentSnapshot(
+                id="a-001",
+                domain="compiler",
+                fitness=0.82,
+                age_ticks=10,
+                thermal_load=0.4,
+                status="active",
+            ),
+            AgentSnapshot(
+                id="a-002",
+                domain="research",
+                fitness=0.91,
+                age_ticks=5,
+                thermal_load=0.6,
+                status="breeding",
+            ),
         ]
         snap = viz.generate_snapshot(agents=agents, n_rooms=10)
         html = viz.render_html(snap)
@@ -111,6 +188,7 @@ class TestTidePoolHTML:
         viz = TidePoolVisualizer()
         tpl_path = "sunset-ecosystem/logos/templates/tide_pool.html"
         import os
+
         if os.path.exists(tpl_path):
             html = viz.render_html(template_path=tpl_path)
             assert "Tide Pool" in html
@@ -121,7 +199,17 @@ class TestTidePoolASCII:
 
     def test_ascii_non_empty(self):
         viz = TidePoolVisualizer()
-        agents = [AgentSnapshot(id=f"a-{i}", domain="x", fitness=0.5, age_ticks=1, thermal_load=0.3, status="active") for i in range(5)]
+        agents = [
+            AgentSnapshot(
+                id=f"a-{i}",
+                domain="x",
+                fitness=0.5,
+                age_ticks=1,
+                thermal_load=0.3,
+                status="active",
+            )
+            for i in range(5)
+        ]
         snap = viz.generate_snapshot(agents=agents, n_rooms=4)
         ascii_art = viz.render_ascii(snap)
         assert ascii_art.strip()
@@ -129,7 +217,17 @@ class TestTidePoolASCII:
 
     def test_ascii_contains_agents_and_rooms(self):
         viz = TidePoolVisualizer()
-        agents = [AgentSnapshot(id=f"a-{i}", domain="x", fitness=0.5, age_ticks=1, thermal_load=0.3, status="active") for i in range(5)]
+        agents = [
+            AgentSnapshot(
+                id=f"a-{i}",
+                domain="x",
+                fitness=0.5,
+                age_ticks=1,
+                thermal_load=0.3,
+                status="active",
+            )
+            for i in range(5)
+        ]
         snap = viz.generate_snapshot(agents=agents, n_rooms=4)
         ascii_art = viz.render_ascii(snap)
         assert "Agents" in ascii_art
@@ -137,7 +235,16 @@ class TestTidePoolASCII:
 
     def test_ascii_contains_thermal(self):
         viz = TidePoolVisualizer()
-        agents = [AgentSnapshot(id="a-001", domain="x", fitness=0.5, age_ticks=1, thermal_load=0.3, status="active")]
+        agents = [
+            AgentSnapshot(
+                id="a-001",
+                domain="x",
+                fitness=0.5,
+                age_ticks=1,
+                thermal_load=0.3,
+                status="active",
+            )
+        ]
         snap = viz.generate_snapshot(
             agents=agents, n_rooms=2, thermal_state={"cuda:0": 0.6}
         )
@@ -151,15 +258,36 @@ class TestTidePoolTick:
     def test_snapshot_updates_after_tick(self):
         viz = TidePoolVisualizer()
         agents_v1 = [
-            AgentSnapshot(id="a-001", domain="compiler", fitness=0.80, age_ticks=1, thermal_load=0.3, status="active"),
+            AgentSnapshot(
+                id="a-001",
+                domain="compiler",
+                fitness=0.80,
+                age_ticks=1,
+                thermal_load=0.3,
+                status="active",
+            ),
         ]
         snap1 = viz.generate_snapshot(agents=agents_v1, n_rooms=4)
         assert snap1.n_agents == 1
         assert snap1.mean_fitness == 0.8
 
         agents_v2 = [
-            AgentSnapshot(id="a-001", domain="compiler", fitness=0.80, age_ticks=1, thermal_load=0.3, status="active"),
-            AgentSnapshot(id="a-002", domain="research", fitness=0.95, age_ticks=1, thermal_load=0.5, status="active"),
+            AgentSnapshot(
+                id="a-001",
+                domain="compiler",
+                fitness=0.80,
+                age_ticks=1,
+                thermal_load=0.3,
+                status="active",
+            ),
+            AgentSnapshot(
+                id="a-002",
+                domain="research",
+                fitness=0.95,
+                age_ticks=1,
+                thermal_load=0.5,
+                status="active",
+            ),
         ]
         snap2 = viz.generate_snapshot(agents=agents_v2, n_rooms=4)
         assert snap2.n_agents == 2
@@ -176,7 +304,14 @@ class TestTidePoolTick:
         def source():
             return {
                 "agents": [
-                    AgentSnapshot(id=f"a-{len(ticks)}", domain="x", fitness=0.5, age_ticks=1, thermal_load=0.3, status="active")
+                    AgentSnapshot(
+                        id=f"a-{len(ticks)}",
+                        domain="x",
+                        fitness=0.5,
+                        age_ticks=1,
+                        thermal_load=0.3,
+                        status="active",
+                    )
                 ],
                 "n_rooms": 4,
             }
@@ -190,9 +325,22 @@ class TestTidePoolTick:
 
     def test_chaos_rises_with_errors(self):
         viz = TidePoolVisualizer()
-        agents = [AgentSnapshot(id="a-001", domain="x", fitness=0.5, age_ticks=1, thermal_load=0.3, status="active")]
-        snap_normal = viz.generate_snapshot(agents=agents, n_rooms=2, recent_events=[{"type": "info", "message": "ok"}])
+        agents = [
+            AgentSnapshot(
+                id="a-001",
+                domain="x",
+                fitness=0.5,
+                age_ticks=1,
+                thermal_load=0.3,
+                status="active",
+            )
+        ]
+        snap_normal = viz.generate_snapshot(
+            agents=agents, n_rooms=2, recent_events=[{"type": "info", "message": "ok"}]
+        )
         snap_chaos = viz.generate_snapshot(
-            agents=agents, n_rooms=2, recent_events=[{"type": "error", "message": "boom"}]
+            agents=agents,
+            n_rooms=2,
+            recent_events=[{"type": "error", "message": "boom"}],
         )
         assert snap_chaos.chaos_level >= snap_normal.chaos_level

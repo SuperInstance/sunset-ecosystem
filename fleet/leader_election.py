@@ -11,6 +11,7 @@ Usage:
     election.heartbeat()
     election.step_down()
 """
+
 from __future__ import annotations
 
 import time

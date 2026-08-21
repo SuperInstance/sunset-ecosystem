@@ -13,6 +13,7 @@ Coverage
 - Dream archive size limits
 - Edge cases (no dreams, archive full, always busy)
 """
+
 from __future__ import annotations
 
 import time
@@ -34,6 +35,7 @@ from swarm.breeding_kernel import BreedingKernel, BreedingEvent
 
 
 # ── Helpers ─────────────────────────────────────────────────────
+
 
 class MockSelector:
     def select(self, population, n):
@@ -86,6 +88,7 @@ def dreaming_loop(small_archive, mock_kernel):
 
 # ── Dream dataclass tests ───────────────────────────────────────
 
+
 class TestDream:
     def test_dream_creation(self):
         d = Dream(tags=["a", "b"], hypothesis="test")
@@ -122,6 +125,7 @@ class TestDream:
 
 # ── IdleDetector tests ──────────────────────────────────────────
 
+
 class TestIdleDetector:
     def test_time_since_last_task_idle(self):
         detector = TimeSinceLastTaskIdleDetector(threshold_ms=100)
@@ -143,6 +147,7 @@ class TestIdleDetector:
 
 
 # ── DreamArchive tests ──────────────────────────────────────────
+
 
 class TestDreamArchive:
     def test_add_and_get(self):
@@ -216,6 +221,7 @@ class TestDreamArchive:
 
 # ── HypothesisGenerator tests ───────────────────────────────────
 
+
 class TestHypothesisGenerator:
     def test_generate_from_memory(self):
         gen = HypothesisGenerator(seed=42)
@@ -241,6 +247,7 @@ class TestHypothesisGenerator:
 
 
 # ── DreamMatcher tests ──────────────────────────────────────────
+
 
 class TestDreamMatcher:
     def test_match_exact(self):
@@ -274,6 +281,7 @@ class TestDreamMatcher:
 
 
 # ── DreamingLoop tests ──────────────────────────────────────────
+
 
 class TestDreamingLoop:
     def test_sense_idle_true(self, dreaming_loop):
@@ -310,7 +318,9 @@ class TestDreamingLoop:
             kernel=None,
             idle_detector=AlwaysIdleIdleDetector(),
         )
-        dream = Dream(tags=["spectral", "hamiltonian"], population_size=10, generations=5)
+        dream = Dream(
+            tags=["spectral", "hamiltonian"], population_size=10, generations=5
+        )
         completed = loop.act_execute(dream)
         assert completed.best_fitness >= 0.0
         assert completed.best_fitness <= 1.0
@@ -341,7 +351,9 @@ class TestDreamingLoop:
 
     def test_find_dream_for_task(self, dreaming_loop):
         # Seed archive with a dream
-        dreaming_loop.archive.add(Dream(dream_id="d1", tags=["hamiltonian", "pythagorean"]))
+        dreaming_loop.archive.add(
+            Dream(dream_id="d1", tags=["hamiltonian", "pythagorean"])
+        )
         result = dreaming_loop.find_dream_for_task(["hamiltonian", "pythagorean"])
         assert result is not None
         dream, score = result
@@ -377,6 +389,7 @@ class TestDreamingLoop:
         pop = dreaming_loop._make_population(5)
         assert len(pop) == 5
         from swarm.breeding_kernel import Genome
+
         assert all(isinstance(p, Genome) for p in pop)
 
     def test_idle_threshold_config(self):
@@ -414,6 +427,7 @@ class TestDreamingLoop:
 
 
 # ── Integration-style tests ─────────────────────────────────────
+
 
 class TestDreamingLoopIntegration:
     def test_end_to_end_dream_and_reuse(self, mock_kernel):

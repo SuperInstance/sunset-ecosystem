@@ -167,6 +167,7 @@ class TestDistillationSignalJEPA:
             else:
                 emb[1] = 1.0
             return emb
+
         jepa = JEPASignalSource(encoder=encoder)
         ds = DistillationSignal(jepa_source=jepa)
         room = np.array([0.9, 0.1] + [0.0] * 62, dtype=np.float32)

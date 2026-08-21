@@ -19,6 +19,7 @@ from swarm.flux_gating import (
 
 # ── Fixtures ────────────────────────────────────────────────
 
+
 @pytest.fixture
 def config():
     return FluxGatingConfig(
@@ -49,6 +50,7 @@ def extreme_weights():
 
 
 # ── PythonFluxFallback unit tests ───────────────────────────
+
 
 class TestPythonFluxFallback:
     """Direct tests for the pure-Python backend."""
@@ -129,6 +131,7 @@ class TestPythonFluxFallback:
 
 # ── FluxGatingChecker API tests ─────────────────────────────
 
+
 class TestFluxGatingChecker:
     """Tests for the public checker API (always uses Python fallback here)."""
 
@@ -160,16 +163,12 @@ class TestFluxGatingChecker:
 
     def test_score_for_breeding_bad_parent_penalizes(self, checker, zero_weights):
         bad = np.full(64, 100.0, dtype=np.float32)
-        score = checker.score_for_breeding(
-            zero_weights, bad, chaos_a=0.1, chaos_b=0.1
-        )
+        score = checker.score_for_breeding(zero_weights, bad, chaos_a=0.1, chaos_b=0.1)
         assert score < 0.5  # one parent fails → 0.5 penalty
 
     def test_score_for_breeding_both_bad(self, checker):
         bad = np.full(64, 100.0, dtype=np.float32)
-        score = checker.score_for_breeding(
-            bad, bad, chaos_a=0.99, chaos_b=0.99
-        )
+        score = checker.score_for_breeding(bad, bad, chaos_a=0.99, chaos_b=0.99)
         assert score == 0.0  # worst case
 
     def test_get_violating_rooms(self, checker):
@@ -195,6 +194,7 @@ class TestFluxGatingChecker:
 
 
 # ── Edge-case tests ─────────────────────────────────────────
+
 
 class TestEdgeCases:
     """Boundary and stress tests."""
@@ -255,11 +255,16 @@ class TestEdgeCases:
 
 # ── BreederDaemonV2 integration tests ───────────────────────
 
+
 class TestBreederIntegration:
     """Verify the gating module can be attached to BreederDaemonV2."""
 
     def test_attach_flux_gating(self):
-        from swarm.breeder_daemon_v2 import BreederDaemonV2, DiversityConfig, ThermalConfig
+        from swarm.breeder_daemon_v2 import (
+            BreederDaemonV2,
+            DiversityConfig,
+            ThermalConfig,
+        )
         from nerve.room_grid import RoomGrid
         from swarm.thermal import ThermalBudget, DeviceType
 
@@ -312,10 +317,14 @@ class TestBreederIntegration:
 
 # ── Additional integration tests from fleet-aware main branch ──────
 
+
 class TestBreederWiresGatingInCycle:
-    @pytest.mark.xfail(reason="BreederDaemonV2 integration stub — cycle does not call flux checker yet")
+    @pytest.mark.xfail(
+        reason="BreederDaemonV2 integration stub — cycle does not call flux checker yet"
+    )
     def test_cycle_calls_flux_check(self, grid, thermal):
         from swarm.breeder_daemon_v2 import BreederDaemonV2
+
         config = FluxGatingConfig()
         breeder = BreederDaemonV2(
             grid=grid,
@@ -336,11 +345,16 @@ class TestBreederWiresGatingInCycle:
         # Verify that the checker was invoked
         assert checker.stats["checks"] > 0
 
-    @pytest.mark.xfail(reason="BreederDaemonV2 integration stub — cycle does not call flux checker yet")
+    @pytest.mark.xfail(
+        reason="BreederDaemonV2 integration stub — cycle does not call flux checker yet"
+    )
     def test_cycle_uses_flux_config(self, grid, thermal):
         from swarm.breeder_daemon_v2 import BreederDaemonV2
+
         config = FluxGatingConfig(max_violations_per_cycle=1, weight_bounds=(0.0, 0.01))
-        breeder = BreederDaemonV2(grid=grid, thermal=thermal, wal_path=":memory:", flux_config=config)
+        breeder = BreederDaemonV2(
+            grid=grid, thermal=thermal, wal_path=":memory:", flux_config=config
+        )
         checker = PythonFluxFallback(config)
         breeder.attach_flux_gating(checker)
         for _ in range(10):

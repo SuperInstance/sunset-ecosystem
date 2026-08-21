@@ -17,7 +17,7 @@ class TestMetricSample:
     def test_to_prometheus_with_labels(self):
         s = MetricSample(name="test", value=1.0, timestamp=0.0, labels={"node": "n1"})
         line = s.to_prometheus()
-        assert "node=\"n1\"" in line
+        assert 'node="n1"' in line
 
     def test_to_otel(self):
         s = MetricSample(name="test", value=1.0, timestamp=0.0)

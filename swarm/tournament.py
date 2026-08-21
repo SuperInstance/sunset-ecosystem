@@ -33,13 +33,18 @@ class AgentScore:
         pathos: Emotional resonance score [0, 1].
         logos: Logical relevance score [0, 1].
     """
+
     agent_id: str
     ethos: float
     pathos: float
     logos: float
 
     def __post_init__(self) -> None:
-        for name, val in [("ethos", self.ethos), ("pathos", self.pathos), ("logos", self.logos)]:
+        for name, val in [
+            ("ethos", self.ethos),
+            ("pathos", self.pathos),
+            ("logos", self.logos),
+        ]:
             if not (0.0 <= val <= 1.0):
                 raise ValueError(f"{name} must be in [0, 1], got {val}")
 
@@ -69,6 +74,7 @@ class TournamentMatch:
         scores: Mapping of agent_id → composite score for this matchup.
         winner: ID of the winning agent (set after resolution).
     """
+
     agent_a: str
     agent_b: str
     scores: dict[str, float] = field(default_factory=dict)
@@ -99,6 +105,7 @@ class TournamentResult:
         scores: The agent's trinity scores.
         rank: Final rank (1 = best).
     """
+
     agent_id: str
     wins: int = 0
     losses: int = 0
@@ -259,14 +266,16 @@ def breed(
         parent = winners[0] if winners else None
         children: list[dict[str, Any]] = []
         for _ in range(num_children):
-            children.append({
-                "id": uuid.uuid4().hex[:12],
-                "parent_a": parent.agent_id if parent else None,
-                "parent_b": None,
-                "ethos": _mutate(parent.ethos if parent else 0.5),
-                "pathos": _mutate(parent.pathos if parent else 0.5),
-                "logos": _mutate(parent.logos if parent else 0.5),
-            })
+            children.append(
+                {
+                    "id": uuid.uuid4().hex[:12],
+                    "parent_a": parent.agent_id if parent else None,
+                    "parent_b": None,
+                    "ethos": _mutate(parent.ethos if parent else 0.5),
+                    "pathos": _mutate(parent.pathos if parent else 0.5),
+                    "logos": _mutate(parent.logos if parent else 0.5),
+                }
+            )
         return children
 
     children = []

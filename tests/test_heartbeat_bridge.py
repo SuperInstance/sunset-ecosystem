@@ -44,7 +44,9 @@ class TestHeartbeat:
 
     def test_discover_rooms_mock(self):
         hb = Heartbeat(plato_url="http://test:8080")
-        hb._fetch_fn = lambda url, timeout: {"tiles": [{"question": "room: fleet-coord room: test-room"}]}
+        hb._fetch_fn = lambda url, timeout: {
+            "tiles": [{"question": "room: fleet-coord room: test-room"}]
+        }
         rooms = hb.discover_rooms()
         assert "fleet-coord" in rooms
         assert "test-room" in rooms
@@ -59,9 +61,19 @@ class TestHeartbeat:
         hb = Heartbeat(plato_url="http://test:8080")
         hb._fetch_fn = lambda url, timeout: {
             "tiles": [
-                {"tile_id": "t1", "question": "TASK: build bridge", "source": "FM", "answer": "do it"},
+                {
+                    "tile_id": "t1",
+                    "question": "TASK: build bridge",
+                    "source": "FM",
+                    "answer": "do it",
+                },
                 {"tile_id": "t2", "question": "hello", "source": "O1", "answer": "hi"},
-                {"tile_id": "t3", "question": "→O1: fix bug", "source": "JC1", "answer": ""},
+                {
+                    "tile_id": "t3",
+                    "question": "→O1: fix bug",
+                    "source": "JC1",
+                    "answer": "",
+                },
             ]
         }
         tasks = hb.find_tasks(rooms=["fleet-coord"])
@@ -72,7 +84,9 @@ class TestHeartbeat:
     def test_find_tasks_acks(self):
         hb = Heartbeat(plato_url="http://test:8080")
         hb._fetch_fn = lambda url, timeout: {
-            "tiles": [{"tile_id": "t1", "question": "TASK: x", "source": "FM", "answer": ""}]
+            "tiles": [
+                {"tile_id": "t1", "question": "TASK: x", "source": "FM", "answer": ""}
+            ]
         }
         hb.ack("t1")
         tasks = hb.find_tasks(rooms=["fleet-coord"])
@@ -100,7 +114,14 @@ class TestHeartbeat:
     def test_run_with_tasks(self):
         hb = Heartbeat(plato_url="http://test:8080")
         hb._fetch_fn = lambda url, timeout: {
-            "tiles": [{"tile_id": "t1", "question": "TASK: build", "source": "FM", "answer": ""}]
+            "tiles": [
+                {
+                    "tile_id": "t1",
+                    "question": "TASK: build",
+                    "source": "FM",
+                    "answer": "",
+                }
+            ]
         }
         report = hb.run()
         assert "1 new task" in report

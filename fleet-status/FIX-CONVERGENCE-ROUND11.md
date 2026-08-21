@@ -27,21 +27,21 @@ A stateful guard that **tracks diversity trends across merge rounds** and escala
 class ConvergenceGuard:
     """
     Stateful diversity monitor for CRDT-HDC merge rounds.
-    
+
     Tracks population diversity and avg-max-similarity over time.
     If diversity drops below a threshold for `N_CONSECUTIVE` rounds,
     triggers emergency responses to re-inject variance.
     """
 
-    DIVERSITY_THRESHOLD = 0.30      # minimum acceptable diversity
-    MAX_SIM_THRESHOLD = 0.70       # maximum acceptable similarity
-    N_CONSECUTIVE = 3              # rounds of decline before emergency
-    EMERGENCY_COOLDOWN = 5         # rounds between emergency triggers
+    DIVERSITY_THRESHOLD = 0.30  # minimum acceptable diversity
+    MAX_SIM_THRESHOLD = 0.70  # maximum acceptable similarity
+    N_CONSECUTIVE = 3  # rounds of decline before emergency
+    EMERGENCY_COOLDOWN = 5  # rounds between emergency triggers
 
     def __init__(self):
-        self.diversity_history = []      # float[] per round
-        self.max_sim_history = []      # float[] per round
-        self.decline_streak = 0        # consecutive rounds below threshold
+        self.diversity_history = []  # float[] per round
+        self.max_sim_history = []  # float[] per round
+        self.decline_streak = 0  # consecutive rounds below threshold
         self.last_emergency_round = -self.EMERGENCY_COOLDOWN
         self.round_counter = 0
 
@@ -54,8 +54,9 @@ class ConvergenceGuard:
         self.max_sim_history.append(max_sim)
 
         # Check convergence condition
-        converging = (diversity < self.DIVERSITY_THRESHOLD or 
-                      max_sim > self.MAX_SIM_THRESHOLD)
+        converging = (
+            diversity < self.DIVERSITY_THRESHOLD or max_sim > self.MAX_SIM_THRESHOLD
+        )
 
         if converging:
             self.decline_streak += 1
@@ -64,7 +65,9 @@ class ConvergenceGuard:
 
         # Emergency trigger
         if self.decline_streak >= self.N_CONSECUTIVE:
-            if (self.round_counter - self.last_emergency_round) >= self.EMERGENCY_COOLDOWN:
+            if (
+                self.round_counter - self.last_emergency_round
+            ) >= self.EMERGENCY_COOLDOWN:
                 self.last_emergency_round = self.round_counter
                 return self._emergency_response()
 
@@ -77,11 +80,17 @@ class ConvergenceGuard:
         2. EMERGENCY_MUTATE (second trigger)
         3. EXPAND_POPULATION (third trigger)
         """
-        trigger_count = sum(1 for r in self.diversity_history 
-                           if r < self.DIVERSITY_THRESHOLD) // self.N_CONSECUTIVE
+        trigger_count = (
+            sum(1 for r in self.diversity_history if r < self.DIVERSITY_THRESHOLD)
+            // self.N_CONSECUTIVE
+        )
 
         if trigger_count == 1:
-            return {"action": "CROSS_SHIP_INJECTION", "n_agents": 2, "source": "distant_ship"}
+            return {
+                "action": "CROSS_SHIP_INJECTION",
+                "n_agents": 2,
+                "source": "distant_ship",
+            }
         elif trigger_count == 2:
             return {"action": "EMERGENCY_MUTATE", "pct_rebirth": 0.20}
         else:
@@ -106,7 +115,7 @@ def emergency_mutate(ship, pct=0.20, mutation_sigma=0.5):
             id=next_id(),
             vector=new_vec,
             fitness=ship._raw_fitness(new_vec),
-            generation=0  # reset generation — fresh blood
+            generation=0,  # reset generation — fresh blood
         )
     ship.agents.sort(key=lambda a: a.fitness, reverse=True)
 ```
@@ -125,14 +134,14 @@ def cross_ship_injection(target_ship, source_ship_registry, n=2):
     distant_ship = select_distant_ship(
         registry=source_ship_registry,
         exclude=[target_ship.last_merge_partner],
-        min_genetic_distance=0.6  # ensure real difference
+        min_genetic_distance=0.6,  # ensure real difference
     )
     imports = distant_ship.top(n)
     # Inject without HDC filter — these are explicitly meant to be foreign
     target_ship.agents.extend(imports)
     # Expand population temporarily, or replace weakest
     target_ship.agents.sort(key=lambda a: a.fitness)
-    target_ship.agents = target_ship.agents[len(imports):]  # drop weakest
+    target_ship.agents = target_ship.agents[len(imports) :]  # drop weakest
     target_ship.agents.sort(key=lambda a: a.fitness, reverse=True)
     target_ship.last_merge_partner = distant_ship.name
 ```
@@ -154,12 +163,14 @@ def expand_population(ship, pct=0.10):
     # Alternatively: spawn random agents to fill immediately
     for _ in range(n_new):
         new_vec = ship.np_rng.randn(ship.dim).astype(np.float32)
-        ship.agents.append(Agent(
-            id=next_id(),
-            vector=new_vec,
-            fitness=ship._raw_fitness(new_vec),
-            generation=0
-        ))
+        ship.agents.append(
+            Agent(
+                id=next_id(),
+                vector=new_vec,
+                fitness=ship._raw_fitness(new_vec),
+                generation=0,
+            )
+        )
 ```
 
 **Effect:** Reduces selection pressure per agent. More breathing room in the population.
@@ -173,13 +184,12 @@ The guard wraps the merge operation:
 def guarded_merge(ship_a, ship_b, guard: ConvergenceGuard):
     # Step 1: Perform HDC-filtered merge (Round 10 baseline)
     merged_ship = hdc_merge(ship_a, ship_b)  # rejects >0.5 similarity
-    
+
     # Step 2: Record state with guard
     action = guard.record(
-        diversity=merged_ship.diversity(),
-        max_sim=merged_ship.max_sim()
+        diversity=merged_ship.diversity(), max_sim=merged_ship.max_sim()
     )
-    
+
     # Step 3: Escalate if needed
     if action["action"] == "CROSS_SHIP_INJECTION":
         cross_ship_injection(merged_ship, fleet_registry, n=2)
@@ -187,7 +197,7 @@ def guarded_merge(ship_a, ship_b, guard: ConvergenceGuard):
         emergency_mutate(merged_ship, pct=0.20)
     elif action["action"] == "EXPAND_POPULATION":
         expand_population(merged_ship, pct=0.10)
-    
+
     return merged_ship, action
 ```
 

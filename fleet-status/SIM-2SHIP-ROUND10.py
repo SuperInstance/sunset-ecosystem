@@ -11,6 +11,7 @@ import random
 
 # ── helpers ──────────────────────────────────────────────────────────
 
+
 def cosine_distance(u, v):
     """Return cosine distance = 1 - cosine similarity."""
     dot = np.dot(u, v)
@@ -54,6 +55,7 @@ def avg_max_similarity(agents):
 
 # ── agent & ship ─────────────────────────────────────────────────────
 
+
 class Agent:
     def __init__(self, agent_id, vector, fitness, generation=0):
         self.id = agent_id
@@ -84,7 +86,7 @@ class Ship:
 
     def _raw_fitness(self, vector):
         """Simple synthetic fitness: sum of squares with a bias term."""
-        return float(np.sum(vector ** 2) + 0.5 * np.sum(vector))
+        return float(np.sum(vector**2) + 0.5 * np.sum(vector))
 
     def breed_round(self, mutation_sigma=0.3):
         """One breeding round: tournament select parents, mutate, replace weakest."""
@@ -100,11 +102,17 @@ class Ship:
 
         # Crossover: average + noise
         child_vec = (parents[0].vector + parents[1].vector) / 2.0
-        child_vec += self.np_rng.normal(0, mutation_sigma, size=child_vec.shape).astype(np.float32)
+        child_vec += self.np_rng.normal(0, mutation_sigma, size=child_vec.shape).astype(
+            np.float32
+        )
         child_fitness = self._raw_fitness(child_vec)
         Ship._id_counter += 1
-        child = Agent(Ship._id_counter, child_vec, child_fitness,
-                      generation=max(p.generation for p in parents) + 1)
+        child = Agent(
+            Ship._id_counter,
+            child_vec,
+            child_fitness,
+            generation=max(p.generation for p in parents) + 1,
+        )
 
         # Replace weakest agent
         self.agents[-1] = child
@@ -121,10 +129,13 @@ class Ship:
         return avg_max_similarity(self.agents)
 
     def __repr__(self):
-        return f"Ship({self.name}, agents={len(self.agents)}, div={self.diversity():.4f})"
+        return (
+            f"Ship({self.name}, agents={len(self.agents)}, div={self.diversity():.4f})"
+        )
 
 
 # ── simulation ─────────────────────────────────────────────────────────
+
 
 def run_simulation():
     print("=" * 60)
@@ -145,8 +156,12 @@ def run_simulation():
         ship_a.breed_round()
         ship_b.breed_round()
         if rnd == 1 or rnd == 5:
-            print(f"\n[Round {rnd}] A diversity: {ship_a.diversity():.4f}, max_sim: {ship_a.max_sim():.4f}")
-            print(f"[Round {rnd}] B diversity: {ship_b.diversity():.4f}, max_sim: {ship_b.max_sim():.4f}")
+            print(
+                f"\n[Round {rnd}] A diversity: {ship_a.diversity():.4f}, max_sim: {ship_a.max_sim():.4f}"
+            )
+            print(
+                f"[Round {rnd}] B diversity: {ship_b.diversity():.4f}, max_sim: {ship_b.max_sim():.4f}"
+            )
 
     pre_div_a = ship_a.diversity()
     pre_div_b = ship_b.diversity()
@@ -178,7 +193,9 @@ def run_simulation():
     print(f"  Pre-merge  avg_max_sim: {pre_maxsim_a:.4f}")
     print(f"  Post-merge avg_max_sim: {post_maxsim_naive:.4f}")
 
-    naive_monoculture_risk = post_maxsim_naive > pre_maxsim_a or post_div_naive < pre_div_a
+    naive_monoculture_risk = (
+        post_maxsim_naive > pre_maxsim_a or post_div_naive < pre_div_a
+    )
     print(f"  Monoculture risk increased? {'YES' if naive_monoculture_risk else 'NO'}")
 
     # 4. HDC-GUARDED MERGE — test multiple thresholds
@@ -213,12 +230,20 @@ def run_simulation():
         print(f"  Post-merge diversity:   {div:.4f}")
         print(f"  Post-merge avg_max_sim: {ms:.4f}")
         print(f"  Prevented monoculture? {'YES' if prevented else 'NO'}")
-        return {"threshold": threshold, "accepted": len(accepted), "rejected": len(rejected),
-                "post_div": div, "post_maxsim": ms, "prevented": prevented}
+        return {
+            "threshold": threshold,
+            "accepted": len(accepted),
+            "rejected": len(rejected),
+            "post_div": div,
+            "post_maxsim": ms,
+            "prevented": prevented,
+        }
 
     # As requested: test 0.8 (loose) and 0.35 (strict)
     hdc_loose = run_hdc_guard(ship_a.agents, top_b, threshold=0.8, label="loose (0.8)")
-    hdc_strict = run_hdc_guard(ship_a.agents, top_b, threshold=0.35, label="strict (0.35)")
+    hdc_strict = run_hdc_guard(
+        ship_a.agents, top_b, threshold=0.35, label="strict (0.35)"
+    )
 
     # ── summary ──────────────────────────────────────────────────────
     print(f"\n{'=' * 60}")
@@ -228,9 +253,15 @@ def run_simulation():
     print(f"HDC loose (0.8) prevented it:            {hdc_loose['prevented']}")
     print(f"HDC strict (0.35) prevented it:          {hdc_strict['prevented']}")
     print(f"\nKey insight:")
-    if naive_monoculture_risk and not hdc_loose['prevented'] and hdc_strict['prevented']:
+    if (
+        naive_monoculture_risk
+        and not hdc_loose["prevented"]
+        and hdc_strict["prevented"]
+    ):
         print("  CRDT merge needs a TIGHT diversity guard. Loose threshold (0.8) is")
-        print("  useless — it lets everything through. Strict threshold (0.35) actually")
+        print(
+            "  useless — it lets everything through. Strict threshold (0.35) actually"
+        )
         print("  rejects similar agents and preserves population diversity.")
         conclusion = "PASS — CRDT merge needs strict HDC guards"
     else:

@@ -9,6 +9,7 @@ Usage:
     rotator.write("app.log", "log line\n")
     rotator.rotate("app.log")
 """
+
 from __future__ import annotations
 
 import gzip

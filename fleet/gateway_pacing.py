@@ -33,9 +33,9 @@ from typing import Any
 
 
 class State(Enum):
-    OPEN = auto()       # Normal operation — dispatches allowed
+    OPEN = auto()  # Normal operation — dispatches allowed
     HALF_OPEN = auto()  # Probing — 1 dispatch every 30s
-    CLOSED = auto()     # Circuit broken — dispatches blocked
+    CLOSED = auto()  # Circuit broken — dispatches blocked
 
 
 @dataclass
@@ -67,7 +67,7 @@ class GatewayPacing:
     def __init__(
         self,
         max_consecutive_timeouts: int = 2,
-        linear_backoff_max: float = 300.0,        # 5min
+        linear_backoff_max: float = 300.0,  # 5min
         exponential_backoff_max: float = 1200.0,  # 20min
         half_open_probe_interval: float = 30.0,
         successes_to_reopen: int = 3,
@@ -111,10 +111,7 @@ class GatewayPacing:
                     elapsed = now - self._last_probe_time
                     if elapsed < self._half_open_probe_interval:
                         wait = self._half_open_probe_interval - elapsed
-                        return False, (
-                            f"HALF_OPEN — probe throttled; "
-                            f"wait {wait:.1f}s"
-                        )
+                        return False, (f"HALF_OPEN — probe throttled; wait {wait:.1f}s")
                 self._last_probe_time = now
                 self._half_open_probes_sent += 1
                 self._log(
@@ -127,8 +124,7 @@ class GatewayPacing:
             # CLOSED
             backoff_remaining = self._backoff_remaining(now)
             return False, (
-                f"CLOSED — circuit open; "
-                f"backoff {backoff_remaining:.1f}s remaining"
+                f"CLOSED — circuit open; backoff {backoff_remaining:.1f}s remaining"
             )
 
     def record_success(self) -> None:
@@ -237,7 +233,7 @@ class GatewayPacing:
             # Each additional timeout doubles beyond the linear cap
             extra_timeouts = ct - int(self._linear_backoff_max / 30.0)
             exponential = min(
-                (2 ** extra_timeouts) * 30.0,
+                (2**extra_timeouts) * 30.0,
                 self._exponential_backoff_max - self._linear_backoff_max,
             )
             return self._linear_backoff_max + exponential
@@ -254,4 +250,4 @@ class GatewayPacing:
     def _log(self, timestamp: float, event: str, detail: str = "") -> None:
         self._history.append(_HistoryEntry(timestamp, event, detail))
         if len(self._history) > self._history_limit:
-            self._history = self._history[-self._history_limit:]
+            self._history = self._history[-self._history_limit :]

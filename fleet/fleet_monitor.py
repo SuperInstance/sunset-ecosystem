@@ -13,10 +13,10 @@ Usage:
     monitor = FleetMonitor()
     monitor.register_node("node1", table1, storage1, hnsw1)
     monitor.register_node("node2", table2, storage2, hnsw2)
-    
+
     # Get fleet-wide health report
     report = monitor.health_report()
-    
+
     # Check alerts
     alerts = monitor.check_alerts()
     for alert in alerts:
@@ -127,7 +127,9 @@ class FleetMonitor:
         total_entries = sum(r.table_entries for r in node_reports.values())
         total_hot = sum(r.hot_entries for r in node_reports.values())
         avg_hit_rate = np.mean([r.cache_hit_rate for r in node_reports.values()])
-        avg_accuracy = np.mean([r.cache_prediction_accuracy for r in node_reports.values()])
+        avg_accuracy = np.mean(
+            [r.cache_prediction_accuracy for r in node_reports.values()]
+        )
         hnsw_nodes = sum(1 for r in node_reports.values() if r.hnsw_available)
 
         return {
@@ -220,70 +222,85 @@ class FleetMonitor:
 
         # HNSW coverage or availability (only if hnsw is registered)
         if health.has_hnsw and not health.hnsw_available:
-            alerts.append(Alert(
-                level=AlertLevel.WARNING,
-                node_id=health.node_id,
-                component="hnsw",
-                message="HNSW not available (C++ extension not compiled)",
-                metric=0.0,
-                threshold=self.hnsw_coverage_threshold,
-            ))
+            alerts.append(
+                Alert(
+                    level=AlertLevel.WARNING,
+                    node_id=health.node_id,
+                    component="hnsw",
+                    message="HNSW not available (C++ extension not compiled)",
+                    metric=0.0,
+                    threshold=self.hnsw_coverage_threshold,
+                )
+            )
         elif health.has_hnsw and health.hnsw_coverage < self.hnsw_coverage_threshold:
-            alerts.append(Alert(
-                level=AlertLevel.WARNING,
-                node_id=health.node_id,
-                component="hnsw",
-                message=f"HNSW coverage {health.hnsw_coverage:.2f} below threshold",
-                metric=health.hnsw_coverage,
-                threshold=self.hnsw_coverage_threshold,
-            ))
+            alerts.append(
+                Alert(
+                    level=AlertLevel.WARNING,
+                    node_id=health.node_id,
+                    component="hnsw",
+                    message=f"HNSW coverage {health.hnsw_coverage:.2f} below threshold",
+                    metric=health.hnsw_coverage,
+                    threshold=self.hnsw_coverage_threshold,
+                )
+            )
 
         # Hot ratio
         total = health.table_entries
         if total > 0:
             hot_ratio = health.hot_entries / total
             if hot_ratio < self.hot_ratio_threshold:
-                alerts.append(Alert(
-                    level=AlertLevel.WARNING,
-                    node_id=health.node_id,
-                    component="tiered_storage",
-                    message=f"Hot ratio {hot_ratio:.2f} below threshold",
-                    metric=hot_ratio,
-                    threshold=self.hot_ratio_threshold,
-                ))
+                alerts.append(
+                    Alert(
+                        level=AlertLevel.WARNING,
+                        node_id=health.node_id,
+                        component="tiered_storage",
+                        message=f"Hot ratio {hot_ratio:.2f} below threshold",
+                        metric=hot_ratio,
+                        threshold=self.hot_ratio_threshold,
+                    )
+                )
 
         # Cache hit rate (only if cache is present)
         if health.has_cache and health.cache_hit_rate < self.cache_hit_threshold:
-            alerts.append(Alert(
-                level=AlertLevel.INFO,
-                node_id=health.node_id,
-                component="cognitive_cache",
-                message=f"Cache hit rate {health.cache_hit_rate:.2f} below threshold",
-                metric=health.cache_hit_rate,
-                threshold=self.cache_hit_threshold,
-            ))
+            alerts.append(
+                Alert(
+                    level=AlertLevel.INFO,
+                    node_id=health.node_id,
+                    component="cognitive_cache",
+                    message=f"Cache hit rate {health.cache_hit_rate:.2f} below threshold",
+                    metric=health.cache_hit_rate,
+                    threshold=self.cache_hit_threshold,
+                )
+            )
 
         # Cache prediction accuracy (only if cache is present)
-        if health.has_cache and health.cache_prediction_accuracy < self.cache_accuracy_threshold:
-            alerts.append(Alert(
-                level=AlertLevel.INFO,
-                node_id=health.node_id,
-                component="cognitive_cache",
-                message=f"Prediction accuracy {health.cache_prediction_accuracy:.2f} below threshold",
-                metric=health.cache_prediction_accuracy,
-                threshold=self.cache_accuracy_threshold,
-            ))
+        if (
+            health.has_cache
+            and health.cache_prediction_accuracy < self.cache_accuracy_threshold
+        ):
+            alerts.append(
+                Alert(
+                    level=AlertLevel.INFO,
+                    node_id=health.node_id,
+                    component="cognitive_cache",
+                    message=f"Prediction accuracy {health.cache_prediction_accuracy:.2f} below threshold",
+                    metric=health.cache_prediction_accuracy,
+                    threshold=self.cache_accuracy_threshold,
+                )
+            )
 
         # Query rate
         if health.query_rate > self.query_rate_threshold:
-            alerts.append(Alert(
-                level=AlertLevel.CRITICAL,
-                node_id=health.node_id,
-                component="scene_tracker",
-                message=f"Query rate {health.query_rate:.1f} above threshold",
-                metric=health.query_rate,
-                threshold=self.query_rate_threshold,
-            ))
+            alerts.append(
+                Alert(
+                    level=AlertLevel.CRITICAL,
+                    node_id=health.node_id,
+                    component="scene_tracker",
+                    message=f"Query rate {health.query_rate:.1f} above threshold",
+                    metric=health.query_rate,
+                    threshold=self.query_rate_threshold,
+                )
+            )
 
         return alerts
 

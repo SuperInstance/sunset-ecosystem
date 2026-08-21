@@ -40,6 +40,7 @@ from scipy.spatial.distance import pdist, squareform
 
 try:
     from ripser import ripser
+
     RIPSER_AVAILABLE = True
 except ImportError:
     RIPSER_AVAILABLE = False
@@ -47,6 +48,7 @@ except ImportError:
 
 try:
     from sklearn.cluster import DBSCAN
+
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
@@ -55,6 +57,7 @@ except ImportError:
 @dataclass
 class PersistencePair:
     """A birth-death pair in a persistence diagram."""
+
     birth: float
     death: float
     dimension: int
@@ -62,7 +65,7 @@ class PersistencePair:
     @property
     def persistence(self) -> float:
         """Persistence = death - birth. Longer = more significant feature."""
-        return self.death - self.birth if self.death != float('inf') else 0.0
+        return self.death - self.birth if self.death != float("inf") else 0.0
 
     def is_significant(self, threshold: float = 0.1) -> bool:
         """Check if feature is significant (persistent)."""
@@ -72,6 +75,7 @@ class PersistencePair:
 @dataclass
 class TDALandscape:
     """Fitness landscape sampler with topological analysis."""
+
     dimension: int = 2
     max_filtration: float = 1.0
     persistence_threshold: float = 0.1
@@ -121,7 +125,7 @@ class TDALandscape:
         """Compute homology using Ripser."""
         # Weight distances by fitness (high fitness = closer together)
         distances = squareform(pdist(samples))
-        
+
         # Normalize fitnesses to [0, 1] and use as weights
         fitnesses = self.get_fitnesses()
         if len(fitnesses) > 0:
@@ -135,8 +139,10 @@ class TDALandscape:
                             distances[i, j] *= (2.0 - weights[i] - weights[j]) / 2.0
 
         # Compute persistent homology
-        result = ripser(distances, maxdim=min(2, self.dimension - 1), distance_matrix=True)
-        diagrams = result['dgms']
+        result = ripser(
+            distances, maxdim=min(2, self.dimension - 1), distance_matrix=True
+        )
+        diagrams = result["dgms"]
 
         # Analyze diagrams
         significant_features = {0: 0, 1: 0, 2: 0}
@@ -147,9 +153,11 @@ class TDALandscape:
                 continue
             pairs = []
             for birth, death in diagram:
-                if death == float('inf'):
+                if death == float("inf"):
                     death = self.max_filtration
-                pair = PersistencePair(birth=float(birth), death=float(death), dimension=dim)
+                pair = PersistencePair(
+                    birth=float(birth), death=float(death), dimension=dim
+                )
                 pairs.append(pair)
                 if pair.is_significant(self.persistence_threshold):
                     significant_features[dim] += 1
@@ -170,10 +178,17 @@ class TDALandscape:
             "significant_holes": significant_features[1],
             "significant_voids": significant_features[2],
             "diagrams": {
-                dim: [(p.birth, p.death, p.persistence) for p in [
-                    PersistencePair(float(b), float(d) if d != float('inf') else self.max_filtration, dim)
-                    for b, d in diagram
-                ]]
+                dim: [
+                    (p.birth, p.death, p.persistence)
+                    for p in [
+                        PersistencePair(
+                            float(b),
+                            float(d) if d != float("inf") else self.max_filtration,
+                            dim,
+                        )
+                        for b, d in diagram
+                    ]
+                ]
                 for dim, diagram in enumerate(diagrams)
             },
             "persistence_entropy": persistence_entropies,
@@ -228,7 +243,9 @@ class TDALandscape:
             "loops": homology.get("significant_holes", 0),  # Betti-1 in 2D
             "voids": homology.get("significant_voids", 0),
             "components": homology.get("significant_components", 1),
-            "fitness_range": float(fitnesses.max() - fitnesses.min()) if len(fitnesses) > 0 else 0.0,
+            "fitness_range": float(fitnesses.max() - fitnesses.min())
+            if len(fitnesses) > 0
+            else 0.0,
             "fitness_std": float(fitnesses.std()) if len(fitnesses) > 0 else 0.0,
         }
 
@@ -282,7 +299,7 @@ class LandscapeGuide:
             start = max(0, nearest_idx - local_window)
             end = min(len(fitnesses), nearest_idx + local_window + 1)
             local_fitnesses = fitnesses[start:end]
-            
+
             if nearest_fitness <= np.percentile(local_fitnesses, 25):
                 return {
                     "strategy": "avoid",
@@ -317,7 +334,7 @@ class LandscapeGuide:
         """Get regions to avoid (near holes/local minima)."""
         samples = self.tda.get_samples()
         fitnesses = self.tda.get_fitnesses()
-        
+
         if len(samples) < 5:
             return []
 
@@ -334,7 +351,7 @@ class LandscapeGuide:
         """Get high-fitness regions to exploit."""
         samples = self.tda.get_samples()
         fitnesses = self.tda.get_fitnesses()
-        
+
         if len(samples) == 0:
             return []
 

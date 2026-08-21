@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_information_geometry_breeding.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -17,6 +18,7 @@ from swarm.information_geometry_breeding import (
 
 
 # ── FisherMetric ────────────────────────────────────────────
+
 
 class TestFisherMetric:
     def test_natural_gradient_vs_euclidean(self):
@@ -46,6 +48,7 @@ class TestFisherMetric:
 
 # ── Natural Gradient Step ─────────────────────────────────
 
+
 class TestNaturalGradientStep:
     def test_moves_uphill(self):
         theta = np.array([0.0, 0.0])
@@ -69,11 +72,14 @@ class TestNaturalGradientStep:
         fisher_fn = lambda t: np.array([[1e-8, 0], [0, 1e-8]])
         # With zero damping, this would explode
         # With damping=1e-4, should be stable
-        new_theta = natural_gradient_step(theta, grad, fisher_fn, step_size=1.0, damping=1e-4)
+        new_theta = natural_gradient_step(
+            theta, grad, fisher_fn, step_size=1.0, damping=1e-4
+        )
         assert np.all(np.isfinite(new_theta))
 
 
 # ── Fisher-Rao Distance ───────────────────────────────────
+
 
 class TestFisherRaoDistance:
     def test_symmetry(self):
@@ -107,6 +113,7 @@ class TestFisherRaoDistance:
 
 
 # ── InformationGeometryBreeder ──────────────────────────────
+
 
 class TestInformationGeometryBreeder:
     def test_mutate_moves_toward_gradient(self):

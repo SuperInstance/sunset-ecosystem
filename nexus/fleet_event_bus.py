@@ -71,7 +71,7 @@ class FleetEvent:
     payload: dict[str, Any] = field(default_factory=dict)
     source: str = "unknown"
     timestamp: float = field(default_factory=time.time)
-    event_id: str = field(default_factory=lambda: f"ev-{int(time.time()*1000)}")
+    event_id: str = field(default_factory=lambda: f"ev-{int(time.time() * 1000)}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -96,7 +96,9 @@ class FleetEventBus:
 
     def __init__(self) -> None:
         # event type -> list of (filter, handler, is_async)
-        self._handlers: dict[str, list[tuple[EventFilter | None, EventHandler | AsyncEventHandler, bool]]] = defaultdict(list)
+        self._handlers: dict[
+            str, list[tuple[EventFilter | None, EventHandler | AsyncEventHandler, bool]]
+        ] = defaultdict(list)
         self._lock = threading.RLock()
         self._loop: asyncio.AbstractEventLoop | None = None
         self._history: list[FleetEvent] = []
@@ -130,7 +132,9 @@ class FleetEventBus:
             # Detect async handler
             is_async = _is_async or asyncio.iscoroutinefunction(handler)
             self._handlers[event_type].append((filter_fn, handler, is_async))
-        logger.debug("Registered %s handler for %s", "async" if is_async else "sync", event_type)
+        logger.debug(
+            "Registered %s handler for %s", "async" if is_async else "sync", event_type
+        )
 
     def on_async(
         self,

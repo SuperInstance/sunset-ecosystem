@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_weighted_router.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest

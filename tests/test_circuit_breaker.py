@@ -43,18 +43,24 @@ class TestCircuitBreaker:
             cb.call(lambda: 42)
 
     def test_half_open_then_close(self):
-        cb = CircuitBreaker("test", CircuitBreakerConfig(
-            failure_threshold=1, recovery_timeout=0.001, success_threshold=1
-        ))
+        cb = CircuitBreaker(
+            "test",
+            CircuitBreakerConfig(
+                failure_threshold=1, recovery_timeout=0.001, success_threshold=1
+            ),
+        )
         cb.state = CircuitState.OPEN
         cb.last_failure_time = time.time() - 1
         cb.call(lambda: 42)
         assert cb.state == CircuitState.CLOSED
 
     def test_half_open_too_many_calls(self):
-        cb = CircuitBreaker("test", CircuitBreakerConfig(
-            failure_threshold=1, recovery_timeout=0.001, half_open_max_calls=1
-        ))
+        cb = CircuitBreaker(
+            "test",
+            CircuitBreakerConfig(
+                failure_threshold=1, recovery_timeout=0.001, half_open_max_calls=1
+            ),
+        )
         cb.state = CircuitState.OPEN
         cb.last_failure_time = time.time() - 1
         cb.call(lambda: 42)

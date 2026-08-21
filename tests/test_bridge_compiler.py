@@ -12,6 +12,7 @@ Coverage:
 - Multiple endpoint generation
 - Edge cases (empty schema, no host, no port)
 """
+
 from __future__ import annotations
 
 import ctypes
@@ -41,6 +42,7 @@ from fleet.bridge_compiler import (
 
 
 # ── Fixtures ──────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def registry() -> BridgeRegistry:
@@ -114,6 +116,7 @@ def ffi_schema(tmp_path: Path) -> dict:
         """
     )
     import subprocess
+
     subprocess.run(
         ["gcc", "-shared", "-fPIC", "-o", str(lib_path), str(c_code)],
         check=True,
@@ -134,6 +137,7 @@ def ffi_schema(tmp_path: Path) -> dict:
 
 # ── 1. Schema parsing: minimal JSON schema ────────────────────────
 
+
 def test_schema_parser_minimal(minimal_http_schema: dict) -> None:
     schema = SchemaParser.parse(minimal_http_schema)
     assert isinstance(schema, BridgeSchema)
@@ -149,6 +153,7 @@ def test_schema_parser_minimal(minimal_http_schema: dict) -> None:
 
 # ── 2. Schema parsing: OpenAPI-like ───────────────────────────────
 
+
 def test_schema_parser_openapi_like(openapi_like_schema: dict) -> None:
     schema = SchemaParser.parse(openapi_like_schema)
     assert schema.name == "weather_api"
@@ -159,6 +164,7 @@ def test_schema_parser_openapi_like(openapi_like_schema: dict) -> None:
 
 
 # ── 3. OpenAPI spec parsing ─────────────────────────────────────
+
 
 def test_schema_parser_from_openapi_spec() -> None:
     spec = {
@@ -186,7 +192,10 @@ def test_schema_parser_from_openapi_spec() -> None:
 
 # ── 4. HTTP bridge generation ─────────────────────────────────────
 
-def test_http_bridge_generation(compiler: BridgeCompiler, minimal_http_schema: dict) -> None:
+
+def test_http_bridge_generation(
+    compiler: BridgeCompiler, minimal_http_schema: dict
+) -> None:
     bridge_class = compiler.compile_from_dict(minimal_http_schema)
     assert issubclass(bridge_class, Bridge)
     assert bridge_class.__name__ == "TestHttpBridge"
@@ -194,7 +203,10 @@ def test_http_bridge_generation(compiler: BridgeCompiler, minimal_http_schema: d
 
 # ── 5. HTTP bridge connect / push / pull / disconnect (mocked) ────
 
-def test_http_bridge_lifecycle(compiler: BridgeCompiler, minimal_http_schema: dict) -> None:
+
+def test_http_bridge_lifecycle(
+    compiler: BridgeCompiler, minimal_http_schema: dict
+) -> None:
     bridge_class = compiler.compile_from_dict(minimal_http_schema)
     bridge = bridge_class(node_id="node-1")
 
@@ -207,7 +219,11 @@ def test_http_bridge_lifecycle(compiler: BridgeCompiler, minimal_http_schema: di
     mock_response_pull.json.return_value = {"data": "ok"}
     mock_response_pull.text = '{"data": "ok"}'
 
-    mock_session.request.side_effect = [mock_response_push, mock_response_pull, mock_response_pull]
+    mock_session.request.side_effect = [
+        mock_response_push,
+        mock_response_pull,
+        mock_response_pull,
+    ]
 
     with patch("requests.Session", return_value=mock_session):
         bridge.connect("localhost", 8080)
@@ -228,6 +244,7 @@ def test_http_bridge_lifecycle(compiler: BridgeCompiler, minimal_http_schema: di
 
 # ── 6. gRPC bridge generation ─────────────────────────────────────
 
+
 def test_grpc_bridge_generation(compiler: BridgeCompiler, grpc_schema: dict) -> None:
     bridge_class = compiler.compile_from_dict(grpc_schema)
     assert issubclass(bridge_class, Bridge)
@@ -235,6 +252,7 @@ def test_grpc_bridge_generation(compiler: BridgeCompiler, grpc_schema: dict) -> 
 
 
 # ── 7. gRPC bridge stub lifecycle (mocked grpc) ─────────────────
+
 
 def test_grpc_bridge_lifecycle(compiler: BridgeCompiler, grpc_schema: dict) -> None:
     bridge_class = compiler.compile_from_dict(grpc_schema)
@@ -263,6 +281,7 @@ def test_grpc_bridge_lifecycle(compiler: BridgeCompiler, grpc_schema: dict) -> N
 
 # ── 8. FFI bridge generation ─────────────────────────────────────
 
+
 @pytest.mark.skipif(shutil.which("gcc") is None, reason="gcc not available")
 def test_ffi_bridge_generation(compiler: BridgeCompiler, ffi_schema: dict) -> None:
     bridge_class = compiler.compile_from_dict(ffi_schema)
@@ -271,6 +290,7 @@ def test_ffi_bridge_generation(compiler: BridgeCompiler, ffi_schema: dict) -> No
 
 
 # ── 9. FFI bridge connect / push / pull / disconnect (real .so) ─
+
 
 @pytest.mark.skipif(shutil.which("gcc") is None, reason="gcc not available")
 def test_ffi_bridge_lifecycle(compiler: BridgeCompiler, ffi_schema: dict) -> None:
@@ -290,7 +310,10 @@ def test_ffi_bridge_lifecycle(compiler: BridgeCompiler, ffi_schema: dict) -> Non
 
 # ── 10. Generated class instantiation and registration ────────────
 
-def test_generated_class_registered(compiler: BridgeCompiler, minimal_http_schema: dict) -> None:
+
+def test_generated_class_registered(
+    compiler: BridgeCompiler, minimal_http_schema: dict
+) -> None:
     bridge_class = compiler.compile_from_dict(minimal_http_schema)
     instance = compiler.registry.create("test_http", node_id="alpha")
     assert isinstance(instance, bridge_class)
@@ -299,7 +322,10 @@ def test_generated_class_registered(compiler: BridgeCompiler, minimal_http_schem
 
 # ── 11. Health check on generated HTTP bridge ───────────────────
 
-def test_health_check_on_generated_bridge(compiler: BridgeCompiler, minimal_http_schema: dict) -> None:
+
+def test_health_check_on_generated_bridge(
+    compiler: BridgeCompiler, minimal_http_schema: dict
+) -> None:
     bridge_class = compiler.compile_from_dict(minimal_http_schema)
     bridge = bridge_class(node_id="health-node")
 
@@ -319,6 +345,7 @@ def test_health_check_on_generated_bridge(compiler: BridgeCompiler, minimal_http
 
 # ── 12. Error handling: bad schema (unsupported protocol) ─────
 
+
 def test_bad_schema_unsupported_protocol() -> None:
     bad = {"name": "x", "host": "h", "port": 1, "protocol": "ftp"}
     with pytest.raises(SchemaValidationError) as exc_info:
@@ -328,6 +355,7 @@ def test_bad_schema_unsupported_protocol() -> None:
 
 
 # ── 13. Error handling: missing endpoints ───────────────────────
+
 
 def test_missing_endpoints(compiler: BridgeCompiler) -> None:
     schema = {
@@ -346,6 +374,7 @@ def test_missing_endpoints(compiler: BridgeCompiler) -> None:
 
 # ── 14. Schema validation: required fields ───────────────────────
 
+
 def test_schema_validation_required_fields() -> None:
     with pytest.raises(SchemaValidationError) as exc_info:
         SchemaParser.parse({})
@@ -359,6 +388,7 @@ def test_schema_validation_required_fields() -> None:
 
 # ── 15. Schema validation: invalid port ───────────────────────────
 
+
 def test_schema_validation_invalid_port() -> None:
     bad = {"name": "x", "host": "h", "port": -1, "protocol": "http"}
     with pytest.raises(SchemaValidationError) as exc_info:
@@ -367,6 +397,7 @@ def test_schema_validation_invalid_port() -> None:
 
 
 # ── 16. Multiple endpoint generation ──────────────────────────────
+
 
 def test_multiple_endpoint_generation(compiler: BridgeCompiler) -> None:
     schema = {
@@ -392,6 +423,7 @@ def test_multiple_endpoint_generation(compiler: BridgeCompiler) -> None:
 
 # ── 17. Edge case: empty schema ─────────────────────────────────
 
+
 def test_empty_schema() -> None:
     with pytest.raises(SchemaValidationError):
         SchemaParser.parse({})
@@ -400,6 +432,7 @@ def test_empty_schema() -> None:
 
 
 # ── 18. Edge case: no host ───────────────────────────────────────
+
 
 def test_no_host() -> None:
     bad = {"name": "x", "port": 8080, "protocol": "http"}
@@ -410,6 +443,7 @@ def test_no_host() -> None:
 
 # ── 19. Edge case: no port ──────────────────────────────────────
 
+
 def test_no_port() -> None:
     bad = {"name": "x", "host": "h", "protocol": "http"}
     with pytest.raises(SchemaValidationError) as exc_info:
@@ -419,7 +453,10 @@ def test_no_port() -> None:
 
 # ── 20. BridgeCompiler dispatches to correct generator ──────────
 
-def test_compiler_dispatches_http(compiler: BridgeCompiler, minimal_http_schema: dict) -> None:
+
+def test_compiler_dispatches_http(
+    compiler: BridgeCompiler, minimal_http_schema: dict
+) -> None:
     bridge_class = compiler.compile_from_dict(minimal_http_schema)
     assert bridge_class.__name__ == "TestHttpBridge"
 
@@ -437,6 +474,7 @@ def test_compiler_dispatches_ffi(compiler: BridgeCompiler, ffi_schema: dict) -> 
 
 # ── 21. Unsupported protocol at compiler level ──────────────────
 
+
 def test_unsupported_protocol_at_compiler(compiler: BridgeCompiler) -> None:
     schema = BridgeSchema(
         name="bad",
@@ -452,13 +490,17 @@ def test_unsupported_protocol_at_compiler(compiler: BridgeCompiler) -> None:
 
 # ── 22. FFI missing library_path ──────────────────────────────────
 
+
 def test_ffi_missing_library_path(compiler: BridgeCompiler) -> None:
     schema = BridgeSchema(
         name="bad_ffi",
         host="h",
         port=1,
         protocol="ffi",
-        endpoints={"push": EndpointSchema(path="push"), "pull": EndpointSchema(path="pull")},
+        endpoints={
+            "push": EndpointSchema(path="push"),
+            "pull": EndpointSchema(path="pull"),
+        },
     )
     with pytest.raises(SchemaValidationError) as exc_info:
         compiler.compile(schema)
@@ -467,7 +509,10 @@ def test_ffi_missing_library_path(compiler: BridgeCompiler) -> None:
 
 # ── 23. HTTP bridge push failure on disconnected ─────────────────
 
-def test_http_push_when_disconnected(compiler: BridgeCompiler, minimal_http_schema: dict) -> None:
+
+def test_http_push_when_disconnected(
+    compiler: BridgeCompiler, minimal_http_schema: dict
+) -> None:
     bridge_class = compiler.compile_from_dict(minimal_http_schema)
     bridge = bridge_class(node_id="disc")
     # Never connected
@@ -477,7 +522,10 @@ def test_http_push_when_disconnected(compiler: BridgeCompiler, minimal_http_sche
 
 # ── 24. HTTP bridge pull failure on disconnected ─────────────────
 
-def test_http_pull_when_disconnected(compiler: BridgeCompiler, minimal_http_schema: dict) -> None:
+
+def test_http_pull_when_disconnected(
+    compiler: BridgeCompiler, minimal_http_schema: dict
+) -> None:
     bridge_class = compiler.compile_from_dict(minimal_http_schema)
     bridge = bridge_class(node_id="disc")
     # Never connected
@@ -487,7 +535,10 @@ def test_http_pull_when_disconnected(compiler: BridgeCompiler, minimal_http_sche
 
 # ── 25. HTTP bridge error handling (network failure) ─────────────
 
-def test_http_bridge_network_error(compiler: BridgeCompiler, minimal_http_schema: dict) -> None:
+
+def test_http_bridge_network_error(
+    compiler: BridgeCompiler, minimal_http_schema: dict
+) -> None:
     bridge_class = compiler.compile_from_dict(minimal_http_schema)
     bridge = bridge_class(node_id="err")
 
@@ -502,6 +553,7 @@ def test_http_bridge_network_error(compiler: BridgeCompiler, minimal_http_schema
 
 # ── 26. BridgeCompiler list_supported_protocols ─────────────────
 
+
 def test_list_supported_protocols(compiler: BridgeCompiler) -> None:
     protocols = compiler.list_supported_protocols()
     assert set(protocols) == {"http", "grpc", "ffi"}
@@ -509,7 +561,10 @@ def test_list_supported_protocols(compiler: BridgeCompiler) -> None:
 
 # ── 27. Health check on disconnected bridge returns error ───────
 
-def test_health_check_disconnected(compiler: BridgeCompiler, minimal_http_schema: dict) -> None:
+
+def test_health_check_disconnected(
+    compiler: BridgeCompiler, minimal_http_schema: dict
+) -> None:
     bridge_class = compiler.compile_from_dict(minimal_http_schema)
     bridge = bridge_class(node_id="disc")
     event = bridge.health_check()
@@ -518,6 +573,7 @@ def test_health_check_disconnected(compiler: BridgeCompiler, minimal_http_schema
 
 
 # ── 28. SchemaParser endpoint spec as string vs dict ────────────
+
 
 def test_endpoint_spec_variants() -> None:
     schema = {
@@ -539,8 +595,15 @@ def test_endpoint_spec_variants() -> None:
 
 # ── 29. EndpointSchema defaults ─────────────────────────────────
 
+
 def test_endpoint_schema_defaults() -> None:
-    ep = BridgeSchema(name="n", host="h", port=1, protocol="http", endpoints={"x": EndpointSchema(path="/")})
+    ep = BridgeSchema(
+        name="n",
+        host="h",
+        port=1,
+        protocol="http",
+        endpoints={"x": EndpointSchema(path="/")},
+    )
     assert ep.endpoints["x"].method == "GET"
     assert ep.endpoints["x"].headers == {}
     assert ep.endpoints["x"].body_template is None

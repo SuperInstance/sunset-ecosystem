@@ -32,6 +32,7 @@ class TestCampaign:
     def test_campaign_with_task_fn(self):
         def task_fn(matrix):
             return float(np.sum(matrix))
+
         c = Campaign(
             name="with-fn",
             attachment="pythagorean",
@@ -78,7 +79,9 @@ class TestCampaignResult:
             best_fitness=10.0,
             generations=5,
             duration=2.5,
-            sensor_history=[SensorReading(SensorType.METRIC, "fitness", 10.0, time.time())],
+            sensor_history=[
+                SensorReading(SensorType.METRIC, "fitness", 10.0, time.time())
+            ],
         )
         d = cr.to_dict()
         assert d["name"] == "c3"

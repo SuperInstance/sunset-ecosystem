@@ -78,7 +78,9 @@ class AgentFlowBlueprint:
         )
 
     @classmethod
-    def from_json_graph(cls, graph: dict[str, Any], name: str = "fleet_graph") -> "AgentFlowBlueprint":
+    def from_json_graph(
+        cls, graph: dict[str, Any], name: str = "fleet_graph"
+    ) -> "AgentFlowBlueprint":
         """Convert a sunset-ecosystem JSON agent graph to xMind YAML.
 
         JSON graph format (from json_agent_graph.py):
@@ -112,13 +114,15 @@ class AgentFlowBlueprint:
             nodes.append(node)
 
         for e in graph.get("edges", []):
-            edges.append({
-                "source": e.get("source", ""),
-                "source_pin": e.get("source_pin", "output"),
-                "target": e.get("target", ""),
-                "target_pin": e.get("target_pin", "input"),
-                "relation": e.get("relation", "flows_to"),
-            })
+            edges.append(
+                {
+                    "source": e.get("source", ""),
+                    "source_pin": e.get("source_pin", "output"),
+                    "target": e.get("target", ""),
+                    "target_pin": e.get("target_pin", "input"),
+                    "relation": e.get("relation", "flows_to"),
+                }
+            )
 
         return cls(name=name, nodes=nodes, edges=edges, variables=variables)
 
@@ -199,6 +203,7 @@ class XlangAgentBridge:
             return self._xlang
         try:
             import xlang  # type: ignore[import-untyped]
+
             self._xlang = xlang
             logger.info("xlang C++ runtime loaded")
         except Exception as exc:
@@ -226,7 +231,9 @@ class XlangAgentBridge:
 
     # ── graph conversion ────────────────────────────────────────
 
-    def convert_graph(self, json_graph: dict[str, Any], name: str) -> AgentFlowBlueprint:
+    def convert_graph(
+        self, json_graph: dict[str, Any], name: str
+    ) -> AgentFlowBlueprint:
         """Convert a JSON agent graph to xMind YAML blueprint."""
         blueprint = AgentFlowBlueprint.from_json_graph(json_graph, name=name)
         with self._lock:
@@ -256,7 +263,9 @@ class XlangAgentBridge:
 
     # ── session management ────────────────────────────────────────
 
-    def create_session(self, session_id: str, context: dict[str, Any] | None = None) -> SessionSyncAdapter:
+    def create_session(
+        self, session_id: str, context: dict[str, Any] | None = None
+    ) -> SessionSyncAdapter:
         """Create a new session bridge between fleet and xMind."""
         adapter = SessionSyncAdapter(
             session_id=session_id,
@@ -275,7 +284,10 @@ class XlangAgentBridge:
 
         xmind = self._load_xmind()
         if xmind is None:
-            return {"error": "xMind not available", "fallback": adapter.to_xmind_payload()}
+            return {
+                "error": "xMind not available",
+                "fallback": adapter.to_xmind_payload(),
+            }
 
         try:
             payload = adapter.to_xmind_payload()
@@ -302,7 +314,11 @@ class XlangAgentBridge:
         try:
             payload = xmind.SessionManager.getSessionState(adapter.xmind_session_handle)
             adapter.from_xmind_payload(payload)
-            return {"status": "synced", "session_id": session_id, "context": adapter.fleet_context}
+            return {
+                "status": "synced",
+                "session_id": session_id,
+                "context": adapter.fleet_context,
+            }
         except Exception as exc:
             logger.warning("xMind pull failed: %s", exc)
             return {"error": str(exc)}
@@ -325,7 +341,9 @@ class XlangAgentBridge:
 
         try:
             # LRPC remote import pattern
-            remote = xlang.importModule(f"xmind_srv thru '{self.lrpc_endpoint}' as xmind_srv")
+            remote = xlang.importModule(
+                f"xmind_srv thru '{self.lrpc_endpoint}' as xmind_srv"
+            )
             result = remote.executeGraph(blueprint.to_yaml(), session_id)
             self._graphs_executed += 1
             self._remote_calls += 1
@@ -336,7 +354,9 @@ class XlangAgentBridge:
 
     # ── local execution (fallback) ────────────────────────────────
 
-    def execute_local(self, blueprint_name: str, session_id: str, inputs: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute_local(
+        self, blueprint_name: str, session_id: str, inputs: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute a blueprint locally via Python fallback (no xlang required)."""
         with self._lock:
             blueprint = self._graphs.get(blueprint_name)
@@ -369,10 +389,17 @@ class XlangAgentBridge:
             if node_type == "agent":
                 # Simulate LLM agent execution
                 prompt = node.get("prompt_template", "")
-                results[node_id] = {"status": "simulated", "prompt": prompt, "output": f"Agent {node_id} response"}
+                results[node_id] = {
+                    "status": "simulated",
+                    "prompt": prompt,
+                    "output": f"Agent {node_id} response",
+                }
             elif node_type == "action":
                 # Simulate action execution
-                results[node_id] = {"status": "simulated", "action": node.get("action_type", "noop")}
+                results[node_id] = {
+                    "status": "simulated",
+                    "action": node.get("action_type", "noop"),
+                }
             else:
                 # Function pass-through
                 input_val = results.get(node.get("input_pins", ["input"])[0], None)

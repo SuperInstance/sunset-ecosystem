@@ -125,9 +125,7 @@ class TestPopulationInfoState:
 class TestInfoTheoreticBreeder:
     def test_init(self):
         breeder = InfoTheoreticBreeder(
-            population_size=50,
-            entropy_target=2.0,
-            mi_threshold=0.1
+            population_size=50, entropy_target=2.0, mi_threshold=0.1
         )
         assert breeder.population_size == 50
         assert breeder.entropy_target == 2.0
@@ -211,10 +209,7 @@ class TestInfoTheoreticBreeder:
 
     def test_breed_generation_elitism(self):
         breeder = InfoTheoreticBreeder(population_size=10, elitism_ratio=0.2)
-        pop = [
-            ({"gene_a": float(i)}, float(i * 10))
-            for i in range(10)
-        ]
+        pop = [({"gene_a": float(i)}, float(i * 10)) for i in range(10)]
 
         def task_fn(genome):
             return {"fitness": genome["gene_a"] * 10}
@@ -245,18 +240,17 @@ class TestInfoTheoreticBreeder:
         """Low entropy should trigger higher mutation rate."""
         breeder = InfoTheoreticBreeder(
             population_size=10,
-            entropy_target=100.0  # Very high target (never met)
+            entropy_target=100.0,  # Very high target (never met)
         )
-        pop = [
-            ({"gene_a": 1.0, "gene_b": 1.0}, 10.0)
-            for _ in range(10)
-        ]
+        pop = [({"gene_a": 1.0, "gene_b": 1.0}, 10.0) for _ in range(10)]
         # All identical, entropy is 0
         state = breeder.analyze_population(pop)
         assert state.population_entropy < breeder.entropy_target
+
         # Next generation should use higher mutation rate
         def task_fn(genome):
             return {"fitness": genome["gene_a"] * 10}
+
         new_pop = breeder.breed_generation(pop, task_fn)
         assert len(new_pop) == 10
 
@@ -307,9 +301,7 @@ class TestIntegration:
         np.random.seed(42)
 
         breeder = InfoTheoreticBreeder(
-            population_size=20,
-            entropy_target=1.0,
-            mi_threshold=0.05
+            population_size=20, entropy_target=1.0, mi_threshold=0.05
         )
 
         # True model: fitness = 2*gene_a + 1*gene_b + noise
@@ -348,9 +340,7 @@ class TestIntegration:
 
         # Info breeder
         info_breeder = InfoTheoreticBreeder(
-            population_size=15,
-            entropy_target=1.0,
-            mi_threshold=0.05
+            population_size=15, entropy_target=1.0, mi_threshold=0.05
         )
 
         # Random breeder
@@ -368,9 +358,13 @@ class TestIntegration:
                     p2 = random.choice(sorted_pop)
                     child = {}
                     for k in p1[0]:
-                        child[k] = p1[0][k] if random.random() < 0.5 else p2[0].get(k, p1[0][k])
+                        child[k] = (
+                            p1[0][k]
+                            if random.random() < 0.5
+                            else p2[0].get(k, p1[0][k])
+                        )
                         if random.random() < 0.1:
-                            child[k] *= (1 + random.uniform(-0.1, 0.1))
+                            child[k] *= 1 + random.uniform(-0.1, 0.1)
                     f = task_fn(child)["fitness"]
                     new_pop.append((child, f))
                 return new_pop
@@ -398,19 +392,13 @@ class TestIntegration:
 
     def test_entropy_maintenance(self):
         """Breeder should maintain diversity (entropy)."""
-        breeder = InfoTheoreticBreeder(
-            population_size=10,
-            entropy_target=2.0
-        )
+        breeder = InfoTheoreticBreeder(population_size=10, entropy_target=2.0)
 
         def task_fn(genome):
             return {"fitness": genome["gene_a"] * 10}
 
         # Start with diverse population
-        pop = [
-            ({"gene_a": float(i)}, float(i * 10))
-            for i in range(10)
-        ]
+        pop = [({"gene_a": float(i)}, float(i * 10)) for i in range(10)]
 
         entropies = []
         for _ in range(3):

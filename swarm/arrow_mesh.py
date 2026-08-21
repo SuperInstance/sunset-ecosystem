@@ -84,6 +84,7 @@ if HAS_PYARROW:
 
 # ── Codec ───────────────────────────────────────────────────────────────
 
+
 class ArrowMeshCodec:
     """Serialize / deserialize mesh gossip structures via Arrow."""
 
@@ -109,7 +110,9 @@ class ArrowMeshCodec:
             pa.array([digest.bitfield]),
             pa.array([digest.max_wall_time]),
         ]
-        return pa.RecordBatch.from_arrays(arrays, [f.name for f in _DIGEST_SCHEMA_FIELDS])
+        return pa.RecordBatch.from_arrays(
+            arrays, [f.name for f in _DIGEST_SCHEMA_FIELDS]
+        )
 
     def digest_from_arrow(self, batch: Any) -> Dict[str, Any]:
         """Convert Arrow RecordBatch back to dict compatible with GossipDigest."""
@@ -167,7 +170,9 @@ class ArrowMeshCodec:
             pa.array(timestamps),
             pa.array(metadata_json),
         ]
-        return pa.RecordBatch.from_arrays(arrays, [f.name for f in _DELTA_SCHEMA_FIELDS])
+        return pa.RecordBatch.from_arrays(
+            arrays, [f.name for f in _DELTA_SCHEMA_FIELDS]
+        )
 
     def deltas_from_arrow(self, record_batch: Any) -> Dict[str, Any]:
         """Convert Arrow RecordBatch back to dict compatible with DeltaBatch."""
@@ -294,7 +299,9 @@ class ArrowMeshCodec:
 _ARROW_MESH_MAGIC = b"AM01"  # Arrow Mesh v1
 
 
-def encode_wire(codec: ArrowMeshCodec, payload: bytes, msg_type: str = "digest") -> bytes:
+def encode_wire(
+    codec: ArrowMeshCodec, payload: bytes, msg_type: str = "digest"
+) -> bytes:
     """Prefix payload with magic header for stream framing.
 
     Format: [magic 4 bytes][type 1 byte][len 4 bytes BE][payload ...]
@@ -317,6 +324,7 @@ def decode_wire(buf: bytes) -> Tuple[str, bytes]:
 
 
 # ── Integration shim for MeshVectorGossip ───────────────────────────────
+
 
 class ArrowMeshGossip:
     """Drop-in wrapper that adds Arrow serialization to MeshVectorGossip.

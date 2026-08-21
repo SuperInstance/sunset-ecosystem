@@ -48,9 +48,7 @@ class CPUInfo:
     l3_cache_kb: Optional[int] = None
 
     def __repr__(self) -> str:
-        return (
-            f"CPUInfo({self.model!r}, {self.cores_physical}P/{self.cores_logical}L)"
-        )
+        return f"CPUInfo({self.model!r}, {self.cores_physical}P/{self.cores_logical}L)"
 
 
 @dataclass
@@ -175,10 +173,18 @@ def _detect_cuda_via_smi() -> List[CudaGPU]:
                         free_memory_mb=float(parts[3]),
                         compute_capability=parts[4],
                         multiprocessor_count=int(parts[5]) if len(parts) > 5 else 0,
-                        temperature_c=float(parts[6]) if len(parts) > 6 and parts[6] else None,
-                        utilization_pct=float(parts[7]) if len(parts) > 7 and parts[7] else None,
-                        power_draw_w=float(parts[8]) if len(parts) > 8 and parts[8] else None,
-                        power_limit_w=float(parts[9]) if len(parts) > 9 and parts[9] else None,
+                        temperature_c=float(parts[6])
+                        if len(parts) > 6 and parts[6]
+                        else None,
+                        utilization_pct=float(parts[7])
+                        if len(parts) > 7 and parts[7]
+                        else None,
+                        power_draw_w=float(parts[8])
+                        if len(parts) > 8 and parts[8]
+                        else None,
+                        power_limit_w=float(parts[9])
+                        if len(parts) > 9 and parts[9]
+                        else None,
                     )
                     gpus.append(gpu)
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -347,7 +353,9 @@ def _read_thermal_zones() -> List[ThermalZone]:
                     with open(os.path.join(zone_path, "temp")) as f:
                         raw = int(f.read().strip())
                         temp = raw / 1000.0
-                    zones.append(ThermalZone(name=entry, type=ztype, temperature_c=temp))
+                    zones.append(
+                        ThermalZone(name=entry, type=ztype, temperature_c=temp)
+                    )
                 except (FileNotFoundError, PermissionError, ValueError):
                     zones.append(ThermalZone(name=entry, type="unknown"))
     except (FileNotFoundError, PermissionError):

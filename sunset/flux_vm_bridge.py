@@ -99,16 +99,22 @@ class FluxVMBridge:
             return str(candidate)
 
         # 3. Dev tree adjacent to sunset-ecosystem
-        dev = here.parent.parent / "flux-vm-v3-temp" / "target" / "release" / cls._SO_NAME
+        dev = (
+            here.parent.parent / "flux-vm-v3-temp" / "target" / "release" / cls._SO_NAME
+        )
         if dev.exists():
             return str(dev)
 
         # 4. Debug build fallback
-        dev_debug = here.parent.parent / "flux-vm-v3-temp" / "target" / "debug" / cls._SO_NAME
+        dev_debug = (
+            here.parent.parent / "flux-vm-v3-temp" / "target" / "debug" / cls._SO_NAME
+        )
         if dev_debug.exists():
             return str(dev_debug)
 
-        raise FluxVMError(-1, f"Cannot find {cls._SO_NAME}. Set FLUX_VM_SO or build flux-vm-v3.")
+        raise FluxVMError(
+            -1, f"Cannot find {cls._SO_NAME}. Set FLUX_VM_SO or build flux-vm-v3."
+        )
 
     def _load_library(self, so_path: Optional[str]) -> ctypes.CDLL:
         path = so_path or self._find_so()
@@ -122,10 +128,18 @@ class FluxVMBridge:
         lib.flux_vm_free.argtypes = [ctypes.c_void_p]
 
         lib.flux_vm_load_bytecode.restype = ctypes.c_int
-        lib.flux_vm_load_bytecode.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ubyte), ctypes.c_uint]
+        lib.flux_vm_load_bytecode.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_ubyte),
+            ctypes.c_uint,
+        ]
 
         lib.flux_vm_load_constraint.restype = ctypes.c_int
-        lib.flux_vm_load_constraint.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+        lib.flux_vm_load_constraint.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
 
         lib.flux_vm_push_value.restype = ctypes.c_int
         lib.flux_vm_push_value.argtypes = [ctypes.c_void_p, ctypes.c_int]
@@ -134,10 +148,18 @@ class FluxVMBridge:
         lib.flux_vm_run.argtypes = [ctypes.c_void_p]
 
         lib.flux_vm_get_result.restype = ctypes.c_int
-        lib.flux_vm_get_result.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulonglong), ctypes.POINTER(ctypes.c_int)]
+        lib.flux_vm_get_result.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_ulonglong),
+            ctypes.POINTER(ctypes.c_int),
+        ]
 
         lib.flux_vm_get_proof.restype = ctypes.c_int
-        lib.flux_vm_get_proof.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ubyte), ctypes.c_uint]
+        lib.flux_vm_get_proof.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_ubyte),
+            ctypes.c_uint,
+        ]
 
         lib.flux_vm_get_provenance_len.restype = ctypes.c_int
         lib.flux_vm_get_provenance_len.argtypes = [ctypes.c_void_p]
@@ -233,7 +255,9 @@ class FluxVMBridge:
         # Pull detailed result
         cycles = ctypes.c_ulonglong()
         pass_flag = ctypes.c_int()
-        res = self._lib.flux_vm_get_result(self._vm, ctypes.byref(cycles), ctypes.byref(pass_flag))
+        res = self._lib.flux_vm_get_result(
+            self._vm, ctypes.byref(cycles), ctypes.byref(pass_flag)
+        )
         if res == 0:
             self._last_cycles = cycles.value
             self._last_pass = bool(pass_flag.value)

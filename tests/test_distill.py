@@ -85,7 +85,11 @@ class TestHintSchedule:
 class TestBacktestRunner:
     def test_run_cycle(self):
         h = PromptHistory()
-        h.add(PromptRecord(prompt="test prompt", response="test response", quality_score=0.5))
+        h.add(
+            PromptRecord(
+                prompt="test prompt", response="test response", quality_score=0.5
+            )
+        )
         runner = BacktestRunner(h)
         result = runner.run_cycle(hint_level=5, spare_capacity=0.8)
         assert result is not None
@@ -140,7 +144,9 @@ class TestDistillationSignal:
             ranking = UserRanking(
                 prompt="test",
                 responses=[
-                    RankedResponse(response="d", source="distilled", rank=1 if win else 2),
+                    RankedResponse(
+                        response="d", source="distilled", rank=1 if win else 2
+                    ),
                     RankedResponse(response="b", source="gpt-4", rank=2 if win else 1),
                 ],
             )

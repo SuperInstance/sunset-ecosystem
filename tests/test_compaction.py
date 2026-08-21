@@ -54,7 +54,9 @@ class FakeFluxTable:
 
 
 class FakeAgentVector:
-    def __init__(self, agent_id, vector, fitness=0.0, generation=0, capability_mask=0xFFFF):
+    def __init__(
+        self, agent_id, vector, fitness=0.0, generation=0, capability_mask=0xFFFF
+    ):
         self.agent_id = agent_id
         self.vector = vector
         self.fitness = fitness
@@ -65,6 +67,7 @@ class FakeAgentVector:
 # ---------------------------------------------------------------------------
 # CompactionPolicy
 # ---------------------------------------------------------------------------
+
 
 class TestCompactionPolicy:
     def test_defaults(self):
@@ -83,6 +86,7 @@ class TestCompactionPolicy:
 # ---------------------------------------------------------------------------
 # CompactionManager — Lifecycle
 # ---------------------------------------------------------------------------
+
 
 class TestCompactionLifecycle:
     def _make_table(self, dim=4):
@@ -113,14 +117,22 @@ class TestCompactionLifecycle:
 
     def test_should_compact_archive_size(self):
         ft = self._make_table()
-        cm = CompactionManager(table=ft, policy=CompactionPolicy(max_archive_size=5, min_archive_for_summary=1))
+        cm = CompactionManager(
+            table=ft,
+            policy=CompactionPolicy(max_archive_size=5, min_archive_for_summary=1),
+        )
         for i in range(6):
             cm.archive_sunset(i)
         assert cm.should_compact()
 
     def test_should_compact_generation_gap(self):
         ft = self._make_table()
-        cm = CompactionManager(table=ft, policy=CompactionPolicy(min_archive_for_summary=1, max_generations_without_compact=3))
+        cm = CompactionManager(
+            table=ft,
+            policy=CompactionPolicy(
+                min_archive_for_summary=1, max_generations_without_compact=3
+            ),
+        )
         for i in range(3):
             cm.record_birth(i, generation=i)
             cm.archive_sunset(i)
@@ -136,7 +148,14 @@ class TestCompactionLifecycle:
 
     def test_compact_produces_summary(self):
         ft = self._make_table(dim=4)
-        cm = CompactionManager(table=ft, policy=CompactionPolicy(max_archive_size=5, min_archive_for_summary=1, preserve_recent_generations=0))
+        cm = CompactionManager(
+            table=ft,
+            policy=CompactionPolicy(
+                max_archive_size=5,
+                min_archive_for_summary=1,
+                preserve_recent_generations=0,
+            ),
+        )
         for i in range(5):
             self._add_agent(ft, i, generation=i, vector=[float(i), 0.0, 0.0, 0.0])
             cm.record_birth(i, generation=i)
@@ -151,7 +170,15 @@ class TestCompactionLifecycle:
 
     def test_compact_preserves_recent_generations(self):
         ft = self._make_table(dim=4)
-        cm = CompactionManager(table=ft, policy=CompactionPolicy(max_archive_size=10, min_archive_for_summary=1, preserve_recent_generations=2, max_generations_without_compact=3))
+        cm = CompactionManager(
+            table=ft,
+            policy=CompactionPolicy(
+                max_archive_size=10,
+                min_archive_for_summary=1,
+                preserve_recent_generations=2,
+                max_generations_without_compact=3,
+            ),
+        )
         for i in range(5):
             self._add_agent(ft, i, generation=i, vector=[float(i), 0.0, 0.0, 0.0])
             cm.record_birth(i, generation=i)
@@ -164,7 +191,14 @@ class TestCompactionLifecycle:
 
     def test_compact_removes_from_table(self):
         ft = self._make_table(dim=4)
-        cm = CompactionManager(table=ft, policy=CompactionPolicy(max_archive_size=5, min_archive_for_summary=1, preserve_recent_generations=0))
+        cm = CompactionManager(
+            table=ft,
+            policy=CompactionPolicy(
+                max_archive_size=5,
+                min_archive_for_summary=1,
+                preserve_recent_generations=0,
+            ),
+        )
         for i in range(5):
             self._add_agent(ft, i, generation=i)
             cm.record_birth(i, generation=i)
@@ -174,7 +208,14 @@ class TestCompactionLifecycle:
 
     def test_compact_empty_vectors(self):
         ft = self._make_table(dim=4)
-        cm = CompactionManager(table=ft, policy=CompactionPolicy(max_archive_size=3, min_archive_for_summary=1, preserve_recent_generations=0))
+        cm = CompactionManager(
+            table=ft,
+            policy=CompactionPolicy(
+                max_archive_size=3,
+                min_archive_for_summary=1,
+                preserve_recent_generations=0,
+            ),
+        )
         for i in range(3):
             cm.record_birth(i, generation=i)
             cm.archive_sunset(i)
@@ -183,7 +224,14 @@ class TestCompactionLifecycle:
 
     def test_total_archived(self):
         ft = self._make_table(dim=4)
-        cm = CompactionManager(table=ft, policy=CompactionPolicy(max_archive_size=5, min_archive_for_summary=1, preserve_recent_generations=0))
+        cm = CompactionManager(
+            table=ft,
+            policy=CompactionPolicy(
+                max_archive_size=5,
+                min_archive_for_summary=1,
+                preserve_recent_generations=0,
+            ),
+        )
         for i in range(5):
             self._add_agent(ft, i, generation=i)
             cm.record_birth(i, generation=i)
@@ -194,7 +242,14 @@ class TestCompactionLifecycle:
 
     def test_summary_count(self):
         ft = self._make_table(dim=4)
-        cm = CompactionManager(table=ft, policy=CompactionPolicy(max_archive_size=5, min_archive_for_summary=1, preserve_recent_generations=0))
+        cm = CompactionManager(
+            table=ft,
+            policy=CompactionPolicy(
+                max_archive_size=5,
+                min_archive_for_summary=1,
+                preserve_recent_generations=0,
+            ),
+        )
         for i in range(5):
             self._add_agent(ft, i, generation=i)
             cm.record_birth(i, generation=i)

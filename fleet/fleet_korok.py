@@ -10,6 +10,7 @@ Use cases:
 
 Reference: https://github.com/Pringled/korok
 """
+
 from __future__ import annotations
 
 import logging
@@ -81,6 +82,7 @@ class FleetKorokIndex:
         """Attempt to import korok. If unavailable, mark fallback mode."""
         try:
             import korok
+
             self._korok_module = korok
             log.info("FleetKorok: korok backend available")
         except ImportError:
@@ -145,21 +147,21 @@ class FleetKorokIndex:
         return self._search_fallback(query, k)
 
     def _search_korok(self, query: str, k: int) -> List[FleetKorokResult]:
-        results = self._pipeline.query(
-            [query], k=k, k_reranker=self.config.k_reranker
-        )
+        results = self._pipeline.query([query], k=k, k_reranker=self.config.k_reranker)
         # results is list of (text, score) tuples
         out: List[FleetKorokResult] = []
         for text, score in results[0]:
             # map text back to doc_id
             doc_id = self._text_to_doc_id(text)
             entry = self._entries.get(doc_id)
-            out.append(FleetKorokResult(
-                doc_id=doc_id,
-                text=text,
-                score=float(score),
-                metadata=entry.metadata if entry else {},
-            ))
+            out.append(
+                FleetKorokResult(
+                    doc_id=doc_id,
+                    text=text,
+                    score=float(score),
+                    metadata=entry.metadata if entry else {},
+                )
+            )
         return out
 
     def _search_fallback(self, query: str, k: int) -> List[FleetKorokResult]:
@@ -176,12 +178,14 @@ class FleetKorokIndex:
         out: List[FleetKorokResult] = []
         for doc_id, score in scored[:k]:
             entry = self._entries[doc_id]
-            out.append(FleetKorokResult(
-                doc_id=doc_id,
-                text=entry.text,
-                score=score,
-                metadata=entry.metadata,
-            ))
+            out.append(
+                FleetKorokResult(
+                    doc_id=doc_id,
+                    text=entry.text,
+                    score=score,
+                    metadata=entry.metadata,
+                )
+            )
         return out
 
     def _text_to_doc_id(self, text: str) -> str:
@@ -227,6 +231,7 @@ class FleetKorokIndex:
         :param config: FleetKorokConfig instance.
         """
         if text_extractor is None:
+
             def text_extractor(tile):
                 return tile.get("text", tile.get("description", ""))
 

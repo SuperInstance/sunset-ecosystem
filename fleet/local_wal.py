@@ -8,6 +8,7 @@ Usage:
     wal.append({"op": "set", "key": "x", "value": 1})
     entries = wal.read_all()
 """
+
 from __future__ import annotations
 
 import json

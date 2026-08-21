@@ -10,6 +10,7 @@ Orchestrates the full weekly triage workflow:
 
 Intended to be invoked by cron or CI weekly.
 """
+
 from __future__ import annotations
 
 __all__ = ["WeeklyTriage", "run_triage"]
@@ -26,7 +27,11 @@ from triage.drift_detect import DriftDetector, DriftReport, detect_drift
 from triage.duplicate_detect import DuplicateDetector, DuplicatePair, find_duplicates
 from triage.github_issues import GitHubIssues, IssueState
 from triage.metrics import RepoHealthMetrics, HealthScore, run_health_check
-from triage.repo_duplicate import RepoDuplicateDetector, RepoDuplicatePair, find_repo_duplicates
+from triage.repo_duplicate import (
+    RepoDuplicateDetector,
+    RepoDuplicatePair,
+    find_repo_duplicates,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +122,9 @@ class TriageReport:
                 lines.append(f"- **Branch Divergence:** {self.drift.branch_divergence}")
             lines.append(f"- **Severity:** {self.drift.severity}")
         if self.actions_taken:
-            lines.extend(["", "## Actions Taken"] + [f"- {a}" for a in self.actions_taken])
+            lines.extend(
+                ["", "## Actions Taken"] + [f"- {a}" for a in self.actions_taken]
+            )
         return "\n".join(lines)
 
 
@@ -179,8 +186,7 @@ class WeeklyTriage:
 
         # 4. Issue duplicate detection
         issue_dicts = [
-            {"number": i.number, "title": i.title, "body": i.body}
-            for i in open_issues
+            {"number": i.number, "title": i.title, "body": i.body} for i in open_issues
         ]
         dupes = find_duplicates(issue_dicts)
         duplicate_pairs = [dict(d) for d in dupes]
@@ -238,7 +244,10 @@ class WeeklyTriage:
         )
 
         # 8. Persist report
-        report_path = self.cache_dir / f"triage-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.json"
+        report_path = (
+            self.cache_dir
+            / f"triage-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.json"
+        )
         report_path.write_text(report.to_json())
         logger.info("Report saved: %s", report_path)
 

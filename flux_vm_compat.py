@@ -7,6 +7,7 @@ Per SPEC-FLUX-RESOLUTION §5:
   Example:
       from flux_vm_compat import FluxVM  # → loads v3 under the hood
 """
+
 from __future__ import annotations
 
 import warnings

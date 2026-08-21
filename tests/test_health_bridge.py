@@ -37,7 +37,9 @@ class TestCheckResult:
         assert r.details == {}
 
     def test_to_dict(self):
-        r = CheckResult(name="test", ok=True, latency_ms=23.1, status="UP", details={"a": 1})
+        r = CheckResult(
+            name="test", ok=True, latency_ms=23.1, status="UP", details={"a": 1}
+        )
         d = r.to_dict()
         assert d["name"] == "test"
         assert d["ok"] is True
@@ -45,7 +47,9 @@ class TestCheckResult:
         assert d["details"] == {"a": 1}
 
     def test_from_dict_roundtrip(self):
-        r = CheckResult(name="test", ok=True, latency_ms=23.1, status="UP", details={"a": 1})
+        r = CheckResult(
+            name="test", ok=True, latency_ms=23.1, status="UP", details={"a": 1}
+        )
         d = r.to_dict()
         r2 = CheckResult.from_dict(d)
         assert r2.name == r.name
@@ -70,8 +74,7 @@ class TestServiceDef:
 
     def test_extract_field(self):
         svc = ServiceDef(
-            name="test", host="127.0.0.1", port=8080,
-            extract={"rooms": "rooms"}
+            name="test", host="127.0.0.1", port=8080, extract={"rooms": "rooms"}
         )
         assert svc.extract == {"rooms": "rooms"}
 
@@ -116,8 +119,7 @@ class TestHealthCheckerCheckHttp:
             mock_urlopen.return_value.__enter__.return_value = mock_resp
 
             result = HealthChecker.check_http(
-                "http://test.example/",
-                extract={"rooms": "rooms"}
+                "http://test.example/", extract={"rooms": "rooms"}
             )
             assert result.ok is True
             assert result.details.get("rooms") == 42
@@ -125,6 +127,7 @@ class TestHealthCheckerCheckHttp:
     def test_404_treated_as_up(self):
         """HTTP 404 from a live server is treated as UP."""
         from urllib.error import HTTPError
+
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.side_effect = HTTPError(
                 "http://test.example/", 404, "Not Found", {}, None
@@ -144,13 +147,10 @@ class TestHealthCheckerCheckHttp:
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_resp = MagicMock()
             mock_resp.getcode.return_value = 200
-            mock_resp.read.return_value = b'{}'
+            mock_resp.read.return_value = b"{}"
             mock_urlopen.return_value.__enter__.return_value = mock_resp
 
-            result = HealthChecker.check_http(
-                "http://test.example/",
-                expect_status=201
-            )
+            result = HealthChecker.check_http("http://test.example/", expect_status=201)
             assert result.ok is False
             assert "DEGRADED" in result.status
 
@@ -301,7 +301,11 @@ class TestEventBusHealthChecker:
             )
             checker.check_all()
         # Should emit service_recovered
-        calls = [call for call in bus.emit.call_args_list if call[0][0] == "service_recovered"]
+        calls = [
+            call
+            for call in bus.emit.call_args_list
+            if call[0][0] == "service_recovered"
+        ]
         assert len(calls) == 1
 
     def test_emit_on_every_check(self):
@@ -331,8 +335,10 @@ class TestEventBusHealthChecker:
         class FakeBus:
             def __init__(self):
                 self.calls = []
+
             def publish(self, event_type, payload):
                 self.calls.append((event_type, payload))
+
         bus = FakeBus()
         checker = EventBusHealthChecker(FLEET_SERVICES[:1], bus=bus)
         # First check: DOWN (to trigger transition on next check)
@@ -354,8 +360,10 @@ class TestEventBusHealthChecker:
         class FakeBus:
             def __init__(self):
                 self.calls = []
+
             def send(self, event_type, payload):
                 self.calls.append((event_type, payload))
+
         bus = FakeBus()
         checker = EventBusHealthChecker(FLEET_SERVICES[:1], bus=bus)
         # First check: DOWN

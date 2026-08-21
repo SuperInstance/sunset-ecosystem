@@ -222,10 +222,11 @@ class RoomGrid:
             self._apply_effects(events)
         return out
 
+
 # Integration point 2: Topology-level check
 class TopologyChecker:
     """Check constraints across room topology, not just per-room."""
-    
+
     def check_topology(
         self,
         grid: RoomGrid,
@@ -233,11 +234,12 @@ class TopologyChecker:
     ) -> list[EffectEvent]:
         """Example: if rooms A and B both violate AND their latents are correlated,
         emit a CRITICAL topology alert."""
-        
+
+
 # Integration point 3: Fleet-wide check (mesh layer)
 class FleetConstraintChecker:
     """Aggregate violation summaries from all mesh nodes."""
-    
+
     def on_mesh_alert(self, summary: ConstraintSummary) -> None:
         """If >30% of fleet nodes report violations on the same constraint,
         escalate to fleet-wide CRITICAL."""

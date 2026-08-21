@@ -28,6 +28,7 @@ class ChaosProbability:
         minimum: Floor for chaos probability.
         current: Current chaos probability.
     """
+
     initial: float = 0.3
     decay: float = 0.95
     minimum: float = 0.01
@@ -68,6 +69,7 @@ class ChaosEvent:
         reason: Why the chaos fired (swap, reroute, random).
         timestamp: When this event occurred.
     """
+
     original_route: str
     new_route: str
     reason: str
@@ -105,9 +107,7 @@ def inject_chaos(
     prob = chaos_prob.update(adaptation_score)
 
     # Deep copy to avoid mutating input
-    new_routes: dict[str, list[str]] = {
-        src: list(dsts) for src, dsts in routes.items()
-    }
+    new_routes: dict[str, list[str]] = {src: list(dsts) for src, dsts in routes.items()}
     events: list[ChaosEvent] = []
 
     # Collect all destinations for potential swaps
@@ -142,26 +142,32 @@ def inject_chaos(
                         # Swap the two destinations
                         new_routes[src][i] = other_dsts[j]
                         new_routes[other_src][j] = original
-                        events.append(ChaosEvent(
-                            original_route=f"{src}→{original}",
-                            new_route=f"{src}→{other_dsts[j]}",
-                            reason="swap",
-                        ))
-                        events.append(ChaosEvent(
-                            original_route=f"{other_src}→{other_dsts[j]}",
-                            new_route=f"{other_src}→{original}",
-                            reason="swap",
-                        ))
+                        events.append(
+                            ChaosEvent(
+                                original_route=f"{src}→{original}",
+                                new_route=f"{src}→{other_dsts[j]}",
+                                reason="swap",
+                            )
+                        )
+                        events.append(
+                            ChaosEvent(
+                                original_route=f"{other_src}→{other_dsts[j]}",
+                                new_route=f"{other_src}→{original}",
+                                reason="swap",
+                            )
+                        )
             else:
                 # Reroute: pick a random destination from the pool
                 candidates = [d for d in all_destinations if d != dst]
                 if candidates:
                     new_dst = random.choice(candidates)
                     new_routes[src][i] = new_dst
-                    events.append(ChaosEvent(
-                        original_route=f"{src}→{original}",
-                        new_route=f"{src}→{new_dst}",
-                        reason="reroute",
-                    ))
+                    events.append(
+                        ChaosEvent(
+                            original_route=f"{src}→{original}",
+                            new_route=f"{src}→{new_dst}",
+                            reason="reroute",
+                        )
+                    )
 
     return new_routes, events

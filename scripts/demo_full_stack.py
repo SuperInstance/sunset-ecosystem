@@ -14,6 +14,7 @@ Usage:
 Output:
     JSON report with performance metrics and breeding log.
 """
+
 from __future__ import annotations
 
 import json, time, sys, random
@@ -55,33 +56,36 @@ def run_demo(n_rooms: int = 500, n_ticks: int = 200):
         if tick % 20 < 10:
             # Structured: sine waves with phase shift per fiber
             signals = {
-                fid: np.sin(np.linspace(0, 4*np.pi, 64) + i*0.5).astype(np.float32)
+                fid: np.sin(np.linspace(0, 4 * np.pi, 64) + i * 0.5).astype(np.float32)
                 for i, fid in enumerate(topo.fibers)
             }
         else:
             # Random noise
             signals = {
-                fid: np.random.randn(64).astype(np.float32) * 0.5
-                for fid in topo.fibers
+                fid: np.random.randn(64).astype(np.float32) * 0.5 for fid in topo.fibers
             }
 
         r = topo.tick(signals)
         latencies.append(r.latency_ms)
 
         if r.compiled_funcs:
-            compile_events.append({
-                "tick": r.tick,
-                "functions": r.compiled_funcs,
-            })
+            compile_events.append(
+                {
+                    "tick": r.tick,
+                    "functions": r.compiled_funcs,
+                }
+            )
 
         # Run breeder every 30 ticks
         if tick > 50 and tick % 30 == 0:
             reborn = breeder.auto_breed()
             if reborn:
-                breeding_events.append({
-                    "tick": tick,
-                    "reborn": reborn,
-                })
+                breeding_events.append(
+                    {
+                        "tick": tick,
+                        "reborn": reborn,
+                    }
+                )
 
     total_ms = sum(latencies)
     avg_ms = np.mean(latencies)
@@ -91,8 +95,10 @@ def run_demo(n_rooms: int = 500, n_ticks: int = 200):
 
     # ── Report ─────────────────────────────────────────────
     print(f"[results] {n_ticks} ticks in {total_ms:.0f}ms")
-    print(f"  Per tick: avg={avg_ms:.2f}ms p50={p50_ms:.2f}ms p99={p99_ms:.2f}ms max={max_ms:.2f}ms")
-    print(f"  Throughput: {n_ticks/(total_ms/1000):.0f} ticks/s")
+    print(
+        f"  Per tick: avg={avg_ms:.2f}ms p50={p50_ms:.2f}ms p99={p99_ms:.2f}ms max={max_ms:.2f}ms"
+    )
+    print(f"  Throughput: {n_ticks / (total_ms / 1000):.0f} ticks/s")
     print()
 
     print(f"[grid] {topo.grid}")
@@ -105,7 +111,7 @@ def run_demo(n_rooms: int = 500, n_ticks: int = 200):
     for e in breeding_events[:3]:
         print(f"  tick {e['tick']}: {len(e['reborn'])} rooms reborn")
     if len(breeding_events) > 3:
-        print(f"  ... and {len(breeding_events)-3} more cycles")
+        print(f"  ... and {len(breeding_events) - 3} more cycles")
     print()
 
     print(f"[compiler] {len(compile_events)} auto-compile events")

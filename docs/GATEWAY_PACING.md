@@ -42,12 +42,12 @@ except TimeoutError:
 
 ```python
 GatewayPacing(
-    max_consecutive_timeouts=2,       # Trip after 2 timeouts
-    linear_backoff_max=300.0,          # Cap linear phase at 5min
-    exponential_backoff_max=1200.0,    # Hard cap at 20min
-    half_open_probe_interval=30.0,     # 1 probe every 30s
-    successes_to_reopen=3,             # 3 successes to reopen
-    history_limit=50,                  # Retain last 50 events
+    max_consecutive_timeouts=2,  # Trip after 2 timeouts
+    linear_backoff_max=300.0,  # Cap linear phase at 5min
+    exponential_backoff_max=1200.0,  # Hard cap at 20min
+    half_open_probe_interval=30.0,  # 1 probe every 30s
+    successes_to_reopen=3,  # 3 successes to reopen
+    history_limit=50,  # Retain last 50 events
 )
 ```
 

@@ -46,7 +46,11 @@ class TestCompileFormula:
         agent = MercuryCompilerAgent(node_id="alpha")
         result = agent.compile_formula("health", "=IF(FLEET_HEALTH()>0.5, PASS, FAIL)")
         assert result.mercury_code != ""
-        assert "pred" in result.mercury_code or "module" in result.mercury_code or not _MMC_AVAILABLE
+        assert (
+            "pred" in result.mercury_code
+            or "module" in result.mercury_code
+            or not _MMC_AVAILABLE
+        )
 
     def test_compile_history(self):
         agent = MercuryCompilerAgent(node_id="alpha")
@@ -152,7 +156,9 @@ class TestCompileResult:
         assert r.determinism == "unknown"
 
     def test_with_errors(self):
-        r = CompileResult(formula_name="x", success=False, mercury_code="", errors=["fail"])
+        r = CompileResult(
+            formula_name="x", success=False, mercury_code="", errors=["fail"]
+        )
         assert r.success is False
         assert r.errors == ["fail"]
 

@@ -15,6 +15,7 @@ Usage::
     validator.validate_rule_name("safe_rule")           # OK
     validator.validate_rule_name("../../../etc/passwd") # raises ValidationError
 """
+
 from __future__ import annotations
 
 __all__ = ["RuleValidator", "ValidationError"]
@@ -26,6 +27,7 @@ from typing import Any
 
 class ValidationError(ValueError):
     """Raised when a rule fails security validation."""
+
     pass
 
 
@@ -38,11 +40,14 @@ _SAFE_NAME_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 _XSS_RE = re.compile(r"<[^>]+>")
 
 # SQL injection detection: common SQL metacharacters in suspicious context
-_SQLI_RE = re.compile(r"('|--|;|DROP\s+TABLE|DELETE\s+FROM|INSERT\s+INTO)", re.IGNORECASE)
+_SQLI_RE = re.compile(
+    r"('|--|;|DROP\s+TABLE|DELETE\s+FROM|INSERT\s+INTO)", re.IGNORECASE
+)
 
 # Code injection detection: import or system calls
 _CODE_INJECTION_RE = re.compile(
-    r"(__import__|import\s+os|os\.system|subprocess\.call|eval\(|exec\()")
+    r"(__import__|import\s+os|os\.system|subprocess\.call|eval\(|exec\()"
+)
 
 # Path traversal detection
 _PATH_TRAVERSAL_RE = re.compile(r"\.\./|/\.\./|\.\.\\|/etc/|/var/|/home/")
@@ -51,6 +56,7 @@ _PATH_TRAVERSAL_RE = re.compile(r"\.\./|/\.\./|\.\.\\|/etc/|/var/|/home/")
 @dataclass(frozen=True)
 class RuleProvenance:
     """Immutable record of who created a rule and when."""
+
     creator: str
     creator_type: str  # "GrammarEvolver", "external", "human", etc.
     timestamp: float
@@ -91,9 +97,7 @@ class RuleValidator:
                 f"Rule name '{name}' contains path traversal sequence"
             )
         if _CODE_INJECTION_RE.search(name):
-            raise ValidationError(
-                f"Rule name '{name}' contains code injection payload"
-            )
+            raise ValidationError(f"Rule name '{name}' contains code injection payload")
         return name
 
     def validate_production_fields(self, production: dict[str, Any]) -> dict[str, Any]:
@@ -146,6 +150,7 @@ class RuleValidator:
         Returns the immutable provenance record.
         """
         import time
+
         prov = RuleProvenance(
             creator=creator,
             creator_type=creator_type,
@@ -198,9 +203,19 @@ class RuleValidator:
         Future: replace with restricted execution environment.
         """
         forbidden = [
-            "__import__", "import os", "import sys", "import subprocess",
-            "os.system", "os.path", "subprocess.call", "subprocess.Popen",
-            "eval(", "exec(", "compile(", "open(", "file(",
+            "__import__",
+            "import os",
+            "import sys",
+            "import subprocess",
+            "os.system",
+            "os.path",
+            "subprocess.call",
+            "subprocess.Popen",
+            "eval(",
+            "exec(",
+            "compile(",
+            "open(",
+            "file(",
         ]
         lower = code.lower()
         for token in forbidden:

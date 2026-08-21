@@ -27,6 +27,7 @@ References
 - COVER: Puthiya Parambath, Usunier & Grandvalet (2016)
 - SSD: Huang, Wang, Zhang & Xu (2021)
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -48,14 +49,15 @@ log = logging.getLogger(__name__)
 
 # ── Re-export pyversity strategy names (fallback to string if not installed) ──
 
+
 class DiversityStrategy(Enum):
     """Diversification strategies backed by pyversity research."""
 
-    DPP = "dpp"           # Determinantal Point Process — probabilistic repulsion
-    MMR = "mmr"           # Maximal Marginal Relevance
-    MSD = "msd"           # Max Sum of Distances
-    COVER = "cover"       # Facility-Location coverage
-    SSD = "ssd"           # Sliding Spectrum Decomposition (sequence-aware)
+    DPP = "dpp"  # Determinantal Point Process — probabilistic repulsion
+    MMR = "mmr"  # Maximal Marginal Relevance
+    MSD = "msd"  # Max Sum of Distances
+    COVER = "cover"  # Facility-Location coverage
+    SSD = "ssd"  # Sliding Spectrum Decomposition (sequence-aware)
 
 
 @dataclass
@@ -211,9 +213,7 @@ class FleetDiversitySelector:
             else np.zeros(len(candidates))
         )
 
-        indices = self._diversify(
-            embeddings, scores, k, DiversityStrategy.DPP, div
-        )
+        indices = self._diversify(embeddings, scores, k, DiversityStrategy.DPP, div)
         return [candidates[i] for i in indices]
 
     def compute_diversity_stats(
@@ -229,9 +229,15 @@ class FleetDiversitySelector:
         """
         if not population:
             return DiversityStats(
-                n_items=0, mean_fitness=0.0, mean_pairwise_distance=0.0,
-                min_pairwise_distance=0.0, max_pairwise_distance=0.0,
-                ilad=0.0, ilmd=0.0, selected_indices=[], selected_fitness_mean=0.0,
+                n_items=0,
+                mean_fitness=0.0,
+                mean_pairwise_distance=0.0,
+                min_pairwise_distance=0.0,
+                max_pairwise_distance=0.0,
+                ilad=0.0,
+                ilmd=0.0,
+                selected_indices=[],
+                selected_fitness_mean=0.0,
                 selected_diversity_mean=0.0,
             )
 
@@ -264,7 +270,9 @@ class FleetDiversitySelector:
                 sel_upper = sel_dist[np.triu_indices(m, k=1)]
                 ilad = float(sel_upper.mean())
                 ilmd = float(sel_upper.min())
-            selected_fitness_mean = np.mean([population[i].fitness for i in selected_indices])
+            selected_fitness_mean = np.mean(
+                [population[i].fitness for i in selected_indices]
+            )
             selected_div_mean = ilad
 
         return DiversityStats(
@@ -396,7 +404,9 @@ class FleetDiversitySelector:
                     sum_dist = dists.sum()
                 else:
                     sum_dist = 0.0
-                msd_score = (1 - diversity) * rel + diversity * sum_dist / max(len(selected), 1)
+                msd_score = (1 - diversity) * rel + diversity * sum_dist / max(
+                    len(selected), 1
+                )
                 if msd_score > best_score:
                     best_score = msd_score
                     best_idx = idx
@@ -428,10 +438,7 @@ class FleetDiversitySelector:
                         L_ss_inv = np.linalg.inv(L_ss + 1e-6 * np.eye(len(selected)))
                     except np.linalg.LinAlgError:
                         L_ss_inv = np.linalg.pinv(L_ss)
-                    gain = (
-                        L[idx, idx]
-                        - L[idx, selected] @ L_ss_inv @ L[selected, idx]
-                    )
+                    gain = L[idx, idx] - L[idx, selected] @ L_ss_inv @ L[selected, idx]
                 else:
                     gain = L[idx, idx]
                 if gain > best_gain:
@@ -508,10 +515,12 @@ class FleetDiversitySelector:
         fitnesses = [fit for _, fit in elites]
         # Use behavior grid indices as simple embeddings for diversification
         grid_indices = list(archive._grid.keys())
-        embeddings = np.array([
-            np.array([idx / g for idx, g in zip(pos, archive.grid_shape)])
-            for pos in grid_indices
-        ])
+        embeddings = np.array(
+            [
+                np.array([idx / g for idx, g in zip(pos, archive.grid_shape)])
+                for pos in grid_indices
+            ]
+        )
         if embeddings.shape[0] == 0:
             return individuals[:k]
 

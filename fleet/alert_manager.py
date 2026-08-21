@@ -10,6 +10,7 @@ Usage:
     alerts.send("CPU high", severity="warning", channel="slack")
     assert alerts.stats()["sent"] == 1
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -35,7 +36,9 @@ class AlertManager:
     # Channel management
     # ------------------------------------------------------------------
 
-    def register_channel(self, name: str, handler: Callable[[Dict[str, Any]], None]) -> None:
+    def register_channel(
+        self, name: str, handler: Callable[[Dict[str, Any]], None]
+    ) -> None:
         """Register an alert channel."""
         self._channels[name] = handler
 

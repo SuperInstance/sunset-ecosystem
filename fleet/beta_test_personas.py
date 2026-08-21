@@ -27,6 +27,7 @@ from typing import Any, Callable
 
 # ── data structures ───────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class Persona:
     """A simulated external visitor."""
@@ -66,6 +67,7 @@ class BetaTestResult:
 
 
 # ── persona library ───────────────────────────────────────────
+
 
 class PersonaLibrary:
     """Pre-built personas from behavioral synthesis."""
@@ -224,7 +226,9 @@ class PersonaLibrary:
     def get_persona(cls, name: str) -> Persona:
         key = name.lower().replace(" ", "_")
         if key not in cls._PERSONAS:
-            raise KeyError(f"Unknown persona: {name!r} (try one of {list(cls._PERSONAS.keys())})")
+            raise KeyError(
+                f"Unknown persona: {name!r} (try one of {list(cls._PERSONAS.keys())})"
+            )
         return cls._PERSONAS[key]
 
     @classmethod
@@ -238,15 +242,25 @@ class PersonaLibrary:
 
 # ── beta test runner ──────────────────────────────────────────
 
+
 class BetaTestRunner:
     """Simulate persona discovery and rate the experience."""
 
     # Weighted checks per persona type
     _CHECKS: dict[str, list[tuple[str, Callable[[dict], bool]]]] = {
         "devops_engineer": [
-            ("README deploy section", lambda m: "deploy" in m.get("readme", "").lower()),
-            ("Docker or k8s manifests", lambda m: m.get("has_docker", False) or m.get("has_k8s", False)),
-            ("Health endpoint documented", lambda m: "health" in m.get("readme", "").lower()),
+            (
+                "README deploy section",
+                lambda m: "deploy" in m.get("readme", "").lower(),
+            ),
+            (
+                "Docker or k8s manifests",
+                lambda m: m.get("has_docker", False) or m.get("has_k8s", False),
+            ),
+            (
+                "Health endpoint documented",
+                lambda m: "health" in m.get("readme", "").lower(),
+            ),
         ],
         "sre_oncall": [
             ("Runbook exists", lambda m: m.get("has_runbook", False)),
@@ -254,9 +268,15 @@ class BetaTestRunner:
             ("Alert rules", lambda m: m.get("has_alerts", False)),
         ],
         "junior_developer": [
-            ("Quickstart in README", lambda m: "quickstart" in m.get("readme", "").lower()),
+            (
+                "Quickstart in README",
+                lambda m: "quickstart" in m.get("readme", "").lower(),
+            ),
             ("Examples folder", lambda m: m.get("has_examples", False)),
-            ("Architecture description", lambda m: "architecture" in m.get("readme", "").lower()),
+            (
+                "Architecture description",
+                lambda m: "architecture" in m.get("readme", "").lower(),
+            ),
         ],
         "security_auditor": [
             ("SBOM available", lambda m: m.get("has_sbom", False)),
@@ -264,7 +284,10 @@ class BetaTestRunner:
             ("Signed releases", lambda m: m.get("signed_releases", False)),
         ],
         "fleet_operator": [
-            ("Multi-node config", lambda m: "multi-node" in m.get("readme", "").lower()),
+            (
+                "Multi-node config",
+                lambda m: "multi-node" in m.get("readme", "").lower(),
+            ),
             ("Node discovery", lambda m: m.get("has_discovery", False)),
             ("Scaling guide", lambda m: "scale" in m.get("readme", "").lower()),
         ],
@@ -374,16 +397,26 @@ class BetaTestRunner:
         lines.append("|---------|--------|----------|----------------------|")
         for r in results:
             blockers_str = ", ".join(r.blockers) if r.blockers else "None"
-            time_str = f"{r.time_to_first_success:.2f}s" if r.time_to_first_success > 0 else "N/A"
-            lines.append(f"| {r.persona.name} | {'★' * r.rating}{'☆' * (5 - r.rating)} | {blockers_str} | {time_str} |")
+            time_str = (
+                f"{r.time_to_first_success:.2f}s"
+                if r.time_to_first_success > 0
+                else "N/A"
+            )
+            lines.append(
+                f"| {r.persona.name} | {'★' * r.rating}{'☆' * (5 - r.rating)} | {blockers_str} | {time_str} |"
+            )
 
         lines.append("")
         lines.append("## Detailed Notes")
         lines.append("")
         for r in results:
-            lines.append(f"### {r.persona.name} ({r.persona.role}, level {r.persona.expertise_level})")
+            lines.append(
+                f"### {r.persona.name} ({r.persona.role}, level {r.persona.expertise_level})"
+            )
             lines.append(f"- **Rating:** {r.rating}/5")
-            lines.append(f"- **Blockers:** {', '.join(r.blockers) if r.blockers else 'None'}")
+            lines.append(
+                f"- **Blockers:** {', '.join(r.blockers) if r.blockers else 'None'}"
+            )
             lines.append(f"- **Notes:** {r.notes}")
             lines.append("")
 
@@ -393,6 +426,7 @@ class BetaTestRunner:
             all_blockers.extend(r.blockers)
 
         from collections import Counter
+
         common = Counter(all_blockers).most_common(5)
         if common:
             lines.append("## Top Recommendations")

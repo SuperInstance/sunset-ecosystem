@@ -53,6 +53,7 @@ class InvalidEndpointError(NexusError):
 
 # ── data structures ─────────────────────────────────────────────
 
+
 @dataclass(slots=True)
 class FederationEndpoint:
     """An HTTP endpoint for the Federated Nexus."""
@@ -106,6 +107,7 @@ class RegistrationRecord:
 
 
 # ── core class ──────────────────────────────────────────────────
+
 
 class FederatedNexus:
     """Client for registering and heart-beating with the fleet nexus.

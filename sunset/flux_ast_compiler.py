@@ -32,6 +32,7 @@ __all__ = [
 
 class FluxCompileError(Exception):
     """Raised when a Python construct cannot be compiled to FLUX."""
+
     pass
 
 
@@ -127,9 +128,13 @@ class PythonASTAdapter:
             var_expr = self._try_name(mid_expr)
             # Pattern: constant < name < constant
             if var_expr and lo_val is not None and hi_val is not None:
-                if isinstance(op0, (ast.Lt, ast.LtE)) and isinstance(op1, (ast.Lt, ast.LtE)):
+                if isinstance(op0, (ast.Lt, ast.LtE)) and isinstance(
+                    op1, (ast.Lt, ast.LtE)
+                ):
                     return RangeCheckNode(var_expr, lo_val, hi_val)
-                elif isinstance(op0, (ast.Gt, ast.GtE)) and isinstance(op1, (ast.Gt, ast.GtE)):
+                elif isinstance(op0, (ast.Gt, ast.GtE)) and isinstance(
+                    op1, (ast.Gt, ast.GtE)
+                ):
                     # Reverse: constant > name > constant → same range
                     return RangeCheckNode(var_expr, hi_val, lo_val)
             # Also check: name > constant > constant (unusual but valid)
@@ -137,7 +142,9 @@ class PythonASTAdapter:
             lo_val2 = self._try_numeric(mid_expr)
             hi_val2 = self._try_numeric(hi_expr)
             if var_expr2 and lo_val2 is not None and hi_val2 is not None:
-                if isinstance(op0, (ast.Gt, ast.GtE)) and isinstance(op1, (ast.Gt, ast.GtE)):
+                if isinstance(op0, (ast.Gt, ast.GtE)) and isinstance(
+                    op1, (ast.Gt, ast.GtE)
+                ):
                     return RangeCheckNode(var_expr2, hi_val2, lo_val2)
 
         # Flatten chain: a < b < c → a < b and b < c
@@ -237,9 +244,13 @@ class PythonASTAdapter:
         if fname == "abs" and len(node.args) == 1:
             return UnaryOp("Abs", self.translate(node.args[0]))
         elif fname == "min" and len(node.args) == 2:
-            return BinOp("Min", self.translate(node.args[0]), self.translate(node.args[1]))
+            return BinOp(
+                "Min", self.translate(node.args[0]), self.translate(node.args[1])
+            )
         elif fname == "max" and len(node.args) == 2:
-            return BinOp("Max", self.translate(node.args[0]), self.translate(node.args[1]))
+            return BinOp(
+                "Max", self.translate(node.args[0]), self.translate(node.args[1])
+            )
         elif fname == "saturate" and len(node.args) == 3:
             return RangeCheckNode(
                 self.translate(node.args[0]),
@@ -280,8 +291,12 @@ def compile_lambda(
     adapter = PythonASTAdapter(var_defaults)
     expr = adapter.translate(lam.body)
 
-    compiler = FluxCompiler(prefer_range_check=prefer_range_check, var_defaults=var_defaults)
-    emitter = compiler.compile_constraint(expr, with_validate=with_validate, with_halt=True)
+    compiler = FluxCompiler(
+        prefer_range_check=prefer_range_check, var_defaults=var_defaults
+    )
+    emitter = compiler.compile_constraint(
+        expr, with_validate=with_validate, with_halt=True
+    )
     return emitter.to_bytes(), emitter.const_pool, emitter.disassemble()
 
 
@@ -316,6 +331,10 @@ def compile_function(
     adapter = PythonASTAdapter(var_defaults)
     expr = adapter.translate(func_def.body[0].value)
 
-    compiler = FluxCompiler(prefer_range_check=prefer_range_check, var_defaults=var_defaults)
-    emitter = compiler.compile_constraint(expr, with_validate=with_validate, with_halt=True)
+    compiler = FluxCompiler(
+        prefer_range_check=prefer_range_check, var_defaults=var_defaults
+    )
+    emitter = compiler.compile_constraint(
+        expr, with_validate=with_validate, with_halt=True
+    )
     return emitter.to_bytes(), emitter.const_pool, emitter.disassemble()

@@ -10,6 +10,7 @@ References
 - SuperInstance/eisenstein  v0.3.1  (Rust, no_std)
 - swarm/superinstance_ffi.py        (ctypes bridge to compiled .so)
 """
+
 from __future__ import annotations
 
 import math
@@ -23,6 +24,7 @@ _E12_FFI_AVAILABLE = False
 
 try:
     from swarm.superinstance_ffi import eisenstein_norm as _ffi_norm
+
     _E12_FFI_AVAILABLE = True
 except Exception:
     _ffi_norm = None
@@ -30,9 +32,11 @@ except Exception:
 
 # ── Pure-Python E12 ──────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class E12:
     """Eisenstein integer a + b·ω  where ω = e^(2πi/3)."""
+
     a: int
     b: int
 
@@ -74,11 +78,11 @@ class E12:
 # ── Hex direction snapping ─────────────────────────────────────────────────
 
 HEX_DIRECTIONS = [
-    E12(1, 0),   # 0°
-    E12(1, 1),   # 60°
-    E12(0, 1),   # 120°
+    E12(1, 0),  # 0°
+    E12(1, 1),  # 60°
+    E12(0, 1),  # 120°
     E12(-1, 0),  # 180°
-    E12(-1, -1), # 240°
+    E12(-1, -1),  # 240°
     E12(0, -1),  # 300°
 ]
 
@@ -151,6 +155,7 @@ class HexDisk:
 
 
 # ── Module-level helpers ──────────────────────────────────────────────────
+
 
 def eisenstein_norm(a: int, b: int) -> int:
     """N(a,b) = a² − ab + b²."""

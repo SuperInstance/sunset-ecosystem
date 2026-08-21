@@ -17,6 +17,7 @@ Measures:
 Output:
   JSON file with all measurements for regression detection.
 """
+
 from __future__ import annotations
 
 import json, sys, time, os
@@ -47,16 +48,18 @@ def benchmark_grid_backends():
             grid.tick(np.random.randn(64))
             latencies.append((time.perf_counter() - t0) * 1000)
 
-        results.append({
-            "n_rooms": n,
-            "backend": backend,
-            "avg_ms": float(np.mean(latencies)),
-            "p50_ms": float(np.percentile(latencies, 50)),
-            "p99_ms": float(np.percentile(latencies, 99)),
-            "min_ms": float(np.min(latencies)),
-            "max_ms": float(np.max(latencies)),
-            "ticks_per_sec": 50 / (sum(latencies) / 1000),
-        })
+        results.append(
+            {
+                "n_rooms": n,
+                "backend": backend,
+                "avg_ms": float(np.mean(latencies)),
+                "p50_ms": float(np.percentile(latencies, 50)),
+                "p99_ms": float(np.percentile(latencies, 99)),
+                "min_ms": float(np.min(latencies)),
+                "max_ms": float(np.max(latencies)),
+                "ticks_per_sec": 50 / (sum(latencies) / 1000),
+            }
+        )
 
     return results
 
@@ -77,14 +80,16 @@ def benchmark_topology_scaling():
 
         # Warmup
         for _ in range(5):
-            signals = {fid: np.random.randn(64).astype(np.float32) for fid in topo.fibers}
+            signals = {
+                fid: np.random.randn(64).astype(np.float32) for fid in topo.fibers
+            }
             topo.tick(signals)
 
         # Structured signals (sine waves)
         latencies_structured = []
         for _ in range(n_ticks):
             signals = {
-                fid: np.sin(np.linspace(0, 4*np.pi, 64) + i*0.5).astype(np.float32)
+                fid: np.sin(np.linspace(0, 4 * np.pi, 64) + i * 0.5).astype(np.float32)
                 for i, fid in enumerate(topo.fibers)
             }
             t0 = time.perf_counter()
@@ -94,27 +99,31 @@ def benchmark_topology_scaling():
         # Random signals
         latencies_random = []
         for _ in range(n_ticks):
-            signals = {fid: np.random.randn(64).astype(np.float32) for fid in topo.fibers}
+            signals = {
+                fid: np.random.randn(64).astype(np.float32) for fid in topo.fibers
+            }
             t0 = time.perf_counter()
             topo.tick(signals)
             latencies_random.append((time.perf_counter() - t0) * 1000)
 
-        results.append({
-            "config": cfg,
-            "backend": topo.grid.__repr__().split("backend=")[1].rstrip(")"),
-            "structured": {
-                "avg_ms": float(np.mean(latencies_structured)),
-                "p50_ms": float(np.percentile(latencies_structured, 50)),
-                "p99_ms": float(np.percentile(latencies_structured, 99)),
-                "ticks_per_sec": n_ticks / (sum(latencies_structured) / 1000),
-            },
-            "random": {
-                "avg_ms": float(np.mean(latencies_random)),
-                "p50_ms": float(np.percentile(latencies_random, 50)),
-                "p99_ms": float(np.percentile(latencies_random, 99)),
-                "ticks_per_sec": n_ticks / (sum(latencies_random) / 1000),
-            },
-        })
+        results.append(
+            {
+                "config": cfg,
+                "backend": topo.grid.__repr__().split("backend=")[1].rstrip(")"),
+                "structured": {
+                    "avg_ms": float(np.mean(latencies_structured)),
+                    "p50_ms": float(np.percentile(latencies_structured, 50)),
+                    "p99_ms": float(np.percentile(latencies_structured, 99)),
+                    "ticks_per_sec": n_ticks / (sum(latencies_structured) / 1000),
+                },
+                "random": {
+                    "avg_ms": float(np.mean(latencies_random)),
+                    "p50_ms": float(np.percentile(latencies_random, 50)),
+                    "p99_ms": float(np.percentile(latencies_random, 99)),
+                    "ticks_per_sec": n_ticks / (sum(latencies_random) / 1000),
+                },
+            }
+        )
 
     return results
 
@@ -139,13 +148,15 @@ def benchmark_novelty():
             batch_novelty(latents, hist, hist_count, 5, 20)
             latencies.append((time.perf_counter() - t0) * 1000)
 
-        results.append({
-            "n": n,
-            "avg_ms": float(np.mean(latencies)),
-            "p50_ms": float(np.percentile(latencies, 50)),
-            "p99_ms": float(np.percentile(latencies, 99)),
-            "calls_per_sec": 100 / (sum(latencies) / 1000),
-        })
+        results.append(
+            {
+                "n": n,
+                "avg_ms": float(np.mean(latencies)),
+                "p50_ms": float(np.percentile(latencies, 50)),
+                "p99_ms": float(np.percentile(latencies, 99)),
+                "calls_per_sec": 100 / (sum(latencies) / 1000),
+            }
+        )
 
     return results
 
@@ -167,15 +178,21 @@ def main():
     for r in topo_results:
         cfg = r["config"]
         print(f"  {cfg['n_rooms']:4d} rooms × {cfg['n_fibers']:2d} fibers:")
-        print(f"    structured: {r['structured']['avg_ms']:6.2f}ms/tick ({r['structured']['ticks_per_sec']:.0f}/s)")
-        print(f"    random:     {r['random']['avg_ms']:6.2f}ms/tick ({r['random']['ticks_per_sec']:.0f}/s)")
+        print(
+            f"    structured: {r['structured']['avg_ms']:6.2f}ms/tick ({r['structured']['ticks_per_sec']:.0f}/s)"
+        )
+        print(
+            f"    random:     {r['random']['avg_ms']:6.2f}ms/tick ({r['random']['ticks_per_sec']:.0f}/s)"
+        )
         print(f"    backend:    {r['backend']}")
     print()
 
     print("[3/3] Novelty function isolation...")
     novelty_results = benchmark_novelty()
     for r in novelty_results:
-        print(f"  {r['n']:5d} rooms: {r['avg_ms']:.3f}ms/call ({r['calls_per_sec']:,.0f}/s)")
+        print(
+            f"  {r['n']:5d} rooms: {r['avg_ms']:.3f}ms/call ({r['calls_per_sec']:,.0f}/s)"
+        )
     print()
 
     report = {

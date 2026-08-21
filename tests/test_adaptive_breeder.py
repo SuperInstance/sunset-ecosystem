@@ -12,7 +12,9 @@ class MockBreeder:
         self.generation += 1
 
     def get_best(self):
-        return type('obj', (object,), {'genome': np.array([1.0]), 'fitness': self._best_fitness})()
+        return type(
+            "obj", (object,), {"genome": np.array([1.0]), "fitness": self._best_fitness}
+        )()
 
 
 class TestBreederStrategy:

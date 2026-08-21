@@ -43,12 +43,12 @@ class TestPlatoAcademyBridge:
     def test_progression(self):
         bridge = PlatoAcademyBridge(node_id="alpha")
         bridge.enroll_agent("agent_001")
-        
+
         # Complete modules to reach explorer
         bridge.run_module("agent_001", "boot_camp")  # 10
         bridge.run_module("agent_001", "room_exploration")  # 15
         bridge.run_module("agent_001", "tile_creation")  # 20
-        
+
         progress = bridge.get_progression("agent_001")
         assert progress["level"] == "explorer"
         assert progress["score"] == 45.0
@@ -56,12 +56,19 @@ class TestPlatoAcademyBridge:
     def test_captain_progression(self):
         bridge = PlatoAcademyBridge(node_id="alpha")
         bridge.enroll_agent("agent_001")
-        
+
         # Complete all modules to reach captain
-        for module in ["boot_camp", "room_exploration", "tile_creation", "spell_casting",
-                       "api_integration", "orchestration", "captain_chair"]:
+        for module in [
+            "boot_camp",
+            "room_exploration",
+            "tile_creation",
+            "spell_casting",
+            "api_integration",
+            "orchestration",
+            "captain_chair",
+        ]:
             bridge.run_module("agent_001", module)
-        
+
         progress = bridge.get_progression("agent_001")
         assert progress["level"] == "captain"
         assert progress["score"] >= 150
@@ -69,11 +76,18 @@ class TestPlatoAcademyBridge:
     def test_promote_to_fleet(self):
         bridge = PlatoAcademyBridge(node_id="alpha")
         bridge.enroll_agent("agent_001")
-        
-        for module in ["boot_camp", "room_exploration", "tile_creation", "spell_casting",
-                       "api_integration", "orchestration", "captain_chair"]:
+
+        for module in [
+            "boot_camp",
+            "room_exploration",
+            "tile_creation",
+            "spell_casting",
+            "api_integration",
+            "orchestration",
+            "captain_chair",
+        ]:
             bridge.run_module("agent_001", module)
-        
+
         assert bridge.promote_to_fleet("agent_001") is True
 
     def test_promote_not_ready(self):

@@ -3,6 +3,7 @@
 Simulates a multi-node fleet breeding round, persists results to SQLite,
 and verifies restore integrity.
 """
+
 from __future__ import annotations
 
 import os
@@ -16,19 +17,26 @@ import pytest
 # -- Mock cocapn_traps before imports --
 _mock_cocapn_traps = types.ModuleType("cocapn_traps")
 _mock_cocapn_traps_traps = types.ModuleType("cocapn_traps.traps")
-_mock_cocapn_traps_diversity = types.ModuleType("cocapn_traps.traps.diversity_collapse_trap")
+_mock_cocapn_traps_diversity = types.ModuleType(
+    "cocapn_traps.traps.diversity_collapse_trap"
+)
+
 
 class _MockAlert:
     level = "WARNING"
     recommended_action = "mock alert"
 
+
 class _MockDiversityCollapseTrap:
     def __init__(self, bus=None):
         self._history = []
+
     def record(self, value: float) -> None:
         self._history.append(value)
+
     def check(self):
         return None
+
 
 _mock_cocapn_traps_diversity.DiversityCollapseTrap = _MockDiversityCollapseTrap
 _mock_cocapn_traps_diversity.Alert = _MockAlert
@@ -60,7 +68,9 @@ def db_path():
 
 
 class TestEndToEndConsensusPersistRestore:
-    def _make_network(self, num_nodes: int, byzantine_ids: set[int]) -> tuple[FleetBFTNetwork, FleetBreederConsensus]:
+    def _make_network(
+        self, num_nodes: int, byzantine_ids: set[int]
+    ) -> tuple[FleetBFTNetwork, FleetBreederConsensus]:
         """Helper to build a network with N nodes, some Byzantine."""
         all_ids = [f"node_{i}" for i in range(num_nodes)]
         nodes = []
@@ -94,10 +104,7 @@ class TestEndToEndConsensusPersistRestore:
         )
 
         # Simulate candidates from vector table
-        candidates = [
-            {"id": f"agent_{i}", "fitness": 0.5 + 0.1 * i}
-            for i in range(8)
-        ]
+        candidates = [{"id": f"agent_{i}", "fitness": 0.5 + 0.1 * i} for i in range(8)]
 
         # Run consensus
         pairs = integration.propose_parents(candidates, batch_size=4)

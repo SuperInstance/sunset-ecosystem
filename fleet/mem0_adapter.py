@@ -53,7 +53,9 @@ class MemoryEntry:
     agent_id: str
     timestamp: float
     metadata: Dict[str, Any] = field(default_factory=dict)
-    embedding: np.ndarray = field(default_factory=lambda: np.array([], dtype=np.float32))
+    embedding: np.ndarray = field(
+        default_factory=lambda: np.array([], dtype=np.float32)
+    )
 
     def __post_init__(self) -> None:
         if not isinstance(self.embedding, np.ndarray):
@@ -285,7 +287,7 @@ class FleetMemoryStore:
             # Temporal decay boost: newer memories score higher
             age_hours = (time.time() - entry.timestamp) / 3600.0
             decay_factor = math.exp(-age_hours / self.config.decay_hours)
-            score *= (1.0 + decay_factor)
+            score *= 1.0 + decay_factor
 
             scored.append((score, entry))
 
@@ -464,7 +466,9 @@ class AgentMemoryProfile:
         logger.debug("Updated profile for %s from run '%s'", self.agent_id, task)
         return entry
 
-    def get_relevant_context(self, current_task: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def get_relevant_context(
+        self, current_task: str, top_k: int = 5
+    ) -> List[Dict[str, Any]]:
         """Return memories relevant to the current task."""
         memories = self.store.search_memories(
             query=current_task,
@@ -473,7 +477,9 @@ class AgentMemoryProfile:
         )
         return [m.to_dict() for m in memories]
 
-    def summarize_history(self, time_range: Tuple[float, float] | None = None) -> Dict[str, Any]:
+    def summarize_history(
+        self, time_range: Tuple[float, float] | None = None
+    ) -> Dict[str, Any]:
         """Summarize memories in a date range."""
         if time_range is None:
             # Default: last 7 days
@@ -684,11 +690,14 @@ class CrossAgentMemoryGossip:
                                 entry.content,
                                 entry.agent_id,
                                 entry.timestamp,
-                                json.dumps({
-                                    **entry.metadata,
-                                    "gossip_source": source,
-                                    "gossip_received_at": time.time(),
-                                }, separators=(",", ":")),
+                                json.dumps(
+                                    {
+                                        **entry.metadata,
+                                        "gossip_source": source,
+                                        "gossip_received_at": time.time(),
+                                    },
+                                    separators=(",", ":"),
+                                ),
                                 entry.embedding.tobytes(),
                             ),
                         )
@@ -696,9 +705,7 @@ class CrossAgentMemoryGossip:
             except Exception as exc:
                 logger.warning("Failed to merge gossip memory: %s", exc)
 
-        logger.debug(
-            "Merged %d gossip memories from %s", len(memories), source
-        )
+        logger.debug("Merged %d gossip memories from %s", len(memories), source)
         return True
 
     def get_shared_memories(self, agent_id: str) -> List[MemoryEntry]:
@@ -771,7 +778,9 @@ class Mem0Adapter:
 
     # ── lifecycle ───────────────────────────────────────────
 
-    def initialize_for_fleet(self, config: Dict[str, Any] | None = None) -> FleetMemoryStore:
+    def initialize_for_fleet(
+        self, config: Dict[str, Any] | None = None
+    ) -> FleetMemoryStore:
         """Set up the fleet-wide memory store."""
         cfg = MemoryConfig(**(config or {}))
         self.store = FleetMemoryStore(cfg)
@@ -791,14 +800,18 @@ class Mem0Adapter:
             logger.warning("Identity has no agent_id; cannot attach memory profile")
             return
         if self.store is None:
-            raise RuntimeError("Call initialize_for_fleet() before attach_to_agent_identity()")
+            raise RuntimeError(
+                "Call initialize_for_fleet() before attach_to_agent_identity()"
+            )
 
         profile = AgentMemoryProfile(self.store, agent_id)
         self._agent_profiles[agent_id] = profile
 
         # Monkey-patch the identity object (non-invasive)
         identity.memory_profile = profile  # type: ignore[attr-defined]
-        identity.get_memory_context = lambda task, k=5: profile.get_relevant_context(task, k)  # type: ignore[attr-defined]
+        identity.get_memory_context = lambda task, k=5: profile.get_relevant_context(
+            task, k
+        )  # type: ignore[attr-defined]
 
         logger.debug("Attached memory profile to agent %s", agent_id)
 
@@ -809,9 +822,19 @@ class Mem0Adapter:
         and an Act wrapper that logs outcomes.
         """
         if self.sda_memory is None:
-            raise RuntimeError("Call initialize_for_fleet() before attach_to_sda_loop()")
+            raise RuntimeError(
+                "Call initialize_for_fleet() before attach_to_sda_loop()"
+            )
 
-        from fleet.sense_decide_act import Act, ActResult, Decide, Decision, Observation, Sense, SDALoop
+        from fleet.sense_decide_act import (
+            Act,
+            ActResult,
+            Decide,
+            Decision,
+            Observation,
+            Sense,
+            SDALoop,
+        )
 
         class MemoryEnrichSense(Sense):
             """Sense node that queries agent memory before deciding."""
@@ -831,7 +854,9 @@ class Mem0Adapter:
                     timestamp=time.time(),
                     source="memory_sense",
                     metrics={
-                        "relevant_memory_count": len(mem_ctx.get("relevant_memories", [])),
+                        "relevant_memory_count": len(
+                            mem_ctx.get("relevant_memories", [])
+                        ),
                         "agent_role": mem_ctx.get("role", ""),
                         "capabilities": mem_ctx.get("capabilities", []),
                     },
@@ -841,7 +866,9 @@ class Mem0Adapter:
         class MemoryLogAct(Act):
             """Act wrapper that logs action outcomes to memory."""
 
-            def __init__(self, adapter: "Mem0Adapter", agent_id: str, delegate: Act) -> None:
+            def __init__(
+                self, adapter: "Mem0Adapter", agent_id: str, delegate: Act
+            ) -> None:
                 self.adapter = adapter
                 self.agent_id = agent_id
                 self.delegate = delegate
@@ -891,7 +918,9 @@ class Mem0Adapter:
         method (like our MeshVectorGossip protocol).
         """
         if self.gossip is None:
-            raise RuntimeError("Call initialize_for_fleet() before attach_to_mesh_gossip()")
+            raise RuntimeError(
+                "Call initialize_for_fleet() before attach_to_mesh_gossip()"
+            )
 
         def _memory_gossip_handler(payload: Dict[str, Any]) -> None:
             self.gossip.receive_gossip(payload)
@@ -928,7 +957,9 @@ class Mem0Adapter:
             raise RuntimeError("Gossip not initialized")
         return self.gossip.share_memory(memory_id, source_agent_id, target_agent_ids)
 
-    def build_sync_payload(self, agent_id: str, memory_ids: List[str]) -> Dict[str, Any]:
+    def build_sync_payload(
+        self, agent_id: str, memory_ids: List[str]
+    ) -> Dict[str, Any]:
         """Build a gossip payload for an agent's memories."""
         if self.gossip is None:
             raise RuntimeError("Gossip not initialized")
@@ -942,5 +973,7 @@ class Mem0Adapter:
             "initialized": True,
             "db_path": self.store.config.db_path,
             "agent_profiles": len(self._agent_profiles),
-            "pending_gossip": len(self.gossip.get_pending_gossip()) if self.gossip else 0,
+            "pending_gossip": len(self.gossip.get_pending_gossip())
+            if self.gossip
+            else 0,
         }

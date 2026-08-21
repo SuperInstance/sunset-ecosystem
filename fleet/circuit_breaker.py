@@ -9,14 +9,15 @@ import numpy as np
 
 
 class CircuitState(Enum):
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"          # Failing, reject requests
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, reject requests
     HALF_OPEN = "half_open"  # Testing if service recovered
 
 
 @dataclass
 class CircuitBreakerConfig:
     """Configuration for circuit breaker."""
+
     failure_threshold: int = 5
     recovery_timeout: float = 30.0
     half_open_max_calls: int = 3
@@ -107,8 +108,7 @@ class CircuitBreaker:
 
     def get_stats(self) -> Dict[str, Any]:
         """Get circuit breaker statistics."""
-        recent = [c for c in self._call_history
-                  if time.time() - c["time"] < 60]
+        recent = [c for c in self._call_history if time.time() - c["time"] < 60]
         successes = sum(1 for c in recent if c["success"])
         failures = sum(1 for c in recent if not c["success"])
 
@@ -132,6 +132,7 @@ class CircuitBreaker:
 
 class CircuitBreakerOpen(Exception):
     """Raised when circuit breaker is open."""
+
     pass
 
 
@@ -158,10 +159,7 @@ class CircuitBreakerPanel:
 
     def get_all_stats(self) -> Dict[str, Any]:
         """Get stats for all circuit breakers."""
-        return {
-            name: breaker.get_stats()
-            for name, breaker in self.breakers.items()
-        }
+        return {name: breaker.get_stats() for name, breaker in self.breakers.items()}
 
     def to_dict(self) -> Dict[str, Any]:
         return {

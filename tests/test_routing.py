@@ -1,4 +1,5 @@
 """Tests for RoutingLayer — firing, Hebbian activation, feedback."""
+
 import numpy as np
 import pytest
 
@@ -74,7 +75,9 @@ class TestHebbian:
         assert key not in routing_layer._channels, "Channel should not exist yet"
         routing_layer.fire_fast("fiber-0")
         assert key in routing_layer._channels, "Channel auto-created on co-fire"
-        assert routing_layer._channels[key].weight > 0.0, "Auto-created channel not activated"
+        assert routing_layer._channels[key].weight > 0.0, (
+            "Auto-created channel not activated"
+        )
 
 
 class TestFeedback:
@@ -105,5 +108,7 @@ class TestFeedback:
         updates = [(f"fiber-{i}", "room-test", True) for i in range(5)]
         routing_layer.feedback_batch(updates)
         for i in range(5):
-            route = routing_layer._routes[routing_layer._route_key(f"fiber-{i}", "room-test")]
+            route = routing_layer._routes[
+                routing_layer._route_key(f"fiber-{i}", "room-test")
+            ]
             assert route.strength > 0.5, f"Route {i} not reinforced"

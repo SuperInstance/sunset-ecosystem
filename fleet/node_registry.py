@@ -8,6 +8,7 @@ Usage:
     reg.register("node-1", {"host": "10.0.0.1", "capabilities": ["breed", "train"]})
     nodes = reg.find_by_capability("breed")
 """
+
 from __future__ import annotations
 
 import time
@@ -96,9 +97,7 @@ class NodeRegistry:
 
     def healthy_nodes(self) -> List[str]:
         """List healthy nodes."""
-        return [
-            nid for nid, info in self._nodes.items() if info.get("healthy", False)
-        ]
+        return [nid for nid, info in self._nodes.items() if info.get("healthy", False)]
 
     def unhealthy_nodes(self) -> List[str]:
         """List unhealthy nodes."""

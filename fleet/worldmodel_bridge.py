@@ -22,6 +22,7 @@ from fleet.spatial_projector import Prediction, WorldState
 @dataclass
 class SolverConfig:
     """Configuration for a stable-worldmodel solver."""
+
     name: str  # "CEM", "iCEM", "MPPI", etc.
     num_samples: int = 300
     horizon: int = 10
@@ -32,6 +33,7 @@ class SolverConfig:
 @dataclass
 class EnvironmentConfig:
     """Environment configuration."""
+
     env_id: str  # "PushT-v1", "TwoRoom-v0", etc.
     num_envs: int = 1
     seed: int = 0
@@ -47,8 +49,9 @@ class MockWorldModel:
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
 
-    def predict(self, state: WorldState, horizon: int,
-                actions: Optional[List[Any]] = None) -> List[WorldState]:
+    def predict(
+        self, state: WorldState, horizon: int, actions: Optional[List[Any]] = None
+    ) -> List[WorldState]:
         """Generate trajectory from state."""
         trajectory = [state]
         if state.velocity:
@@ -56,14 +59,13 @@ class MockWorldModel:
                 dt = 1.0
                 prev = trajectory[-1]
                 new_pos = tuple(
-                    p + v * dt
-                    for p, v in zip(prev.position, state.velocity)
+                    p + v * dt for p, v in zip(prev.position, state.velocity)
                 )
                 new_state = WorldState(
                     position=new_pos,
                     velocity=state.velocity,
                     semantics=state.semantics.copy(),
-                    confidence=state.confidence * (0.9 ** step),
+                    confidence=state.confidence * (0.9**step),
                     timestamp=state.timestamp + step,
                     agent_id=state.agent_id,
                     room_id=state.room_id,
@@ -71,14 +73,16 @@ class MockWorldModel:
                 trajectory.append(new_state)
         else:
             for step in range(1, horizon + 1):
-                trajectory.append(WorldState(
-                    position=state.position,
-                    semantics=state.semantics.copy(),
-                    confidence=state.confidence * (0.8 ** step),
-                    timestamp=state.timestamp + step,
-                    agent_id=state.agent_id,
-                    room_id=state.room_id,
-                ))
+                trajectory.append(
+                    WorldState(
+                        position=state.position,
+                        semantics=state.semantics.copy(),
+                        confidence=state.confidence * (0.8**step),
+                        timestamp=state.timestamp + step,
+                        agent_id=state.agent_id,
+                        room_id=state.room_id,
+                    )
+                )
         return trajectory
 
 
@@ -90,8 +94,11 @@ class WorldModelBridge:
     Otherwise, falls back to mock implementations.
     """
 
-    def __init__(self, solver_config: Optional[SolverConfig] = None,
-                 env_config: Optional[EnvironmentConfig] = None):
+    def __init__(
+        self,
+        solver_config: Optional[SolverConfig] = None,
+        env_config: Optional[EnvironmentConfig] = None,
+    ):
         self.solver_config = solver_config or SolverConfig(name="CEM")
         self.env_config = env_config or EnvironmentConfig(env_id="PushT-v1")
         self._world_model: Optional[Any] = None
@@ -104,6 +111,7 @@ class WorldModelBridge:
         """Detect if stable-worldmodel is installed."""
         try:
             import stable_worldmodel  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -126,6 +134,7 @@ class WorldModelBridge:
         try:
             import stable_worldmodel as swm
             from stable_worldmodel.solver import CEMSolver, iCEMSolver, MPPISolver
+
             solver_map = {
                 "CEM": CEMSolver,
                 "iCEM": iCEMSolver,
@@ -144,7 +153,9 @@ class WorldModelBridge:
             pass
         return False
 
-    def solve(self, initial_state: WorldState, horizon: int) -> Tuple[List[Any], List[float]]:
+    def solve(
+        self, initial_state: WorldState, horizon: int
+    ) -> Tuple[List[Any], List[float]]:
         """
         Solve for optimal actions from initial state.
         Returns (actions, predicted_rewards).
@@ -155,15 +166,20 @@ class WorldModelBridge:
             pass
         # Fallback: generate random actions
         import random
+
         actions = [random.random() for _ in range(horizon)]
         rewards = [random.random() for _ in range(horizon)]
         return actions, rewards
 
     # ── Prediction ──
 
-    def predict(self, agent_id: str, current_state: WorldState,
-                horizon: int = 10,
-                model_id: str = "fleet-default") -> Prediction:
+    def predict(
+        self,
+        agent_id: str,
+        current_state: WorldState,
+        horizon: int = 10,
+        model_id: str = "fleet-default",
+    ) -> Prediction:
         """
         Predict trajectory using world model.
         Falls back to mock if stable-worldmodel unavailable.
@@ -189,8 +205,9 @@ class WorldModelBridge:
             agent_id=agent_id,
         )
 
-    def predict_batch(self, agent_states: List[Tuple[str, WorldState]],
-                      horizon: int = 10) -> Dict[str, Prediction]:
+    def predict_batch(
+        self, agent_states: List[Tuple[str, WorldState]], horizon: int = 10
+    ) -> Dict[str, Prediction]:
         """Predict trajectories for multiple agents."""
         return {
             agent_id: self.predict(agent_id, state, horizon)
@@ -206,12 +223,15 @@ class WorldModelBridge:
         env_id = env_id or self.env_config.env_id
         try:
             import stable_worldmodel as swm
+
             self._env = swm.World(env_id, num_envs=self.env_config.num_envs)
             return True
         except Exception:
             return False
 
-    def evaluate_policy(self, policy_fn: Callable, episodes: int = 50) -> Dict[str, float]:
+    def evaluate_policy(
+        self, policy_fn: Callable, episodes: int = 50
+    ) -> Dict[str, float]:
         """Evaluate a policy in the loaded environment."""
         if self._env and self._has_swm:
             # Real evaluation would use stable-worldmodel
@@ -234,6 +254,7 @@ class WorldModelBridge:
 
         constraints = []
         if thermal_budget is not None:
+
             def check(pred: Prediction) -> bool:
                 temps = [s.semantics.get("temperature", 0.0) for s in pred.trajectory]
                 return all(t <= thermal_budget for t in temps)
@@ -243,13 +264,15 @@ class WorldModelBridge:
                 max_t = max(temps) if temps else 0.0
                 return max(0.0, (max_t - thermal_budget) / thermal_budget)
 
-            constraints.append(FluxConstraint(
-                name="worldmodel_thermal",
-                check=check,
-                penalty=penalty,
-                hard=False,
-                weight=1.0,
-            ))
+            constraints.append(
+                FluxConstraint(
+                    name="worldmodel_thermal",
+                    check=check,
+                    penalty=penalty,
+                    hard=False,
+                    weight=1.0,
+                )
+            )
         return constraints
 
     def get_status(self) -> Dict[str, Any]:

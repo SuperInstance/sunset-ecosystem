@@ -59,28 +59,70 @@ class NeedState:
 
     def __all__(self) -> list[str]:
         return [
-            "task", "urgency", "frustration",
-            "satisfaction", "wait_time_seconds", "last_updated",
+            "task",
+            "urgency",
+            "frustration",
+            "satisfaction",
+            "wait_time_seconds",
+            "last_updated",
         ]
 
 
 # Frustration heuristics
-_SATISFACTION_WORDS_POSITIVE = frozenset({
-    "thanks", "thank you", "great", "perfect", "works", "awesome",
-    "done", "got it", "nice", "cool", "sweet", "exactly", "that's it",
-    "fixed", "resolved", "no worries", "appreciate",
-})
+_SATISFACTION_WORDS_POSITIVE = frozenset(
+    {
+        "thanks",
+        "thank you",
+        "great",
+        "perfect",
+        "works",
+        "awesome",
+        "done",
+        "got it",
+        "nice",
+        "cool",
+        "sweet",
+        "exactly",
+        "that's it",
+        "fixed",
+        "resolved",
+        "no worries",
+        "appreciate",
+    }
+)
 
-_SATISFACTION_WORDS_NEGATIVE = frozenset({
-    "still not working", "wrong", "nope", "try again", "doesn't work",
-    "broken", "error", "fail", "ugh", "come on", "seriously",
-    "again?", "still broken", "not helpful", "useless",
-})
+_SATISFACTION_WORDS_NEGATIVE = frozenset(
+    {
+        "still not working",
+        "wrong",
+        "nope",
+        "try again",
+        "doesn't work",
+        "broken",
+        "error",
+        "fail",
+        "ugh",
+        "come on",
+        "seriously",
+        "again?",
+        "still broken",
+        "not helpful",
+        "useless",
+    }
+)
 
-_FRUSTRATION_ESCALATION_PHRASES = frozenset({
-    "again", "still", "repeatedly", "over and over", "keep getting",
-    "why does", "still not", "same error",
-})
+_FRUSTRATION_ESCALATION_PHRASES = frozenset(
+    {
+        "again",
+        "still",
+        "repeatedly",
+        "over and over",
+        "keep getting",
+        "why does",
+        "still not",
+        "same error",
+    }
+)
 
 
 class NeedTracker:
@@ -164,7 +206,14 @@ class NeedTracker:
         response_lower = response.lower().strip()
 
         # Check if response signals completion
-        completion_words = {"done", "complete", "finished", "deployed", "fixed", "resolved"}
+        completion_words = {
+            "done",
+            "complete",
+            "finished",
+            "deployed",
+            "fixed",
+            "resolved",
+        }
         for word in completion_words:
             if word in response_lower:
                 self._satisfaction = Satisfaction.POSITIVE

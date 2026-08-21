@@ -61,6 +61,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TemporalQuery:
     """Query parameters for temporal memory search."""
+
     start_time: float | None = None
     end_time: float | None = None
     min_fitness: float = 0.0
@@ -75,6 +76,7 @@ class TemporalQuery:
 @dataclass
 class MemoryEntry:
     """Human-readable memory entry with metadata."""
+
     entry: VectorTableEntry
     context: dict[str, Any] = field(default_factory=dict)
     relevance_score: float = 0.0
@@ -143,7 +145,8 @@ class MemoryShard:
         with self._lock:
             self._query_count += 1
             results = self._hnsw.knn_search(
-                vector, k=k,
+                vector,
+                k=k,
                 filter_fn=lambda e: e.fitness >= min_fitness,
             )
             return [
@@ -316,21 +319,22 @@ class FleetMemory:
 
             # Apply filters
             if query.agent_id_filter:
-                results = [r for r in results if r.entry.agent_id == query.agent_id_filter]
+                results = [
+                    r for r in results if r.entry.agent_id == query.agent_id_filter
+                ]
             if query.node_id_filter:
-                results = [r for r in results if r.entry.node_id == query.node_id_filter]
+                results = [
+                    r for r in results if r.entry.node_id == query.node_id_filter
+                ]
             if query.keyword_filter:
                 keyword = query.keyword_filter.lower()
-                results = [
-                    r for r in results
-                    if keyword in str(r.context).lower()
-                ]
+                results = [r for r in results if keyword in str(r.context).lower()]
 
             all_results.extend(results)
 
         # Sort by relevance (descending)
         all_results.sort(key=lambda r: r.relevance_score, reverse=True)
-        return all_results[:query.max_results]
+        return all_results[: query.max_results]
 
     def recall_similar(
         self,
@@ -341,13 +345,15 @@ class FleetMemory:
         min_fitness: float = 0.0,
     ) -> list[MemoryEntry]:
         """Quick recall by vector similarity."""
-        return self.recall(TemporalQuery(
-            start_time=start_time,
-            end_time=end_time,
-            similarity_vector=np.array(vector, dtype=np.float32),
-            similarity_k=k,
-            min_fitness=min_fitness,
-        ))
+        return self.recall(
+            TemporalQuery(
+                start_time=start_time,
+                end_time=end_time,
+                similarity_vector=np.array(vector, dtype=np.float32),
+                similarity_k=k,
+                min_fitness=min_fitness,
+            )
+        )
 
     def get_memory_stats(self) -> dict[str, Any]:
         """Return fleet memory statistics."""
@@ -387,12 +393,14 @@ class FleetMemory:
     def _timestamp_to_shard_id(self, timestamp: float) -> str:
         """Convert timestamp to shard ID (e.g., '2026-06-08')."""
         import datetime
+
         dt = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
         return dt.strftime("%Y-%m-%d")
 
     def _shard_id_to_time_range(self, shard_id: str) -> tuple[float, float]:
         """Convert shard ID to time range."""
         import datetime
+
         dt = datetime.datetime.strptime(shard_id, "%Y-%m-%d")
         dt = dt.replace(tzinfo=datetime.timezone.utc)
         start = dt.timestamp()

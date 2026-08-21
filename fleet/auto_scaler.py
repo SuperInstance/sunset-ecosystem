@@ -13,6 +13,7 @@ Usage:
     if decision.action == "scale_up":
         provision_nodes(decision.count)
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ScaleDecision:
     """A scaling decision."""
+
     action: str  # "scale_up", "scale_down", "hold"
     count: int = 0
     reason: str = ""
@@ -43,6 +45,7 @@ class ScaleDecision:
 @dataclass
 class ScalingPolicy:
     """Scaling policy parameters."""
+
     target_cpu: float = 0.7
     target_memory: float = 0.8
     scale_up_threshold: float = 0.85
@@ -74,7 +77,7 @@ class AutoScaler:
         now = time.time()
         self._history.append((now, dict(metrics)))
         if len(self._history) > self._max_history:
-            self._history = self._history[-self._max_history:]
+            self._history = self._history[-self._max_history :]
 
         cpu = metrics.get("cpu", 0.0)
         memory = metrics.get("memory", 0.0)
@@ -149,8 +152,12 @@ class AutoScaler:
         """Get remaining cooldown time for scale up/down."""
         now = time.time()
         return {
-            "scale_up": max(0.0, self._policy.scale_up_cooldown - (now - self._last_scale_up)),
-            "scale_down": max(0.0, self._policy.scale_down_cooldown - (now - self._last_scale_down)),
+            "scale_up": max(
+                0.0, self._policy.scale_up_cooldown - (now - self._last_scale_up)
+            ),
+            "scale_down": max(
+                0.0, self._policy.scale_down_cooldown - (now - self._last_scale_down)
+            ),
         }
 
     def stats(self) -> dict[str, Any]:

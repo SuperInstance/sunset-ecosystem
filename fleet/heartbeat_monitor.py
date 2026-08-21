@@ -12,6 +12,7 @@ Usage:
     time.sleep(10)
     status = monitor.status("node-2")  # "suspected" or "dead"
 """
+
 from __future__ import annotations
 
 import logging
@@ -136,6 +137,7 @@ class HeartbeatMonitor:
         # Phi = -log10(1 - CDF(elapsed))
         # Approximate with exponential distribution
         import math
+
         cdf = 0.5 * (1 + math.erf((elapsed - mean) / (std * math.sqrt(2))))
         if cdf >= 1.0:
             return float("inf")

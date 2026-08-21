@@ -53,7 +53,11 @@ class TestSpectralGenome:
         phenotype = genome.phenotype
         assert len(phenotype) == 64
         # Should be essentially real
-        assert np.max(np.abs(phenotype.imag)) < 1e-10 if hasattr(phenotype, 'imag') else True
+        assert (
+            np.max(np.abs(phenotype.imag)) < 1e-10
+            if hasattr(phenotype, "imag")
+            else True
+        )
 
     def test_magnitude(self):
         genome = SpectralGenome.random(64)
@@ -108,9 +112,7 @@ class TestSpectralCrossover:
                 assert np.isreal(child.spectrum[n // 2])
             for i in range(1, (n + 1) // 2):
                 assert np.isclose(
-                    child.spectrum[n - i],
-                    child.spectrum[i].conjugate(),
-                    atol=1e-10
+                    child.spectrum[n - i], child.spectrum[i].conjugate(), atol=1e-10
                 )
 
 
@@ -188,27 +190,26 @@ class TestSpectralBreeder:
     def test_evaluate(self):
         breeder = SpectralBreeder(population_size=10, spectrum_size=32)
         breeder.initialize()
-        breeder.evaluate(lambda p: float(np.sum(p ** 2)))
+        breeder.evaluate(lambda p: float(np.sum(p**2)))
         assert breeder.best_fitness > 0
         assert breeder.best_genome is not None
 
     def test_select_and_breed(self):
         breeder = SpectralBreeder(population_size=10, spectrum_size=32)
         breeder.initialize()
-        breeder.evaluate(lambda p: float(np.sum(p ** 2)))
+        breeder.evaluate(lambda p: float(np.sum(p**2)))
         breeder.select_and_breed()
         assert len(breeder.population) == 10
         assert breeder.generation == 1
 
     def test_full_evolution(self):
         breeder = SpectralBreeder(
-            population_size=20, spectrum_size=32,
-            mutation_rate=0.3, crossover_rate=0.7
+            population_size=20, spectrum_size=32, mutation_rate=0.3, crossover_rate=0.7
         )
         breeder.initialize()
         best_history = []
         for gen in range(10):
-            breeder.evaluate(lambda p: float(np.sum(p ** 2)))
+            breeder.evaluate(lambda p: float(np.sum(p**2)))
             breeder.select_and_breed()
             best_history.append(breeder.best_fitness)
         assert breeder.generation == 10
@@ -228,9 +229,7 @@ class TestSpectralBreeder:
         assert diversity >= 0
 
     def test_band_limit(self):
-        breeder = SpectralBreeder(
-            population_size=10, spectrum_size=64, band_limit=0.25
-        )
+        breeder = SpectralBreeder(population_size=10, spectrum_size=64, band_limit=0.25)
         breeder.initialize()
         for genome in breeder.population:
             freqs = np.fft.fftfreq(64)
@@ -240,18 +239,16 @@ class TestSpectralBreeder:
     def test_elitism(self):
         breeder = SpectralBreeder(population_size=10, spectrum_size=32, elitism_count=2)
         breeder.initialize()
-        breeder.evaluate(lambda p: float(np.sum(p ** 2)))
+        breeder.evaluate(lambda p: float(np.sum(p**2)))
         best_before = breeder.best_fitness
         breeder.select_and_breed()
-        breeder.evaluate(lambda p: float(np.sum(p ** 2)))
+        breeder.evaluate(lambda p: float(np.sum(p**2)))
         assert breeder.best_fitness >= best_before * 0.9
 
     def test_age_culling(self):
-        breeder = SpectralBreeder(
-            population_size=10, spectrum_size=32, max_age=2
-        )
+        breeder = SpectralBreeder(population_size=10, spectrum_size=32, max_age=2)
         breeder.initialize()
         for gen in range(5):
-            breeder.evaluate(lambda p: float(np.sum(p ** 2)))
+            breeder.evaluate(lambda p: float(np.sum(p**2)))
             breeder.select_and_breed()
         assert all(g.age < 2 for g in breeder.population)

@@ -13,6 +13,7 @@ Usage:
     reloader.register("gateway", path="configs/gateway.yaml", validator=validate_gateway)
     reloader.check()  # Returns list of changed sections
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ConfigSection:
     """A watched configuration section."""
+
     name: str
     path: str
     validator: Callable[[Any], bool] | None = None
@@ -44,6 +46,7 @@ class ConfigSection:
 @dataclass
 class ReloadResult:
     """Result of a reload check."""
+
     name: str
     changed: bool
     success: bool

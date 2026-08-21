@@ -115,7 +115,7 @@ class TestVoiceTile:
             transcript="hello",
             audio_hash="h",
             duration_ms=1000.0,
-            confidence=0.95
+            confidence=0.95,
         )
         assert tile.timestamp > 0
         assert tile.metadata == {}
@@ -129,7 +129,7 @@ class TestVoiceTile:
             audio_hash="abc123",
             duration_ms=2500.0,
             confidence=0.98,
-            metadata={"source": "microphone"}
+            metadata={"source": "microphone"},
         )
         assert tile.tile_id == "voice:123"
         assert tile.room_id == "forge"

@@ -11,6 +11,7 @@ Usage:
     fsm.trigger("start")
     assert fsm.state() == "running"
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional
@@ -24,7 +25,9 @@ class StateMachine:
     def __init__(self, initial: str = "idle"):
         self._state = initial
         self._states: Dict[str, Dict[str, Any]] = {}
-        self._transitions: Dict[str, List[Dict[str, Any]]] = {}  # from_state -> transitions
+        self._transitions: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # from_state -> transitions
         self._history: List[Dict[str, Any]] = []
         self._transition_count = 0
 
@@ -67,11 +70,13 @@ class StateMachine:
         """
         if from_state not in self._transitions:
             self._transitions[from_state] = []
-        self._transitions[from_state].append({
-            "to_state": to_state,
-            "event": event,
-            "guard": guard,
-        })
+        self._transitions[from_state].append(
+            {
+                "to_state": to_state,
+                "event": event,
+                "guard": guard,
+            }
+        )
 
     # ------------------------------------------------------------------
     # Triggering
@@ -95,11 +100,13 @@ class StateMachine:
                 self._state = t["to_state"]
                 self._enter_state()
                 self._transition_count += 1
-                self._history.append({
-                    "from": self._state,
-                    "to": t["to_state"],
-                    "event": event,
-                })
+                self._history.append(
+                    {
+                        "from": self._state,
+                        "to": t["to_state"],
+                        "event": event,
+                    }
+                )
                 return True
         return False
 

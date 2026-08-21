@@ -56,24 +56,20 @@ from fleet.operational_trap import OperationalTrap, TrapConfig
 trap = OperationalTrap(
     config=TrapConfig(
         # Thermal thresholds
-        thermal_cpu_max=85.0,        # degrees C
-        thermal_gpu_max=80.0,        # degrees C
-        thermal_rise_rate=5.0,       # degrees per minute
-        
+        thermal_cpu_max=85.0,  # degrees C
+        thermal_gpu_max=80.0,  # degrees C
+        thermal_rise_rate=5.0,  # degrees per minute
         # FLUX thresholds
         flux_violation_rate_max=0.1,  # 10% of breeds violating
-        flux_gate_latency_ms=500,    # max FLUX check time
-        
+        flux_gate_latency_ms=500,  # max FLUX check time
         # Dispatch thresholds
-        dispatch_queue_max=100,      # pending subagents
-        dispatch_timeout_rate=0.5,   # 50% of spawns timing out
-        
+        dispatch_queue_max=100,  # pending subagents
+        dispatch_timeout_rate=0.5,  # 50% of spawns timing out
         # Memory thresholds
-        memory_context_max=0.85,     # 85% context utilization
+        memory_context_max=0.85,  # 85% context utilization
         memory_truncation_rate=0.3,  # 30% of sessions truncated
-        
         # Breeding thresholds
-        breed_stall_minutes=60,      # no breeding for 1 hour
+        breed_stall_minutes=60,  # no breeding for 1 hour
     )
 )
 ```
@@ -111,13 +107,13 @@ def on_trap_trigger(trap: OperationalTrap, level: int, context: dict) -> None:
         logger.warning(f"Trap: {context['metric']} = {context['value']}")
     elif level == 2:
         logger.warning(f"Degrading: batch_size → {context['recommended_batch_size']}")
-        conductor.degrade_batch_size(context['recommended_batch_size'])
+        conductor.degrade_batch_size(context["recommended_batch_size"])
     elif level == 3:
         logger.critical("CIRCUIT BREAKER: Stopping all subagent spawns")
         conductor.circuit_breaker(duration_minutes=20)
     elif level == 4:
         logger.critical("EMERGENCY: Thermal runaway detected")
-        alert_human(urgent=True, message=context['description'])
+        alert_human(urgent=True, message=context["description"])
 ```
 
 ## Code Example
@@ -130,17 +126,20 @@ import time
 import psutil
 from fleet.operational_trap import OperationalTrap, TrapConfig
 
+
 class FleetHealthMonitor:
     def __init__(self, conductor):
         self.conductor = conductor
-        self.trap = OperationalTrap(config=TrapConfig(
-            thermal_cpu_max=85.0,
-            flux_violation_rate_max=0.05,
-            dispatch_timeout_rate=0.3,
-            memory_context_max=0.80,
-        ))
+        self.trap = OperationalTrap(
+            config=TrapConfig(
+                thermal_cpu_max=85.0,
+                flux_violation_rate_max=0.05,
+                dispatch_timeout_rate=0.3,
+                memory_context_max=0.80,
+            )
+        )
         self.alert_history = []
-    
+
     def sense(self) -> dict:
         """Collect fleet health metrics."""
         return {
@@ -152,38 +151,40 @@ class FleetHealthMonitor:
             "pending_spawns": self.conductor.pending_spawn_count(),
             "timeout_rate": self.conductor.timeout_rate(minutes=10),
         }
-    
+
     def decide(self, metrics: dict) -> dict:
         """Run trap logic on metrics."""
         return self.trap.evaluate(metrics)
-    
+
     def act(self, decision: dict) -> None:
         """Execute trap response."""
         if decision["level"] == 0:
             return
-        
+
         self.alert_history.append(decision)
-        
+
         if decision["level"] >= 3:
             self.conductor.circuit_breaker(duration_minutes=20)
         elif decision["level"] == 2:
             self.conductor.degrade_batch_size(decision.get("recommended_batch_size", 8))
-        
+
         # Log to fleet health dashboard
-        self.conductor.publish_event({
-            "type": "OPERATIONAL_TRAP",
-            "level": decision["level"],
-            "metric": decision["metric"],
-            "value": decision["value"],
-            "timestamp": time.time(),
-        })
-    
+        self.conductor.publish_event(
+            {
+                "type": "OPERATIONAL_TRAP",
+                "level": decision["level"],
+                "metric": decision["metric"],
+                "value": decision["value"],
+                "timestamp": time.time(),
+            }
+        )
+
     def tick(self) -> None:
         """Full Sense→Decide→Act cycle."""
         metrics = self.sense()
         decision = self.decide(metrics)
         self.act(decision)
-    
+
     def _get_cpu_temp(self) -> float:
         try:
             temps = psutil.sensors_temperatures()
@@ -193,16 +194,18 @@ class FleetHealthMonitor:
             pass
         return 0.0
 
+
 def main():
     from nexus.fleet_conductor_v2 import FleetConductorV2
-    
+
     conductor = FleetConductorV2()
     monitor = FleetHealthMonitor(conductor)
-    
+
     # Run every 30 seconds
     while True:
         monitor.tick()
         time.sleep(30)
+
 
 if __name__ == "__main__":
     main()

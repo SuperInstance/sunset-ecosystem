@@ -48,12 +48,17 @@ class TestBytecodeEmitter:
     def test_constraint_check_program_structure(self):
         emitter = FluxBytecodeEmitter()
         bc = emitter.emit_constraint_check(
-            n_rooms=2, latent_dim=4,
-            min_bound=-10.0, max_bound=10.0,
-            max_l2=50.0, max_var=5.0,
+            n_rooms=2,
+            latent_dim=4,
+            min_bound=-10.0,
+            max_bound=10.0,
+            max_l2=50.0,
+            max_var=5.0,
         )
         assert len(bc) > 10
-        assert bc[0] == OpCode.Push  # handler mode (was LoadConst, now Push to preserve pre-loaded stack)
+        assert (
+            bc[0] == OpCode.Push
+        )  # handler mode (was LoadConst, now Push to preserve pre-loaded stack)
         assert bc[-1] == OpCode.Halt
 
     def test_heartbeat_program(self):
@@ -68,9 +73,12 @@ class TestBytecodeEmitter:
     def test_standalone_program_has_checkpoints(self):
         emitter = FluxBytecodeEmitter()
         bc = emitter.emit_constraint_check_standalone(
-            n_rooms=2, latent_dim=4,
-            min_bound=-10.0, max_bound=10.0,
-            max_l2=50.0, max_var=5.0,
+            n_rooms=2,
+            latent_dim=4,
+            min_bound=-10.0,
+            max_bound=10.0,
+            max_l2=50.0,
+            max_var=5.0,
         )
         assert OpCode.Checkpoint in bc
         assert OpCode.BatchCheck in bc
@@ -253,9 +261,12 @@ class TestVMExecution:
     def test_check_rooms_high_level(self):
         with FluxVMBridge() as b:
             bc = FluxBytecodeEmitter().emit_constraint_check(
-                n_rooms=2, latent_dim=4,
-                min_bound=0.0, max_bound=100.0,
-                max_l2=1000.0, max_var=100.0,
+                n_rooms=2,
+                latent_dim=4,
+                min_bound=0.0,
+                max_bound=100.0,
+                max_l2=1000.0,
+                max_var=100.0,
             )
             # 8 values, all within [0, 100]
             values = [10, 20, 30, 40, 50, 60, 70, 80]

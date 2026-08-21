@@ -126,7 +126,9 @@ class TestFleetCLI:
         assert result.success is True
 
     def test_print_result_success(self, capsys) -> None:
-        result = CLIResult(command="test", success=True, message="ok", data={"key": "val"})
+        result = CLIResult(
+            command="test", success=True, message="ok", data={"key": "val"}
+        )
         FleetCLI.print_result(result)
         captured = capsys.readouterr()
         assert "✅" in captured.out

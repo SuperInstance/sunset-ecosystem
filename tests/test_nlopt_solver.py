@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_nlopt_solver.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -12,14 +13,17 @@ from flux_compat.v3_module import Module
 
 # ── Objective functions ───────────────────────────────────
 
+
 def _sphere(x):
-    return sum(v ** 2 for v in x)
+    return sum(v**2 for v in x)
+
 
 def _rosenbrock(x):
     return (1 - x[0]) ** 2 + 100 * (x[1] - x[0] ** 2) ** 2
 
 
 # ── Construction ────────────────────────────────────────────
+
 
 class TestConstruction:
     def test_basic_construction(self):
@@ -56,10 +60,13 @@ class TestConstruction:
 
     def test_bounds_mismatch_raises(self):
         with pytest.raises(ValueError):
-            NLoptSolver(dim=3, bounds=[(0.0, 1.0), (0.0, 1.0)])  # only 2 bounds for dim=3
+            NLoptSolver(
+                dim=3, bounds=[(0.0, 1.0), (0.0, 1.0)]
+            )  # only 2 bounds for dim=3
 
 
 # ── Algorithm resolution ────────────────────────────────────
+
 
 class TestAlgorithmResolution:
     def test_direct(self):
@@ -86,6 +93,7 @@ class TestAlgorithmResolution:
 
 
 # ── Solving ─────────────────────────────────────────────────
+
 
 class TestSolve:
     def test_sphere_direct(self):
@@ -163,6 +171,7 @@ class TestSolve:
 
 # ── Result validation ─────────────────────────────────────
 
+
 class TestResult:
     def test_proof_certificate(self):
         solver = NLoptSolver(
@@ -235,6 +244,7 @@ class TestResult:
 
 # ── Problem types ───────────────────────────────────────────
 
+
 class TestProblemType:
     def test_unconstrained(self):
         s = NLoptSolver(
@@ -268,6 +278,7 @@ class TestProblemType:
 
 
 # ── Edge cases ──────────────────────────────────────────────
+
 
 class TestEdgeCases:
     def test_1d_problem(self):

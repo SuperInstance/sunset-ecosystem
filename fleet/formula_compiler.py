@@ -31,6 +31,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 # Token / AST
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class Token:
     type: str
@@ -157,25 +158,31 @@ class FormulaParser:
 # AST nodes
 # ---------------------------------------------------------------------------
 
+
 class ExprNode:
     pass
+
 
 @dataclass
 class NumberNode(ExprNode):
     value: float
 
+
 @dataclass
 class StringNode(ExprNode):
     value: str
+
 
 @dataclass
 class NameNode(ExprNode):
     name: str
 
+
 @dataclass
 class CallNode(ExprNode):
     func: str
     args: List[ExprNode]
+
 
 @dataclass
 class InfixNode(ExprNode):
@@ -187,6 +194,7 @@ class InfixNode(ExprNode):
 # ---------------------------------------------------------------------------
 # Runtime environment
 # ---------------------------------------------------------------------------
+
 
 class FleetFormulaEnv:
     """Runtime bindings for fleet formulas.
@@ -349,6 +357,7 @@ class FleetFormulaEnv:
 # Compiler
 # ---------------------------------------------------------------------------
 
+
 class FormulaCompiler:
     """Compiles parsed formula AST into a Python callable."""
 
@@ -438,14 +447,18 @@ class FormulaCompiler:
                 "==": ast.Eq(),
                 "!=": ast.NotEq(),
             }
-            return ast.Compare(
-                left=self.to_python_ast(node.left),
-                ops=[op_map[node.op]],
-                comparators=[self.to_python_ast(node.right)],
-            ) if node.op in {"<", ">", "<=", ">=", "==", "!="} else ast.BinOp(
-                left=self.to_python_ast(node.left),
-                op=op_map[node.op],
-                right=self.to_python_ast(node.right),
+            return (
+                ast.Compare(
+                    left=self.to_python_ast(node.left),
+                    ops=[op_map[node.op]],
+                    comparators=[self.to_python_ast(node.right)],
+                )
+                if node.op in {"<", ">", "<=", ">=", "==", "!="}
+                else ast.BinOp(
+                    left=self.to_python_ast(node.left),
+                    op=op_map[node.op],
+                    right=self.to_python_ast(node.right),
+                )
             )
         raise TypeError(f"Unknown node type: {type(node)}")
 

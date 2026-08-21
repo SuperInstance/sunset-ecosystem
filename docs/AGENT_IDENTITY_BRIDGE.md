@@ -21,14 +21,13 @@ from fleet.agent_identity_bridge import AgentVessel
 vessel = AgentVessel.create("/path/to/my-agent", "Scout7", "Explore new repos")
 
 # Check state
-print(vessel.charter.name)      # Scout7
-print(vessel.charter.purpose)   # Explore new repos
-print(vessel.state.health)      # 🟢 ACTIVE
+print(vessel.charter.name)  # Scout7
+print(vessel.charter.purpose)  # Explore new repos
+print(vessel.state.health)  # 🟢 ACTIVE
 
 # Write a bottle to another agent
 bottle = vessel.write_bottle(
-    to="oracle1",
-    content="Found a pattern in constraint-theory-core KD-tree..."
+    to="oracle1", content="Found a pattern in constraint-theory-core KD-tree..."
 )
 
 # Read incoming bottles
@@ -87,11 +86,11 @@ Abstraction planes declare what an agent can read and write:
 from fleet.agent_identity_bridge import AbstractionPlane
 
 plane = AbstractionPlane(
-    primary=4,               # This agent operates at plane 4
-    reads_from=[3, 4, 5],    # Can read planes 3-5
-    writes_to=[2, 3, 4],    # Can write planes 2-4
-    floor=2,                 # Lowest accessible plane
-    ceiling=5,               # Highest accessible plane
+    primary=4,  # This agent operates at plane 4
+    reads_from=[3, 4, 5],  # Can read planes 3-5
+    writes_to=[2, 3, 4],  # Can write planes 2-4
+    floor=2,  # Lowest accessible plane
+    ceiling=5,  # Highest accessible plane
 )
 
 assert plane.can_read(4) is True
@@ -124,8 +123,12 @@ vessel.save()
 from fleet.agent_identity_bridge import SkillEntry
 
 vessel.skills.core_skills = [
-    SkillEntry(name="Pattern Mining", description="Extract reusable patterns from repos"),
-    SkillEntry(name="Bridge Building", description="Connect sunset-ecosystem to external repos"),
+    SkillEntry(
+        name="Pattern Mining", description="Extract reusable patterns from repos"
+    ),
+    SkillEntry(
+        name="Bridge Building", description="Connect sunset-ecosystem to external repos"
+    ),
 ]
 vessel.skills.tools = ["Git", "Pytest", "kimi_search"]
 vessel.skills.learned = ["Always test first", "Push often"]

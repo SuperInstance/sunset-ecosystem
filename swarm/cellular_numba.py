@@ -40,13 +40,16 @@ import numpy as np
 try:
     from numba import njit, prange
     from numba.core.registry import CPUDispatcher
+
     HAS_NUMBA = True
 except Exception as exc:  # noqa: BLE001
     njit = None  # type: ignore[assignment]
     prange = range  # type: ignore[assignment]
     CPUDispatcher = None  # type: ignore[assignment, misc]
     HAS_NUMBA = False
-    logging.warning("numba not available; cellular_numba will use pure Python fallback (%s)", exc)
+    logging.warning(
+        "numba not available; cellular_numba will use pure Python fallback (%s)", exc
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +69,7 @@ def _ensure_jit(fn: Callable[..., None]) -> Callable[..., None]:
 
 
 # ── Built-in rule kernels ───────────────────────────────────────────────
+
 
 def _rule_survival_pure(
     energies: np.ndarray,
@@ -152,7 +156,9 @@ def _rule_diffusion_pure(
                             continue
                         ni, nj = i + di, j + dj
                         if 0 <= ni < rows and 0 <= nj < cols:
-                            out_energies[ni, nj] += energies[i, j] * diffusion_rate / 8.0
+                            out_energies[ni, nj] += (
+                                energies[i, j] * diffusion_rate / 8.0
+                            )
             else:
                 out_energies[i, j] += energies[i, j]
                 out_states[i, j] = states[i, j]
@@ -171,6 +177,7 @@ else:
 
 
 # ── Engine ────────────────────────────────────────────────────────────
+
 
 @dataclass
 class NumbaCellularEngine:
@@ -207,21 +214,30 @@ class NumbaCellularEngine:
     def states(self) -> np.ndarray:
         return self._states
 
-    def seed(self, positions: List[Tuple[int, int]], energy: float = 1.0, state: float = 1.0) -> None:
+    def seed(
+        self, positions: List[Tuple[int, int]], energy: float = 1.0, state: float = 1.0
+    ) -> None:
         """Seed cells at specific positions."""
         for i, j in positions:
             if 0 <= i < self.grid_size[0] and 0 <= j < self.grid_size[1]:
                 self._energies[i, j] = energy
                 self._states[i, j] = state
 
-    def seed_random(self, count: int, energy_range: Tuple[float, float] = (0.5, 1.0)) -> None:
+    def seed_random(
+        self, count: int, energy_range: Tuple[float, float] = (0.5, 1.0)
+    ) -> None:
         """Randomly seed `count` cells."""
         rows, cols = self.grid_size
         indices = np.random.choice(rows * cols, size=count, replace=False)
         self._energies.flat[indices] = np.random.uniform(*energy_range, size=count)
         self._states.flat[indices] = 1.0
 
-    def register_rule(self, rule: RuleKernel, params: Optional[np.ndarray] = None, name: Optional[str] = None) -> None:
+    def register_rule(
+        self,
+        rule: RuleKernel,
+        params: Optional[np.ndarray] = None,
+        name: Optional[str] = None,
+    ) -> None:
         """Add a rule to the engine. Auto-wraps with @njit if needed."""
         jit_rule = _ensure_jit(rule)
         self.rules.append(jit_rule)
@@ -256,7 +272,9 @@ class NumbaCellularEngine:
 
         for idx, rule in enumerate(self.rules):
             rule_name = f"rule_{idx + 1}"
-            params = self.params.get(rule_name, np.array([0.5, 0.1, 0.01], dtype=np.float32))
+            params = self.params.get(
+                rule_name, np.array([0.5, 0.1, 0.01], dtype=np.float32)
+            )
             rule(
                 self._energies,
                 self._states,
@@ -293,6 +311,7 @@ class NumbaCellularEngine:
     def benchmark(self, ticks: int = 100) -> Dict[str, float]:
         """Benchmark tick performance. Returns timing stats."""
         import time
+
         # Warmup
         for _ in range(min(10, ticks)):
             self.tick()

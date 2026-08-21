@@ -100,28 +100,42 @@ class TestBreedCoordinationPipeline:
     def test_throttle_when_queue_full(self, conductor, mock_breeder, mock_metronome):
         c = conductor
         c.start()
-        mock_breeder.get_status.return_value = {"queue_depth": 95, "queue_capacity": 100}
+        mock_breeder.get_status.return_value = {
+            "queue_depth": 95,
+            "queue_capacity": 100,
+        }
         mock_metronome._tick_counter = 2
         result = c.beat()
         sda = c._get_sda()
         tick_results = sda.tick()
         breed_result = tick_results.get("breed_coordination")
         if breed_result is not None:
-            assert "throttled" in breed_result.side_effects or "idle" in breed_result.side_effects
+            assert (
+                "throttled" in breed_result.side_effects
+                or "idle" in breed_result.side_effects
+            )
 
-    def test_flux_gate_blocks_breed(self, conductor, mock_breeder, mock_flux, mock_metronome):
+    def test_flux_gate_blocks_breed(
+        self, conductor, mock_breeder, mock_flux, mock_metronome
+    ):
         c = conductor
         c.start()
-        mock_flux.apply_preset.return_value = [{"passed": False, "severity": "critical"}]
+        mock_flux.apply_preset.return_value = [
+            {"passed": False, "severity": "critical"}
+        ]
         mock_metronome._tick_counter = 2
         result = c.beat()
         # FLUX gate should block — select_parents may be called but queue_breed should not
         # or the act should report failure
-        calls = [call for call in mock_breeder.method_calls if "queue_breed" in str(call)]
+        calls = [
+            call for call in mock_breeder.method_calls if "queue_breed" in str(call)
+        ]
         # With FLUX blocked, queue_breed should not be called
         assert len(calls) == 0 or not any("queue_breed" in str(c) for c in calls)
 
-    def test_cross_breed_when_pool_empty(self, conductor, mock_breeder, mock_mesh, mock_metronome):
+    def test_cross_breed_when_pool_empty(
+        self, conductor, mock_breeder, mock_mesh, mock_metronome
+    ):
         c = conductor
         c.start()
         mock_breeder.get_status.return_value = {"queue_depth": 1, "queue_capacity": 10}

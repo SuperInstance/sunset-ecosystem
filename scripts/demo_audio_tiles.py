@@ -10,6 +10,7 @@ Usage:
     python scripts/demo_audio_tiles.py --source system --ticks 50
     python scripts/demo_audio_tiles.py --source synthetic --ticks 50
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,11 +26,15 @@ sys.path.insert(0, ".")
 from perception import AudioTileEncoder, MicrophoneCapture, SystemAudioCapture
 from nerve.topology import NerveTopology
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+)
 log = logging.getLogger("demo_audio_tiles")
 
 
-def synthetic_audio(seed: int, sample_rate: int = 16000, duration_sec: float = 1.0) -> np.ndarray:
+def synthetic_audio(
+    seed: int, sample_rate: int = 16000, duration_sec: float = 1.0
+) -> np.ndarray:
     """Generate a deterministic synthetic audio segment for testing without hardware."""
     rng = np.random.RandomState(seed)
     n_samples = int(sample_rate * duration_sec)
@@ -55,7 +60,14 @@ def run_demo(
 ) -> None:
     """Run the audio tile → topology demo."""
     log.info("=== Audio Tile Demo ===")
-    log.info("source=%s model=%s signal_dim=%d rooms=%d fibers=%d", source, model, signal_dim, n_rooms, n_fibers)
+    log.info(
+        "source=%s model=%s signal_dim=%d rooms=%d fibers=%d",
+        source,
+        model,
+        signal_dim,
+        n_rooms,
+        n_fibers,
+    )
 
     # ── Encoder ──────────────────────────────────────────────
     encoder = AudioTileEncoder(model=model, device="cpu", target_dim=512)
@@ -102,16 +114,24 @@ def run_demo(
 
         # Acquire audio chunk
         if source == "synthetic":
-            audio = synthetic_audio(seed=segment_idx, sample_rate=16000, duration_sec=1.0)
+            audio = synthetic_audio(
+                seed=segment_idx, sample_rate=16000, duration_sec=1.0
+            )
         elif capture is not None:
             chunk = capture.read()
             if chunk is None:
-                log.warning("Capture failed at tick %d — using synthetic fallback", tick)
-                audio = synthetic_audio(seed=segment_idx, sample_rate=16000, duration_sec=1.0)
+                log.warning(
+                    "Capture failed at tick %d — using synthetic fallback", tick
+                )
+                audio = synthetic_audio(
+                    seed=segment_idx, sample_rate=16000, duration_sec=1.0
+                )
             else:
                 audio = chunk
         else:
-            audio = synthetic_audio(seed=segment_idx, sample_rate=16000, duration_sec=1.0)
+            audio = synthetic_audio(
+                seed=segment_idx, sample_rate=16000, duration_sec=1.0
+            )
 
         # Encode
         emb = encoder.encode_segment(audio, sample_rate=16000)
@@ -124,7 +144,9 @@ def run_demo(
         signals = {"fiber-0": signal}
         # Other fibers get small random noise (unattended channels)
         for i in range(1, n_fibers):
-            signals[f"fiber-{i}"] = np.random.randn(signal_dim).astype(np.float32) * 0.05
+            signals[f"fiber-{i}"] = (
+                np.random.randn(signal_dim).astype(np.float32) * 0.05
+            )
 
         result = topo.tick(signals=signals)
 
@@ -156,7 +178,9 @@ def run_demo(
     pathways = topo.compiled_pathways()
     log.info("Compiled pathways: %d", len(pathways))
     for p in pathways[:5]:
-        log.info("  %s → %s (strength %.2f)", p["source"], p["destination"], p["strength"])
+        log.info(
+            "  %s → %s (strength %.2f)", p["source"], p["destination"], p["strength"]
+        )
 
     # Cleanup
     if capture is not None:
@@ -181,7 +205,15 @@ def main() -> None:
     )
     parser.add_argument(
         "--model",
-        choices=["whisper", "wav2vec2", "clap", "speechbrain", "openai_whisper", "onnx", "random_projection"],
+        choices=[
+            "whisper",
+            "wav2vec2",
+            "clap",
+            "speechbrain",
+            "openai_whisper",
+            "onnx",
+            "random_projection",
+        ],
         default="random_projection",
         help="Audio encoder backend (default: random_projection — no heavy deps)",
     )

@@ -9,6 +9,7 @@ Usage:
     assert kv.get("key") == "value"
     kv.delete("key")
 """
+
 from __future__ import annotations
 
 import time
@@ -33,9 +34,7 @@ class KeyValueStore:
     def _prefixed(self, key: str) -> str:
         return f"{self._namespace}:{key}" if self._namespace else key
 
-    def set(
-        self, key: str, value: Any, ttl_sec: Optional[float] = None
-    ) -> None:
+    def set(self, key: str, value: Any, ttl_sec: Optional[float] = None) -> None:
         """Set a key with optional TTL."""
         expires = time.time() + ttl_sec if ttl_sec else None
         self._data[self._prefixed(key)] = (value, expires)
@@ -71,7 +70,7 @@ class KeyValueStore:
         for k in self._data:
             if self._namespace:
                 if k.startswith(f"{self._namespace}:"):
-                    result.append(k[len(self._namespace) + 1:])
+                    result.append(k[len(self._namespace) + 1 :])
             else:
                 result.append(k)
         return sorted(result)
@@ -122,9 +121,7 @@ class KeyValueStore:
     def _evict(self) -> None:
         """Remove expired entries."""
         now = time.time()
-        expired = [
-            k for k, (_, exp) in self._data.items() if exp and now > exp
-        ]
+        expired = [k for k, (_, exp) in self._data.items() if exp and now > exp]
         for k in expired:
             del self._data[k]
 

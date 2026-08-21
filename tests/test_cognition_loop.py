@@ -1,4 +1,5 @@
 """Tests for CognitionLoop — observe, reason, act, loop, RoomGrid integration."""
+
 import numpy as np
 import pytest
 
@@ -9,6 +10,7 @@ from nerve.room_grid import RoomGrid
 # ═══════════════════════════════════════════════════════════
 #  Fixtures
 # ═══════════════════════════════════════════════════════════
+
 
 @pytest.fixture
 def config_disabled():
@@ -49,6 +51,7 @@ def loop_enabled(config_enabled):
 #  AgentConfig
 # ═══════════════════════════════════════════════════════════
 
+
 class TestAgentConfig:
     def test_default_cognition_disabled(self):
         cfg = AgentConfig()
@@ -70,14 +73,20 @@ class TestAgentConfig:
 #  CognitionState
 # ═══════════════════════════════════════════════════════════
 
+
 class TestCognitionState:
     def test_to_dict(self):
         state = CognitionState(
-            tick=5, n_rooms=100, active_count=3, cold_count=97,
+            tick=5,
+            n_rooms=100,
+            active_count=3,
+            cold_count=97,
             top_active=[(0, 10), (1, 5)],
             top_novel=[(2, 0.9)],
-            mean_chaos=0.3, mean_novelty=0.5,
-            fired_ids=[0, 1], latents_shape=(100, 16),
+            mean_chaos=0.3,
+            mean_novelty=0.5,
+            fired_ids=[0, 1],
+            latents_shape=(100, 16),
         )
         d = state.to_dict()
         assert d["tick"] == 5
@@ -94,9 +103,11 @@ class TestCognitionState:
 #  CognitionLoop.observe()
 # ═══════════════════════════════════════════════════════════
 
+
 class TestObserve:
     def test_empty_grid(self, loop_enabled):
         """Observe a grid with zero rooms — should not crash."""
+
         class FakeGrid:
             n = 0
             ticks = 0
@@ -140,12 +151,20 @@ class TestObserve:
 #  CognitionLoop.reason()
 # ═══════════════════════════════════════════════════════════
 
+
 class TestReason:
     def test_empty_state(self, loop_enabled):
         state = CognitionState(
-            tick=0, n_rooms=0, active_count=0, cold_count=0,
-            top_active=[], top_novel=[], mean_chaos=0.3, mean_novelty=0.5,
-            fired_ids=[], latents_shape=(),
+            tick=0,
+            n_rooms=0,
+            active_count=0,
+            cold_count=0,
+            top_active=[],
+            top_novel=[],
+            mean_chaos=0.3,
+            mean_novelty=0.5,
+            fired_ids=[],
+            latents_shape=(),
         )
         decisions = loop_enabled.reason(state)
         assert decisions["breed_pairs"] == []
@@ -154,10 +173,16 @@ class TestReason:
 
     def test_chaos_boost_for_cold(self, loop_enabled):
         state = CognitionState(
-            tick=1, n_rooms=10, active_count=1, cold_count=9,
+            tick=1,
+            n_rooms=10,
+            active_count=1,
+            cold_count=9,
             top_active=[(0, 0), (1, 0), (2, 5)],
-            top_novel=[], mean_chaos=0.1, mean_novelty=0.5,
-            fired_ids=[], latents_shape=(10, 16),
+            top_novel=[],
+            mean_chaos=0.1,
+            mean_novelty=0.5,
+            fired_ids=[],
+            latents_shape=(10, 16),
         )
         decisions = loop_enabled.reason(state)
         # Cold rooms (activity < 1) should get chaos boost
@@ -170,10 +195,16 @@ class TestReason:
 
     def test_chaos_decay_for_hot(self, loop_enabled):
         state = CognitionState(
-            tick=1, n_rooms=10, active_count=5, cold_count=5,
+            tick=1,
+            n_rooms=10,
+            active_count=5,
+            cold_count=5,
             top_active=[(0, 60), (1, 55), (2, 5)],
-            top_novel=[], mean_chaos=0.5, mean_novelty=0.5,
-            fired_ids=[], latents_shape=(10, 16),
+            top_novel=[],
+            mean_chaos=0.5,
+            mean_novelty=0.5,
+            fired_ids=[],
+            latents_shape=(10, 16),
         )
         decisions = loop_enabled.reason(state)
         # Hot rooms (activity > 50) should get chaos decay
@@ -186,20 +217,32 @@ class TestReason:
 
     def test_rebirth_candidates_limited(self, loop_enabled):
         state = CognitionState(
-            tick=1, n_rooms=100, active_count=0, cold_count=100,
+            tick=1,
+            n_rooms=100,
+            active_count=0,
+            cold_count=100,
             top_active=[(i, 0) for i in range(20)],
-            top_novel=[], mean_chaos=0.3, mean_novelty=0.5,
-            fired_ids=[], latents_shape=(100, 16),
+            top_novel=[],
+            mean_chaos=0.3,
+            mean_novelty=0.5,
+            fired_ids=[],
+            latents_shape=(100, 16),
         )
         decisions = loop_enabled.reason(state)
         assert len(decisions["rebirth_ids"]) <= loop_enabled.config.rebirth_candidates
 
     def test_breed_pairs_limited(self, loop_enabled):
         state = CognitionState(
-            tick=1, n_rooms=100, active_count=50, cold_count=50,
+            tick=1,
+            n_rooms=100,
+            active_count=50,
+            cold_count=50,
             top_active=[(i, 10 if i < 25 else 0) for i in range(50)],
-            top_novel=[], mean_chaos=0.3, mean_novelty=0.5,
-            fired_ids=[], latents_shape=(100, 16),
+            top_novel=[],
+            mean_chaos=0.3,
+            mean_novelty=0.5,
+            fired_ids=[],
+            latents_shape=(100, 16),
         )
         decisions = loop_enabled.reason(state)
         assert len(decisions["breed_pairs"]) <= loop_enabled.config.breed_candidates
@@ -211,6 +254,7 @@ class TestReason:
 # ═══════════════════════════════════════════════════════════
 #  CognitionLoop.act()
 # ═══════════════════════════════════════════════════════════
+
 
 class TestAct:
     def test_chaos_adjustments_applied(self, grid_100, loop_enabled):
@@ -285,6 +329,7 @@ class TestAct:
 #  CognitionLoop.loop()
 # ═══════════════════════════════════════════════════════════
 
+
 class TestLoop:
     def test_loop_runs_every_tick_when_interval_1(self, grid_100, loop_enabled):
         grid_100._cognition_loop = loop_enabled
@@ -338,6 +383,7 @@ class TestLoop:
 # ═══════════════════════════════════════════════════════════
 #  RoomGrid integration — enable_cognition flag
 # ═══════════════════════════════════════════════════════════
+
 
 class TestRoomGridIntegration:
     def test_cognition_disabled_by_default(self, grid_100):
@@ -429,6 +475,7 @@ class TestRoomGridIntegration:
 #  Edge cases
 # ═══════════════════════════════════════════════════════════
 
+
 class TestEdgeCases:
     def test_reset_clears_state(self, grid_100, loop_enabled):
         loop_enabled.loop(grid_100)
@@ -440,6 +487,7 @@ class TestEdgeCases:
 
     def test_novelty_computation_failure_graceful(self, loop_enabled):
         """If batch_novelty fails, observe() should still return a state."""
+
         class BrokenGrid:
             n = 10
             ticks = 1
@@ -457,10 +505,16 @@ class TestEdgeCases:
 
     def test_cognition_state_repr(self):
         state = CognitionState(
-            tick=1, n_rooms=10, active_count=2, cold_count=8,
-            top_active=[(0, 5)], top_novel=[(1, 0.8)],
-            mean_chaos=0.3, mean_novelty=0.6,
-            fired_ids=[0], latents_shape=(10, 16),
+            tick=1,
+            n_rooms=10,
+            active_count=2,
+            cold_count=8,
+            top_active=[(0, 5)],
+            top_novel=[(1, 0.8)],
+            mean_chaos=0.3,
+            mean_novelty=0.6,
+            fired_ids=[0],
+            latents_shape=(10, 16),
         )
         # Should not crash
         repr(state)

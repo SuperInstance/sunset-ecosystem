@@ -72,7 +72,10 @@ def my_executor(task_spec, phase_spec, prior_artifact):
         constraints=["Must pass test_foo"],
     )
 
-dispatch = FleetPhasedDispatch(executor=my_executor, phases=[Phase.RESEARCH, Phase.PLAN, Phase.IMPLEMENT])
+
+dispatch = FleetPhasedDispatch(
+    executor=my_executor, phases=[Phase.RESEARCH, Phase.PLAN, Phase.IMPLEMENT]
+)
 result = dispatch.run(task_spec, pacing=gateway_pacing)
 ```
 
@@ -157,7 +160,11 @@ The scheduler is registered as a subsystem:
 ```python
 # In FleetConductorV2.__init__:
 if config.enable_bernstein_scheduler:
-    from fleet.fleet_bernstein_scheduler import FleetBernsteinScheduler, BernsteinScheduleConfig
+    from fleet.fleet_bernstein_scheduler import (
+        FleetBernsteinScheduler,
+        BernsteinScheduleConfig,
+    )
+
     bconfig = BernsteinScheduleConfig(
         node_id=config.node_id,
         tick_interval_s=config.sda_interval_ms / 1000.0,

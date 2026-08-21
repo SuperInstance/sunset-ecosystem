@@ -44,6 +44,7 @@ radii = [p.radius for p in positions]
 
 # Verify golden angle
 from math import pi, sqrt
+
 golden_angle = 2 * pi * (1 - (1 + sqrt(5)) / 2 + 1)  # 2π(2-φ)
 actual_diff = np.mean(np.diff(angles))
 print(f"Golden angle: {golden_angle:.6f} rad")
@@ -52,7 +53,7 @@ print(f"Match: {np.isclose(actual_diff, golden_angle, atol=0.001)}")
 
 # Verify radial growth
 expected_r = sqrt(np.arange(1, 201))  # r ∝ √n
-print(f"Radius correlation with √n: {np.corrcoef(radii, expected_r)[0,1]:.4f}")
+print(f"Radius correlation with √n: {np.corrcoef(radii, expected_r)[0, 1]:.4f}")
 ```
 
 ## Verification

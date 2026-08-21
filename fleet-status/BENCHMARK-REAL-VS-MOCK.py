@@ -3,9 +3,11 @@
 
 import time, statistics, random, numpy as np
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import superinstance_ffi_real as real
 import superinstance_ffi_mock as mock
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -31,21 +33,22 @@ def bench(label, fn, setup, sizes, runs=100):
             # We use the Python-level mock for fair comparison
             t1 = time.perf_counter_ns()
             times_mock.append((t1 - t0) / 1000)
-        
+
         # Actually measure mock properly using numpy equivalent
         arr_a, arr_b = args[:2]
         t0 = time.perf_counter_ns()
-        if fn.__name__ == 'manhattan_distance':
+        if fn.__name__ == "manhattan_distance":
             _ = np.sum(np.abs(np.array(arr_a) - np.array(arr_b)))
-        elif fn.__name__ == 'cascade_match':
+        elif fn.__name__ == "cascade_match":
             # Mock cascade_match is complex to call from Python; skip
             _ = 0
         t1 = time.perf_counter_ns()
         mock_us = (t1 - t0) / 1000
-        
+
         rust_us = statistics.median(times_rust)
-        speedup = mock_us / rust_us if rust_us > 0 else float('inf')
+        speedup = mock_us / rust_us if rust_us > 0 else float("inf")
         print(f"{n:>8} | {rust_us:>12.1f} | {mock_us:>12.1f} | {speedup:>8.1f}x")
+
 
 # ---------------------------------------------------------------------------
 # Benchmark 1: manhattan_distance
@@ -54,6 +57,7 @@ def setup_manhattan(n):
     a = [random.random() for _ in range(n)]
     b = [random.random() for _ in range(n)]
     return a, b
+
 
 print("\n\nBENCHMARK: manhattan_distance — Real Rust FFI vs NumPy")
 print("=" * 60)
@@ -67,7 +71,7 @@ print("-" * 56)
 for n in [10, 50, 100, 500, 1000, 5000, 10000]:
     a = [random.random() for _ in range(n)]
     b = [random.random() for _ in range(n)]
-    
+
     # Rust FFI
     t_rust = []
     for _ in range(100):
@@ -75,7 +79,7 @@ for n in [10, 50, 100, 500, 1000, 5000, 10000]:
         real.manhattan_distance(a, b)
         t1 = time.perf_counter_ns()
         t_rust.append((t1 - t0) / 1000)
-    
+
     # NumPy
     np_a = np.array(a, dtype=np.float32)
     np_b = np.array(b, dtype=np.float32)
@@ -85,10 +89,10 @@ for n in [10, 50, 100, 500, 1000, 5000, 10000]:
         _ = np.sum(np.abs(np_a - np_b))
         t1 = time.perf_counter_ns()
         t_numpy.append((t1 - t0) / 1000)
-    
+
     rust_us = statistics.median(t_rust)
     numpy_us = statistics.median(t_numpy)
-    speedup = numpy_us / rust_us if rust_us > 0 else float('inf')
+    speedup = numpy_us / rust_us if rust_us > 0 else float("inf")
     print(f"{n:>8} | {rust_us:>14.2f} | {numpy_us:>12.2f} | {speedup:>8.2f}x")
 
 # ---------------------------------------------------------------------------
@@ -97,7 +101,9 @@ for n in [10, 50, 100, 500, 1000, 5000, 10000]:
 print("\n\nBENCHMARK: cascade_match — Real Rust FFI vs Python loop")
 print("=" * 60)
 
-print(f"\n{'n_cands':>8} | {'dim':>4} | {'Rust FFI (µs)':>14} | {'Python (µs)':>12} | {'Speedup':>8}")
+print(
+    f"\n{'n_cands':>8} | {'dim':>4} | {'Rust FFI (µs)':>14} | {'Python (µs)':>12} | {'Speedup':>8}"
+)
 print("-" * 64)
 
 for n_cands in [10, 50, 100, 500]:
@@ -105,7 +111,7 @@ for n_cands in [10, 50, 100, 500]:
     query = [random.random() for _ in range(dim)]
     candidates = [[random.random() for _ in range(dim)] for _ in range(n_cands)]
     thresholds = [0.5, 1.0, 2.0, 5.0, 10.0]
-    
+
     # Rust FFI
     t_rust = []
     for _ in range(100):
@@ -113,7 +119,7 @@ for n_cands in [10, 50, 100, 500]:
         real.cascade_match(query, candidates, thresholds)
         t1 = time.perf_counter_ns()
         t_rust.append((t1 - t0) / 1000)
-    
+
     # Pure Python
     t_py = []
     for _ in range(100):
@@ -125,11 +131,13 @@ for n_cands in [10, 50, 100, 500]:
                     break
         t1 = time.perf_counter_ns()
         t_py.append((t1 - t0) / 1000)
-    
+
     rust_us = statistics.median(t_rust)
     py_us = statistics.median(t_py)
-    speedup = py_us / rust_us if rust_us > 0 else float('inf')
-    print(f"{n_cands:>8} | {dim:>4} | {rust_us:>14.2f} | {py_us:>12.2f} | {speedup:>8.2f}x")
+    speedup = py_us / rust_us if rust_us > 0 else float("inf")
+    print(
+        f"{n_cands:>8} | {dim:>4} | {rust_us:>14.2f} | {py_us:>12.2f} | {speedup:>8.2f}x"
+    )
 
 # ---------------------------------------------------------------------------
 # Summary

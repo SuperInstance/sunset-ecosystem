@@ -31,6 +31,7 @@ from urllib.error import URLError
 @dataclass
 class ServiceCheck:
     """A service to health-check."""
+
     name: str
     url: str
     timeout: float = 5.0
@@ -39,6 +40,7 @@ class ServiceCheck:
 @dataclass
 class TaskTile:
     """A task discovered from a PLATO tile."""
+
     tile_id: str
     room: str
     question: str
@@ -49,6 +51,7 @@ class TaskTile:
 @dataclass
 class HeartbeatState:
     """Persistent heartbeat state."""
+
     acknowledged: set[str] = field(default_factory=set)
     last_check: float = 0.0
     task_count: int = 0
@@ -133,7 +136,8 @@ class Heartbeat:
         registry = "\n".join(registry_parts)
         rooms = set()
         import re
-        rooms.update(re.findall(r'room:\s*(\S+)', registry))
+
+        rooms.update(re.findall(r"room:\s*(\S+)", registry))
         # Always check fleet-coord
         rooms.add("fleet-coord")
         return list(rooms)
@@ -157,13 +161,15 @@ class Heartbeat:
                 source = tile.get("source", "")
                 # Task markers: →O1, TASK, etc.
                 if "TASK" in q.upper() or "→" in q:
-                    tasks.append(TaskTile(
-                        tile_id=tid,
-                        room=room,
-                        question=q,
-                        answer=tile.get("answer", "")[:200],
-                        source=source,
-                    ))
+                    tasks.append(
+                        TaskTile(
+                            tile_id=tid,
+                            room=room,
+                            question=q,
+                            answer=tile.get("answer", "")[:200],
+                            source=source,
+                        )
+                    )
         self.state.task_count = len(tasks)
         return tasks
 

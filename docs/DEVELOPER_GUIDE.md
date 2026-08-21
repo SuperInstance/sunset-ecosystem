@@ -83,14 +83,14 @@ The foundation is `MeshVectorTable` — a CRDT-backed vector store for agent sta
 @dataclass(frozen=True)
 class VectorTableEntry:
     agent_id: str
-    vector: np.ndarray          # Agent state vector
-    timestamp: float            # Physics time (monotonic)
-    node_id: str                # Origin node
-    generation: int             # Evolutionary generation
-    fitness: float              # [0.0, 1.0]
+    vector: np.ndarray  # Agent state vector
+    timestamp: float  # Physics time (monotonic)
+    node_id: str  # Origin node
+    generation: int  # Evolutionary generation
+    fitness: float  # [0.0, 1.0]
     capability_mask: int = 0  # Bitfield for skills
     thermal_pressure: float = 0.0
-    signature: str = ""         # Ed25519 or hash
+    signature: str = ""  # Ed25519 or hash
 ```
 
 ### CRDT Resolution
@@ -186,14 +186,22 @@ stats = hnsw.stats()
 - **Scene detection**: Bursts of related queries indicate a "scene" (e.g., "breeding batch", "health check")
 
 ```python
-tracker = SceneTracker(table, strategy=CacheStrategy(
-    hot_threshold_accesses=3,
-    scene_timeout_seconds=60.0,
-))
+tracker = SceneTracker(
+    table,
+    strategy=CacheStrategy(
+        hot_threshold_accesses=3,
+        scene_timeout_seconds=60.0,
+    ),
+)
 
 # Every query is tracked
-tracker.track_query("by_id", "none", result_size=1, latency_ms=10.0,
-                   query_params={"agent_id": "agent_42"})
+tracker.track_query(
+    "by_id",
+    "none",
+    result_size=1,
+    latency_ms=10.0,
+    query_params={"agent_id": "agent_42"},
+)
 
 # Get recommendations for preloading
 recs = tracker.get_cache_recommendations()
@@ -209,10 +217,13 @@ Adaptive cache that learns from query patterns.
 ```python
 base = MeshVectorTable(table_id="cache")
 storage = TieredMeshStorage(base_table=base)
-tracker = SceneTracker(base, strategy=CacheStrategy(
-    hot_threshold_accesses=3,
-    scene_timeout_seconds=60.0,
-))
+tracker = SceneTracker(
+    base,
+    strategy=CacheStrategy(
+        hot_threshold_accesses=3,
+        scene_timeout_seconds=60.0,
+    ),
+)
 cache = CognitiveCache(storage, tracker)
 
 # Queries are automatically tracked
@@ -237,7 +248,7 @@ Time-partitioned memory for long-lived fleets.
 ```python
 memory = FleetMemory(
     shard_duration=86400.0,  # 1 day per shard
-    max_shards=30,           # Keep 30 days
+    max_shards=30,  # Keep 30 days
 )
 
 # Write is O(1) — routed to current shard

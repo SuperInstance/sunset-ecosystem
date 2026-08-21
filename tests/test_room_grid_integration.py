@@ -8,6 +8,7 @@ Covers:
   5. Graceful fallback when optional components are missing
   6. No breakage of existing RoomGrid API
 """
+
 import sys
 import numpy as np
 import pytest
@@ -20,10 +21,13 @@ from nerve.room_grid_tick_integration import RoomGridTickIntegration, TickMetric
 def bus_fixture():
     """Return a FleetEventBus that records all emitted events."""
     from nexus.fleet_event_bus import FleetEventBus
+
     bus = FleetEventBus()
     bus._test_events: list[dict] = []
+
     def _capture(ev):
         bus._test_events.append(ev.to_dict())
+
     bus.on("grid_tick_metrics", _capture)
     bus.on("grid_tick_error", _capture)
     bus.on("compiler_hot_swap", _capture)
@@ -50,6 +54,7 @@ def signals_batch():
 
 
 # ── Basics ──────────────────────────────────────────────────────
+
 
 class TestTickIntegrationBasics:
     """Instantiation, enable/disable, status."""
@@ -96,6 +101,7 @@ class TestTickIntegrationBasics:
 
 # ── Single tick ─────────────────────────────────────────────────
 
+
 class TestTickSingle:
     """integration.tick() with various component combinations."""
 
@@ -115,7 +121,9 @@ class TestTickSingle:
         assert result["fired"] >= 0
 
         # Bus should have received a metrics event
-        metrics_events = [e for e in bus_fixture._test_events if e["type"] == "grid_tick_metrics"]
+        metrics_events = [
+            e for e in bus_fixture._test_events if e["type"] == "grid_tick_metrics"
+        ]
         assert len(metrics_events) == 1
         payload = metrics_events[0]["payload"]
         assert payload["n_rooms"] == 100
@@ -124,6 +132,7 @@ class TestTickSingle:
 
     def test_tick_with_metronome(self, grid_100, signal_64):
         from nerve.metronome_integration import MetronomeIntegration
+
         metro = MetronomeIntegration(grid_100, devices=["cuda:0"])
         metro.enable()
         integration = RoomGridTickIntegration(grid_100, metronome=metro)
@@ -135,8 +144,11 @@ class TestTickSingle:
 
     def test_tick_metronome_offline_device(self, grid_100, signal_64):
         from nerve.metronome_integration import MetronomeIntegration
+
         # Use a very short timeout so the device goes offline immediately
-        metro = MetronomeIntegration(grid_100, devices=["test_dev"], heartbeat_timeout_sec=0.01)
+        metro = MetronomeIntegration(
+            grid_100, devices=["test_dev"], heartbeat_timeout_sec=0.01
+        )
         metro.enable()
         # Manually age the heartbeat so device appears offline
         metro._devices["test_dev"].last_heartbeat = 0.0
@@ -169,6 +181,7 @@ class TestTickSingle:
 
 # ── Batch tick ────────────────────────────────────────────────────
 
+
 class TestTickBatch:
     """integration.tick_batch() — metronome sync + aggregate metrics."""
 
@@ -186,7 +199,9 @@ class TestTickBatch:
         results = integration.tick_batch(signals_batch)
         assert len(results) == len(signals_batch)
 
-        metrics_events = [e for e in bus_fixture._test_events if e["type"] == "grid_tick_metrics"]
+        metrics_events = [
+            e for e in bus_fixture._test_events if e["type"] == "grid_tick_metrics"
+        ]
         assert len(metrics_events) == 1
         # Batch aggregate should report total fired
         total_fired = sum(r["fired"] for r in results)
@@ -194,6 +209,7 @@ class TestTickBatch:
 
     def test_batch_with_metronome(self, grid_100, signals_batch):
         from nerve.metronome_integration import MetronomeIntegration
+
         metro = MetronomeIntegration(grid_100, devices=["cuda:0"])
         metro.enable()
         integration = RoomGridTickIntegration(grid_100, metronome=metro)
@@ -216,11 +232,13 @@ class TestTickBatch:
 
 # ── Compiler hot-swap hook ──────────────────────────────────────
 
+
 class TestCompilerHook:
     """Compiler check_and_compile fires at tick time."""
 
     def test_compiler_check_fires_on_tick(self, grid_100, signal_64):
         from compiler.hot_swap_integration import CompilerHotSwap
+
         swap = CompilerHotSwap(grid_100)
         swap.enable_auto_compile()
         # Manually mutate config hash so check_and_compile triggers
@@ -234,6 +252,7 @@ class TestCompilerHook:
 
     def test_compiler_no_compile_when_disabled(self, grid_100, signal_64):
         from compiler.hot_swap_integration import CompilerHotSwap
+
         swap = CompilerHotSwap(grid_100)
         swap.enable_auto_compile()
         swap.disable_auto_compile()
@@ -245,6 +264,7 @@ class TestCompilerHook:
 
     def test_compiler_non_fatal_failure(self, grid_100, signal_64, bus_fixture):
         """A broken compiler should not crash the tick."""
+
         class BrokenCompiler:
             def check_and_compile(self):
                 raise RuntimeError("compile boom")
@@ -259,6 +279,7 @@ class TestCompilerHook:
 
 
 # ── EventBus edge cases ───────────────────────────────────────────
+
 
 class TestEventBusEdgeCases:
     """Graceful degradation when event bus is missing / broken."""
@@ -288,6 +309,7 @@ class TestEventBusEdgeCases:
 
 # ── Metrics construction ──────────────────────────────────────────
 
+
 class TestMetrics:
     """TickMetrics accuracy and edge cases."""
 
@@ -307,8 +329,14 @@ class TestMetrics:
         metrics = integration._build_metrics(result, 2.0)
         d = metrics.to_dict()
         assert set(d.keys()) == {
-            "tick", "n_rooms", "fired_count",
-            "active_ratio", "thermal_pressure", "backend", "duration_ms", "timestamp",
+            "tick",
+            "n_rooms",
+            "fired_count",
+            "active_ratio",
+            "thermal_pressure",
+            "backend",
+            "duration_ms",
+            "timestamp",
         }
 
     def test_metrics_backend_detection(self, grid_100, signal_64):
@@ -320,6 +348,7 @@ class TestMetrics:
 
 
 # ── Existing API non-regression ───────────────────────────────────
+
 
 class TestNoRegression:
     """Verify RoomGrid.tick() and tick_batch() still work standalone."""
@@ -349,6 +378,7 @@ class TestNoRegression:
 
 
 # ── Global cleanup ───────────────────────────────────────────────
+
 
 def pytest_sessionfinish(session, exitstatus):
     """Restore any lingering compiler hot-swaps."""

@@ -3,6 +3,7 @@
 WebcamCapture — OpenCV VideoCapture with frame-dropping for target FPS.
 ScreenCapture  — MSS or PIL.ImageGrab for screen regions.
 """
+
 from __future__ import annotations
 
 __all__ = ["WebcamCapture", "ScreenCapture"]
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 _HAS_CV2 = False
 try:
     import cv2
+
     _HAS_CV2 = True
 except Exception:
     pass
@@ -29,6 +31,7 @@ except Exception:
 _HAS_MSS = False
 try:
     import mss
+
     _HAS_MSS = True
 except Exception:
     pass
@@ -36,6 +39,7 @@ except Exception:
 _HAS_PIL = False
 try:
     from PIL import ImageGrab
+
     _HAS_PIL = True
 except Exception:
     pass
@@ -44,6 +48,7 @@ except Exception:
 @dataclass
 class CaptureConfig:
     """Shared capture configuration."""
+
     target_fps: float = 10.0
     width: int | None = None
     height: int | None = None
@@ -95,7 +100,9 @@ class WebcamCapture:
 
         self._running = True
         self._last_frame_time = time.time()
-        logger.info("Webcam %d opened at ~%.1f FPS", self.device_id, self.config.target_fps)
+        logger.info(
+            "Webcam %d opened at ~%.1f FPS", self.device_id, self.config.target_fps
+        )
         return True
 
     def close(self) -> None:
@@ -104,7 +111,12 @@ class WebcamCapture:
         if self._cap:
             self._cap.release()
             self._cap = None
-        logger.info("Webcam %d closed (%d frames, %d dropped)", self.device_id, self._frame_count, self._dropped_count)
+        logger.info(
+            "Webcam %d closed (%d frames, %d dropped)",
+            self.device_id,
+            self._frame_count,
+            self._dropped_count,
+        )
 
     def __enter__(self) -> "WebcamCapture":
         self.open()
@@ -207,8 +219,7 @@ class ScreenCapture:
             self._backend = "pil"
         else:
             raise ImportError(
-                "ScreenCapture requires mss or PIL. "
-                "Install: pip install mss"
+                "ScreenCapture requires mss or PIL. Install: pip install mss"
             )
 
     # ── Lifecycle ───────────────────────────────────────────
@@ -224,7 +235,11 @@ class ScreenCapture:
         if self._sct:
             self._sct.close()
             self._sct = None
-        logger.info("ScreenCapture closed (%d frames, %d dropped)", self._frame_count, self._dropped_count)
+        logger.info(
+            "ScreenCapture closed (%d frames, %d dropped)",
+            self._frame_count,
+            self._dropped_count,
+        )
 
     def __enter__(self) -> "ScreenCapture":
         self.open()
@@ -265,7 +280,9 @@ class ScreenCapture:
             sct_img = self._sct.grab(mon)
             # BGRA → RGB
             frame = np.array(sct_img)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2RGB) if _HAS_CV2 else frame[:, :, :3]
+            frame = (
+                cv2.cvtColor(frame, cv2.COLOR_BGRA2RGB) if _HAS_CV2 else frame[:, :, :3]
+            )
         except Exception as exc:
             logger.warning("MSS grab failed: %s", exc)
             return None

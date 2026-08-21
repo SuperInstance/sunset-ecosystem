@@ -11,10 +11,10 @@ Usage
 
     # 4 nodes, tolerate 1 Byzantine fault
     consensus = HolonomicBFT(node_id="alpha", peers=["beta", "gamma", "delta"], f=1)
-    
+
     # Propose a value
     consensus.propose("breed_batch_42", value=[0.6, 0.8])
-    
+
     # After receiving votes from peers, check holonomy
     if consensus.check_holonomy("breed_batch_42"):
         consensus.commit("breed_batch_42")
@@ -34,6 +34,7 @@ from swarm.constraint_bridge import ConstraintBridge
 @dataclass
 class Vote:
     """A vote in the holonomic consensus."""
+
     node_id: str
     proposal_id: str
     value: List[float]  # Direction vector (will be snapped to Pythagorean triple)
@@ -43,6 +44,7 @@ class Vote:
 @dataclass
 class HolonomicBFT:
     """Byzantine Fault Tolerant consensus with holonomic verification."""
+
     node_id: str
     peers: List[str]
     f: int = 1  # Number of Byzantine faults tolerated
@@ -95,7 +97,7 @@ class HolonomicBFT:
     def get_holonomy_error(self, proposal_id: str) -> float:
         """Get the holonomy error for a proposal (0 = perfect)."""
         if proposal_id not in self._proposals:
-            return float('inf')
+            return float("inf")
 
         votes = self._proposals[proposal_id]
         values = [vote.value for vote in votes.values()]
@@ -142,8 +144,9 @@ class HolonomicBFT:
             "nodes": list(votes.keys()),
         }
 
-    def is_byzantine_fault(self, proposal_id: str, node_id: str,
-                           threshold: float = 0.5) -> bool:
+    def is_byzantine_fault(
+        self, proposal_id: str, node_id: str, threshold: float = 0.5
+    ) -> bool:
         """Detect if a node's vote is Byzantine (inconsistent with cycle)."""
         if proposal_id not in self._proposals:
             return False
@@ -152,7 +155,7 @@ class HolonomicBFT:
 
         # Check if removing this vote improves holonomy
         full_error = self.get_holonomy_error(proposal_id)
-        
+
         # Temporarily remove vote
         removed_vote = self._proposals[proposal_id].pop(node_id)
         without_error = self.get_holonomy_error(proposal_id)

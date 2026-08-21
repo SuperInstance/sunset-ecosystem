@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class _CompiledConstraint:
     """Cache entry for a compiled constraint."""
+
     bytecode: bytes
     const_pool: List[float]
     var_slots: Dict[str, int]
@@ -69,7 +70,9 @@ class CompiledFluxChecker:
             then_expr=Const(1.0),
             else_expr=Const(0.0),
         )
-        emitter = self._compiler.compile_constraint(expr, with_validate=False, with_halt=False)
+        emitter = self._compiler.compile_constraint(
+            expr, with_validate=False, with_halt=False
+        )
         return _CompiledConstraint(
             bytecode=emitter.to_bytes(),
             const_pool=list(emitter.const_pool),
@@ -83,7 +86,9 @@ class CompiledFluxChecker:
             then_expr=Const(1.0),
             else_expr=Const(0.0),
         )
-        emitter = self._compiler.compile_constraint(expr, with_validate=False, with_halt=False)
+        emitter = self._compiler.compile_constraint(
+            expr, with_validate=False, with_halt=False
+        )
         return _CompiledConstraint(
             bytecode=emitter.to_bytes(),
             const_pool=list(emitter.const_pool),
@@ -141,7 +146,9 @@ class CompiledFluxChecker:
         if w.size > 1:
             var = float(np.var(w))
             if var > cfg.max_variance:
-                violations["variance"] = (var - cfg.max_variance) / max(cfg.max_variance, 1e-6)
+                violations["variance"] = (var - cfg.max_variance) / max(
+                    cfg.max_variance, 1e-6
+                )
 
         # 4. Chaos — compile once, execute via VM with runtime value patched
         cc = self._get_cached("chaos", self._compile_chaos_limit)
@@ -163,9 +170,9 @@ class CompiledFluxChecker:
                 ) / max(cfg.thermal_budget_gate, 1e-6)
         except Exception as e:
             logger.warning("VM error in thermal check: %s", e)
-            violations["thermal"] = (
-                thermal_pressure - cfg.thermal_budget_gate
-            ) / max(cfg.thermal_budget_gate, 1e-6)
+            violations["thermal"] = (thermal_pressure - cfg.thermal_budget_gate) / max(
+                cfg.thermal_budget_gate, 1e-6
+            )
 
         # Aggregate score
         score = 0.0
@@ -207,7 +214,9 @@ class CompiledFluxChecker:
         results: list[FluxCheckResult] = []
         for i in range(n):
             results.append(
-                self.check_candidate(batch[i], float(chaos_vec[i]), float(thermal_vec[i]))
+                self.check_candidate(
+                    batch[i], float(chaos_vec[i]), float(thermal_vec[i])
+                )
             )
         return results
 

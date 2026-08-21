@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_template_engine.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -41,7 +42,9 @@ class TestTemplateEngine:
 
     def test_if_not(self):
         engine = TemplateEngine()
-        result = engine.render("{% if not hidden %}visible{% endif %}", {"hidden": False})
+        result = engine.render(
+            "{% if not hidden %}visible{% endif %}", {"hidden": False}
+        )
         assert result == "visible"
 
     def test_for_loop(self):

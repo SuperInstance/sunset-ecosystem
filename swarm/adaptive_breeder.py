@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class BreederStrategy:
     """A breeding strategy with performance metrics."""
+
     name: str
     breeder: Any
     success_rate: float = 0.0
@@ -42,8 +43,7 @@ class AdaptiveBreeder:
         self._history: List[Dict[str, Any]] = []
         self.generation = 0
 
-    def add_strategy(self, name: str, breeder: Any,
-                     initial_weight: float = 1.0):
+    def add_strategy(self, name: str, breeder: Any, initial_weight: float = 1.0):
         """Add a breeding strategy."""
         self._strategies[name] = BreederStrategy(
             name=name,
@@ -61,7 +61,9 @@ class AdaptiveBreeder:
             self._current_strategy = next(iter(self._strategies), None)
         return True
 
-    def select_strategy(self, landscape_features: Optional[Dict[str, float]] = None) -> str:
+    def select_strategy(
+        self, landscape_features: Optional[Dict[str, float]] = None
+    ) -> str:
         """Select the best strategy for the current landscape."""
         if not self._strategies:
             raise ValueError("No strategies available")
@@ -89,11 +91,11 @@ class AdaptiveBreeder:
 
         # Run the breeder
         breeder = strategy.breeder
-        if hasattr(breeder, 'evolve'):
+        if hasattr(breeder, "evolve"):
             breeder.evolve(fitness_fn)
 
         # Get best result
-        best = breeder.get_best() if hasattr(breeder, 'get_best') else None
+        best = breeder.get_best() if hasattr(breeder, "get_best") else None
         if best:
             best_genome = best.genome
             best_fitness = best.fitness
@@ -105,15 +107,21 @@ class AdaptiveBreeder:
         strategy.usage_count += 1
         # Track improvement (mock: assume improvement if fitness > 0)
         if best_fitness > 0:
-            strategy.success_rate = (strategy.success_rate * (strategy.usage_count - 1) + 1.0) / strategy.usage_count
+            strategy.success_rate = (
+                strategy.success_rate * (strategy.usage_count - 1) + 1.0
+            ) / strategy.usage_count
         else:
-            strategy.success_rate = (strategy.success_rate * (strategy.usage_count - 1) + 0.0) / strategy.usage_count
+            strategy.success_rate = (
+                strategy.success_rate * (strategy.usage_count - 1) + 0.0
+            ) / strategy.usage_count
 
-        self._history.append({
-            "generation": self.generation,
-            "strategy": strategy_name,
-            "best_fitness": best_fitness,
-        })
+        self._history.append(
+            {
+                "generation": self.generation,
+                "strategy": strategy_name,
+                "best_fitness": best_fitness,
+            }
+        )
 
         return best_genome, best_fitness
 
@@ -127,11 +135,14 @@ class AdaptiveBreeder:
 
     def export_json(self) -> str:
         """Export adaptive breeder state as JSON."""
-        return json.dumps({
-            "strategies": {k: v.to_dict() for k, v in self._strategies.items()},
-            "current": self._current_strategy,
-            "history": self._history,
-        }, indent=2)
+        return json.dumps(
+            {
+                "strategies": {k: v.to_dict() for k, v in self._strategies.items()},
+                "current": self._current_strategy,
+                "history": self._history,
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

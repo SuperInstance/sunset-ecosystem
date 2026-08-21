@@ -1,4 +1,5 @@
 """Grammar Engine package."""
+
 from grammar.core import (
     Production,
     Rule,

@@ -32,6 +32,7 @@ Key classes
 - `FFIBridgeGenerator` — generates dynamic ctypes bridge class
 - `BridgeCompiler` — main entry point, dispatches to generators
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -61,31 +62,38 @@ from fleet.bridge import Bridge, BridgeRegistry, BridgeStatus, BridgeEvent
 
 # ── Exceptions ────────────────────────────────────────────────────
 
+
 class BridgeCompilerError(Exception):
     """Base exception for bridge compiler errors."""
+
     pass
 
 
 class SchemaValidationError(BridgeCompilerError):
     """Raised when a schema fails validation."""
+
     pass
 
 
 class UnsupportedProtocolError(BridgeCompilerError):
     """Raised when the schema protocol is not supported."""
+
     pass
 
 
 class MissingEndpointError(BridgeCompilerError):
     """Raised when a required endpoint is missing from the schema."""
+
     pass
 
 
 # ── BridgeSchema ──────────────────────────────────────────────────
 
+
 @dataclass
 class EndpointSchema:
     """Schema for a single endpoint."""
+
     path: str
     method: str = "GET"
     headers: Dict[str, str] = field(default_factory=dict)
@@ -95,6 +103,7 @@ class EndpointSchema:
 @dataclass
 class BridgeSchema:
     """Validated internal representation of a foreign system schema."""
+
     name: str
     host: str
     port: int
@@ -121,9 +130,7 @@ class BridgeSchema:
 
         missing = cls.REQUIRED_FIELDS - set(raw.keys())
         if missing:
-            raise SchemaValidationError(
-                f"Missing required fields: {sorted(missing)}"
-            )
+            raise SchemaValidationError(f"Missing required fields: {sorted(missing)}")
 
         protocol = raw.get("protocol")
         if protocol not in cls.SUPPORTED_PROTOCOLS:
@@ -146,12 +153,11 @@ class BridgeSchema:
         """Validate that required endpoints are present."""
         missing = self.REQUIRED_ENDPOINTS - set(self.endpoints.keys())
         if missing:
-            raise MissingEndpointError(
-                f"Missing required endpoints: {sorted(missing)}"
-            )
+            raise MissingEndpointError(f"Missing required endpoints: {sorted(missing)}")
 
 
 # ── SchemaParser ──────────────────────────────────────────────────
+
 
 class SchemaParser:
     """Parse JSON/dict schemas into validated BridgeSchema objects."""
@@ -196,7 +202,9 @@ class SchemaParser:
         )
 
     @classmethod
-    def parse_openapi(cls, openapi_spec: Dict[str, Any], service_name: str) -> BridgeSchema:
+    def parse_openapi(
+        cls, openapi_spec: Dict[str, Any], service_name: str
+    ) -> BridgeSchema:
         """Parse a subset of an OpenAPI spec into a BridgeSchema.
 
         Extracts host, port, and paths that look like push/pull endpoints.
@@ -239,7 +247,11 @@ class SchemaParser:
                         endpoints["push"] = EndpointSchema(
                             path=path, method=method.upper()
                         )
-                    elif "pull" in op_id.lower() or "get" in op_id.lower() or "fetch" in op_id.lower():
+                    elif (
+                        "pull" in op_id.lower()
+                        or "get" in op_id.lower()
+                        or "fetch" in op_id.lower()
+                    ):
                         endpoints["pull"] = EndpointSchema(
                             path=path, method=method.upper()
                         )
@@ -259,6 +271,7 @@ class SchemaParser:
 
 # ── Base Generator ────────────────────────────────────────────────
 
+
 class BaseBridgeGenerator(ABC):
     """Abstract base for all bridge generators."""
 
@@ -274,6 +287,7 @@ class BaseBridgeGenerator(ABC):
 
 
 # ── HTTP Bridge Generator ─────────────────────────────────────────
+
 
 class HTTPBridgeGenerator(BaseBridgeGenerator):
     """Generate a dynamic HTTP-based Bridge subclass."""
@@ -304,6 +318,7 @@ class HTTPBridgeGenerator(BaseBridgeGenerator):
             self._session = None
             try:
                 import requests
+
                 self._session = requests.Session()
             except ImportError as exc:
                 raise BridgeCompilerError(
@@ -371,6 +386,7 @@ class HTTPBridgeGenerator(BaseBridgeGenerator):
 
 # ── gRPC Bridge Generator ─────────────────────────────────────────
 
+
 class GRPCBridgeGenerator(BaseBridgeGenerator):
     """Generate a dynamic gRPC-based Bridge subclass (stub).
 
@@ -390,6 +406,7 @@ class GRPCBridgeGenerator(BaseBridgeGenerator):
             self._stub = None
             try:
                 import grpc
+
                 self._channel = grpc.insecure_channel(self._target)
                 # A real implementation would create a protobuf stub here.
                 # For the stub generator, we record the channel and let
@@ -442,6 +459,7 @@ class GRPCBridgeGenerator(BaseBridgeGenerator):
 
 # ── FFI Bridge Generator ────────────────────────────────────────
 
+
 class FFIBridgeGenerator(BaseBridgeGenerator):
     """Generate a dynamic ctypes-based FFI Bridge subclass.
 
@@ -452,9 +470,7 @@ class FFIBridgeGenerator(BaseBridgeGenerator):
     def generate(self, schema: BridgeSchema) -> Type[Bridge]:
         schema.validate_endpoints()
         if not schema.library_path:
-            raise SchemaValidationError(
-                "FFI bridge requires 'library_path' in schema"
-            )
+            raise SchemaValidationError("FFI bridge requires 'library_path' in schema")
 
         class_name = self._build_class_name(schema)
         lib_path = schema.library_path
@@ -526,6 +542,7 @@ class FFIBridgeGenerator(BaseBridgeGenerator):
 
 # ── BridgeCompiler ────────────────────────────────────────────────
 
+
 class BridgeCompiler:
     """Main entry point: auto-generate bridge classes from schemas.
 
@@ -563,7 +580,9 @@ class BridgeCompiler:
         schema = SchemaParser.parse(raw)
         return self.compile(schema)
 
-    def compile_from_openapi(self, openapi_spec: Dict[str, Any], service_name: str) -> Type[Bridge]:
+    def compile_from_openapi(
+        self, openapi_spec: Dict[str, Any], service_name: str
+    ) -> Type[Bridge]:
         """Parse an OpenAPI spec and compile in one step."""
         schema = SchemaParser.parse_openapi(openapi_spec, service_name)
         return self.compile(schema)

@@ -20,6 +20,7 @@ from fleet.mercury_cellular import (
 # Engine init
 # ---------------------------------------------------------------------------
 
+
 class TestEngineInit:
     def test_default_size(self):
         engine = MercuryCellularEngine()
@@ -41,6 +42,7 @@ class TestEngineInit:
 # ---------------------------------------------------------------------------
 # Seeding
 # ---------------------------------------------------------------------------
+
 
 class TestSeeding:
     def test_seed_single(self):
@@ -72,6 +74,7 @@ class TestSeeding:
 # Rule registration
 # ---------------------------------------------------------------------------
 
+
 class TestRuleRegistration:
     def test_register_survival(self):
         engine = MercuryCellularEngine(grid_size=(10, 10))
@@ -99,6 +102,7 @@ class TestRuleRegistration:
 # ---------------------------------------------------------------------------
 # Tick evaluation
 # ---------------------------------------------------------------------------
+
 
 class TestTickEvaluation:
     def test_tick_empty_grid(self):
@@ -161,6 +165,7 @@ class TestTickEvaluation:
 # Energy conservation
 # ---------------------------------------------------------------------------
 
+
 class TestEnergyConservation:
     def test_energy_never_negative(self):
         engine = MercuryCellularEngine(grid_size=(10, 10))
@@ -184,6 +189,7 @@ class TestEnergyConservation:
 # Benchmark
 # ---------------------------------------------------------------------------
 
+
 class TestBenchmark:
     def test_benchmark_runs(self):
         engine = MercuryCellularEngine(grid_size=(64, 64))
@@ -206,6 +212,7 @@ class TestBenchmark:
 # Serialization
 # ---------------------------------------------------------------------------
 
+
 class TestSerialization:
     def test_to_dict_basic(self):
         engine = MercuryCellularEngine(grid_size=(5, 5))
@@ -219,6 +226,7 @@ class TestSerialization:
 # ---------------------------------------------------------------------------
 # Bridge to Numba
 # ---------------------------------------------------------------------------
+
 
 class TestNumbaBridge:
     def test_to_numba_engine(self):
@@ -239,7 +247,9 @@ class TestNumbaBridge:
         engine.tick()  # Apply Mercury rule first
 
         numba_engine = engine.to_numba_engine()
-        numba_engine.register_rule(numba_rule, params=np.array([0.5, 0.1], dtype=np.float32))
+        numba_engine.register_rule(
+            numba_rule, params=np.array([0.5, 0.1], dtype=np.float32)
+        )
         stats = numba_engine.tick()
         assert stats["active_cells"] == 1
 
@@ -247,6 +257,7 @@ class TestNumbaBridge:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_no_rules_tick(self):

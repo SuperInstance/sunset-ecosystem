@@ -56,9 +56,18 @@ def bridge() -> PlatoBridge:
 
 class TestAgentTileAdapter:
     def test_phase_to_lifecycle(self):
-        assert AgentTileAdapter.phase_to_lifecycle(AgentPhase.INCUBATING) == TileLifecycle.ACTIVE
-        assert AgentTileAdapter.phase_to_lifecycle(AgentPhase.SUNSETTING) == TileLifecycle.SUPERSEDED
-        assert AgentTileAdapter.phase_to_lifecycle(AgentPhase.ASLEEP) == TileLifecycle.SUPERSEDED
+        assert (
+            AgentTileAdapter.phase_to_lifecycle(AgentPhase.INCUBATING)
+            == TileLifecycle.ACTIVE
+        )
+        assert (
+            AgentTileAdapter.phase_to_lifecycle(AgentPhase.SUNSETTING)
+            == TileLifecycle.SUPERSEDED
+        )
+        assert (
+            AgentTileAdapter.phase_to_lifecycle(AgentPhase.ASLEEP)
+            == TileLifecycle.SUPERSEDED
+        )
 
     def test_trinity_tile(self):
         tile = AgentTileAdapter.trinity_tile("a1", 0.9, 0.8, 0.7)
@@ -136,8 +145,12 @@ class TestTrinityScoreRoundTrip:
         assert bridge.read_trinity_scores("no-such-agent") is None
 
     def test_overwrite_replaces(self, bridge: PlatoBridge):
-        bridge.write_trinity_score("agent-003", {"ethos": 0.1, "pathos": 0.2, "logos": 0.3})
-        bridge.write_trinity_score("agent-003", {"ethos": 0.9, "pathos": 0.9, "logos": 0.9})
+        bridge.write_trinity_score(
+            "agent-003", {"ethos": 0.1, "pathos": 0.2, "logos": 0.3}
+        )
+        bridge.write_trinity_score(
+            "agent-003", {"ethos": 0.9, "pathos": 0.9, "logos": 0.9}
+        )
         result = bridge.read_trinity_scores("agent-003")
         assert abs(result["ethos"] - 0.9) < 1e-9
 
@@ -173,7 +186,11 @@ class TestLifecycleTransitions:
 
     def test_full_lifecycle_chain(self, bridge: PlatoBridge):
         """INCUBATING → COMPETING → SUNSETTING in sequence."""
-        for phase in [AgentPhase.INCUBATING, AgentPhase.COMPETING, AgentPhase.SUNSETTING]:
+        for phase in [
+            AgentPhase.INCUBATING,
+            AgentPhase.COMPETING,
+            AgentPhase.SUNSETTING,
+        ]:
             bridge.write_lifecycle_event("agent-101", phase)
         result = bridge.read_lifecycle("agent-101")
         assert result["phase"] == "sunsetting"
@@ -206,8 +223,12 @@ class TestHashDeterminism:
         assert tile1.content_hash == tile2.content_hash
 
     def test_different_scores_different_hash(self, bridge: PlatoBridge):
-        bridge.write_trinity_score("agent-201", {"ethos": 0.1, "pathos": 0.1, "logos": 0.1})
-        bridge.write_trinity_score("agent-202", {"ethos": 0.9, "pathos": 0.9, "logos": 0.9})
+        bridge.write_trinity_score(
+            "agent-201", {"ethos": 0.1, "pathos": 0.1, "logos": 0.1}
+        )
+        bridge.write_trinity_score(
+            "agent-202", {"ethos": 0.9, "pathos": 0.9, "logos": 0.9}
+        )
         t1 = bridge.get_tile("sunset-trinity-agent-201")
         t2 = bridge.get_tile("sunset-trinity-agent-202")
         assert t1.content_hash != t2.content_hash
@@ -215,7 +236,9 @@ class TestHashDeterminism:
 
 class TestTileStructure:
     def test_tile_has_correct_room(self, bridge: PlatoBridge):
-        tile = bridge.write_trinity_score("agent-300", {"ethos": 0.5, "pathos": 0.5, "logos": 0.5})
+        tile = bridge.write_trinity_score(
+            "agent-300", {"ethos": 0.5, "pathos": 0.5, "logos": 0.5}
+        )
         assert tile.room == "test-sunset"
 
     def test_tile_is_active(self, bridge: PlatoBridge):
@@ -271,7 +294,9 @@ class TestPlatoBridgeAdapter:
 
     def test_write_agent_snapshot(self):
         bridge = PlatoBridge()
-        agent = Agent(id="a1", generation=2, phase=AgentPhase.BREEDING, trinity_score=0.85)
+        agent = Agent(
+            id="a1", generation=2, phase=AgentPhase.BREEDING, trinity_score=0.85
+        )
         tile = bridge.write_agent_snapshot(agent)
         assert tile.tile_type == TileType.METRICS
         assert tile.state == TileLifecycle.ACTIVE
@@ -294,7 +319,9 @@ class TestPlatoBridgeAdapter:
             path = Path(tmpdir) / "store.json"
             bridge = PlatoBridge(store_path=str(path))
             bridge.write_trinity_score("a1", 0.9, 0.8, 0.7)
-            bridge.write_lifecycle_transition("a1", AgentPhase.INCUBATING, AgentPhase.COMPETING)
+            bridge.write_lifecycle_transition(
+                "a1", AgentPhase.INCUBATING, AgentPhase.COMPETING
+            )
 
             bridge2 = PlatoBridge(store_path=str(path))
             assert len(bridge2._tiles) == 2

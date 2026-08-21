@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for scripts/profile_hardware.py"""
+
 from __future__ import annotations
 
 import sys
@@ -24,7 +25,9 @@ class TestHardwareProfiler:
         profiler = HardwareProfiler()
         result = profiler.measure_idle(duration_sec=0.5)
         assert "mean_watts" in result
-        assert result["mean_watts"] > 0, f"Expected positive power, got {result['mean_watts']}"
+        assert result["mean_watts"] > 0, (
+            f"Expected positive power, got {result['mean_watts']}"
+        )
         assert "duration_sec" in result
         assert result["duration_sec"] > 0
 
@@ -33,7 +36,9 @@ class TestHardwareProfiler:
         config = {"n_rooms": 100, "n_fibers": 2}
         result = profiler.measure_operation("einsum", config, duration_sec=0.5)
         assert "joules_per_op" in result
-        assert result["joules_per_op"] >= 0, f"Expected non-negative joules_per_op, got {result['joules_per_op']}"
+        assert result["joules_per_op"] >= 0, (
+            f"Expected non-negative joules_per_op, got {result['joules_per_op']}"
+        )
         assert "ops_per_second" in result
         assert result["ops_per_second"] > 0
 
@@ -78,6 +83,8 @@ class TestHardwareProfiler:
     def test_measure_thermal_scheduling(self):
         profiler = HardwareProfiler()
         config = {"n_rooms": 100, "n_fibers": 2}
-        result = profiler.measure_operation("thermal_scheduling", config, duration_sec=0.5)
+        result = profiler.measure_operation(
+            "thermal_scheduling", config, duration_sec=0.5
+        )
         assert "joules_per_op" in result
         assert result["ops_per_second"] > 0

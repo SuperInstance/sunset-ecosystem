@@ -25,8 +25,7 @@ from fleet.commit_caster import CommitCaster, CommitEvent
 
 # Initialize with shared secret and mesh broadcast function
 caster = CommitCaster(
-    secret="shared-secret",
-    mesh_broadcast=lambda d: mesh_gossip.broadcast("commit", d)
+    secret="shared-secret", mesh_broadcast=lambda d: mesh_gossip.broadcast("commit", d)
 )
 
 # Receive webhook payload

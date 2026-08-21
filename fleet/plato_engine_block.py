@@ -35,8 +35,8 @@ from typing import Callable, Dict, List, Optional, Any
 @dataclass
 class AlarmRule:
     name: str
-    condition: str          # e.g. "coolant_temp > 90"
-    action: str             # e.g. "notify_captain"
+    condition: str  # e.g. "coolant_temp > 90"
+    action: str  # e.g. "notify_captain"
     triggered: bool = False
     consecutive_ticks: int = 0
 
@@ -198,7 +198,12 @@ class PlatoEngineBlock:
                 return "error: alarm <set|list> ..."
             sub = parts[1].lower()
             if sub == "list":
-                return json.dumps([{"name": a.name, "condition": a.condition, "action": a.action} for a in self._alarms])
+                return json.dumps(
+                    [
+                        {"name": a.name, "condition": a.condition, "action": a.action}
+                        for a in self._alarms
+                    ]
+                )
             elif sub == "set" and len(parts) >= 5:
                 name = parts[2]
                 cond = " ".join(parts[3:-1])

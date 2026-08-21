@@ -27,6 +27,7 @@ from fleet.sense_decide_act import Decision, Observation, SDALoop
 # MockRoomSource
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestMockRoomSource:
     def test_empty(self):
         src = MockRoomSource()
@@ -82,6 +83,7 @@ class TestMockRoomSource:
 # ═══════════════════════════════════════════════════════════════
 # PlatoRoomSense
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestPlatoRoomSense:
     def test_empty_source(self):
@@ -143,9 +145,7 @@ class TestPlatoRoomSense:
     def test_thermal_critical_severity(self):
         src = MockRoomSource()
         src.set_room(
-            RoomObservation(
-                room_id="hot", timestamp=time.time(), thermal_cpu=85.0
-            )
+            RoomObservation(room_id="hot", timestamp=time.time(), thermal_cpu=85.0)
         )
         sense = PlatoRoomSense(source=src)
         obs = sense.observe()
@@ -155,7 +155,10 @@ class TestPlatoRoomSense:
         src = MockRoomSource()
         src.set_room(
             RoomObservation(
-                room_id="warm", timestamp=time.time(), thermal_cpu=50.0, thermal_mem=90.0
+                room_id="warm",
+                timestamp=time.time(),
+                thermal_cpu=50.0,
+                thermal_mem=90.0,
             )
         )
         sense = PlatoRoomSense(source=src)
@@ -166,7 +169,10 @@ class TestPlatoRoomSense:
         src = MockRoomSource()
         src.set_room(
             RoomObservation(
-                room_id="mono", timestamp=time.time(), agent_count=10, diversity_score=0.1
+                room_id="mono",
+                timestamp=time.time(),
+                agent_count=10,
+                diversity_score=0.1,
             )
         )
         sense = PlatoRoomSense(source=src)
@@ -183,9 +189,7 @@ class TestPlatoRoomSense:
 
     def test_callable_source(self):
         def _source():
-            return [
-                RoomObservation(room_id="c", timestamp=time.time(), agent_count=7)
-            ]
+            return [RoomObservation(room_id="c", timestamp=time.time(), agent_count=7)]
 
         sense = PlatoRoomSense(source=_source)
         obs = sense.observe()
@@ -205,6 +209,7 @@ class TestPlatoRoomSense:
 # PlatoBreedingPolicy
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestPlatoBreedingPolicy:
     def _make_obs(self, **kwargs) -> Observation:
         defaults = {
@@ -218,8 +223,22 @@ class TestPlatoBreedingPolicy:
                 "max_thermal_mem": 50.0,
                 "lifecycle_event_count": 0,
                 "room_states": [
-                    {"room_id": "a", "agent_count": 5, "diversity": 0.5, "cpu": 40.0, "mem": 50.0, "events": []},
-                    {"room_id": "b", "agent_count": 5, "diversity": 0.5, "cpu": 40.0, "mem": 50.0, "events": []},
+                    {
+                        "room_id": "a",
+                        "agent_count": 5,
+                        "diversity": 0.5,
+                        "cpu": 40.0,
+                        "mem": 50.0,
+                        "events": [],
+                    },
+                    {
+                        "room_id": "b",
+                        "agent_count": 5,
+                        "diversity": 0.5,
+                        "cpu": 40.0,
+                        "mem": 50.0,
+                        "events": [],
+                    },
                 ],
             },
             "severity_hint": "info",
@@ -249,7 +268,14 @@ class TestPlatoBreedingPolicy:
                 "mean_diversity": 0.1,
                 "total_agents": 10,
                 "room_states": [
-                    {"room_id": "a", "agent_count": 10, "diversity": 0.1, "cpu": 40.0, "mem": 50.0, "events": []}
+                    {
+                        "room_id": "a",
+                        "agent_count": 10,
+                        "diversity": 0.1,
+                        "cpu": 40.0,
+                        "mem": 50.0,
+                        "events": [],
+                    }
                 ],
             }
         )
@@ -265,7 +291,14 @@ class TestPlatoBreedingPolicy:
                 "mean_diversity": 0.1,
                 "total_agents": 3,
                 "room_states": [
-                    {"room_id": "a", "agent_count": 3, "diversity": 0.1, "cpu": 40.0, "mem": 50.0, "events": []}
+                    {
+                        "room_id": "a",
+                        "agent_count": 3,
+                        "diversity": 0.1,
+                        "cpu": 40.0,
+                        "mem": 50.0,
+                        "events": [],
+                    }
                 ],
             }
         )
@@ -277,8 +310,22 @@ class TestPlatoBreedingPolicy:
         obs = self._make_obs(
             metrics={
                 "room_states": [
-                    {"room_id": "full", "agent_count": 12, "diversity": 0.5, "cpu": 40.0, "mem": 50.0, "events": []},
-                    {"room_id": "empty", "agent_count": 1, "diversity": 0.5, "cpu": 40.0, "mem": 50.0, "events": []},
+                    {
+                        "room_id": "full",
+                        "agent_count": 12,
+                        "diversity": 0.5,
+                        "cpu": 40.0,
+                        "mem": 50.0,
+                        "events": [],
+                    },
+                    {
+                        "room_id": "empty",
+                        "agent_count": 1,
+                        "diversity": 0.5,
+                        "cpu": 40.0,
+                        "mem": 50.0,
+                        "events": [],
+                    },
                 ],
             }
         )
@@ -292,7 +339,14 @@ class TestPlatoBreedingPolicy:
             metrics={
                 "room_count": 1,
                 "room_states": [
-                    {"room_id": "only", "agent_count": 10, "diversity": 0.5, "cpu": 40.0, "mem": 50.0, "events": []}
+                    {
+                        "room_id": "only",
+                        "agent_count": 10,
+                        "diversity": 0.5,
+                        "cpu": 40.0,
+                        "mem": 50.0,
+                        "events": [],
+                    }
                 ],
             }
         )
@@ -306,7 +360,14 @@ class TestPlatoBreedingPolicy:
             metrics={
                 "lifecycle_event_count": 5,
                 "room_states": [
-                    {"room_id": "a", "agent_count": 5, "diversity": 0.5, "cpu": 40.0, "mem": 50.0, "events": ["spawn", "sunset", "spawn", "sunset", "spawn"]}
+                    {
+                        "room_id": "a",
+                        "agent_count": 5,
+                        "diversity": 0.5,
+                        "cpu": 40.0,
+                        "mem": 50.0,
+                        "events": ["spawn", "sunset", "spawn", "sunset", "spawn"],
+                    }
                 ],
             }
         )
@@ -358,6 +419,7 @@ class TestPlatoBreedingPolicy:
 # ═══════════════════════════════════════════════════════════════
 # PlatoBreedingAct
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestPlatoBreedingAct:
     def test_noop(self):
@@ -438,7 +500,9 @@ class TestPlatoBreedingAct:
             on_breed=lambda rooms: None,
             recorder=lambda d, r: recorded.append((d.action_type, r.success)),
         )
-        dec = Decision(action_type="breed", confidence=0.85, payload={"room_states": []})
+        dec = Decision(
+            action_type="breed", confidence=0.85, payload={"room_states": []}
+        )
         result = act.execute(dec)
         assert len(recorded) == 1
         assert recorded[0] == ("breed", True)
@@ -448,7 +512,9 @@ class TestPlatoBreedingAct:
             on_breed=lambda rooms: None,
             recorder=lambda d, r: (_ for _ in ()).throw(RuntimeError("recorder fail")),
         )
-        dec = Decision(action_type="breed", confidence=0.85, payload={"room_states": []})
+        dec = Decision(
+            action_type="breed", confidence=0.85, payload={"room_states": []}
+        )
         result = act.execute(dec)
         # Should succeed despite recorder failure
         assert result.success is True
@@ -499,6 +565,7 @@ class TestPlatoBreedingAct:
 # ═══════════════════════════════════════════════════════════════
 # PlatoSignalChain end-to-end
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestPlatoSignalChain:
     def test_register_and_tick(self):
@@ -558,12 +625,18 @@ class TestPlatoSignalChain:
         src = MockRoomSource()
         src.set_room(
             RoomObservation(
-                room_id="full", timestamp=time.time(), agent_count=12, diversity_score=0.5
+                room_id="full",
+                timestamp=time.time(),
+                agent_count=12,
+                diversity_score=0.5,
             )
         )
         src.set_room(
             RoomObservation(
-                room_id="empty", timestamp=time.time(), agent_count=1, diversity_score=0.5
+                room_id="empty",
+                timestamp=time.time(),
+                agent_count=1,
+                diversity_score=0.5,
             )
         )
         chain = PlatoSignalChain(source=src)
@@ -574,10 +647,20 @@ class TestPlatoSignalChain:
     def test_room_filter(self):
         src = MockRoomSource()
         src.set_room(
-            RoomObservation(room_id="alpha", timestamp=time.time(), agent_count=10, diversity_score=0.1)
+            RoomObservation(
+                room_id="alpha",
+                timestamp=time.time(),
+                agent_count=10,
+                diversity_score=0.1,
+            )
         )
         src.set_room(
-            RoomObservation(room_id="beta", timestamp=time.time(), agent_count=2, diversity_score=0.8)
+            RoomObservation(
+                room_id="beta",
+                timestamp=time.time(),
+                agent_count=2,
+                diversity_score=0.8,
+            )
         )
         chain = PlatoSignalChain(source=src, room_ids=["beta"])
         results = chain.tick()
@@ -588,7 +671,12 @@ class TestPlatoSignalChain:
     def test_start_stop(self):
         src = MockRoomSource()
         src.set_room(
-            RoomObservation(room_id="alpha", timestamp=time.time(), agent_count=10, diversity_score=0.1)
+            RoomObservation(
+                room_id="alpha",
+                timestamp=time.time(),
+                agent_count=10,
+                diversity_score=0.1,
+            )
         )
         chain = PlatoSignalChain(source=src)
         chain.start(loop_interval_ms=200)
@@ -612,7 +700,12 @@ class TestPlatoSignalChain:
     def test_custom_policy_and_act(self):
         src = MockRoomSource()
         src.set_room(
-            RoomObservation(room_id="alpha", timestamp=time.time(), agent_count=10, diversity_score=0.1)
+            RoomObservation(
+                room_id="alpha",
+                timestamp=time.time(),
+                agent_count=10,
+                diversity_score=0.1,
+            )
         )
         breed_calls: List[List[Dict[str, Any]]] = []
         act = PlatoBreedingAct(on_breed=lambda rooms: breed_calls.append(rooms))
@@ -640,7 +733,12 @@ class TestPlatoSignalChain:
         # Verify that room_states flow from sense → decide → act
         src = MockRoomSource()
         src.set_room(
-            RoomObservation(room_id="alpha", timestamp=time.time(), agent_count=10, diversity_score=0.1)
+            RoomObservation(
+                room_id="alpha",
+                timestamp=time.time(),
+                agent_count=10,
+                diversity_score=0.1,
+            )
         )
         captured_decisions: List[Decision] = []
         original_evaluate = PlatoBreedingPolicy.evaluate
@@ -661,7 +759,12 @@ class TestPlatoSignalChain:
     def test_multiple_ticks_same_state(self):
         src = MockRoomSource()
         src.set_room(
-            RoomObservation(room_id="alpha", timestamp=time.time(), agent_count=10, diversity_score=0.1)
+            RoomObservation(
+                room_id="alpha",
+                timestamp=time.time(),
+                agent_count=10,
+                diversity_score=0.1,
+            )
         )
         chain = PlatoSignalChain(source=src)
         for _ in range(3):
@@ -672,7 +775,12 @@ class TestPlatoSignalChain:
     def test_changing_state_between_ticks(self):
         src = MockRoomSource()
         src.set_room(
-            RoomObservation(room_id="alpha", timestamp=time.time(), agent_count=10, diversity_score=0.1)
+            RoomObservation(
+                room_id="alpha",
+                timestamp=time.time(),
+                agent_count=10,
+                diversity_score=0.1,
+            )
         )
         chain = PlatoSignalChain(source=src)
         r1 = chain.tick()["plato_signal_chain"]
@@ -680,7 +788,12 @@ class TestPlatoSignalChain:
 
         # Now diversity improves
         src.set_room(
-            RoomObservation(room_id="alpha", timestamp=time.time(), agent_count=10, diversity_score=0.8)
+            RoomObservation(
+                room_id="alpha",
+                timestamp=time.time(),
+                agent_count=10,
+                diversity_score=0.8,
+            )
         )
         r2 = chain.tick()["plato_signal_chain"]
         assert "noop" in r2.side_effects
@@ -705,7 +818,10 @@ class TestPlatoSignalChain:
         def _source():
             return [
                 RoomObservation(
-                    room_id="dyn", timestamp=time.time(), agent_count=10, diversity_score=0.1
+                    room_id="dyn",
+                    timestamp=time.time(),
+                    agent_count=10,
+                    diversity_score=0.1,
                 )
             ]
 
@@ -720,7 +836,12 @@ class TestPlatoSignalChain:
         # policy to test threshold skip.
         src = MockRoomSource()
         src.set_room(
-            RoomObservation(room_id="alpha", timestamp=time.time(), agent_count=10, diversity_score=0.1)
+            RoomObservation(
+                room_id="alpha",
+                timestamp=time.time(),
+                agent_count=10,
+                diversity_score=0.1,
+            )
         )
         loop = SDALoop(confidence_threshold=0.95)
         chain = PlatoSignalChain(source=src, loop=loop)

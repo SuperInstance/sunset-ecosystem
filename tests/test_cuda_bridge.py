@@ -33,8 +33,10 @@ class TestLibraryLoading:
 class TestPersistentCUDAGridWithMockLib:
     def test_init_shapes(self, monkeypatch):
         """Simulate _CUDA_LIB present and verify init copies weights."""
+
         class FakeLib:
             pass
+
         monkeypatch.setattr(cuda_bridge, "_CUDA_LIB", FakeLib())
         weights = {
             "w1": np.arange(10 * 64 * 32).reshape(10, 64, 32).astype(np.float64),
@@ -55,6 +57,7 @@ class TestPersistentCUDAGridWithMockLib:
     def test_repr(self, monkeypatch):
         class FakeLib:
             pass
+
         monkeypatch.setattr(cuda_bridge, "_CUDA_LIB", FakeLib())
         weights = {
             "w1": np.ones((2, 64, 32)),

@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_retry_policy.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -27,7 +28,9 @@ class TestRetryPolicy:
         assert policy.next_delay(3) == 8.0
 
     def test_next_delay_max_cap(self):
-        policy = RetryPolicy(backoff="exponential", base_delay_sec=1.0, max_delay_sec=5.0)
+        policy = RetryPolicy(
+            backoff="exponential", base_delay_sec=1.0, max_delay_sec=5.0
+        )
         assert policy.next_delay(10) == 5.0
 
     def test_next_delay_jitter(self):
@@ -61,24 +64,34 @@ class TestRetryPolicy:
     def test_execute_retry_then_success(self):
         policy = RetryPolicy(max_retries=3, backoff="fixed", base_delay_sec=0.01)
         attempts = []
+
         def flaky():
             attempts.append(1)
             if len(attempts) < 2:
                 raise ValueError("fail")
             return "success"
+
         result = policy.execute(flaky)
         assert result == "success"
         assert len(attempts) == 2
 
     def test_execute_exhausted(self):
         policy = RetryPolicy(max_retries=2, backoff="fixed", base_delay_sec=0.01)
+
         def always_fail():
             raise ValueError("fail")
+
         with pytest.raises(ValueError, match="fail"):
             policy.execute(always_fail)
 
     def test_stats(self):
-        policy = RetryPolicy(max_retries=5, backoff="exponential", base_delay_sec=1.0, max_delay_sec=30.0, jitter_factor=0.2)
+        policy = RetryPolicy(
+            max_retries=5,
+            backoff="exponential",
+            base_delay_sec=1.0,
+            max_delay_sec=30.0,
+            jitter_factor=0.2,
+        )
         policy.next_delay(0)
         policy.next_delay(1)
         stats = policy.stats()

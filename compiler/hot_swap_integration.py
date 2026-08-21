@@ -13,6 +13,7 @@ Usage::
     swap.enable_auto_compile()
     # grid.resize(200)  # triggers auto-recompile
 """
+
 from __future__ import annotations
 
 __all__ = ["CompilerHotSwap", "CompileResult"]
@@ -27,6 +28,7 @@ log = logging.getLogger(__name__)
 # ── Optional agentic-compiler integration ─────────────────────────
 try:
     from agentic_compiler.core import Compiler as _AgenticCompiler
+
     _HAS_AGENTIC_COMPILER = True
 except Exception:
     _AgenticCompiler = None  # type: ignore[misc,assignment]
@@ -36,6 +38,7 @@ except Exception:
 @dataclass
 class CompileResult:
     """Result of a compilation attempt."""
+
     success: bool
     compiled_func: Any | None
     error: str | None
@@ -118,9 +121,15 @@ class CompilerHotSwap:
             new_time = time.perf_counter() - start
 
             # New version should be faster or within 10%
-            improvement = (current_time - new_time) / current_time if current_time > 0 else 0
-            log.info("A/B test: current=%.3fms, new=%.3fms, improvement=%.1f%%",
-                     current_time * 1000, new_time * 1000, improvement * 100)
+            improvement = (
+                (current_time - new_time) / current_time if current_time > 0 else 0
+            )
+            log.info(
+                "A/B test: current=%.3fms, new=%.3fms, improvement=%.1f%%",
+                current_time * 1000,
+                new_time * 1000,
+                improvement * 100,
+            )
             return improvement > -0.1  # allow 10% regression
 
         return True  # can't test, assume OK
@@ -134,7 +143,9 @@ class CompilerHotSwap:
     def rollback(self) -> None:
         """Rollback to previous compiled version."""
         self._rollback_count += 1
-        log.warning("Rolled back to previous version (rollback #%d)", self._rollback_count)
+        log.warning(
+            "Rolled back to previous version (rollback #%d)", self._rollback_count
+        )
 
     def hot_swap(self) -> CompileResult:
         """Full hot-swap cycle: compile → A/B test → commit or rollback.
@@ -218,7 +229,9 @@ class CompilerHotSwap:
             path = f.name
 
         try:
-            spec = importlib.util.spec_from_file_location("__compiler_generated__", path)
+            spec = importlib.util.spec_from_file_location(
+                "__compiler_generated__", path
+            )
             if spec is None or spec.loader is None:
                 raise RuntimeError("Failed to create module spec")
             mod = importlib.util.module_from_spec(spec)

@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_workflow_engine.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -39,7 +40,9 @@ class TestWorkflowEngine:
 
     def test_transition_with_guard(self):
         engine = WorkflowEngine()
-        engine.add_transition("pending", "approved", guard=lambda ctx: ctx.get("budget", 0) > 0)
+        engine.add_transition(
+            "pending", "approved", guard=lambda ctx: ctx.get("budget", 0) > 0
+        )
         engine.start("pending", {"budget": 0})
         assert engine.transition("approved") is False
         engine._context["budget"] = 100
@@ -48,7 +51,9 @@ class TestWorkflowEngine:
     def test_transition_with_action(self):
         engine = WorkflowEngine()
         called = [False]
-        engine.add_transition("pending", "approved", action=lambda ctx: called.__setitem__(0, True))
+        engine.add_transition(
+            "pending", "approved", action=lambda ctx: called.__setitem__(0, True)
+        )
         engine.start("pending")
         engine.transition("approved")
         assert called[0] is True

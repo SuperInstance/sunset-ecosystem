@@ -19,36 +19,38 @@ from pathlib import Path
 # Load the shared library
 _so = next(Path(__file__).parent.glob("target/release/libjepa_kernel.so"), None)
 if _so is None:
-    raise RuntimeError("libjepa_kernel.so not found. Run `cargo build --release` in nerve/.")
+    raise RuntimeError(
+        "libjepa_kernel.so not found. Run `cargo build --release` in nerve/."
+    )
 
 _lib = ctypes.CDLL(str(_so))
 
 # jepa_grid_create(n, w1, w2, w3, b1, b2, b3) -> handle
 _lib.jepa_grid_create.argtypes = [
-    ctypes.c_size_t,                          # n
-    ctypes.POINTER(ctypes.c_float),           # w1
-    ctypes.POINTER(ctypes.c_float),           # w2
-    ctypes.POINTER(ctypes.c_float),           # w3
-    ctypes.POINTER(ctypes.c_float),           # b1
-    ctypes.POINTER(ctypes.c_float),           # b2
-    ctypes.POINTER(ctypes.c_float),           # b3
+    ctypes.c_size_t,  # n
+    ctypes.POINTER(ctypes.c_float),  # w1
+    ctypes.POINTER(ctypes.c_float),  # w2
+    ctypes.POINTER(ctypes.c_float),  # w3
+    ctypes.POINTER(ctypes.c_float),  # b1
+    ctypes.POINTER(ctypes.c_float),  # b2
+    ctypes.POINTER(ctypes.c_float),  # b3
 ]
 _lib.jepa_grid_create.restype = ctypes.c_void_p
 
 # jepa_grid_tick(handle, signal, out)
 _lib.jepa_grid_tick.argtypes = [
-    ctypes.c_void_p,                          # handle
-    ctypes.POINTER(ctypes.c_float),           # signal (64,)
-    ctypes.POINTER(ctypes.c_float),           # out (n*16,)
+    ctypes.c_void_p,  # handle
+    ctypes.POINTER(ctypes.c_float),  # signal (64,)
+    ctypes.POINTER(ctypes.c_float),  # out (n*16,)
 ]
 _lib.jepa_grid_tick.restype = None
 
 # jepa_grid_tick_batch(handle, signals, batch, out)
 _lib.jepa_grid_tick_batch.argtypes = [
-    ctypes.c_void_p,                          # handle
-    ctypes.POINTER(ctypes.c_float),           # signals (batch*64,)
-    ctypes.c_size_t,                          # batch
-    ctypes.POINTER(ctypes.c_float),           # out (batch*n*16,)
+    ctypes.c_void_p,  # handle
+    ctypes.POINTER(ctypes.c_float),  # signals (batch*64,)
+    ctypes.c_size_t,  # batch
+    ctypes.POINTER(ctypes.c_float),  # out (batch*n*16,)
 ]
 _lib.jepa_grid_tick_batch.restype = None
 

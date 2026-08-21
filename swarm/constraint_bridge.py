@@ -54,6 +54,7 @@ logger = logging.getLogger(__name__)
 CT_AVAILABLE = False
 try:
     import constraint_theory as ct
+
     CT_AVAILABLE = True
     logger.info("Constraint Theory Python bindings loaded")
 except ImportError:
@@ -63,7 +64,10 @@ except ImportError:
 
 _FFI_SO_PATH = os.path.join(
     os.path.dirname(__file__),
-    "superinstance-ffi", "target", "release", "libsuperinstance_ffi.so"
+    "superinstance-ffi",
+    "target",
+    "release",
+    "libsuperinstance_ffi.so",
 )
 FFI_SO_EXISTS = os.path.exists(_FFI_SO_PATH)
 
@@ -90,6 +94,7 @@ except RuntimeError as e:
 if not FFI_AVAILABLE:
     try:
         import superinstance_ffi_mock as _mock_ffi
+
         _mock_obj = _mock_ffi.load_mock_ffi()
         _ffi_module = _mock_obj  # type: ignore[assignment]
         logger.info("Using superinstance_ffi_mock fallback")
@@ -98,6 +103,7 @@ if not FFI_AVAILABLE:
 
 
 # ── LRU-cached triple generation ───────────────────────────────────────
+
 
 @functools.lru_cache(maxsize=8)
 def _generate_triples_cached(density: int) -> Tuple[Tuple[int, int, int], ...]:
@@ -121,6 +127,7 @@ def _generate_triples_cached(density: int) -> Tuple[Tuple[int, int, int], ...]:
 @dataclass
 class SnapResult:
     """Result of a constraint snap operation."""
+
     exact: np.ndarray
     noise: float
     triple: Optional[Tuple[int, int, int]] = None  # (a, b, c) Pythagorean triple
@@ -148,7 +155,10 @@ class ConstraintBridge:
             self._kdtree = self._build_kdtree()
         logger.info(
             "ConstraintBridge initialized (dim=%d, density=%d, ct=%s, ffi=%s)",
-            self.dim, self.density, CT_AVAILABLE, FFI_AVAILABLE
+            self.dim,
+            self.density,
+            CT_AVAILABLE,
+            FFI_AVAILABLE,
         )
 
     # ── Pythagorean snapping ────────────────────────────────────────
@@ -186,7 +196,12 @@ class ConstraintBridge:
                 fn.argtypes = [ctypes.c_double, ctypes.c_double]
                 fn.restype = ctypes.c_double * 4  # x,y,a,c packed (b derived)
                 packed = fn(x, y)
-                sx, sy, a_int, c_int = packed[0], packed[1], int(packed[2]), int(packed[3])
+                sx, sy, a_int, c_int = (
+                    packed[0],
+                    packed[1],
+                    int(packed[2]),
+                    int(packed[3]),
+                )
                 b_int = int(round(math.sqrt(c_int * c_int - a_int * a_int)))
                 triple = (a_int, b_int, c_int)
                 noise = math.hypot(x - sx, y - sy)
@@ -244,7 +259,7 @@ class ConstraintBridge:
         unit = arr / norms_safe
 
         # For zero vectors, keep them zero
-        zero_mask = (norms[:, 0] == 0)
+        zero_mask = norms[:, 0] == 0
         unit[zero_mask] = 0.0
 
         if CT_AVAILABLE and self._manifold:
@@ -253,10 +268,7 @@ class ConstraintBridge:
 
         if self._triples_arr is None or len(self._triples_arr) == 0:
             # No triples available — return identity
-            return [
-                SnapResult(exact=unit[i], noise=0.0, triple=None)
-                for i in range(n)
-            ]
+            return [SnapResult(exact=unit[i], noise=0.0, triple=None) for i in range(n)]
 
         # Vectorised all-pairs distance computation:
         #   triples_coords: T x 2  (first quadrant only)
@@ -265,7 +277,9 @@ class ConstraintBridge:
         # then restore signs on the snapped result.
         triples_coords = self._triples_arr[:, :2] / self._triples_arr[:, 2:3]
         abs_unit = np.abs(unit)
-        diffs = abs_unit[:, np.newaxis, :] - triples_coords[np.newaxis, :, :]  # N x T x 2
+        diffs = (
+            abs_unit[:, np.newaxis, :] - triples_coords[np.newaxis, :, :]
+        )  # N x T x 2
         dists = np.einsum("ntk,ntk->nt", diffs, diffs)  # N x T
         best_idx = np.argmin(dists, axis=1)  # N
         best_dist = np.sqrt(np.min(dists, axis=1))  # N
@@ -297,8 +311,9 @@ class ConstraintBridge:
 
     # ── Quantization ────────────────────────────────────────────────
 
-    def quantize_embedding(self, embedding: List[float],
-                           mode: str = "turbo") -> np.ndarray:
+    def quantize_embedding(
+        self, embedding: List[float], mode: str = "turbo"
+    ) -> np.ndarray:
         """Quantize an embedding using Pythagorean quantization."""
         arr = np.array(embedding, dtype=np.float32)
 
@@ -383,37 +398,59 @@ class ConstraintBridge:
 
     def laman_is_rigid(self, num_vertices: int, num_edges: int) -> bool:
         """Check if a graph is Laman-rigid: 2n−3 edges, no subset over-constrained."""
+
         def _fallback(nv: int, ne: int) -> bool:
             return ne == 2 * nv - 3
-        return bool(self._call_ffi_or_fallback("laman_is_rigid", _fallback, num_vertices, num_edges))
+
+        return bool(
+            self._call_ffi_or_fallback(
+                "laman_is_rigid", _fallback, num_vertices, num_edges
+            )
+        )
 
     def holonomy_check(self, states: List[float], threshold: float) -> float:
         """Cyclic drift consistency check. Returns 1.0 if consistent, 0.0 otherwise."""
+
         def _fallback(states: List[float], threshold: float) -> float:
             if len(states) < 3:
                 return 1.0
-            total = sum(abs(states[i] - states[(i + 1) % len(states)]) for i in range(len(states)))
+            total = sum(
+                abs(states[i] - states[(i + 1) % len(states)])
+                for i in range(len(states))
+            )
             return 1.0 if total < threshold else 0.0
-        return self._call_ffi_or_fallback("holonomy_check", _fallback, states, threshold)
+
+        return self._call_ffi_or_fallback(
+            "holonomy_check", _fallback, states, threshold
+        )
 
     def constraint_check(self, value: float, lower: float, upper: float) -> bool:
         """Check if value is within [lower, upper]."""
-        return bool(self._call_ffi_or_fallback(
-            "constraint_check", lambda v, lo, hi: lo <= v <= hi, value, lower, upper
-        ))
+        return bool(
+            self._call_ffi_or_fallback(
+                "constraint_check", lambda v, lo, hi: lo <= v <= hi, value, lower, upper
+            )
+        )
 
     def constraint_violation(self, value: float, lower: float, upper: float) -> float:
         """Compute constraint violation distance (0 if satisfied)."""
+
         def _fallback(v: float, lo: float, hi: float) -> float:
             if v < lo:
                 return lo - v
             if v > hi:
                 return v - hi
             return 0.0
-        return self._call_ffi_or_fallback("constraint_violation", _fallback, value, lower, upper)
 
-    def spline_interpolate(self, p0: float, p1: float, m0: float, m1: float, t: float) -> float:
+        return self._call_ffi_or_fallback(
+            "constraint_violation", _fallback, value, lower, upper
+        )
+
+    def spline_interpolate(
+        self, p0: float, p1: float, m0: float, m1: float, t: float
+    ) -> float:
         """Hermite cubic spline at parameter t in [0,1]."""
+
         def _fallback(p0: float, p1: float, m0: float, m1: float, t: float) -> float:
             t2 = t * t
             t3 = t2 * t
@@ -422,15 +459,26 @@ class ConstraintBridge:
             h01 = -2 * t3 + 3 * t2
             h11 = t3 - t2
             return h00 * p0 + h10 * m0 + h01 * p1 + h11 * m1
-        return self._call_ffi_or_fallback("spline_interpolate", _fallback, p0, p1, m0, m1, t)
 
-    def deadband_filter(self, value: float, last: float, deadband: float) -> Tuple[float, float]:
+        return self._call_ffi_or_fallback(
+            "spline_interpolate", _fallback, p0, p1, m0, m1, t
+        )
+
+    def deadband_filter(
+        self, value: float, last: float, deadband: float
+    ) -> Tuple[float, float]:
         """Apply deadband filter. Returns (filtered_value, updated_last)."""
-        def _fallback(value: float, last: float, deadband: float) -> Tuple[float, float]:
+
+        def _fallback(
+            value: float, last: float, deadband: float
+        ) -> Tuple[float, float]:
             if abs(value - last) < deadband:
                 return last, last
             return value, value
-        result = self._call_ffi_or_fallback("deadband_filter", _fallback, value, last, deadband)
+
+        result = self._call_ffi_or_fallback(
+            "deadband_filter", _fallback, value, last, deadband
+        )
         # Some FFI variants return a tuple, some return a single float; normalise
         if isinstance(result, tuple):
             return result
@@ -439,30 +487,44 @@ class ConstraintBridge:
     def manhattan_distance(self, a: List[float], b: List[float]) -> float:
         """L1 distance between two float arrays."""
         return self._call_ffi_or_fallback(
-            "manhattan_distance", lambda a, b: sum(abs(x - y) for x, y in zip(a, b)), a, b
+            "manhattan_distance",
+            lambda a, b: sum(abs(x - y) for x, y in zip(a, b)),
+            a,
+            b,
         )
 
-    def cascade_match(self, query: List[float], candidates: List[List[float]],
-                      thresholds: List[float]) -> int:
+    def cascade_match(
+        self, query: List[float], candidates: List[List[float]], thresholds: List[float]
+    ) -> int:
         """Tiered nearest-neighbor search. Returns index of first match, or -1."""
-        def _fallback(query: List[float], candidates: List[List[float]], thresholds: List[float]) -> int:
+
+        def _fallback(
+            query: List[float], candidates: List[List[float]], thresholds: List[float]
+        ) -> int:
             for tier_thresh in thresholds:
                 for idx, cand in enumerate(candidates):
                     dist = sum(abs(q - c) for q, c in zip(query, cand))
                     if dist < tier_thresh:
                         return idx
             return -1
-        return self._call_ffi_or_fallback("cascade_match", _fallback, query, candidates, thresholds)
+
+        return self._call_ffi_or_fallback(
+            "cascade_match", _fallback, query, candidates, thresholds
+        )
 
     def pythagorean48_encode(self, numerator: int, denominator: int) -> int:
         """Frequency ratio → 48-tone index."""
+
         def _fallback(num: int, den: int) -> int:
             if den == 0:
                 return 0
             ratio = num / den
             semitones = 12 * math.log2(ratio)
             return round(semitones) % 48
-        return self._call_ffi_or_fallback("pythagorean48_encode", _fallback, numerator, denominator)
+
+        return self._call_ffi_or_fallback(
+            "pythagorean48_encode", _fallback, numerator, denominator
+        )
 
     # ── Graph rigidity ──────────────────────────────────────────────
 

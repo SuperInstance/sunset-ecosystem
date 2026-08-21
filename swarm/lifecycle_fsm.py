@@ -39,11 +39,11 @@ from typing import Optional
 class LifecycleState(Enum):
     """Explicit lifecycle states for every agent in the fleet."""
 
-    EGG = auto()      # Vector exists in table, no room allocated
+    EGG = auto()  # Vector exists in table, no room allocated
     COMPETE = auto()  # Active, chaos decaying
     SURVIVE = auto()  # Pareto non-dominated, stable activity
-    BREED = auto()    # Actively breeding
-    SUNSET = auto()   # Retired, room freed
+    BREED = auto()  # Actively breeding
+    SUNSET = auto()  # Retired, room freed
     ARCHIVE = auto()  # Permanently archived
 
 
@@ -51,9 +51,7 @@ class LifecycleTransitionError(ValueError):
     """Raised when an invalid state transition is attempted."""
 
     def __init__(self, from_state: LifecycleState, to_state: LifecycleState) -> None:
-        super().__init__(
-            f"Invalid transition: {from_state.name} → {to_state.name}"
-        )
+        super().__init__(f"Invalid transition: {from_state.name} → {to_state.name}")
         self.from_state = from_state
         self.to_state = to_state
 
@@ -119,7 +117,9 @@ class AgentLifecycleFSM:
     def agent_id(self) -> int:
         return self._agent_id
 
-    def transition(self, to_state: LifecycleState, *, reason: Optional[str] = None) -> bool:
+    def transition(
+        self, to_state: LifecycleState, *, reason: Optional[str] = None
+    ) -> bool:
         """Attempt to move the agent to *to_state*.
 
         Returns:

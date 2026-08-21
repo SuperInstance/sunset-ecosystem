@@ -64,29 +64,40 @@ class MetronomeBridge:
             # Full grid tick — all rooms
             result = self.grid.tick(signal)
             self._dispatched_rooms = list(range(self.grid.n))
-            log.debug("Beat %d (full): ticked all %d rooms, fired=%d",
-                      beat_number, self.grid.n, result.get("fired", 0))
+            log.debug(
+                "Beat %d (full): ticked all %d rooms, fired=%d",
+                beat_number,
+                self.grid.n,
+                result.get("fired", 0),
+            )
         elif beat_mod == 1:
             # Thermal-critical rooms — highest chaos
             critical = self._get_thermal_critical_rooms()
             for room_id in critical:
                 self.dispatch_room(room_id, "cpu")
-            log.debug("Beat %d (thermal): dispatched %d critical rooms",
-                      beat_number, len(critical))
+            log.debug(
+                "Beat %d (thermal): dispatched %d critical rooms",
+                beat_number,
+                len(critical),
+            )
         elif beat_mod == 2:
             # Breeding-ready rooms — moderate chaos, some activity
             ready = self._get_breeding_ready_rooms()
             for room_id in ready:
                 self.dispatch_room(room_id, "cpu")
-            log.debug("Beat %d (breed): dispatched %d ready rooms",
-                      beat_number, len(ready))
+            log.debug(
+                "Beat %d (breed): dispatched %d ready rooms", beat_number, len(ready)
+            )
         elif beat_mod == 3:
             # Perception-active rooms — highest activity
             active = self._get_perception_active_rooms()
             for room_id in active:
                 self.dispatch_room(room_id, "cpu")
-            log.debug("Beat %d (perception): dispatched %d active rooms",
-                      beat_number, len(active))
+            log.debug(
+                "Beat %d (perception): dispatched %d active rooms",
+                beat_number,
+                len(active),
+            )
 
         # After a full 4-beat cycle, synchronize all device queues
         if beat_mod == 3:
@@ -109,7 +120,11 @@ class MetronomeBridge:
         """Rooms with moderate chaos, some activity history, ready to breed."""
         if self.grid.n == 0:
             return []
-        mask = (self.grid.chaos > 0.05) & (self.grid.chaos < 0.35) & (self.grid.activity >= 1)
+        mask = (
+            (self.grid.chaos > 0.05)
+            & (self.grid.chaos < 0.35)
+            & (self.grid.activity >= 1)
+        )
         candidates = np.where(mask)[0]
         if len(candidates) == 0:
             return []

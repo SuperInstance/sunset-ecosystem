@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_shutdown_coordinator.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import time
@@ -41,6 +42,7 @@ class TestShutdownCoordinator:
             sc.finish_work()
 
         import threading
+
         t = threading.Thread(target=finish_later)
         t.start()
         sc.shutdown()

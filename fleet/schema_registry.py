@@ -9,6 +9,7 @@ Usage:
     registry.register("user", {"type": "object", "properties": {"name": {"type": "string"}}})
     assert registry.is_compatible("user", {"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}}})
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -21,7 +22,9 @@ class SchemaRegistry:
 
     def __init__(self):
         self._schemas: Dict[str, List[Dict[str, Any]]] = {}
-        self._compatibility: Dict[str, str] = {}  # schema_name -> "backward", "forward", "full", "none"
+        self._compatibility: Dict[
+            str, str
+        ] = {}  # schema_name -> "backward", "forward", "full", "none"
 
     # ------------------------------------------------------------------
     # Registration
@@ -96,11 +99,14 @@ class SchemaRegistry:
         if mode == "forward":
             return self._check_forward_compatible(latest, new_schema)
         if mode == "full":
-            return (self._check_backward_compatible(latest, new_schema) and
-                    self._check_forward_compatible(latest, new_schema))
+            return self._check_backward_compatible(
+                latest, new_schema
+            ) and self._check_forward_compatible(latest, new_schema)
         return True
 
-    def _check_backward_compatible(self, old: Dict[str, Any], new: Dict[str, Any]) -> bool:
+    def _check_backward_compatible(
+        self, old: Dict[str, Any], new: Dict[str, Any]
+    ) -> bool:
         """Check backward compatibility (new readers can read old data)."""
         # Simplified: new schema can have additional optional properties
         old_props = old.get("properties", {})
@@ -117,7 +123,9 @@ class SchemaRegistry:
                 return False
         return True
 
-    def _check_forward_compatible(self, old: Dict[str, Any], new: Dict[str, Any]) -> bool:
+    def _check_forward_compatible(
+        self, old: Dict[str, Any], new: Dict[str, Any]
+    ) -> bool:
         """Check forward compatibility (old readers can read new data)."""
         # Simplified: no new required fields in old schema
         old_props = old.get("properties", {})

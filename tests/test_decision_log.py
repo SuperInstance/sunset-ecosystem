@@ -6,7 +6,12 @@ from datetime import datetime, timezone
 
 import pytest
 
-from logos.decision_log import DecisionLog, DecisionRecord, DecisionRecords, DecisionType
+from logos.decision_log import (
+    DecisionLog,
+    DecisionRecord,
+    DecisionRecords,
+    DecisionType,
+)
 
 
 class TestDecisionRecord:

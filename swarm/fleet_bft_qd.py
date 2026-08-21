@@ -21,6 +21,7 @@ Integration Points
 - FleetConductorV2: BFT consensus for conductor state changes
 - SignedWAL: Cryptographically signed consensus messages
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -410,7 +411,9 @@ class PBFTNode:
             timestamp=time.time(),
         )
         self._view_change_log[self.view_number].append(msg)
-        log.info("Node %s started view change → view %d", self.node_id, self.view_number)
+        log.info(
+            "Node %s started view change → view %d", self.node_id, self.view_number
+        )
         return msg
 
     def handle_view_change(self, msg: PBFTMessage) -> Optional[PBFTMessage]:
@@ -440,7 +443,9 @@ class PBFTNode:
                     timestamp=time.time(),
                 )
                 self._in_view_change = False
-                log.info("Primary %s announced new view %d", self.node_id, msg.view_number)
+                log.info(
+                    "Primary %s announced new view %d", self.node_id, msg.view_number
+                )
                 return new_view
 
         return None
@@ -526,7 +531,9 @@ class SemanticBFTNode(PBFTNode):
         complexity = min(1.0, len(json.dumps(payload, separators=(",", ":"))) / 1000.0)
         return max(0.1, min(1.0, base * (1.0 - 0.3 * complexity)))
 
-    def handle_request(self, operation: str, payload: Dict[str, Any]) -> Optional[PBFTMessage]:
+    def handle_request(
+        self, operation: str, payload: Dict[str, Any]
+    ) -> Optional[PBFTMessage]:
         """Override to inject semantic confidence into PRE-PREPARE."""
         msg = super().handle_request(operation, payload)
         if msg:
@@ -620,8 +627,12 @@ class QDArchive:
     bounds: List[Tuple[float, float]]
     n_dims: int
 
-    _grid: Dict[Tuple[int, ...], Dict[str, Any]] = field(default_factory=dict, repr=False)
-    _best_fitness: Dict[Tuple[int, ...], float] = field(default_factory=dict, repr=False)
+    _grid: Dict[Tuple[int, ...], Dict[str, Any]] = field(
+        default_factory=dict, repr=False
+    )
+    _best_fitness: Dict[Tuple[int, ...], float] = field(
+        default_factory=dict, repr=False
+    )
 
     def __post_init__(self) -> None:
         assert len(self.grid_shape) == self.n_dims, "grid_shape must match n_dims"
@@ -636,7 +647,9 @@ class QDArchive:
         (higher fitness than previous occupant).
         """
         idx = descriptor.grid_index(self.grid_shape, self.bounds)
-        if idx not in self._grid or fitness > self._best_fitness.get(idx, -float("inf")):
+        if idx not in self._grid or fitness > self._best_fitness.get(
+            idx, -float("inf")
+        ):
             self._grid[idx] = individual
             self._best_fitness[idx] = fitness
             return True
@@ -672,8 +685,12 @@ class QDArchive:
             "coverage": self.coverage,
             "qd_score": self.qd_score,
             "grid_shape": self.grid_shape,
-            "max_fitness": max(self._best_fitness.values()) if self._best_fitness else 0.0,
-            "mean_fitness": (self.qd_score / len(self._best_fitness)) if self._best_fitness else 0.0,
+            "max_fitness": max(self._best_fitness.values())
+            if self._best_fitness
+            else 0.0,
+            "mean_fitness": (self.qd_score / len(self._best_fitness))
+            if self._best_fitness
+            else 0.0,
         }
 
 
@@ -718,8 +735,7 @@ class CMAESEmitter:
         )
         self.damps = (
             1.0
-            + 2.0
-            * max(0.0, np.sqrt((self.mueff - 1.0) / (dim + 1.0)) - 1.0)
+            + 2.0 * max(0.0, np.sqrt((self.mueff - 1.0) / (dim + 1.0)) - 1.0)
             + self.cs
         )
 
@@ -746,25 +762,20 @@ class CMAESEmitter:
         old_mean = self.mean.copy()
 
         # Recombination: weighted average of selected individuals
-        self.mean = sum(
-            w * x for w, (x, _) in zip(self.weights, selected)
-        )
+        self.mean = sum(w * x for w, (x, _) in zip(self.weights, selected))
 
         # Evolution paths
-        z_vectors = [
-            self._inv_sqrt_C((x - old_mean) / self.sigma) for x, _ in selected
-        ]
+        z_vectors = [self._inv_sqrt_C((x - old_mean) / self.sigma) for x, _ in selected]
         z_mean = sum(w * z for w, z in zip(self.weights, z_vectors))
-        
-        # Simplified path update (full CMA-ES requires eigendecomposition)
-        self.ps = (1 - self.cs) * self.ps + np.sqrt(self.cs * (2 - self.cs) * self.mueff) * z_mean
 
-        hsig = (
-            np.linalg.norm(self.ps)
-            / np.sqrt(1 - (1 - self.cs) ** (2 * self.generations))
-            / self.cs
-            < (1.4 + 2.0 / (self.dim + 1.0))
-        )
+        # Simplified path update (full CMA-ES requires eigendecomposition)
+        self.ps = (1 - self.cs) * self.ps + np.sqrt(
+            self.cs * (2 - self.cs) * self.mueff
+        ) * z_mean
+
+        hsig = np.linalg.norm(self.ps) / np.sqrt(
+            1 - (1 - self.cs) ** (2 * self.generations)
+        ) / self.cs < (1.4 + 2.0 / (self.dim + 1.0))
 
         self.pc = (1 - self.cc) * self.pc + (
             hsig
@@ -982,18 +993,14 @@ class FleetBFTNetwork:
     - End-to-end consensus testing.
     """
 
-    def __init__(
-        self, nodes: List[PBFTNode], latency_ms: float = 0.0
-    ) -> None:
+    def __init__(self, nodes: List[PBFTNode], latency_ms: float = 0.0) -> None:
         self.nodes = {n.node_id: n for n in nodes}
         self.latency_ms = latency_ms
         self._byzantine_nodes: Set[str] = set()
         self._partitioned_nodes: Set[str] = set()
         self._message_log: List[PBFTMessage] = []
 
-    def send(
-        self, msg: PBFTMessage, target: Optional[str] = None
-    ) -> List[PBFTMessage]:
+    def send(self, msg: PBFTMessage, target: Optional[str] = None) -> List[PBFTMessage]:
         """Deliver a message to target (broadcast if ``None``).
 
         Returns all response messages generated by recipients.

@@ -9,7 +9,7 @@ Usage
 
     collector = FleetMetricsCollector()
     collector.record_beat_metrics()
-    
+
     trends = collector.analyze_trends(window=10)
     print(f"Health trend: {trends['health']}")  # "improving", "stable", "degrading"
 """
@@ -127,7 +127,20 @@ class FleetMetricsCollector:
         self._ensure_initialized()
 
         if not self._harbor or not self._orchestrator:
-            return MetricsSnapshot(timestamp=time.time(), cycle_number=0, total_modules=0, healthy_modules=0, warning_modules=0, critical_modules=0, total_tests=0, tests_passed=0, tests_failed=0, test_coverage_pct=0.0, integration_count=0, tested_integrations=0)
+            return MetricsSnapshot(
+                timestamp=time.time(),
+                cycle_number=0,
+                total_modules=0,
+                healthy_modules=0,
+                warning_modules=0,
+                critical_modules=0,
+                total_tests=0,
+                tests_passed=0,
+                tests_failed=0,
+                test_coverage_pct=0.0,
+                integration_count=0,
+                tested_integrations=0,
+            )
 
         # Run a beat to get current state
         beat = self._orchestrator.beat()
@@ -150,16 +163,18 @@ class FleetMetricsCollector:
             else:
                 warning += 1
 
-            module_metrics.append(ModuleMetrics(
-                name=mod.name,
-                timestamp=time.time(),
-                health_ternary=mod.health_ternary,
-                health_emoji=TernaryValue.to_emoji(mod.health_ternary),
-                test_count=mod.test_count,
-                test_passed=mod.test_passed,
-                test_coverage=mod.test_coverage,
-                status=mod.status,
-            ))
+            module_metrics.append(
+                ModuleMetrics(
+                    name=mod.name,
+                    timestamp=time.time(),
+                    health_ternary=mod.health_ternary,
+                    health_emoji=TernaryValue.to_emoji(mod.health_ternary),
+                    test_count=mod.test_count,
+                    test_passed=mod.test_passed,
+                    test_coverage=mod.test_coverage,
+                    status=mod.status,
+                )
+            )
 
         snapshot = MetricsSnapshot(
             timestamp=time.time(),
@@ -173,7 +188,9 @@ class FleetMetricsCollector:
             tests_failed=harbor_report.get("tests_failed", 0),
             test_coverage_pct=harbor_report.get("test_coverage", 0.0),
             integration_count=harbor_stats.get("integration_count", 0),
-            tested_integrations=sum(1 for p in self._harbor.integrations if p.status == "tested"),
+            tested_integrations=sum(
+                1 for p in self._harbor.integrations if p.status == "tested"
+            ),
             module_metrics=module_metrics,
         )
 
@@ -181,7 +198,7 @@ class FleetMetricsCollector:
 
         # Trim history if too large
         if len(self._history) > self.max_history:
-            self._history = self._history[-self.max_history:]
+            self._history = self._history[-self.max_history :]
 
         return snapshot
 
@@ -232,12 +249,16 @@ class FleetMetricsCollector:
         trends["tests"] = self._compute_trend("tests", test_values)
 
         # Integration trend
-        integration_values = [s.tested_integrations / max(s.integration_count, 1) for s in recent]
+        integration_values = [
+            s.tested_integrations / max(s.integration_count, 1) for s in recent
+        ]
         trends["integrations"] = self._compute_trend("integrations", integration_values)
 
         # Critical module count trend (inverse - fewer is better)
         critical_values = [s.critical_modules for s in recent]
-        trends["critical"] = self._compute_trend("critical", critical_values, inverse=True)
+        trends["critical"] = self._compute_trend(
+            "critical", critical_values, inverse=True
+        )
 
         return trends
 
@@ -319,40 +340,51 @@ class FleetMetricsCollector:
         alerts: list[dict[str, Any]] = []
 
         if snapshot.critical_modules > 0:
-            alerts.append({
-                "level": "critical",
-                "metric": "critical_modules",
-                "value": snapshot.critical_modules,
-                "message": f"{snapshot.critical_modules} modules are in critical state",
-            })
+            alerts.append(
+                {
+                    "level": "critical",
+                    "metric": "critical_modules",
+                    "value": snapshot.critical_modules,
+                    "message": f"{snapshot.critical_modules} modules are in critical state",
+                }
+            )
 
         if snapshot.test_coverage_pct < 0.5:
-            alerts.append({
-                "level": "warning",
-                "metric": "test_coverage",
-                "value": snapshot.test_coverage_pct,
-                "message": f"Test coverage is {snapshot.test_coverage_pct*100:.0f}% (below 50%)",
-            })
+            alerts.append(
+                {
+                    "level": "warning",
+                    "metric": "test_coverage",
+                    "value": snapshot.test_coverage_pct,
+                    "message": f"Test coverage is {snapshot.test_coverage_pct * 100:.0f}% (below 50%)",
+                }
+            )
 
-        if snapshot.integration_count > 0 and snapshot.tested_integrations / snapshot.integration_count < 0.5:
-            alerts.append({
-                "level": "warning",
-                "metric": "integration_coverage",
-                "value": snapshot.tested_integrations / snapshot.integration_count,
-                "message": f"Only {snapshot.tested_integrations}/{snapshot.integration_count} integrations are tested",
-            })
+        if (
+            snapshot.integration_count > 0
+            and snapshot.tested_integrations / snapshot.integration_count < 0.5
+        ):
+            alerts.append(
+                {
+                    "level": "warning",
+                    "metric": "integration_coverage",
+                    "value": snapshot.tested_integrations / snapshot.integration_count,
+                    "message": f"Only {snapshot.tested_integrations}/{snapshot.integration_count} integrations are tested",
+                }
+            )
 
         # Check trends
         if len(self._history) >= 5:
             trends = self.analyze_trends(window=5)
             health_trend = trends.get("health")
             if health_trend and health_trend.direction == "degrading":
-                alerts.append({
-                    "level": "warning",
-                    "metric": "health_trend",
-                    "value": health_trend.slope,
-                    "message": "Fleet health is degrading over recent beats",
-                })
+                alerts.append(
+                    {
+                        "level": "warning",
+                        "metric": "health_trend",
+                        "value": health_trend.slope,
+                        "message": "Fleet health is degrading over recent beats",
+                    }
+                )
 
         return alerts
 
@@ -380,7 +412,9 @@ class FleetMetricsCollector:
         data = json.loads(Path(path).read_text())
         self._history = []
         for item in data:
-            module_metrics = [ModuleMetrics(**m) for m in item.pop("module_metrics", [])]
+            module_metrics = [
+                ModuleMetrics(**m) for m in item.pop("module_metrics", [])
+            ]
             snapshot = MetricsSnapshot(**item, module_metrics=module_metrics)
             self._history.append(snapshot)
 
@@ -407,7 +441,9 @@ class FleetMetricsCollector:
         lines.append("# 📈 Fleet Metrics Trend Report")
         lines.append("")
         if snapshot:
-            lines.append(f"*Cycle {snapshot.cycle_number} | {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime(snapshot.timestamp))}*")
+            lines.append(
+                f"*Cycle {snapshot.cycle_number} | {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime(snapshot.timestamp))}*"
+            )
         lines.append("")
 
         # Current snapshot
@@ -416,12 +452,18 @@ class FleetMetricsCollector:
             lines.append("")
             lines.append(f"| Metric | Value |")
             lines.append(f"|--------|-------|")
-            lines.append(f"| Health Score | {snapshot.health_score*100:.1f}% |")
-            lines.append(f"| Healthy Modules | {snapshot.healthy_modules}/{snapshot.total_modules} |")
+            lines.append(f"| Health Score | {snapshot.health_score * 100:.1f}% |")
+            lines.append(
+                f"| Healthy Modules | {snapshot.healthy_modules}/{snapshot.total_modules} |"
+            )
             lines.append(f"| Critical Modules | {snapshot.critical_modules} |")
-            lines.append(f"| Total Tests | {snapshot.tests_passed}/{snapshot.total_tests} |")
-            lines.append(f"| Test Coverage | {snapshot.test_coverage_pct*100:.1f}% |")
-            lines.append(f"| Integrations Tested | {snapshot.tested_integrations}/{snapshot.integration_count} |")
+            lines.append(
+                f"| Total Tests | {snapshot.tests_passed}/{snapshot.total_tests} |"
+            )
+            lines.append(f"| Test Coverage | {snapshot.test_coverage_pct * 100:.1f}% |")
+            lines.append(
+                f"| Integrations Tested | {snapshot.tested_integrations}/{snapshot.integration_count} |"
+            )
             lines.append("")
 
         # Trends
@@ -431,8 +473,16 @@ class FleetMetricsCollector:
             lines.append(f"| Metric | Direction | Change | Confidence |")
             lines.append(f"|--------|-----------|--------|------------|")
             for name, trend in trends.items():
-                emoji = "📈" if trend.direction == "improving" else "📉" if trend.direction == "degrading" else "➡️"
-                lines.append(f"| {name} | {emoji} {trend.direction} | {trend.change_pct:+.1f}% | {trend.confidence*100:.0f}% |")
+                emoji = (
+                    "📈"
+                    if trend.direction == "improving"
+                    else "📉"
+                    if trend.direction == "degrading"
+                    else "➡️"
+                )
+                lines.append(
+                    f"| {name} | {emoji} {trend.direction} | {trend.change_pct:+.1f}% | {trend.confidence * 100:.0f}% |"
+                )
             lines.append("")
 
         # Alerts
@@ -441,7 +491,9 @@ class FleetMetricsCollector:
             lines.append("")
             for alert in alerts:
                 emoji = "🔴" if alert["level"] == "critical" else "🟡"
-                lines.append(f"- {emoji} **{alert['level'].upper()}**: {alert['message']}")
+                lines.append(
+                    f"- {emoji} **{alert['level'].upper()}**: {alert['message']}"
+                )
             lines.append("")
         else:
             lines.append("## Alerts")
@@ -473,20 +525,30 @@ class FleetMetricsCollector:
         print(" 📈 FLEET METRICS COLLECTOR")
         print("═" * 50)
         print(f"  Cycle:          {snapshot.cycle_number}")
-        print(f"  Health:         {snapshot.health_score*100:5.1f}%")
+        print(f"  Health:         {snapshot.health_score * 100:5.1f}%")
         print(f"  Modules:        {snapshot.healthy_modules}/{snapshot.total_modules}")
         print(f"  Critical:       {snapshot.critical_modules}")
         print(f"  Tests:          {snapshot.tests_passed}/{snapshot.total_tests}")
-        print(f"  Coverage:       {snapshot.test_coverage_pct*100:5.1f}%")
-        print(f"  Integrations:   {snapshot.tested_integrations}/{snapshot.integration_count}")
+        print(f"  Coverage:       {snapshot.test_coverage_pct * 100:5.1f}%")
+        print(
+            f"  Integrations:   {snapshot.tested_integrations}/{snapshot.integration_count}"
+        )
         print("═" * 50)
 
         trends = self.analyze_trends()
         if trends:
             print("  Trends:")
             for name, trend in trends.items():
-                arrow = "↑" if trend.direction == "improving" else "↓" if trend.direction == "degrading" else "→"
-                print(f"    {name:12} {arrow} {trend.direction} ({trend.change_pct:+.1f}%)")
+                arrow = (
+                    "↑"
+                    if trend.direction == "improving"
+                    else "↓"
+                    if trend.direction == "degrading"
+                    else "→"
+                )
+                print(
+                    f"    {name:12} {arrow} {trend.direction} ({trend.change_pct:+.1f}%)"
+                )
             print("═" * 50)
 
         alerts = self.check_alerts()

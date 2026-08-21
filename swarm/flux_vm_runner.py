@@ -15,6 +15,7 @@ from swarm.flux_compiler import FluxOpcode
 
 class FluxTrap(Exception):
     """Raised when FLUX Validate opcode sees 0.0 on the stack."""
+
     pass
 
 

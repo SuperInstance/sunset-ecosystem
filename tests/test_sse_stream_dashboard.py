@@ -25,6 +25,7 @@ from fleet.sse_stream_dashboard import (
 # StreamEvent
 # ---------------------------------------------------------------------------
 
+
 class TestStreamEvent:
     def test_to_sse(self):
         ev = StreamEvent(EventType.BEAT, {"n": 1}, timestamp=123.0, node_id="n1")
@@ -46,6 +47,7 @@ class TestStreamEvent:
 # SSEStreamDashboard init
 # ---------------------------------------------------------------------------
 
+
 class TestDashboardInit:
     def test_defaults(self):
         dash = SSEStreamDashboard()
@@ -60,6 +62,7 @@ class TestDashboardInit:
 # ---------------------------------------------------------------------------
 # Publish / Subscribe
 # ---------------------------------------------------------------------------
+
 
 class TestPublishSubscribe:
     def test_publish_and_receive(self):
@@ -112,6 +115,7 @@ class TestPublishSubscribe:
 # History
 # ---------------------------------------------------------------------------
 
+
 class TestHistory:
     def test_recent_events(self):
         dash = SSEStreamDashboard()
@@ -150,6 +154,7 @@ class TestHistory:
 # Backpressure
 # ---------------------------------------------------------------------------
 
+
 class TestBackpressure:
     def test_drops_when_full(self):
         cfg = DashboardConfig(max_queue_size=1, enable_backpressure=True)
@@ -175,6 +180,7 @@ class TestBackpressure:
 # Metrics
 # ---------------------------------------------------------------------------
 
+
 class TestMetrics:
     def test_basic(self):
         dash = SSEStreamDashboard()
@@ -194,6 +200,7 @@ class TestMetrics:
 # ---------------------------------------------------------------------------
 # Heartbeat
 # ---------------------------------------------------------------------------
+
 
 class TestHeartbeat:
     def test_start_stop(self):
@@ -219,6 +226,7 @@ class TestHeartbeat:
 # ---------------------------------------------------------------------------
 # Integration wiring
 # ---------------------------------------------------------------------------
+
 
 class TestWireToFleetConductor:
     def test_instruments_beat(self):
@@ -263,6 +271,7 @@ class TestWireToBreeder:
 # ---------------------------------------------------------------------------
 # DashboardServer
 # ---------------------------------------------------------------------------
+
 
 class TestDashboardServer:
     def test_url_before_start(self):

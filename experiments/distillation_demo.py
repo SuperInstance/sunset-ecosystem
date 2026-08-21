@@ -119,7 +119,10 @@ def generate_response(
     # Random noise (bounded)
     noise = random.gauss(0, 0.02)
 
-    quality = max(0.2, min(0.98, 0.35 + past_knowledge + hint_contribution + diversity_bonus + noise))
+    quality = max(
+        0.2,
+        min(0.98, 0.35 + past_knowledge + hint_contribution + diversity_bonus + noise),
+    )
 
     # Build response: proportion of reference words covered
     ref_words = reference.split()
@@ -163,7 +166,9 @@ def run_experiment() -> str:
     log("")
     agents: list[Agent] = []
     for i in range(NUM_AGENTS):
-        agents.append(Agent(generation=0, phase=AgentPhase.INCUBATING, room=f"agent-{i:02d}"))
+        agents.append(
+            Agent(generation=0, phase=AgentPhase.INCUBATING, room=f"agent-{i:02d}")
+        )
 
     agent_ids = [a.id for a in agents]
 
@@ -178,21 +183,25 @@ def run_experiment() -> str:
     channel = BroadcastingChannel()
     for a in agents:
         channel.subscribe(a.id, "research-results")
-    log(f"**BroadcastingChannel:** {channel.subscription_count} subscriptions on 'research-results'")
+    log(
+        f"**BroadcastingChannel:** {channel.subscription_count} subscriptions on 'research-results'"
+    )
     log("")
 
     # ── Prompt history ───────────────────────────────────────────────
     history = PromptHistory()
     for i, prompt in enumerate(SEED_PROMPTS):
-        history.add(PromptRecord(
-            prompt=prompt,
-            response=REFERENCE_OUTPUTS[prompt],
-            seed=42 + i,
-            model="big-model-reference",
-            hint_level=10,
-            quality_score=0.95,
-            application="plato-architecture",
-        ))
+        history.add(
+            PromptRecord(
+                prompt=prompt,
+                response=REFERENCE_OUTPUTS[prompt],
+                seed=42 + i,
+                model="big-model-reference",
+                hint_level=10,
+                quality_score=0.95,
+                application="plato-architecture",
+            )
+        )
     log(f"**PromptHistory:** {history.count()} seed prompts loaded")
     log("")
 
@@ -222,12 +231,14 @@ def run_experiment() -> str:
         reference = REFERENCE_OUTPUTS[prompt]
 
         # Broadcast the prompt
-        channel.broadcast(BroadcastMessage(
-            content=prompt,
-            source_agent="orchestrator",
-            target_room="research-results",
-            relevance_score=1.0,
-        ))
+        channel.broadcast(
+            BroadcastMessage(
+                content=prompt,
+                source_agent="orchestrator",
+                target_room="research-results",
+                relevance_score=1.0,
+            )
+        )
 
         # Each agent generates a response
         results: list[tuple[int, Agent, str, float]] = []
@@ -253,14 +264,20 @@ def run_experiment() -> str:
             # Agents 4-11 have lower hints (6,5,4,3,2,1,0,0) → "distilled"
             is_big_model = idx < 4
             source = "big-model-ref" if is_big_model else f"distilled-gen{gen}"
-            ranked_responses.append(RankedResponse(
-                response=text,
-                source=source,
-                rank=rank_i + 1,
-                hint_level=agent_hl[agent.id],
-            ))
+            ranked_responses.append(
+                RankedResponse(
+                    response=text,
+                    source=source,
+                    rank=rank_i + 1,
+                    hint_level=agent_hl[agent.id],
+                )
+            )
 
-        notes = "thorough detailed correct helpful" if best_quality > 0.5 else "correct helpful concise"
+        notes = (
+            "thorough detailed correct helpful"
+            if best_quality > 0.5
+            else "correct helpful concise"
+        )
         ranking = UserRanking(
             prompt=prompt,
             responses=ranked_responses,
@@ -278,10 +295,16 @@ def run_experiment() -> str:
         )
 
         # Delta from previous
-        prev_avg = delta_tracker.snapshots[-2].avg_quality if len(delta_tracker.snapshots) >= 2 else avg_quality
+        prev_avg = (
+            delta_tracker.snapshots[-2].avg_quality
+            if len(delta_tracker.snapshots) >= 2
+            else avg_quality
+        )
         delta = avg_quality - prev_avg
 
-        log(f"| {gen:3d} | {hint_schedule.current_level():8d} | {avg_quality:11.4f} | {best_quality:12.4f} | {delta:+11.4f} |")
+        log(
+            f"| {gen:3d} | {hint_schedule.current_level():8d} | {avg_quality:11.4f} | {best_quality:12.4f} | {delta:+11.4f} |"
+        )
 
         # Advance agent phases
         for a in agents:
@@ -299,10 +322,18 @@ def run_experiment() -> str:
     trend = delta_tracker.trend()
     status = feedback_loop.get_status()
 
-    log(f"- **Best generation:** Gen {best_gen.generation} (quality: {best_gen.avg_quality:.4f}, hints: {best_gen.hint_level})")
-    log(f"- **Quality trend:** {trend:+.4f} per step ({'improving ↑' if trend > 0 else 'declining ↓' if trend < 0 else 'stable →'})")
-    log(f"- **Regression detected:** {'Yes ⚠️' if delta_tracker.is_regression() else 'No ✓'}")
-    log(f"- **Revert recommended:** {'Yes ⚠️' if delta_tracker.should_revert() else 'No ✓'}")
+    log(
+        f"- **Best generation:** Gen {best_gen.generation} (quality: {best_gen.avg_quality:.4f}, hints: {best_gen.hint_level})"
+    )
+    log(
+        f"- **Quality trend:** {trend:+.4f} per step ({'improving ↑' if trend > 0 else 'declining ↓' if trend < 0 else 'stable →'})"
+    )
+    log(
+        f"- **Regression detected:** {'Yes ⚠️' if delta_tracker.is_regression() else 'No ✓'}"
+    )
+    log(
+        f"- **Revert recommended:** {'Yes ⚠️' if delta_tracker.should_revert() else 'No ✓'}"
+    )
     log(f"- **Final hint level:** {status['hint_level']}")
     log(f"- **Autonomous:** {'Yes ✓' if status['is_autonomous'] else 'Not yet'}")
     log(f"- **Total rankings:** {status['total_rankings']}")
@@ -314,7 +345,9 @@ def run_experiment() -> str:
     log("```")
     for snap in delta_tracker.snapshots:
         bar = "█" * int(snap.avg_quality * 40)
-        log(f"  Gen {snap.generation}: {bar} {snap.avg_quality:.4f} (hints={snap.hint_level})")
+        log(
+            f"  Gen {snap.generation}: {bar} {snap.avg_quality:.4f} (hints={snap.hint_level})"
+        )
     log("```")
     log("")
 
@@ -357,11 +390,15 @@ def run_experiment() -> str:
     log("|-------|------------|------|-------|")
     for idx, a in enumerate(agents):
         pos = agent_positions[a.id]
-        log(f"| {idx:2d} ({a.id[:6]}) | {agent_hl[a.id]:10d} | {pos.ring:4d} | {a.phase.value} |")
+        log(
+            f"| {idx:2d} ({a.id[:6]}) | {agent_hl[a.id]:10d} | {pos.ring:4d} | {a.phase.value} |"
+        )
     log("")
 
     log("---")
-    log(f"*Report generated by distillation_demo.py at {time.strftime('%Y-%m-%d %H:%M:%S')}*")
+    log(
+        f"*Report generated by distillation_demo.py at {time.strftime('%Y-%m-%d %H:%M:%S')}*"
+    )
 
     return "\n".join(report_lines)
 

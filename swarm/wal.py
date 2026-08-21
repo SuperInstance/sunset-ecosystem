@@ -53,6 +53,7 @@ DEFAULT_CHECKPOINT_INTERVAL = 1000  # entries
 
 # ── Data Structures ───────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class WALEntry:
     """Single WAL record."""
@@ -75,6 +76,7 @@ class WALCheckpoint:
 
 
 # ── Core WAL ────────────────────────────────────────────────────────
+
 
 class FleetWAL:
     """Append-only write-ahead log for fleet memory.
@@ -175,9 +177,13 @@ class FleetWAL:
                         checksum=raw["checksum"],
                     )
                     # Verify checksum
-                    expected = self._compute_checksum(entry.layer, entry.sequence, entry.payload)
+                    expected = self._compute_checksum(
+                        entry.layer, entry.sequence, entry.payload
+                    )
                     if entry.checksum != expected:
-                        logger.warning("Checksum mismatch at sequence %d", entry.sequence)
+                        logger.warning(
+                            "Checksum mismatch at sequence %d", entry.sequence
+                        )
                         continue
                     entries.append(entry)
                 except (json.JSONDecodeError, KeyError) as exc:
@@ -189,7 +195,10 @@ class FleetWAL:
     def _write_entry(self, entry: WALEntry) -> None:
         """Append an entry to the current segment."""
         # Rotate if needed
-        if self._current_segment.exists() and self._current_segment.stat().st_size >= self.segment_size:
+        if (
+            self._current_segment.exists()
+            and self._current_segment.stat().st_size >= self.segment_size
+        ):
             num = int(self._current_segment.stem) + 1
             self._current_segment = self.base_path / f"{num:08d}{WAL_EXT}"
 
@@ -320,10 +329,14 @@ class FleetWAL:
             )
 
         self._entries_since_checkpoint = 0
-        logger.info("Checkpoint created at sequence %d → %s", chk.sequence, chk_path.name)
+        logger.info(
+            "Checkpoint created at sequence %d → %s", chk.sequence, chk_path.name
+        )
         return chk
 
-    def load_checkpoint(self, sequence: Optional[int] = None) -> Optional[WALCheckpoint]:
+    def load_checkpoint(
+        self, sequence: Optional[int] = None
+    ) -> Optional[WALCheckpoint]:
         """Load the latest (or specified) checkpoint.
 
         Returns:

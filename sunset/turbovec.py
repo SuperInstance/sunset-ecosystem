@@ -110,7 +110,8 @@ else:
         # Some BLAS packages export cblas_* via a separate libcblas layer
         logger.warning(
             "BLAS loaded but 'cblas_sgemm' symbol missing (%s). "
-            "Trying libcblas fallback...", _blas_lib._name
+            "Trying libcblas fallback...",
+            _blas_lib._name,
         )
         try:
             cblas = ctypes.CDLL("libcblas.so.3", mode=ctypes.RTLD_GLOBAL)
@@ -118,9 +119,7 @@ else:
                 _blas_lib = cblas
                 logger.info("libcblas fallback loaded.")
             else:
-                logger.error(
-                    "libcblas fallback also lacks cblas_sgemm."
-                )
+                logger.error("libcblas fallback also lacks cblas_sgemm.")
                 _blas_lib = None
         except OSError:
             logger.error("libcblas fallback failed.")
@@ -193,9 +192,7 @@ def cblas_sgemm(
     else:
         C = np.ascontiguousarray(out)
         if C.shape != (m, n):
-            raise ValueError(
-                f"out shape {C.shape} does not match expected ({m}, {n})"
-            )
+            raise ValueError(f"out shape {C.shape} does not match expected ({m}, {n})")
         if C.dtype != np.float32:
             raise TypeError("out must be float32")
 
@@ -231,13 +228,17 @@ try:
     from turbovec import IdMapIndex, TurboQuantIndex  # type: ignore[import-untyped]
 except ImportError as exc:
     logger.error("turbovec package not installed: %s", exc)
+
     # Provide stub classes so the module at least imports
     class IdMapIndex:  # type: ignore[no-redef]
         """Stub — turbovec not installed."""
+
         def __init__(self, dim: int, bit_width: int = 4) -> None:  # noqa: D401
             raise RuntimeError("turbovec not installed")
+
     class TurboQuantIndex:  # type: ignore[no-redef]
         """Stub — turbovec not installed."""
+
         def __init__(self, dim: int, bit_width: int = 4) -> None:  # noqa: D401
             raise RuntimeError("turbovec not installed")
 

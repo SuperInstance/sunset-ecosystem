@@ -1,4 +1,5 @@
 """Tests for HolonomyConsensus distributed consensus."""
+
 from __future__ import annotations
 
 import pytest
@@ -8,13 +9,21 @@ from nexus.distributed_consensus import HolonomyConsensus, Proposal, Vote
 
 class TestProposal:
     def test_proposal_digest_is_stable(self):
-        p1 = Proposal(seq_num=1, operation="test", payload={"a": 1}, proposer="n1", timestamp=1.0)
-        p2 = Proposal(seq_num=1, operation="test", payload={"a": 1}, proposer="n1", timestamp=1.0)
+        p1 = Proposal(
+            seq_num=1, operation="test", payload={"a": 1}, proposer="n1", timestamp=1.0
+        )
+        p2 = Proposal(
+            seq_num=1, operation="test", payload={"a": 1}, proposer="n1", timestamp=1.0
+        )
         assert p1.digest() == p2.digest()
 
     def test_proposal_digest_changes_with_content(self):
-        p1 = Proposal(seq_num=1, operation="test", payload={"a": 1}, proposer="n1", timestamp=1.0)
-        p2 = Proposal(seq_num=1, operation="test", payload={"a": 2}, proposer="n1", timestamp=1.0)
+        p1 = Proposal(
+            seq_num=1, operation="test", payload={"a": 1}, proposer="n1", timestamp=1.0
+        )
+        p2 = Proposal(
+            seq_num=1, operation="test", payload={"a": 2}, proposer="n1", timestamp=1.0
+        )
         assert p1.digest() != p2.digest()
 
 
@@ -118,26 +127,26 @@ class TestEmergenceDetection:
 class TestIntegration:
     def test_full_lifecycle(self):
         c = HolonomyConsensus("node-1", ["node-2", "node-3", "node-4"])
-        
+
         # Propose
         prop = c.propose_state_change("room_grid_resize", {"n": 200})
         assert prop.seq_num == 1
-        
+
         # Vote
         c.vote_on_proposal(prop.digest(), approve=True)
-        
+
         # Check status
         status = c.get_status()
         assert status["n_proposals"] == 1
-        
+
         # Try commit (no quorum yet)
         result = c.commit_if_quorum(prop.digest())
         assert not result.committed
-        
+
         # Add more votes to reach quorum
         for _ in range(2):
             c.vote_on_proposal(prop.digest(), approve=True)
-        
+
         result = c.commit_if_quorum(prop.digest())
         assert result.committed
         assert result.votes_for == 3

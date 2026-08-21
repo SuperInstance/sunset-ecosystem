@@ -16,6 +16,7 @@ Metrics tracked:
 - Average task completion time
 - Fallback frequency
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -38,10 +39,10 @@ logger = logging.getLogger(__name__)
 
 
 class TaskPriority(enum.IntEnum):
-    CRITICAL = 0   # P0 — fleet safety, consensus
-    HIGH = 1      # P1 — breeding coordination, sync
-    NORMAL = 2    # P2 — research, optimization
-    LOW = 3       # P3 — background analysis, telemetry
+    CRITICAL = 0  # P0 — fleet safety, consensus
+    HIGH = 1  # P1 — breeding coordination, sync
+    NORMAL = 2  # P2 — research, optimization
+    LOW = 3  # P3 — background analysis, telemetry
 
 
 class TaskStatus(enum.Enum):
@@ -57,8 +58,9 @@ class TaskStatus(enum.Enum):
 @dataclass
 class TaskSpec:
     """Specification for a task to be executed."""
+
     task_id: str
-    task_type: str          # "research", "code", "audit", "test"
+    task_type: str  # "research", "code", "audit", "test"
     description: str
     priority: TaskPriority
     payload: dict[str, Any]
@@ -69,28 +71,33 @@ class TaskSpec:
 
     def cache_key(self) -> str:
         """Content-addressable key for deduplication."""
-        data = json.dumps({
-            "type": self.task_type,
-            "payload": self.payload,
-            "description": self.description,
-        }, sort_keys=True)
+        data = json.dumps(
+            {
+                "type": self.task_type,
+                "payload": self.payload,
+                "description": self.description,
+            },
+            sort_keys=True,
+        )
         return hashlib.sha256(data.encode()).hexdigest()[:32]
 
 
 @dataclass
 class TaskResult:
     """Result from a completed (or failed) task."""
+
     task_id: str
     status: TaskStatus
     output: str = ""
     error: str = ""
-    execution_mode: str = ""   # "subagent", "direct", "failed"
+    execution_mode: str = ""  # "subagent", "direct", "failed"
     latency_sec: float = 0.0
     retry_count: int = 0
     completed_at: float = field(default_factory=time.time)
 
 
 # ── Gateway Health Monitor ────────────────────────────────────
+
 
 class GatewayHealthMonitor:
     """Tracks subagent gateway health via EWMA latency and success rate."""
@@ -167,6 +174,7 @@ class GatewayHealthMonitor:
 
 # ── Task Queue ────────────────────────────────────────────────
 
+
 class TaskQueue:
     """Priority queue for pending subagent tasks."""
 
@@ -212,6 +220,7 @@ class TaskQueue:
 
 # ── Subagent Conductor ────────────────────────────────────────
 
+
 class SubagentConductor:
     """Orchestrates subagent dispatch with health monitoring and fallback.
 
@@ -230,7 +239,9 @@ class SubagentConductor:
         self.health = GatewayHealthMonitor()
         self.max_concurrent = max_concurrent
         self.gateway_timeout_ms = gateway_timeout_ms
-        self._in_flight: dict[str, tuple[TaskSpec, float]] = {}  # task_id -> (spec, dispatched_at)
+        self._in_flight: dict[
+            str, tuple[TaskSpec, float]
+        ] = {}  # task_id -> (spec, dispatched_at)
         self._fallback_handlers: dict[str, Callable[[TaskSpec], TaskResult]] = {}
         self._metrics: dict[str, Any] = {
             "tasks_submitted": 0,
@@ -240,7 +251,9 @@ class SubagentConductor:
             "tasks_failed": 0,
         }
 
-    def register_fallback(self, task_type: str, handler: Callable[[TaskSpec], TaskResult]) -> None:
+    def register_fallback(
+        self, task_type: str, handler: Callable[[TaskSpec], TaskResult]
+    ) -> None:
         """Register a direct-execution fallback for a task type."""
         self._fallback_handlers[task_type] = handler
 
@@ -248,7 +261,9 @@ class SubagentConductor:
         """Queue a task for execution."""
         self.queue.enqueue(task)
         self._metrics["tasks_submitted"] += 1
-        logger.info(f"Task {task.task_id} queued (type={task.task_type}, priority={task.priority.name})")
+        logger.info(
+            f"Task {task.task_id} queued (type={task.task_type}, priority={task.priority.name})"
+        )
 
     def tick(self) -> list[TaskResult]:
         """Process queue, attempt dispatches, handle completions.
@@ -297,7 +312,9 @@ class SubagentConductor:
             # Here we record the attempt and let external integration handle it
             self._in_flight[task.task_id] = (task, dispatched_at)
             self._metrics["tasks_dispatched"] += 1
-            logger.info(f"Task {task.task_id} dispatched (in_flight={len(self._in_flight)})")
+            logger.info(
+                f"Task {task.task_id} dispatched (in_flight={len(self._in_flight)})"
+            )
 
         return results
 
@@ -314,7 +331,9 @@ class SubagentConductor:
             result.execution_mode = "direct"
             result.latency_sec = time.time() - start
             self._metrics["tasks_fallback"] += 1
-            logger.info(f"Task {task.task_id} executed via fallback ({result.latency_sec:.1f}s)")
+            logger.info(
+                f"Task {task.task_id} executed via fallback ({result.latency_sec:.1f}s)"
+            )
             return result
         except Exception as e:
             latency = time.time() - start
@@ -337,7 +356,9 @@ class SubagentConductor:
         """Record the result of a gateway dispatch attempt."""
         self.health.record(latency_ms, success)
 
-    def on_subagent_complete(self, task_id: str, output: str, error: str = "") -> TaskResult:
+    def on_subagent_complete(
+        self, task_id: str, output: str, error: str = ""
+    ) -> TaskResult:
         """Called when an external subagent reports completion."""
         if task_id in self._in_flight:
             spec, dispatched_at = self._in_flight.pop(task_id)

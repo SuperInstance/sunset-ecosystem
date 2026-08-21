@@ -20,6 +20,7 @@ from fleet.sse_stream_dashboard import SSEStreamDashboard, StreamEvent, EventTyp
 # TelemetryRow
 # ---------------------------------------------------------------------------
 
+
 class TestTelemetryRow:
     def test_from_event_beat(self):
         event = StreamEvent(
@@ -59,6 +60,7 @@ class TestTelemetryRow:
 # Adapter lifecycle
 # ---------------------------------------------------------------------------
 
+
 class TestAdapterLifecycle:
     def test_start_stop(self):
         dash = SSEStreamDashboard()
@@ -82,6 +84,7 @@ class TestAdapterLifecycle:
 # Buffering
 # ---------------------------------------------------------------------------
 
+
 class TestBuffering:
     def test_events_buffered(self):
         dash = SSEStreamDashboard()
@@ -100,7 +103,9 @@ class TestBuffering:
         adapter.start()
         try:
             for i in range(5):
-                dash.publish(StreamEvent(EventType.BEAT, {"tick": i, "thermal": 0.5 + i * 0.1}))
+                dash.publish(
+                    StreamEvent(EventType.BEAT, {"tick": i, "thermal": 0.5 + i * 0.1})
+                )
             time.sleep(0.2)
             assert adapter.get_buffer_count() >= 5
         finally:
@@ -136,6 +141,7 @@ class TestBuffering:
 # Arrow batch output
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.skipif(not HAS_PYARROW, reason="pyarrow not installed")
 class TestArrowBatch:
     def test_batch_has_correct_columns(self):
@@ -143,7 +149,9 @@ class TestArrowBatch:
         adapter = ArrowTelemetryAdapter(dash)
         adapter.start()
         try:
-            dash.publish(StreamEvent(EventType.BEAT, {"tick": 1, "thermal": 0.75, "energy": 0.9}))
+            dash.publish(
+                StreamEvent(EventType.BEAT, {"tick": 1, "thermal": 0.75, "energy": 0.9})
+            )
             time.sleep(0.1)
             batch = adapter.drain_batch()
             assert batch is not None
@@ -157,7 +165,12 @@ class TestArrowBatch:
         adapter = ArrowTelemetryAdapter(dash)
         adapter.start()
         try:
-            dash.publish(StreamEvent(EventType.THERMAL, {"tick": 3, "thermal": 0.85, "energy": 0.6, "status": "warn"}))
+            dash.publish(
+                StreamEvent(
+                    EventType.THERMAL,
+                    {"tick": 3, "thermal": 0.85, "energy": 0.6, "status": "warn"},
+                )
+            )
             time.sleep(0.1)
             batch = adapter.drain_batch()
             assert batch is not None
@@ -195,6 +208,7 @@ class TestArrowBatch:
 # IPC serialization
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.skipif(not HAS_PYARROW, reason="pyarrow not installed")
 class TestIPC:
     def test_to_ipc_bytes(self):
@@ -225,9 +239,11 @@ class TestIPC:
 # JSON fallback
 # ---------------------------------------------------------------------------
 
+
 class TestJSONFallback:
     def test_drain_batch_returns_dicts_without_pyarrow(self):
         import fleet.arrow_telemetry_adapter as ata
+
         original = ata.HAS_PYARROW
         try:
             ata.HAS_PYARROW = False
@@ -247,6 +263,7 @@ class TestJSONFallback:
 
     def test_ipc_bytes_json_without_pyarrow(self):
         import fleet.arrow_telemetry_adapter as ata
+
         original = ata.HAS_PYARROW
         try:
             ata.HAS_PYARROW = False

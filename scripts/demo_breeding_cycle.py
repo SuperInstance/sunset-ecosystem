@@ -173,7 +173,8 @@ def run_demo():
     for gen in range(1, n_generations + 1):
         active = pool.list_active()
         available = [
-            aid for aid, info in active.items()
+            aid
+            for aid, info in active.items()
             if info["lifecycle"] in ("SURVIVE", "BREED", "COMPETE")
         ]
 
@@ -215,7 +216,7 @@ def run_demo():
                                     "generation": gen,
                                     "parent_a": tr.parent_a,
                                     "parent_b": tr.parent_b,
-                                }
+                                },
                             )
                         except RuntimeError as e:
                             events.append(f"spawn-fail:{e}")

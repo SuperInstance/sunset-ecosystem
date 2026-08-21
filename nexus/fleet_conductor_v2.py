@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 # ── data structures ───────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class ConductorConfig:
     """Configuration for FleetConductorV2.
@@ -141,9 +142,7 @@ class SubsystemWrapper:
                 self.health.consecutive_failures += 1
                 self.health.last_error = str(exc)
                 self.health.state = (
-                    "failed"
-                    if self.health.consecutive_failures >= 3
-                    else "degraded"
+                    "failed" if self.health.consecutive_failures >= 3 else "degraded"
                 )
                 logger.warning(
                     "Health check failed for '%s' (%d consecutive): %s",
@@ -179,6 +178,7 @@ class SubsystemWrapper:
 
 
 # ── FleetConductorV2 ──────────────────────────────────────────
+
 
 class FleetConductorV2:
     """Fleet central nervous system.
@@ -336,6 +336,7 @@ class FleetConductorV2:
 
         # 8. BreederDaemonV2 (optional)
         if cfg.enable_breeding:
+
             def _make_breeder() -> Any:
                 from swarm.breeder_daemon_v2 import BreederDaemonV2
 
@@ -353,6 +354,7 @@ class FleetConductorV2:
 
         # 9. SSEStreamDashboard (optional)
         if cfg.enable_sse_dashboard:
+
             def _make_sse() -> Any:
                 from fleet.sse_stream_dashboard import SSEStreamDashboard
 
@@ -366,6 +368,7 @@ class FleetConductorV2:
 
         # 10. MetronomeGossipBridge (optional)
         if cfg.enable_metronome_gossip:
+
             def _make_gossip() -> Any:
                 from nerve.metronome_mesh_bridge import MetronomeGossipBridge
 
@@ -379,6 +382,7 @@ class FleetConductorV2:
 
         # 11. OpcodeCapabilityIndex (optional)
         if cfg.enable_opcode_index:
+
             def _make_opcode() -> Any:
                 from logos.opcode_capability_index import OpcodeCapabilityIndex
 
@@ -392,6 +396,7 @@ class FleetConductorV2:
 
         # 12. HebbianMeshLayer (optional)
         if cfg.enable_hebbian_mesh:
+
             def _make_hebbian() -> Any:
                 from swarm.hebbian_mesh import HebbianMeshLayer
 
@@ -405,6 +410,7 @@ class FleetConductorV2:
 
         # 13. FleetBernsteinScheduler (optional)
         if cfg.enable_bernstein_scheduler:
+
             def _make_bernstein_scheduler() -> Any:
                 from fleet.fleet_bernstein_scheduler import (
                     BernsteinScheduleConfig,
@@ -895,7 +901,11 @@ class FleetConductorV2:
                     )
             result = {"dispatched": False, "reason": "router_queue", "queued": True}
         else:
-            result = {"dispatched": False, "reason": f"unknown_mode:{mode}", "queued": False}
+            result = {
+                "dispatched": False,
+                "reason": f"unknown_mode:{mode}",
+                "queued": False,
+            }
 
         # Record pacing outcome
         if pacing is not None:
@@ -1010,7 +1020,8 @@ class FleetConductorV2:
             return
         if wrapper.health.consecutive_failures >= 3:
             backoff = min(
-                self.config.restart_backoff_base * (2 ** wrapper.health.consecutive_failures),
+                self.config.restart_backoff_base
+                * (2**wrapper.health.consecutive_failures),
                 self.config.restart_backoff_max,
             )
             logger.warning(
@@ -1096,6 +1107,7 @@ class FleetConductorV2:
 
 # ── lightweight SDA act/noop helpers ──────────────────────────
 
+
 class _NoopAct:
     """Act that does nothing (for monitoring pipelines)."""
 
@@ -1119,7 +1131,11 @@ class _IdentitySense:
         from fleet.sense_decide_act import Observation
 
         try:
-            agents = self.registry.list_agents() if hasattr(self.registry, "list_agents") else []
+            agents = (
+                self.registry.list_agents()
+                if hasattr(self.registry, "list_agents")
+                else []
+            )
             return Observation(
                 timestamp=time.time(),
                 source="identity_sense",
@@ -1157,7 +1173,9 @@ class _IdentityDecide:
                 confidence=0.7,
                 reasoning="No agents registered",
             )
-        return Decision(action_type="noop", confidence=1.0, reasoning="Registry healthy")
+        return Decision(
+            action_type="noop", confidence=1.0, reasoning="Registry healthy"
+        )
 
 
 class _MeshDiversitySense:
@@ -1211,7 +1229,9 @@ class _MeshDiversityDecide:
                 confidence=0.8,
                 reasoning=f"Low diversity ({diversity}) — cross-node breed recommended",
             )
-        return Decision(action_type="noop", confidence=1.0, reasoning="Diversity adequate")
+        return Decision(
+            action_type="noop", confidence=1.0, reasoning="Diversity adequate"
+        )
 
 
 class _OpcodeSafetySense:
@@ -1226,7 +1246,11 @@ class _OpcodeSafetySense:
         from fleet.sense_decide_act import Observation
 
         try:
-            summary = self.opcode_index.get_summary() if hasattr(self.opcode_index, "get_summary") else {}
+            summary = (
+                self.opcode_index.get_summary()
+                if hasattr(self.opcode_index, "get_summary")
+                else {}
+            )
             return Observation(
                 timestamp=time.time(),
                 source="opcode_safety_sense",
@@ -1264,7 +1288,9 @@ class _OpcodeSafetyDecide:
                 confidence=0.8,
                 reasoning=f"{untested} untested opcodes — gate compile tasks",
             )
-        return Decision(action_type="noop", confidence=1.0, reasoning="All opcodes safe")
+        return Decision(
+            action_type="noop", confidence=1.0, reasoning="All opcodes safe"
+        )
 
 
 class _BreederThermalSense:
@@ -1272,7 +1298,9 @@ class _BreederThermalSense:
 
     from fleet.sense_decide_act import Observation
 
-    def __init__(self, breeder: Any, metronome: Any, thermal_limits: dict[str, float]) -> None:
+    def __init__(
+        self, breeder: Any, metronome: Any, thermal_limits: dict[str, float]
+    ) -> None:
         self.breeder = breeder
         self.metronome = metronome
         self.thermal_limits = thermal_limits
@@ -1281,7 +1309,9 @@ class _BreederThermalSense:
         from fleet.sense_decide_act import Observation
 
         try:
-            breeder_status = self.breeder.get_status() if hasattr(self.breeder, "get_status") else {}
+            breeder_status = (
+                self.breeder.get_status() if hasattr(self.breeder, "get_status") else {}
+            )
             queue_depth = breeder_status.get("queue_depth", 0)
             queue_capacity = breeder_status.get("queue_capacity", 0)
             thermal = self.thermal_limits
@@ -1341,7 +1371,9 @@ class _BreederThermalDecide:
                 confidence=0.8,
                 reasoning=f"Queue near empty ({queue_ratio:.0%}) — accelerate spawning",
             )
-        return Decision(action_type="noop", confidence=1.0, reasoning="Queue/thermal balanced")
+        return Decision(
+            action_type="noop", confidence=1.0, reasoning="Queue/thermal balanced"
+        )
 
 
 class _HebbianRoutingSense:
@@ -1356,8 +1388,16 @@ class _HebbianRoutingSense:
         from fleet.sense_decide_act import Observation
 
         try:
-            diversity = self.hebbian.get_diversity_score() if hasattr(self.hebbian, "get_diversity_score") else 0.5
-            chaos = self.hebbian.chaos_factor if hasattr(self.hebbian, "chaos_factor") else 0.3
+            diversity = (
+                self.hebbian.get_diversity_score()
+                if hasattr(self.hebbian, "get_diversity_score")
+                else 0.5
+            )
+            chaos = (
+                self.hebbian.chaos_factor
+                if hasattr(self.hebbian, "chaos_factor")
+                else 0.3
+            )
             return Observation(
                 timestamp=time.time(),
                 source="hebbian_routing_sense",
@@ -1404,7 +1444,9 @@ class _HebbianRoutingDecide:
                 reasoning=f"High diversity ({diversity:.2f}) — increase exploitation weights",
                 payload={"chaos_reduce": max(0.1, chaos - 0.1)},
             )
-        return Decision(action_type="noop", confidence=1.0, reasoning="Diversity balanced")
+        return Decision(
+            action_type="noop", confidence=1.0, reasoning="Diversity balanced"
+        )
 
 
 class _LoggingAct:
@@ -1421,12 +1463,17 @@ class _LoggingAct:
 
         try:
             from logos.decision_journal import log_human_command
+
             log_human_command(
-                intent=type("Intent", (), {
-                    "action": getattr(decision, "action_type", "noop"),
-                    "raw_command": getattr(decision, "reasoning", ""),
-                    "is_destructive": lambda: False,
-                })(),
+                intent=type(
+                    "Intent",
+                    (),
+                    {
+                        "action": getattr(decision, "action_type", "noop"),
+                        "raw_command": getattr(decision, "reasoning", ""),
+                        "is_destructive": lambda: False,
+                    },
+                )(),
                 confirmed=True,
                 scope=self.pipeline_name,
                 journal_path=self.journal_path or None,
@@ -1563,7 +1610,9 @@ class _BreedCoordinationAct:
             except Exception as exc:
                 side_effects.append(f"throttle_error:{exc}")
             latency = (time.perf_counter() - start) * 1000.0
-            return ActResult(success=True, latency_ms=latency, side_effects=side_effects)
+            return ActResult(
+                success=True, latency_ms=latency, side_effects=side_effects
+            )
 
         # FLUX gate: verify constraints before breeding
         if self.flux is not None and hasattr(self.flux, "apply_preset"):
@@ -1612,8 +1661,9 @@ class _BreedCoordinationAct:
         except Exception as exc:
             side_effects.append(f"breed_error:{exc}")
             latency = (time.perf_counter() - start) * 1000.0
-            return ActResult(success=False, latency_ms=latency, side_effects=side_effects)
+            return ActResult(
+                success=False, latency_ms=latency, side_effects=side_effects
+            )
 
         latency = (time.perf_counter() - start) * 1000.0
         return ActResult(success=True, latency_ms=latency, side_effects=side_effects)
-

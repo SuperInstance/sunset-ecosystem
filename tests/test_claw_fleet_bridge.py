@@ -63,7 +63,7 @@ class TestBreed:
         url = f"http://{host}:{port}/breed"
         req = urllib.request.Request(
             url,
-            data=b'{}',
+            data=b"{}",
             headers={"Content-Type": "application/json"},
             method="POST",
         )
@@ -120,12 +120,14 @@ class TestMesh:
     def test_mesh_insert(self, server):
         host, port = server._server.server_address
         url = f"http://{host}:{port}/mesh/insert"
-        data = json.dumps({
-            "table_id": "test_table",
-            "vector": [0.1, 0.2, 0.3],
-            "fitness": 0.9,
-            "extra": {"gen": 1},
-        }).encode()
+        data = json.dumps(
+            {
+                "table_id": "test_table",
+                "vector": [0.1, 0.2, 0.3],
+                "fitness": 0.9,
+                "extra": {"gen": 1},
+            }
+        ).encode()
         req = urllib.request.Request(
             url,
             data=data,

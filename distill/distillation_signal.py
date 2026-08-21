@@ -25,6 +25,7 @@ class DistillationGuidance:
         big_model_rank: Best rank of big model responses.
         trend: Recent improvement trend from backtesting.
     """
+
     reduce_hints: bool = False
     personalization_tags: list[str] = field(default_factory=list)
     confidence_delta: float = 0.0
@@ -128,13 +129,9 @@ class DistillationSignal:
         """
         # Get best ranks
         distilled_ranks = [
-            r.rank for r in ranking.responses
-            if r.is_distilled and r.rank > 0
+            r.rank for r in ranking.responses if r.is_distilled and r.rank > 0
         ]
-        big_ranks = [
-            r.rank for r in ranking.responses
-            if r.is_big_model and r.rank > 0
-        ]
+        big_ranks = [r.rank for r in ranking.responses if r.is_big_model and r.rank > 0]
 
         best_distilled = min(distilled_ranks) if distilled_ranks else 999
         best_big = min(big_ranks) if big_ranks else 999

@@ -9,6 +9,7 @@ Usage:
     bus.publish("room.alpha.trap", {"event": "entered"})
     bus.run_sync()  # drain one event
 """
+
 from __future__ import annotations
 
 import fnmatch
@@ -54,7 +55,9 @@ class MessageBus:
     # Publishing
     # ------------------------------------------------------------------
 
-    def publish(self, topic: str, payload: Any, headers: Optional[Dict[str, str]] = None) -> None:
+    def publish(
+        self, topic: str, payload: Any, headers: Optional[Dict[str, str]] = None
+    ) -> None:
         """Publish a message to a topic."""
         msg = Message(
             topic=topic,
@@ -82,7 +85,9 @@ class MessageBus:
     def unsubscribe(self, pattern: str, handler: Callable[[Message], None]) -> None:
         """Remove a handler from a pattern."""
         if pattern in self._subscriptions:
-            self._subscriptions[pattern] = [h for h in self._subscriptions[pattern] if h != handler]
+            self._subscriptions[pattern] = [
+                h for h in self._subscriptions[pattern] if h != handler
+            ]
 
     # ------------------------------------------------------------------
     # Delivery

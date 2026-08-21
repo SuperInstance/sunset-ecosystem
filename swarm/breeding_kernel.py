@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 # BreedingEvent — events emitted during breeding
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class BreedingEvent:
     """Event emitted during the breeding process."""
 
@@ -76,10 +77,16 @@ class BreedingEvent:
 # Genome — the base unit of evolution
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class Genome:
     """A simple genome with a float vector and optional metadata."""
 
-    def __init__(self, genes: List[float], fitness: Optional[float] = None, metadata: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        genes: List[float],
+        fitness: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
         self.genes = list(genes)
         self.fitness = fitness
         self.metadata = metadata or {}
@@ -96,12 +103,12 @@ class Genome:
 # Evolutionary components
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class Selector(ABC):
     """Abstract selection strategy."""
 
     @abstractmethod
-    def select(self, population: List[Genome], n: int) -> List[Genome]:
-        ...
+    def select(self, population: List[Genome], n: int) -> List[Genome]: ...
 
 
 class TournamentSelector(Selector):
@@ -113,8 +120,13 @@ class TournamentSelector(Selector):
     def select(self, population: List[Genome], n: int) -> List[Genome]:
         selected = []
         for _ in range(n):
-            contestants = random.sample(population, min(self.tournament_size, len(population)))
-            contestants.sort(key=lambda g: (g.fitness if g.fitness is not None else -math.inf), reverse=True)
+            contestants = random.sample(
+                population, min(self.tournament_size, len(population))
+            )
+            contestants.sort(
+                key=lambda g: g.fitness if g.fitness is not None else -math.inf,
+                reverse=True,
+            )
             selected.append(contestants[0].copy())
         return selected
 
@@ -146,8 +158,7 @@ class Mutator(ABC):
     """Abstract mutation strategy."""
 
     @abstractmethod
-    def mutate(self, genome: Genome) -> Genome:
-        ...
+    def mutate(self, genome: Genome) -> Genome: ...
 
 
 class GaussianMutator(Mutator):
@@ -184,8 +195,7 @@ class Evaluator(ABC):
     """Abstract fitness evaluator."""
 
     @abstractmethod
-    def evaluate(self, genome: Genome) -> float:
-        ...
+    def evaluate(self, genome: Genome) -> float: ...
 
 
 class CallableEvaluator(Evaluator):
@@ -202,8 +212,9 @@ class Survivor(ABC):
     """Abstract survival strategy (elitism, truncation, etc.)."""
 
     @abstractmethod
-    def survive(self, population: List[Genome], offspring: List[Genome], pop_size: int) -> List[Genome]:
-        ...
+    def survive(
+        self, population: List[Genome], offspring: List[Genome], pop_size: int
+    ) -> List[Genome]: ...
 
 
 class ElitistSurvivor(Survivor):
@@ -212,9 +223,14 @@ class ElitistSurvivor(Survivor):
     def __init__(self, elite_count: int = 2):
         self.elite_count = elite_count
 
-    def survive(self, population: List[Genome], offspring: List[Genome], pop_size: int) -> List[Genome]:
+    def survive(
+        self, population: List[Genome], offspring: List[Genome], pop_size: int
+    ) -> List[Genome]:
         combined = population + offspring
-        combined.sort(key=lambda g: (g.fitness if g.fitness is not None else -math.inf), reverse=True)
+        combined.sort(
+            key=lambda g: g.fitness if g.fitness is not None else -math.inf,
+            reverse=True,
+        )
         elites = combined[: self.elite_count]
         # Fill rest from offspring (or combined if not enough)
         rest = offspring + combined[self.elite_count :]
@@ -225,16 +241,23 @@ class ElitistSurvivor(Survivor):
 class TruncationSurvivor(Survivor):
     """Keep the best individuals regardless of origin."""
 
-    def survive(self, population: List[Genome], offspring: List[Genome], pop_size: int) -> List[Genome]:
+    def survive(
+        self, population: List[Genome], offspring: List[Genome], pop_size: int
+    ) -> List[Genome]:
         combined = population + offspring
-        combined.sort(key=lambda g: (g.fitness if g.fitness is not None else -math.inf), reverse=True)
+        combined.sort(
+            key=lambda g: g.fitness if g.fitness is not None else -math.inf,
+            reverse=True,
+        )
         return combined[:pop_size]
 
 
 class GenerationalSurvivor(Survivor):
     """Pure generational: offspring replace the entire population."""
 
-    def survive(self, population: List[Genome], offspring: List[Genome], pop_size: int) -> List[Genome]:
+    def survive(
+        self, population: List[Genome], offspring: List[Genome], pop_size: int
+    ) -> List[Genome]:
         return offspring[:pop_size]
 
 
@@ -242,13 +265,16 @@ class GenerationalSurvivor(Survivor):
 # BreedingPreset — named configuration for a breeder
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class BreedingPreset(Enum):
     """Named presets for breeding configurations."""
 
-    EXPLOITATION = auto()    # Tournament + Gaussian + Elitist — good for smooth landscapes
-    EXPLORATION = auto()     # Roulette + Creep + Generational — good for rugged landscapes
-    BALANCED = auto()        # Tournament + Creep + Truncation — balanced approach
-    DIVERSITY = auto()       # Roulette + Gaussian + Generational — maximizes diversity
+    EXPLOITATION = (
+        auto()
+    )  # Tournament + Gaussian + Elitist — good for smooth landscapes
+    EXPLORATION = auto()  # Roulette + Creep + Generational — good for rugged landscapes
+    BALANCED = auto()  # Tournament + Creep + Truncation — balanced approach
+    DIVERSITY = auto()  # Roulette + Gaussian + Generational — maximizes diversity
 
     @classmethod
     def all(cls) -> List["BreedingPreset"]:
@@ -258,6 +284,7 @@ class BreedingPreset(Enum):
 # ═══════════════════════════════════════════════════════════════════════════════
 # BreedingKernel — the core evolutionary loop
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class BreedingKernel:
     """Core evolutionary engine."""
@@ -362,11 +389,17 @@ class BreedingKernel:
             g.fitness = self.evaluator.evaluate(g)
 
         # Archive good solutions (elites)
-        sorted_pop = sorted(self.population, key=lambda g: (g.fitness if g.fitness is not None else -math.inf), reverse=True)
+        sorted_pop = sorted(
+            self.population,
+            key=lambda g: g.fitness if g.fitness is not None else -math.inf,
+            reverse=True,
+        )
         self.archive.extend(sorted_pop[: max(1, self.pop_size // 10)])
 
         # Survival
-        self.population = self.survivor.survive(self.population, offspring, self.pop_size)
+        self.population = self.survivor.survive(
+            self.population, offspring, self.pop_size
+        )
         self.generation += 1
 
         event = BreedingEvent(
@@ -425,7 +458,12 @@ class BreedingKernel:
         count = 0
         for i in range(n):
             for j in range(i + 1, n):
-                d = math.sqrt(sum((a - b) ** 2 for a, b in zip(population[i].genes, population[j].genes)))
+                d = math.sqrt(
+                    sum(
+                        (a - b) ** 2
+                        for a, b in zip(population[i].genes, population[j].genes)
+                    )
+                )
                 total_dist += d
                 count += 1
         return total_dist / count if count else 0.0
