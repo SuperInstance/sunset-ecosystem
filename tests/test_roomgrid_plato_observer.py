@@ -74,8 +74,39 @@ class _MockTrainingTile:
     def is_active(self) -> bool:
         return self.state == "active"
 
+    def to_dict(self) -> dict:
+        return {
+            "tile_id": self.tile_id,
+            "room": self.room,
+            "tile_type": self.tile_type,
+            "state": self.state,
+            "lamport": self.lamport,
+            "name": self.name,
+            "description": self.description,
+            "content_hash": self.content_hash,
+            "base_model": self.base_model,
+            "source_room": self.source_room,
+            "parent_tile": self.parent_tile,
+            "lifecycle_events": self.lifecycle_events,
+        }
 
-_mock_plato_types.LifecycleEvent = type("LifecycleEvent", (), {})  # stub
+    @classmethod
+    def from_dict(cls, d: dict) -> "_MockTrainingTile":
+        return cls(
+            **{k: v for k, v in d.items() if k != "lifecycle_events"},
+            lifecycle_events=d.get("lifecycle_events", []),
+        )
+
+
+class _MockLifecycleEvent:
+    def __init__(self, from_state=None, to_state=None, reason="", lamport=0):
+        self.from_state = from_state
+        self.to_state = to_state
+        self.reason = reason
+        self.lamport = lamport
+
+
+_mock_plato_types.LifecycleEvent = _MockLifecycleEvent
 _mock_plato_types.LamportClock = _MockLamportClock
 _mock_plato_types.TileLifecycle = _MockTileLifecycle
 _mock_plato_types.TileType = _MockTileType

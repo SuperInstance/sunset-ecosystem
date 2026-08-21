@@ -52,7 +52,13 @@ except OSError:
     _CUDA_LIB = None
 
 # Try Rust persistent FFI (fastest CPU path)
-if _BACKEND == "numpy":
+# Skip in CI — native .so may SIGILL on runners without required ISA extensions
+_CI_ENV = (
+    os.environ.get("CI")
+    or os.environ.get("GITHUB_ACTIONS")
+    or os.environ.get("SUNSET_NO_RUST")
+)
+if _BACKEND == "numpy" and not _CI_ENV:
     try:
         _so = next(Path(__file__).parent.glob("target/release/libjepa_kernel.so"))
         _RUST_LIB = CDLL(str(_so))
@@ -93,7 +99,7 @@ if _BACKEND == "numpy":
         _RUST_LIB = None
 
 # If persistent API missing, try oneshot-only (FM's v1 .so has forward_batch only)
-if _BACKEND == "numpy":
+if _BACKEND == "numpy" and not _CI_ENV:
     try:
         _so = next(Path(__file__).parent.glob("target/release/libjepa_kernel.so"))
         _RUST_LIB = CDLL(str(_so))
@@ -281,7 +287,10 @@ def batch_novelty(
     falls back to numpy otherwise.
     """
     if _HAS_NUMBA:
-        return _batch_novelty_numba(latents, hist, hist_count, hist_idx, hist_max)
+        try:
+            return _batch_novelty_numba(latents, hist, hist_count, hist_idx, hist_max)
+        except (ZeroDivisionError, FloatingPointError):
+            pass
     return _batch_novelty_numpy(latents, hist, hist_count, hist_idx, hist_max)
 
 

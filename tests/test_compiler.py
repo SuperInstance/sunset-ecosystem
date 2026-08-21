@@ -179,7 +179,9 @@ def test_profiler_detects_hotspot(compiler):
     assert any("dummy" in n for n in names)
 
 
-@pytest.mark.skipif(not NUMBA_AVAILABLE, reason="numba not installed")
+@pytest.mark.skipif(
+    not (NUMBA_AVAILABLE and NUMBA_JIT_ENABLED), reason="numba JIT unavailable"
+)
 def test_numba_speedup(compiler):
     """Numba-compiled function achieves >2× speedup over original."""
     np.random.seed(42)
@@ -206,7 +208,9 @@ def test_auto_compile_wired(compiler):
     assert topo._compiler._installed is True
 
 
-@pytest.mark.skipif(not NUMBA_AVAILABLE, reason="numba not installed")
+@pytest.mark.skipif(
+    not (NUMBA_AVAILABLE and NUMBA_JIT_ENABLED), reason="numba JIT unavailable"
+)
 def test_compiler_skips_numba(compiler):
     """Already-@njit functions are returned as-is without double-compilation."""
 
@@ -319,7 +323,9 @@ def test_hot_swap_is_reversible():
         delattr(test_mod, "_rev_target")
 
 
-@pytest.mark.skipif(not NUMBA_AVAILABLE, reason="numba not installed")
+@pytest.mark.skipif(
+    not (NUMBA_AVAILABLE and NUMBA_JIT_ENABLED), reason="numba JIT unavailable"
+)
 def test_compiler_auto_hot_swap(compiler):
     """Compiler.hot_swap compiles + replaces in a single call."""
     np.random.seed(42)
