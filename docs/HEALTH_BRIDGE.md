@@ -74,24 +74,24 @@ The 18 fleet services are pre-defined in `FLEET_SERVICES`:
 
 | Service | Host | Port | Path |
 |---------|------|------|------|
-| MUD v3 | 147.224.38.131 | 4042 | /status |
-| The Lock v2 | 147.224.38.131 | 4043 | /status |
-| Arena | 147.224.38.131 | 4044 | /stats |
-| Grammar Engine | 147.224.38.131 | 4045 | /grammar |
-| Dashboard | 147.224.38.131 | 4046 | / |
-| Federated Nexus | 147.224.38.131 | 4047 | / |
-| Harbor | 147.224.38.131 | 4050 | / |
-| Grammar Compactor | 147.224.38.131 | 4055 | /status |
-| Rate-Attention | 147.224.38.131 | 4056 | /streams |
-| Skill Forge | 147.224.38.131 | 4057 | /status |
-| PLATO Terminal | 147.224.38.131 | 4060 | / |
-| PLATO Gate | 147.224.38.131 | 8847 | /rooms |
-| PLATO Shell | 147.224.38.131 | 8848 | / |
-| Service Guard | 147.224.38.131 | 8899 | / |
-| Task Queue | 147.224.38.131 | 8900 | / |
-| Steward | 147.224.38.131 | 8901 | / |
-| Matrix Bridge | 147.224.38.131 | 6168 | /status |
-| Conduwuit | 147.224.38.131 | 6167 | / |
+| MUD v3 | <BOAT_IP> | 4042 | /status |
+| The Lock v2 | <BOAT_IP> | 4043 | /status |
+| Arena | <BOAT_IP> | 4044 | /stats |
+| Grammar Engine | <BOAT_IP> | 4045 | /grammar |
+| Dashboard | <BOAT_IP> | 4046 | / |
+| Federated Nexus | <BOAT_IP> | 4047 | / |
+| Harbor | <BOAT_IP> | 4050 | / |
+| Grammar Compactor | <BOAT_IP> | 4055 | /status |
+| Rate-Attention | <BOAT_IP> | 4056 | /streams |
+| Skill Forge | <BOAT_IP> | 4057 | /status |
+| PLATO Terminal | <BOAT_IP> | 4060 | / |
+| PLATO Gate | <BOAT_IP> | 8847 | /rooms |
+| PLATO Shell | <BOAT_IP> | 8848 | / |
+| Service Guard | <BOAT_IP> | 8899 | / |
+| Task Queue | <BOAT_IP> | 8900 | / |
+| Steward | <BOAT_IP> | 8901 | / |
+| Matrix Bridge | <BOAT_IP> | 6168 | /status |
+| Conduwuit | <BOAT_IP> | 6167 | / |
 
 ## Adding a Custom Service
 

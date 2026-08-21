@@ -9,7 +9,7 @@ Previously this code lived on Oracle1 (port 4047) and hardcoded
 registration from a remote node because ``localhost`` resolves to the
 loopback interface of the caller, not the nexus host.
 
-The canonical nexus IP for the Cocapn fleet is **147.224.38.131**.
+The canonical nexus IP for the Cocapn fleet is **<BOAT_IP>**.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 import os
 
 # Default nexus IP — override with NEXUS_IP env var for non-fleet deployments
-DEFAULT_NEXUS_IP: str = os.getenv("NEXUS_IP", "147.224.38.131")
+DEFAULT_NEXUS_IP: str = os.getenv("NEXUS_IP", "<BOAT_IP>")
 DEFAULT_NEXUS_PORT: int = int(os.getenv("NEXUS_PORT", "4047"))
 DEFAULT_NEXUS_PORT: int = 4047
 FEDERATION_PATH: str = "/v1/federation/register"
@@ -251,7 +251,7 @@ class FederatedNexus:
     ) -> "FederatedNexus":
         """Create a nexus client using the fleet-default endpoint.
 
-        *host* defaults to ``147.224.38.131`` (the Cocapn fleet nexus).
+        *host* defaults to ``<BOAT_IP>`` (the Cocapn fleet nexus).
         """
         endpoint = FederationEndpoint(host=host, port=port)
         return cls(endpoint, node_id, **kwargs)

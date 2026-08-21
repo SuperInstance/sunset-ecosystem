@@ -17,7 +17,7 @@ Brings the Heartbeat Protocol pattern into sunset-ecosystem.
 ```python
 from fleet.heartbeat_bridge import Heartbeat, ServiceCheck
 
-hb = Heartbeat(plato_url="http://147.224.38.131:8847")
+hb = Heartbeat(plato_url="http://<BOAT_IP>:8847")
 
 # One-shot check
 report = hb.run()
@@ -37,9 +37,9 @@ hb.save_state()
 ```python
 hb = Heartbeat(
     services=[
-        ServiceCheck("PLATO", "http://147.224.38.131:8847/rooms"),
-        ServiceCheck("Matrix", "http://147.224.38.131:6167/_matrix/client/versions"),
-        ServiceCheck("Tiles", "http://147.224.38.131:8847/status"),
+        ServiceCheck("PLATO", "http://<BOAT_IP>:8847/rooms"),
+        ServiceCheck("Matrix", "http://<BOAT_IP>:6167/_matrix/client/versions"),
+        ServiceCheck("Tiles", "http://<BOAT_IP>:8847/status"),
     ]
 )
 results = hb.check_services()

@@ -96,7 +96,7 @@ FleetSearch.ask("Which agents should breed?")
 | **P1.3** Turbovec benchmark | `libopenblas-dev` missing in sandbox | `apt-get install libopenblas-dev` then reinstall turbovec |
 | **P2.3** Jetson Orin benchmark | No JC1 access | Deploy to JetsonClaw1 and run |
 | **P3.2-3.4** Hardware benchmarks | Need physical hardware | Oracle1 (AVX-512), JC1 (NEON) |
-| **Oracle1 grammar deploy** | Service not restarted | SSH to `147.224.38.131` and restart (or use local server instead) |
+| **Oracle1 grammar deploy** | Service not restarted | SSH to `<BOAT_IP>` and restart (or use local server instead) |
 
 ---
 

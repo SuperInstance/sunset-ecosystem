@@ -47,7 +47,7 @@ We need a **Multi-Instance Mesh** (MIM) that transforms N isolated sunset-ecosys
        └───────────────────┴───────────────────┴───────────────────┘
                            │
                     ┌───────┴───────┐
-                    │  Federated    │  ← 147.224.38.131:4047
+                    │  Federated    │  ← <BOAT_IP>:4047
                     │    Nexus      │     (Registration + DNS-SD)
                     │   (SQLite)    │
                     └───────────────┘

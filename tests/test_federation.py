@@ -93,7 +93,7 @@ class TestFederatedNexusInit:
 
     def test_from_defaults(self):
         nexus = FederatedNexus.from_defaults("node-1")
-        assert nexus.endpoint.host == "147.224.38.131"
+        assert nexus.endpoint.host == "<BOAT_IP>"
         assert nexus.endpoint.port == 4047
 
 

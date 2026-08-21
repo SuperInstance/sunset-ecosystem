@@ -29,7 +29,7 @@ class TestFederationEndpoint:
     """Endpoint must reject localhost and accept real IPs."""
 
     def test_url_uses_correct_ip_not_localhost(self):
-        """The canonical endpoint must use 147.224.38.131, not localhost."""
+        """The canonical endpoint must use <BOAT_IP>, not localhost."""
         ep = FederationEndpoint(host=DEFAULT_NEXUS_IP, port=DEFAULT_NEXUS_PORT)
         assert ep.url == f"http://{DEFAULT_NEXUS_IP}:{DEFAULT_NEXUS_PORT}"
         assert "localhost" not in ep.url

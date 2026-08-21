@@ -355,7 +355,7 @@ Agent A (Node Alpha)          Agent B (Node Beta)
 ## Contact
 
 - **Fleet coordination**: `#cocapn-build` on Matrix
-- **PLATO Shell**: http://147.224.38.131:8848/
+- **PLATO Shell**: http://<BOAT_IP>:8848/
 - **Issue tracker**: https://github.com/SuperInstance/sunset-ecosystem/issues
 - **Fleet workshop**: https://github.com/SuperInstance/fleet-workshop
 

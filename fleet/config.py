@@ -58,12 +58,12 @@ _DEFAULT_CONFIG = {
             "alert_file": "",
         },
         "services": [
-            {"name": "PLATO Gate", "host": "147.224.38.131", "port": 8847, "path": "/status"},
-            {"name": "PLATO Shell", "host": "147.224.38.131", "port": 8848, "path": "/"},
-            {"name": "MUD", "host": "147.224.38.131", "port": 4042, "path": "/status"},
-            {"name": "Arena", "host": "147.224.38.131", "port": 4044, "path": "/status"},
-            {"name": "Grammar", "host": "147.224.38.131", "port": 4045, "path": "/status"},
-            {"name": "Skill Forge", "host": "147.224.38.131", "port": 4057, "path": "/status"},
+            {"name": "PLATO Gate", "host": "<BOAT_IP>", "port": 8847, "path": "/status"},
+            {"name": "PLATO Shell", "host": "<BOAT_IP>", "port": 8848, "path": "/"},
+            {"name": "MUD", "host": "<BOAT_IP>", "port": 4042, "path": "/status"},
+            {"name": "Arena", "host": "<BOAT_IP>", "port": 4044, "path": "/status"},
+            {"name": "Grammar", "host": "<BOAT_IP>", "port": 4045, "path": "/status"},
+            {"name": "Skill Forge", "host": "<BOAT_IP>", "port": 4057, "path": "/status"},
         ],
         "api": {
             "host": "0.0.0.0",
