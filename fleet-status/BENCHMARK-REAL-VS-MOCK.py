@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Benchmark: Real Rust FFI vs Python mock — manhattan_distance and cascade_match."""
 
-import time, statistics, random, numpy as np
-import sys, os
+import time
+import statistics
+import random
+import numpy as np
+import sys
+import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import superinstance_ffi_real as real

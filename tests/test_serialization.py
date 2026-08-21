@@ -5,7 +5,8 @@ Run: python3 -m pytest tests/test_serialization.py -v --tb=short
 
 from __future__ import annotations
 
-import json, zlib
+import json
+import zlib
 
 import pytest
 

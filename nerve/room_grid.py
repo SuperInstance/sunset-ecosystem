@@ -19,7 +19,10 @@ __all__ = [
     "batch_novelty",
 ]
 
-import math, threading, logging, sys
+import math
+import threading
+import logging
+import sys
 from collections import deque
 from ctypes import CDLL, c_float, c_size_t, POINTER, c_void_p
 from dataclasses import dataclass

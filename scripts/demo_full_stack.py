@@ -17,7 +17,10 @@ Output:
 
 from __future__ import annotations
 
-import json, time, sys, random
+import json
+import time
+import sys
+import random
 import numpy as np
 
 from nerve.topology import NerveTopology

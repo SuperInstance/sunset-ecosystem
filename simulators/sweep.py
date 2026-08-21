@@ -4,7 +4,10 @@ Tournament Parameter Sweep
 Runs across cap values and strategies for the sunset-ecosystem tournament sim.
 """
 
-import random, math, csv, time
+import random
+import math
+import csv
+import time
 from simulators import tournament_sim as ts
 
 

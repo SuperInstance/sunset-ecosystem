@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Minimal turbovec benchmark — 1K agents, 2 dims, to avoid OOM kills."""
 
-import sys, time
+import sys
+import time
 
 sys.path.insert(0, "/tmp/sunset-ecosystem")
 

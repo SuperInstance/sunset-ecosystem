@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Batch-add benchmark — turbovec is more efficient with batch adds."""
 
-import sys, time
+import sys
+import time
 
 sys.path.insert(0, "/tmp/sunset-ecosystem")
 
