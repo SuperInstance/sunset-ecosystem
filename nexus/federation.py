@@ -87,6 +87,7 @@ class FederationEndpoint:
         ``.local`` name triggering slow mDNS/LLMNR lookups) cannot hang the
         caller — CI runners have seen multi-hour stalls on this call.
         """
+
         def _resolve() -> Optional[str]:
             try:
                 addrinfo = socket.getaddrinfo(host, None)
