@@ -12,7 +12,7 @@ Usage:
     from sunset.compiler import Compiler
     compiler = Compiler()
     compiler.install()  # monkey-patches hot paths
-    
+
     # Run your code...
     # The compiler profiles and recompiles automatically.
 
@@ -21,8 +21,15 @@ See docs/AGENTIC-COMPILER-RESEARCH.md for full research.
 
 from __future__ import annotations
 
-__all__ = ["Compiler", "Profiler", "JitBackend", "CompilationResult",
-           "GridBackendSelector", "hot_swap", "hot_swap_restore"]
+__all__ = [
+    "Compiler",
+    "Profiler",
+    "JitBackend",
+    "CompilationResult",
+    "GridBackendSelector",
+    "hot_swap",
+    "hot_swap_restore",
+]
 
 import logging
 import functools
@@ -44,17 +51,19 @@ log = logging.getLogger(__name__)
 
 # ── Configuration ───────────────────────────────────────────
 
-SAMPLE_RATE = 0.05          # Profile 5% of calls (reduce overhead)
-COMPILE_THRESHOLD = 100     # Min calls before considering compilation
-SPEEDUP_THRESHOLD = 2.0     # Min expected speedup to bother compiling
-WARMUP_CALLS = 10           # Calls to ignore during profiling (JIT warmup)
+SAMPLE_RATE = 0.05  # Profile 5% of calls (reduce overhead)
+COMPILE_THRESHOLD = 100  # Min calls before considering compilation
+SPEEDUP_THRESHOLD = 2.0  # Min expected speedup to bother compiling
+WARMUP_CALLS = 10  # Calls to ignore during profiling (JIT warmup)
 
 
 # ── Data structures ─────────────────────────────────────────
 
+
 @dataclass
 class FunctionStats:
     """Runtime statistics for a single function."""
+
     name: str
     module: str
     calls: int = 0
@@ -79,6 +88,7 @@ class FunctionStats:
 @dataclass
 class CompilationResult:
     """Result of compiling a function to a backend."""
+
     original: Callable
     compiled: Callable
     backend: str
@@ -90,6 +100,7 @@ class CompilationResult:
 
 class JitBackend:
     """Base class for compilation backends."""
+
     name: str = "base"
 
     def can_compile(self, func: Callable, stats: FunctionStats) -> bool:
@@ -101,37 +112,49 @@ class JitBackend:
 
 # ── Hardware Detection (shared with nerve/room_grid.py) ─────
 
+
 def detect_hardware():
     """Detect available compute backends."""
-    hw = {"numpy": True, "numba": False, "rust_persistent": False,
-          "rust_oneshot": False, "cuda": False}
-    
+    hw = {
+        "numpy": True,
+        "numba": False,
+        "rust_persistent": False,
+        "rust_oneshot": False,
+        "cuda": False,
+    }
+
     # Numba
     try:
         import numba
+
         hw["numba"] = True
     except ImportError:
         pass
-    
+
     # Rust persistent (libjepa_kernel.so)
     try:
         from pathlib import Path
-        so = next(Path(__file__).parent.parent.glob("nerve/target/release/libjepa_kernel.so"))
+
+        so = next(
+            Path(__file__).parent.parent.glob("nerve/target/release/libjepa_kernel.so")
+        )
         from ctypes import CDLL
+
         CDLL(str(so))
         hw["rust_persistent"] = True
         hw["rust_oneshot"] = True
     except (StopIteration, OSError):
         pass
-    
+
     # CUDA
     try:
         from ctypes import CDLL
+
         CDLL("libcudart.so")
         hw["cuda"] = True
     except OSError:
         pass
-    
+
     return hw
 
 
@@ -140,23 +163,24 @@ HARDWARE = detect_hardware()
 
 # ── Grid-Aware Backend Selector ───────────────────────────
 
+
 class GridBackendSelector:
     """Selects the optimal backend for NerveTopology grid forward passes.
-    
+
     Matches room_grid.py logic:
       - n < 50:    numpy (ctypes overhead dominates)
       - 50-500:    rust_oneshot (medium arrays)
       - 500+:      rust_persistent (zero-copy, weights in Rust)
       - 1000+ + GPU: cuda (if available)
     """
-    
+
     THRESHOLDS = {
         "numpy": 0,
         "rust_oneshot": 50,
         "rust_persistent": 500,
         "cuda": 1000,
     }
-    
+
     @classmethod
     def select(cls, n_rooms: int) -> str:
         """Return best backend name for `n_rooms`."""
@@ -170,7 +194,7 @@ class GridBackendSelector:
         if not candidates:
             candidates.append("numpy")
         return candidates[0]  # first = highest priority
-    
+
     @classmethod
     def report(cls) -> str:
         lines = ["=== Hardware Detection ==="]
@@ -182,8 +206,10 @@ class GridBackendSelector:
             lines.append(f"  {backend:<18} n >= {thresh}")
         return "\n".join(lines)
 
+
 class NumbaBackend(JitBackend):
     """Numba LLVM JIT backend — delegates to CodeGenerator."""
+
     name = "numba"
 
     def __init__(self) -> None:
@@ -236,8 +262,10 @@ class NumbaBackend(JitBackend):
 
 # ── Rust FFI Backend ────────────────────────────────────────
 
+
 class RustBackend(JitBackend):
     """Rust FFI backend — delegates to CodeGenerator."""
+
     name = "rust"
 
     def __init__(self) -> None:
@@ -287,6 +315,7 @@ class RustBackend(JitBackend):
 
 # ── Profiler ────────────────────────────────────────────────
 
+
 class Profiler:
     """Watches function calls and builds a heat map."""
 
@@ -319,6 +348,7 @@ class Profiler:
             else:
                 result = func(*args, **kwargs)
             return result
+
         return wrapper
 
     def _record(self, name: str, elapsed_ms: float, args: Tuple) -> None:
@@ -330,9 +360,9 @@ class Profiler:
         # Record input shapes for later compilation
         shapes = []
         for arg in args[:3]:  # first 3 args only
-            if hasattr(arg, 'shape'):
+            if hasattr(arg, "shape"):
                 shapes.append(arg.shape)
-            elif hasattr(arg, '__len__') and not isinstance(arg, str):
+            elif hasattr(arg, "__len__") and not isinstance(arg, str):
                 try:
                     shapes.append((len(arg),))
                 except TypeError:
@@ -354,7 +384,9 @@ class Profiler:
     def report(self) -> str:
         """Human-readable profiling report."""
         lines = ["=== Agentic Compiler — Profiling Report ===", ""]
-        lines.append(f"{'Function':<40} {'Calls':>8} {'Avg(ms)':>10} {'Total(ms)':>12} {'Potential':>12}")
+        lines.append(
+            f"{'Function':<40} {'Calls':>8} {'Avg(ms)':>10} {'Total(ms)':>12} {'Potential':>12}"
+        )
         lines.append("-" * 90)
         for stat in self.get_hotspots(15):
             lines.append(
@@ -366,6 +398,7 @@ class Profiler:
 
 
 # ── Compiler ────────────────────────────────────────────────
+
 
 class Compiler:
     """The agentic compiler daemon.
@@ -495,9 +528,13 @@ class Compiler:
                     if deployed:
                         stat.compiled_version = kernel.compiled
                         result.compiled = kernel.compiled
-                        print(f"[Compiler] 🔥 Hot-swapped {key} — {speedup:.1f}× speedup ({kernel.backend})")
+                        print(
+                            f"[Compiler] 🔥 Hot-swapped {key} — {speedup:.1f}× speedup ({kernel.backend})"
+                        )
                 else:
-                    print(f"[Compiler] ⚠️  {key} compiled but speedup {speedup:.1f}× < {SPEEDUP_THRESHOLD}× threshold")
+                    print(
+                        f"[Compiler] ⚠️  {key} compiled but speedup {speedup:.1f}× < {SPEEDUP_THRESHOLD}× threshold"
+                    )
 
         return results
 
@@ -548,7 +585,9 @@ class Compiler:
 
         return result
 
-    def _validate(self, original: Callable, compiled: Callable, trials: int = 5) -> bool:
+    def _validate(
+        self, original: Callable, compiled: Callable, trials: int = 5
+    ) -> bool:
         """A/B test: verify compiled function produces same output."""
         try:
             for _ in range(trials):
@@ -733,6 +772,7 @@ class Compiler:
 
 # ── Standalone hot-swap utilities ───────────────────────────
 
+
 def hot_swap(
     module_name: str,
     function_name: str,
@@ -776,7 +816,10 @@ def hot_swap(
 
     orig = original if original is not None else getattr(mod, function_name, None)
     if orig is None:
-        return {"success": False, "error": f"Function {function_name} not found in {module_name}"}
+        return {
+            "success": False,
+            "error": f"Function {function_name} not found in {module_name}",
+        }
 
     # Preserve signature metadata on the replacement
     if isinstance(compiled_bytecode, types.CodeType):
@@ -841,4 +884,3 @@ def hot_swap_restore(
 
     setattr(mod, function_name, orig)
     return {"success": True, "restored": orig}
-

@@ -8,6 +8,7 @@ from sunset.cuda_kernels import CudaEinsumKernel
 
 # ── Helpers ─────────────────────────────────────────────────
 
+
 def _ref_einsum(room_vectors, signal_matrix, room_mask):
     """Reference numpy implementation."""
     selected = room_vectors[room_mask]
@@ -17,6 +18,7 @@ def _ref_einsum(room_vectors, signal_matrix, room_mask):
 
 
 # ── Tiling math tests ─────────────────────────────────────
+
 
 class TestTilingMath:
     """Static calculations independent of CUDA availability."""
@@ -54,6 +56,7 @@ class TestTilingMath:
 
 # ── Compile test ────────────────────────────────────────────
 
+
 class TestCompile:
     """compile_kernel should return a callable for any valid dimensions."""
 
@@ -71,16 +74,20 @@ class TestCompile:
 
 # ── Correctness tests ───────────────────────────────────────
 
+
 class TestCorrectness:
     """route_signals must match numpy reference exactly (within float tolerance)."""
 
-    @pytest.mark.parametrize("n_rooms,d_latent", [
-        (50, 32),
-        (100, 64),
-        (250, 128),
-        (500, 128),
-        (1000, 128),
-    ])
+    @pytest.mark.parametrize(
+        "n_rooms,d_latent",
+        [
+            (50, 32),
+            (100, 64),
+            (250, 128),
+            (500, 128),
+            (1000, 128),
+        ],
+    )
     def test_correctness_vs_numpy(self, n_rooms, d_latent):
         rng = np.random.RandomState(42)
         room_vectors = rng.randn(n_rooms, d_latent).astype(np.float32)
@@ -91,8 +98,9 @@ class TestCorrectness:
         result = kernel.route_signals(room_vectors, signal_matrix, room_mask)
         expected = _ref_einsum(room_vectors, signal_matrix, room_mask)
 
-        assert result.shape == expected.shape, \
+        assert result.shape == expected.shape, (
             f"Shape mismatch: {result.shape} vs {expected.shape}"
+        )
         assert result.dtype == expected.dtype
         max_diff = np.max(np.abs(result - expected))
         assert max_diff < 1e-4, f"Max diff too large: {max_diff}"
@@ -160,6 +168,7 @@ class TestCorrectness:
 
 # ── Fallback tests ──────────────────────────────────────────
 
+
 class TestFallback:
     """When CUDA is unavailable, should still produce correct results (slower)."""
 
@@ -186,6 +195,7 @@ class TestFallback:
 
 # ── Benchmark tests ─────────────────────────────────────────
 
+
 class TestBenchmark:
     """Benchmark returns structured data with expected keys."""
 
@@ -193,9 +203,16 @@ class TestBenchmark:
         kernel = CudaEinsumKernel()
         bench = kernel.benchmark(n_rooms=100, d_latent=64, n_iterations=10)
         expected_keys = {
-            "n_rooms", "d_latent", "n_selected", "n_iterations",
-            "ms_per_call", "ms_per_call_np", "speedup",
-            "cuda_available", "shape_ok", "max_diff",
+            "n_rooms",
+            "d_latent",
+            "n_selected",
+            "n_iterations",
+            "ms_per_call",
+            "ms_per_call_np",
+            "speedup",
+            "cuda_available",
+            "shape_ok",
+            "max_diff",
         }
         assert expected_keys.issubset(bench.keys())
 
@@ -221,6 +238,7 @@ class TestBenchmark:
 
 
 # ── Input validation ────────────────────────────────────────
+
 
 class TestValidation:
     """Graceful handling of malformed inputs."""
@@ -254,12 +272,14 @@ class TestValidation:
 
         kernel = CudaEinsumKernel()
         result = kernel.route_signals(room_vectors, signal_matrix, room_mask)
-        expected = _ref_einsum(room_vectors.astype(np.float32),
-                               signal_matrix.astype(np.float32), room_mask)
+        expected = _ref_einsum(
+            room_vectors.astype(np.float32), signal_matrix.astype(np.float32), room_mask
+        )
         assert np.allclose(result, expected, atol=1e-4)
 
 
 # ── Repr ────────────────────────────────────────────────────
+
 
 class TestRepr:
     def test_repr_fallback(self):

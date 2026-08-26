@@ -12,13 +12,13 @@ vector operations, and consensus mechanisms for distributed fleet decisions.
 Usage
 -----
     from fleet.ternary_types import TernaryValue, TernaryVector, TernaryMap
-    
+
     # Classify a signal
     val = TernaryMap.classify(0.75, threshold=0.5)  # +1
-    
+
     # Combine signals
     combined = TernaryValue.majority([+1, +1, 0, -1])  # +1
-    
+
     # Vector operations
     vec = TernaryVector([+1, 0, -1, +1])
     assert vec.hamming_weight() == 2
@@ -235,6 +235,7 @@ class TernaryVector:
         neg = sum(1 for v in self.values if v == TernaryValue.NEG) / total
         zero = sum(1 for v in self.values if v == TernaryValue.ZERO) / total
         import math
+
         entropy = 0.0
         for p in [pos, neg, zero]:
             if p > 0:
@@ -244,13 +245,17 @@ class TernaryVector:
     def and_with(self, other: TernaryVector) -> TernaryVector:
         """Element-wise AND with another vector."""
         min_len = min(len(self.values), len(other.values))
-        result = [TernaryValue.and_(self.values[i], other.values[i]) for i in range(min_len)]
+        result = [
+            TernaryValue.and_(self.values[i], other.values[i]) for i in range(min_len)
+        ]
         return TernaryVector(result)
 
     def or_with(self, other: TernaryVector) -> TernaryVector:
         """Element-wise OR with another vector."""
         min_len = min(len(self.values), len(other.values))
-        result = [TernaryValue.or_(self.values[i], other.values[i]) for i in range(min_len)]
+        result = [
+            TernaryValue.or_(self.values[i], other.values[i]) for i in range(min_len)
+        ]
         return TernaryVector(result)
 
     def not_(self) -> TernaryVector:
@@ -357,7 +362,7 @@ class TernaryMap:
             return TernaryVector([])
         result = []
         for i in range(len(values) - window_size + 1):
-            window = values[i:i + window_size]
+            window = values[i : i + window_size]
             avg = sum(window) / len(window)
             result.append(TernaryValue.from_float(avg, threshold))
         return TernaryVector(result)
@@ -414,8 +419,7 @@ class TernaryConsensus:
 
         # Dissenters = nodes that voted differently
         dissenters = [
-            node for node, vote in votes.items()
-            if vote != consensus and vote != 0
+            node for node, vote in votes.items() if vote != consensus and vote != 0
         ]
 
         return {
@@ -468,8 +472,7 @@ class TernaryConsensus:
 
         confidence = max(pos_weight, neg_weight) / total_weight
         dissenters = [
-            node for node, (vote, _) in votes.items()
-            if vote != consensus and vote != 0
+            node for node, (vote, _) in votes.items() if vote != consensus and vote != 0
         ]
 
         return {

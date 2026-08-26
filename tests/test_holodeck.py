@@ -27,6 +27,7 @@ from fleet.holodeck import (
 
 # ── colour mapping ─────────────────────────────────────
 
+
 class TestColourMapping:
     def test_room_colour_low_diversity(self):
         assert room_color_for_diversity(0.0) == 0x0A1628
@@ -61,6 +62,7 @@ class TestColourMapping:
 
 # ── RoomNode / AgentAvatar dataclasses ─────────────────
 
+
 class TestDataStructures:
     def test_room_node_basic(self):
         r = RoomNode(room_id="alpha", position=(1.0, 2.0, 3.0), capacity=12)
@@ -79,8 +81,15 @@ class TestDataStructures:
         assert not r.is_overcapacity
 
     def test_room_node_roundtrip(self):
-        r = RoomNode(room_id="x", position=(0, 1, 2), capacity=5, occupancy=3,
-                     diversity_score=0.5, thermal_state=0.2, agents=["a1", "a2"])
+        r = RoomNode(
+            room_id="x",
+            position=(0, 1, 2),
+            capacity=5,
+            occupancy=3,
+            diversity_score=0.5,
+            thermal_state=0.2,
+            agents=["a1", "a2"],
+        )
         d = r.to_dict()
         r2 = RoomNode.from_dict(d)
         assert r2.room_id == r.room_id
@@ -89,7 +98,8 @@ class TestDataStructures:
 
     def test_agent_avatar_roundtrip(self):
         a = AgentAvatar(
-            agent_id="a1", room_id="r1",
+            agent_id="a1",
+            room_id="r1",
             position=np.array([1, 2, 3], dtype=np.float32),
             velocity=np.array([0.1, 0.2, 0.3], dtype=np.float32),
             phase="breeding",
@@ -108,6 +118,7 @@ class TestDataStructures:
 
 
 # ── Holodeck basics ────────────────────────────────────
+
 
 class TestHolodeckBasics:
     def test_add_room(self):
@@ -263,8 +274,12 @@ class TestHolodeckBasics:
         hd.move_agent("a1", "r1", "r2")
         hd.move_agent("a1", "r2", "r3")
         scene = hd.get_scene()
-        assert ["r1", "r2"] in scene["connections"] or ["r2", "r1"] in scene["connections"]
-        assert ["r2", "r3"] in scene["connections"] or ["r3", "r2"] in scene["connections"]
+        assert ["r1", "r2"] in scene["connections"] or ["r2", "r1"] in scene[
+            "connections"
+        ]
+        assert ["r2", "r3"] in scene["connections"] or ["r3", "r2"] in scene[
+            "connections"
+        ]
 
     def test_get_scene_structure(self):
         hd = Holodeck()
@@ -307,6 +322,7 @@ class TestHolodeckBasics:
 
 
 # ── HTML export ────────────────────────────────────────
+
 
 class TestHTMLExport:
     def test_export_creates_file(self, tmp_path):
@@ -359,6 +375,7 @@ class TestHTMLExport:
 
 
 # ── MockPlatoSource ────────────────────────────────────
+
 
 class TestMockPlatoSource:
     def test_init_counts(self):
@@ -428,6 +445,7 @@ class TestMockPlatoSource:
 
 # ── Integration: Holodeck + MockPlatoSource ──────────────
 
+
 class TestIntegration:
     def test_ingest_mock_source(self):
         hd = Holodeck()
@@ -479,6 +497,7 @@ class TestIntegration:
 
 # ── Thread safety ──────────────────────────────────────
 
+
 class TestThreadSafety:
     def test_concurrent_adds(self):
         hd = Holodeck()
@@ -492,7 +511,9 @@ class TestThreadSafety:
             except Exception as e:
                 errors.append(e)
 
-        threads = [threading.Thread(target=add_many, args=(50, f"th{i}")) for i in range(4)]
+        threads = [
+            threading.Thread(target=add_many, args=(50, f"th{i}")) for i in range(4)
+        ]
         for t in threads:
             t.start()
         for t in threads:
@@ -548,6 +569,7 @@ class TestThreadSafety:
                 errors.append(e)
 
         import random as _rnd
+
         _rnd.seed(0)
         threads = [threading.Thread(target=reader) for _ in range(3)]
         threads += [threading.Thread(target=writer) for _ in range(2)]
@@ -581,6 +603,7 @@ class TestThreadSafety:
                 errors.append(e)
 
         from pathlib import Path as _P
+
         tmp = _P("/tmp/holodeck_thread_test")
         tmp.mkdir(exist_ok=True)
         t1 = threading.Thread(target=mutator)
@@ -598,10 +621,12 @@ class TestThreadSafety:
 
 # ── Demo runner (smoke test) ───────────────────────────
 
+
 class TestDemo:
     def test_demo_script_importable(self):
         # Just ensure the demo module parses and key symbols exist
         import importlib.util
+
         spec = importlib.util.spec_from_file_location(
             "holodeck_demo",
             Path(__file__).parent.parent / "examples" / "holodeck_demo.py",

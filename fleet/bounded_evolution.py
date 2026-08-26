@@ -7,6 +7,7 @@ normal, elite) and eight mutation types.
 
 Reference: flux-evolve — bounded evolutionary parameter engine.
 """
+
 from __future__ import annotations
 
 import copy
@@ -288,14 +289,10 @@ class EvolutionEngine:
 
         # Apply one crossover pair
         if len(shuffled) >= 2:
-            self._apply_pair_mutation(
-                MutationType.CROSSOVER, shuffled[0], shuffled[1]
-            )
+            self._apply_pair_mutation(MutationType.CROSSOVER, shuffled[0], shuffled[1])
         # Apply one swap pair
         if len(shuffled) >= 4:
-            self._apply_pair_mutation(
-                MutationType.SWAP, shuffled[2], shuffled[3]
-            )
+            self._apply_pair_mutation(MutationType.SWAP, shuffled[2], shuffled[3])
         # Remaining get random single mutations
         remaining: list[str] = []
         if len(shuffled) >= 4:

@@ -79,10 +79,12 @@ The framework can be wired into `FleetConductorV2` as an SDA pipeline:
 from fleet.sense_decide_act import Sense, Decide, Act
 from fleet.beta_test_personas import BetaTestRunner
 
+
 class RepoDiscoverySense(Sense):
     def observe(self):
         # Scan repo metadata from git / README / files
         return {"repo_metadata": scan_repo(".")}
+
 
 class PersonaTestDecide(Decide):
     def evaluate(self, observation):

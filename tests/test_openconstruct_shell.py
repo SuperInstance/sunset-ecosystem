@@ -152,7 +152,7 @@ class TestSelfHealingLoop:
         )
         adapter = HarnessAdapter(manifest)
         healing = SelfHealingLoop(adapter, "run-1")
-        
+
         event = BreedingEvent(
             event_type=BreedingEventType.GENERATION_END,
             generation=5,
@@ -174,13 +174,15 @@ class TestSelfHealingLoop:
         adapter = HarnessAdapter(manifest)
         # Populate history with stagnant fitness
         for i in range(15):
-            adapter.streamer.emit(BreedingEvent(
-                event_type=BreedingEventType.GENERATION_END,
-                generation=i,
-                timestamp=time.time(),
-                best_fitness=1.0,
-            ))
-        
+            adapter.streamer.emit(
+                BreedingEvent(
+                    event_type=BreedingEventType.GENERATION_END,
+                    generation=i,
+                    timestamp=time.time(),
+                    best_fitness=1.0,
+                )
+            )
+
         healing = SelfHealingLoop(adapter, "run-2")
         event = BreedingEvent(
             event_type=BreedingEventType.GENERATION_END,
@@ -201,7 +203,7 @@ class TestSelfHealingLoop:
         )
         adapter = HarnessAdapter(manifest)
         healing = SelfHealingLoop(adapter, "run-3")
-        
+
         event = BreedingEvent(
             event_type=BreedingEventType.GENERATION_END,
             generation=1,
@@ -224,7 +226,7 @@ class TestSelfHealingLoop:
         )
         adapter = HarnessAdapter(manifest)
         healing = SelfHealingLoop(adapter, "run-4")
-        
+
         # Trigger fitness collapse
         event = BreedingEvent(
             event_type=BreedingEventType.GENERATION_END,
@@ -233,7 +235,7 @@ class TestSelfHealingLoop:
             best_fitness=0.0001,
         )
         healing.check_health(event)
-        
+
         assert len(healing.healing_log) > 0
         assert healing.healing_log[0]["action"] == "fitness_collapse_recovery"
 
@@ -247,7 +249,7 @@ class TestSelfHealingLoop:
         adapter = HarnessAdapter(manifest)
         healing = SelfHealingLoop(adapter, "run-5")
         healing._max_recoveries = 2
-        
+
         # Trigger multiple times
         for i in range(5):
             event = BreedingEvent(
@@ -257,7 +259,7 @@ class TestSelfHealingLoop:
                 best_fitness=0.0001,
             )
             healing.check_health(event)
-        
+
         # Should stop after max_recoveries
         assert healing._recovery_count == 2
 
@@ -272,7 +274,9 @@ class TestOpenConstructShell:
 
     def test_spawn(self):
         shell = OpenConstructShell()
-        run_id = shell.spawn("pythagorean", population_size=5, genome_length=3, generations=2)
+        run_id = shell.spawn(
+            "pythagorean", population_size=5, genome_length=3, generations=2
+        )
         assert run_id.startswith("pythagorean-")
         status = shell.status(run_id)
         assert status["attachment"] == "pythagorean"
@@ -285,11 +289,13 @@ class TestOpenConstructShell:
 
     def test_run_single_generation(self):
         shell = OpenConstructShell()
-        run_id = shell.spawn("pythagorean", population_size=5, genome_length=3, generations=1)
-        
+        run_id = shell.spawn(
+            "pythagorean", population_size=5, genome_length=3, generations=1
+        )
+
         def task_fn(matrix):
             return float(np.sum(matrix))
-        
+
         readings = list(shell.run(run_id, task_fn, generations=1))
         assert len(readings) > 0
         metric_readings = [r for r in readings if r.sensor_type == SensorType.METRIC]
@@ -297,33 +303,39 @@ class TestOpenConstructShell:
 
     def test_run_multiple_generations(self):
         shell = OpenConstructShell()
-        run_id = shell.spawn("pythagorean", population_size=5, genome_length=3, generations=3)
-        
+        run_id = shell.spawn(
+            "pythagorean", population_size=5, genome_length=3, generations=3
+        )
+
         def task_fn(matrix):
             return float(np.sum(matrix))
-        
+
         readings = list(shell.run(run_id, task_fn, generations=3))
-        
+
         # Should have multiple generation readings
         fitness_readings = [r for r in readings if r.name == "best_fitness"]
         assert len(fitness_readings) >= 3
 
     def test_health_check(self):
         shell = OpenConstructShell()
-        run_id = shell.spawn("pythagorean", population_size=5, genome_length=3, generations=1)
-        
+        run_id = shell.spawn(
+            "pythagorean", population_size=5, genome_length=3, generations=1
+        )
+
         def task_fn(matrix):
             return float(np.sum(matrix))
-        
+
         list(shell.run(run_id, task_fn, generations=1))
         readings = shell.health_check(run_id)
         assert len(readings) > 0
 
     def test_status_all(self):
         shell = OpenConstructShell()
-        run_id1 = shell.spawn("pythagorean", population_size=5, genome_length=3, generations=1)
+        run_id1 = shell.spawn(
+            "pythagorean", population_size=5, genome_length=3, generations=1
+        )
         run_id2 = shell.spawn("spectral", population_size=5, generations=1)
-        
+
         status = shell.status()
         assert status["active_runs"] == 2
         assert run_id1 in status["runs"]
@@ -331,18 +343,22 @@ class TestOpenConstructShell:
 
     def test_terminate(self):
         shell = OpenConstructShell()
-        run_id = shell.spawn("pythagorean", population_size=5, genome_length=3, generations=1)
+        run_id = shell.spawn(
+            "pythagorean", population_size=5, genome_length=3, generations=1
+        )
         shell.terminate(run_id)
         status = shell.status(run_id)
         assert status["status"] == "terminated"
 
     def test_multi_node_shell(self):
         shell = OpenConstructShell(node_id="node-1", all_nodes=["node-1", "node-2"])
-        run_id = shell.spawn("pythagorean", population_size=5, genome_length=3, generations=1)
-        
+        run_id = shell.spawn(
+            "pythagorean", population_size=5, genome_length=3, generations=1
+        )
+
         def task_fn(matrix):
             return float(np.sum(matrix))
-        
+
         readings = list(shell.run(run_id, task_fn, generations=1))
         assert len(readings) > 0
 
@@ -379,11 +395,11 @@ class TestIntegrationFlow:
     def test_full_agent_workflow(self):
         """End-to-end: Agent spawns, runs, monitors, and gets results."""
         shell = OpenConstructShell()
-        
+
         # Agent lists available equipment
         attachments = shell.list_attachments()
         assert len(attachments) > 0
-        
+
         # Agent spawns pythagorean breeder
         run_id = shell.spawn(
             "pythagorean",
@@ -392,11 +408,11 @@ class TestIntegrationFlow:
             generations=3,
             name="agent-workflow-test",
         )
-        
+
         # Agent defines task (expects matrix for PythagoreanBreeder)
         def task_fn(matrix):
             return float(np.sum(matrix))
-        
+
         # Agent runs and monitors sensors
         all_readings = []
         for reading in shell.run(run_id, task_fn, generations=3):
@@ -404,16 +420,16 @@ class TestIntegrationFlow:
             # Agent checks for alerts
             if reading.sensor_type == SensorType.ALERT:
                 print(f"AGENT ALERT: {reading.to_agent_text()}")
-        
+
         # Agent checks status
         status = shell.status(run_id)
         assert status["status"] == "complete"
-        
+
         # Agent gets best result
         best_genome, best_fitness = shell.get_best(run_id)
         assert best_genome is not None
         assert best_fitness >= 0.0
-        
+
         # Agent reviews health history
         health = shell.health_check(run_id)
         assert len(health) > 0
@@ -424,14 +440,16 @@ class TestIntegrationFlow:
             node_id="node-1",
             all_nodes=["node-1", "node-2", "node-3"],
         )
-        
-        run_id = shell.spawn("pythagorean", population_size=5, genome_length=3, generations=2)
-        
+
+        run_id = shell.spawn(
+            "pythagorean", population_size=5, genome_length=3, generations=2
+        )
+
         def task_fn(matrix):
             return float(np.sum(matrix))
-        
+
         readings = list(shell.run(run_id, task_fn, generations=2))
-        
+
         # Check for consensus metrics
         consensus_readings = [r for r in readings if "consensus" in r.name.lower()]
         # Multi-node may or may not produce consensus readings depending on implementation
@@ -443,7 +461,7 @@ class TestIntegrationFlow:
         """Verify the manual is comprehensive enough for an agent to operate."""
         shell = OpenConstructShell()
         manual = shell.to_skill_manual()
-        
+
         # Should contain all key sections
         required_sections = [
             "Available Attachments",
@@ -456,7 +474,7 @@ class TestIntegrationFlow:
         ]
         for section in required_sections:
             assert section in manual, f"Missing section: {section}"
-        
+
         # Should contain all attachments
         for name, _ in shell.list_attachments():
             assert name in manual, f"Missing attachment in manual: {name}"
@@ -467,7 +485,7 @@ class TestIntegrationFlow:
             node_id="node-1",
             all_nodes=["node-1"],
         )
-        
+
         campaigns = [
             {
                 "name": "exact-rational",
@@ -480,9 +498,11 @@ class TestIntegrationFlow:
                 "params": {"population_size": 5, "spectrum_size": 32},
             },
         ]
-        
-        result = shell.run_parallel(campaigns, generations=1, repo_path="/tmp/test-repo")
-        
+
+        result = shell.run_parallel(
+            campaigns, generations=1, repo_path="/tmp/test-repo"
+        )
+
         # Verify structure
         assert "campaign_count" in result
         assert result["campaign_count"] == 2

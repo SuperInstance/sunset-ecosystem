@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 _HNSWLIB_AVAILABLE = False
 try:
     import hnswlib
+
     _HNSWLIB_AVAILABLE = True
 except ImportError:
     logger.info("hnswlib not available; HNSW index will use brute-force fallback")
@@ -38,6 +39,7 @@ except ImportError:
 @dataclass(frozen=True)
 class HnswIndexConfig:
     """Configuration for HNSW index."""
+
     dim: int = 64
     space: str = "l2"  # "l2" or "ip" (inner product = cosine similarity)
     max_elements: int = 10000
@@ -117,9 +119,7 @@ class HnswMeshTable:
         """
         vec = np.array(query_vector, dtype=np.float32)
         if vec.shape[0] != self.config.dim:
-            raise ValueError(
-                f"Query dim {vec.shape[0]} != index dim {self.config.dim}"
-            )
+            raise ValueError(f"Query dim {vec.shape[0]} != index dim {self.config.dim}")
 
         with self._lock:
             if self._hnsw_index is None or self._index_count == 0:
@@ -128,9 +128,7 @@ class HnswMeshTable:
 
             # HNSW search
             try:
-                labels, distances = self._hnsw_index.knn_query(
-                    vec.reshape(1, -1), k=k
-                )
+                labels, distances = self._hnsw_index.knn_query(vec.reshape(1, -1), k=k)
                 labels = labels[0]
                 distances = distances[0]
             except Exception as exc:
@@ -277,7 +275,9 @@ class HnswMeshTable:
             self._rebuild_count += 1
             logger.info(
                 "Rebuilt HNSW index for %s: %d entries (rebuild #%d)",
-                self.base.table_id, count, self._rebuild_count,
+                self.base.table_id,
+                count,
+                self._rebuild_count,
             )
 
     def _add_to_hnsw(self, entry: Any) -> None:

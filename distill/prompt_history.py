@@ -25,6 +25,7 @@ class PromptRecord:
         application: Which application this prompt belongs to.
         timestamp: When this record was created.
     """
+
     prompt: str
     response: str
     seed: int = 42
@@ -64,7 +65,7 @@ class PromptHistory:
         with self._lock:
             self._records.append(record)
             if len(self._records) > self._max_records:
-                self._records = self._records[-self._max_records:]
+                self._records = self._records[-self._max_records :]
 
     def query(
         self,

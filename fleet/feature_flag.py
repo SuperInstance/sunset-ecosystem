@@ -11,6 +11,7 @@ Usage:
     assert flags.is_enabled("dark_mode") is True
     assert flags.is_enabled("beta_feature", user_id="user-1") in [True, False]
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -100,7 +101,9 @@ class FeatureFlags:
 
             # Hash user_id to determine if in rollout bucket
             if user_id:
-                hash_val = int(hashlib.md5(f"{name}:{user_id}".encode()).hexdigest(), 16)
+                hash_val = int(
+                    hashlib.md5(f"{name}:{user_id}".encode()).hexdigest(), 16
+                )
                 bucket = hash_val % 100
                 return bucket < value
             return False

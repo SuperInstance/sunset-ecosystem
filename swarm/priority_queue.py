@@ -13,6 +13,7 @@ Usage:
     pq.enqueue(task, priority=1)
     task = pq.dequeue()  # highest priority task
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -30,9 +31,10 @@ from typing import Any, Callable
 @dataclass(order=True)
 class QueuedTask:
     """A task in the priority queue.
-    
+
     Ordering: priority (ascending), then sequence (ascending) for FIFO.
     """
+
     priority: int
     sequence: int
     task_id: str = field(compare=False)
@@ -68,7 +70,9 @@ class BreedingPriorityQueue:
         heapq.heappush(self._queue, task)
         return task
 
-    def enqueue_many(self, items: list[tuple[dict[str, Any], int]]) -> list[QueuedTask | None]:
+    def enqueue_many(
+        self, items: list[tuple[dict[str, Any], int]]
+    ) -> list[QueuedTask | None]:
         """Bulk enqueue. Returns list of enqueued tasks (None for dropped)."""
         return [self.enqueue(payload, priority) for payload, priority in items]
 
@@ -153,4 +157,6 @@ class BreedingPriorityQueue:
         }
 
     def __repr__(self) -> str:
-        return f"BreedingPriorityQueue(size={len(self._queue)}, capacity={self.capacity})"
+        return (
+            f"BreedingPriorityQueue(size={len(self._queue)}, capacity={self.capacity})"
+        )

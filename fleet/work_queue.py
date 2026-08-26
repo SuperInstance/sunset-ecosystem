@@ -13,6 +13,7 @@ Usage:
         ...  # do work
         queue.ack(item.id)
 """
+
 from __future__ import annotations
 
 import heapq
@@ -116,7 +117,9 @@ class WorkQueue:
     # Consumer API
     # ------------------------------------------------------------------
 
-    def claim(self, worker_id: str, timeout: Optional[float] = None) -> Optional[WorkItem]:
+    def claim(
+        self, worker_id: str, timeout: Optional[float] = None
+    ) -> Optional[WorkItem]:
         """
         Claim the highest-priority visible task.
 
@@ -147,7 +150,10 @@ class WorkQueue:
             if item.visible_at > now:
                 deferred.append((priority, created_at, item_id))
                 continue
-            if item.claimed_by is not None and (item.claimed_at + self._visibility) > now:
+            if (
+                item.claimed_by is not None
+                and (item.claimed_at + self._visibility) > now
+            ):
                 deferred.append((priority, created_at, item_id))
                 continue
             # Found one — claim it and restore deferred items

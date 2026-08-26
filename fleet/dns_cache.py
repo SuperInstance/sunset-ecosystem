@@ -10,6 +10,7 @@ Usage:
     cache.put("svc-a.fleet.local", "192.168.1.1", ttl_sec=60)
     assert cache.resolve("svc-a.fleet.local") == ["192.168.1.1"]
 """
+
 from __future__ import annotations
 
 import time
@@ -151,7 +152,11 @@ class DNSCache:
             del self._cache[h]
 
         total = self._hits + self._misses + self._negative_hits
-        hit_rate = self._hits / (self._hits + self._misses) if (self._hits + self._misses) > 0 else 0.0
+        hit_rate = (
+            self._hits / (self._hits + self._misses)
+            if (self._hits + self._misses) > 0
+            else 0.0
+        )
 
         return {
             "size": len(self._cache),

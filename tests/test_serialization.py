@@ -2,9 +2,11 @@
 
 Run: python3 -m pytest tests/test_serialization.py -v --tb=short
 """
+
 from __future__ import annotations
 
-import json, zlib
+import json
+import zlib
 
 import pytest
 
@@ -36,7 +38,9 @@ class TestSerializationRegistry:
 
     def test_schema_validation_pass(self):
         reg = SerializationRegistry()
-        reg.register("breed", Schema("breed", required=["score"], types={"score": float}))
+        reg.register(
+            "breed", Schema("breed", required=["score"], types={"score": float})
+        )
         obj = {"score": 0.95}
         blob = reg.serialize("breed", obj)
         result = reg.deserialize("breed", blob)

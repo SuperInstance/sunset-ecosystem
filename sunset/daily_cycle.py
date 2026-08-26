@@ -200,8 +200,16 @@ class DailyCycle:
             path = self.JOURNAL_DIR / f"{self.agent_id}-session.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         data = self.session_data.to_dict()
-        data["session_start"] = self.session_data.session_start.isoformat() if self.session_data.session_start else None
-        data["session_end"] = self.session_data.session_end.isoformat() if self.session_data.session_end else None
+        data["session_start"] = (
+            self.session_data.session_start.isoformat()
+            if self.session_data.session_start
+            else None
+        )
+        data["session_end"] = (
+            self.session_data.session_end.isoformat()
+            if self.session_data.session_end
+            else None
+        )
         path.write_text(json.dumps(data, indent=2, default=str))
         return path
 

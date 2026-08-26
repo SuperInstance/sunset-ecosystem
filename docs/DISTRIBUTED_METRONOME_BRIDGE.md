@@ -132,10 +132,12 @@ The conductor calls `bridge.tick()` on every scheduler beat and `bridge.sync_wit
 Sync messages are carried as gossip payload type `"metronome_sync"`:
 
 ```python
-gossip.inject({
-    "type": "metronome_sync",
-    "payload": sync_message.to_dict(),
-})
+gossip.inject(
+    {
+        "type": "metronome_sync",
+        "payload": sync_message.to_dict(),
+    }
+)
 ```
 
 On receipt, the gossip layer extracts the payload and calls:

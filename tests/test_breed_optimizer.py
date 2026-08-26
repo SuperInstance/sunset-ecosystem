@@ -133,12 +133,42 @@ class TestAnomalyDetection:
     def test_detect_fitness_anomaly(self) -> None:
         opt = BreedOptimizer()
         history = [
-            {"parent_a": "a", "parent_b": "b", "offspring_fitness": 0.8, "diversity": 0.5},
-            {"parent_a": "a", "parent_b": "b", "offspring_fitness": 0.85, "diversity": 0.5},
-            {"parent_a": "a", "parent_b": "b", "offspring_fitness": 0.82, "diversity": 0.5},
-            {"parent_a": "a", "parent_b": "b", "offspring_fitness": 0.81, "diversity": 0.5},
-            {"parent_a": "a", "parent_b": "b", "offspring_fitness": 0.83, "diversity": 0.5},
-            {"parent_a": "a", "parent_b": "b", "offspring_fitness": 0.1, "diversity": 0.5},  # Anomaly
+            {
+                "parent_a": "a",
+                "parent_b": "b",
+                "offspring_fitness": 0.8,
+                "diversity": 0.5,
+            },
+            {
+                "parent_a": "a",
+                "parent_b": "b",
+                "offspring_fitness": 0.85,
+                "diversity": 0.5,
+            },
+            {
+                "parent_a": "a",
+                "parent_b": "b",
+                "offspring_fitness": 0.82,
+                "diversity": 0.5,
+            },
+            {
+                "parent_a": "a",
+                "parent_b": "b",
+                "offspring_fitness": 0.81,
+                "diversity": 0.5,
+            },
+            {
+                "parent_a": "a",
+                "parent_b": "b",
+                "offspring_fitness": 0.83,
+                "diversity": 0.5,
+            },
+            {
+                "parent_a": "a",
+                "parent_b": "b",
+                "offspring_fitness": 0.1,
+                "diversity": 0.5,
+            },  # Anomaly
         ]
         anomalies = opt.detect_anomalies(history, threshold=2.0)
         assert len(anomalies) > 0
@@ -148,7 +178,12 @@ class TestAnomalyDetection:
     def test_detect_inbreeding(self) -> None:
         opt = BreedOptimizer()
         history = [
-            {"parent_a": "a", "parent_b": "b", "offspring_fitness": 0.5, "diversity": 0.5}
+            {
+                "parent_a": "a",
+                "parent_b": "b",
+                "offspring_fitness": 0.5,
+                "diversity": 0.5,
+            }
             for _ in range(10)
         ]
         anomalies = opt.detect_anomalies(history, threshold=2.0)
@@ -158,13 +193,48 @@ class TestAnomalyDetection:
     def test_detect_diversity_collapse(self) -> None:
         opt = BreedOptimizer()
         history = [
-            {"parent_a": "a", "parent_b": "b", "offspring_fitness": 0.5, "diversity": 0.5},
-            {"parent_a": "c", "parent_b": "d", "offspring_fitness": 0.5, "diversity": 0.5},
-            {"parent_a": "e", "parent_b": "f", "offspring_fitness": 0.5, "diversity": 0.05},
-            {"parent_a": "g", "parent_b": "h", "offspring_fitness": 0.5, "diversity": 0.04},
-            {"parent_a": "i", "parent_b": "j", "offspring_fitness": 0.5, "diversity": 0.03},
-            {"parent_a": "k", "parent_b": "l", "offspring_fitness": 0.5, "diversity": 0.02},
-            {"parent_a": "m", "parent_b": "n", "offspring_fitness": 0.5, "diversity": 0.01},
+            {
+                "parent_a": "a",
+                "parent_b": "b",
+                "offspring_fitness": 0.5,
+                "diversity": 0.5,
+            },
+            {
+                "parent_a": "c",
+                "parent_b": "d",
+                "offspring_fitness": 0.5,
+                "diversity": 0.5,
+            },
+            {
+                "parent_a": "e",
+                "parent_b": "f",
+                "offspring_fitness": 0.5,
+                "diversity": 0.05,
+            },
+            {
+                "parent_a": "g",
+                "parent_b": "h",
+                "offspring_fitness": 0.5,
+                "diversity": 0.04,
+            },
+            {
+                "parent_a": "i",
+                "parent_b": "j",
+                "offspring_fitness": 0.5,
+                "diversity": 0.03,
+            },
+            {
+                "parent_a": "k",
+                "parent_b": "l",
+                "offspring_fitness": 0.5,
+                "diversity": 0.02,
+            },
+            {
+                "parent_a": "m",
+                "parent_b": "n",
+                "offspring_fitness": 0.5,
+                "diversity": 0.01,
+            },
         ]
         anomalies = opt.detect_anomalies(history, threshold=2.0)
         assert len(anomalies) > 0
@@ -224,7 +294,7 @@ class TestOptimizeArchive:
         for i in range(50):
             archive.add(
                 (random.random(), random.random()),
-                {"fitness": 0.5 + random.random() * 0.5, "traits": [random.random()]}
+                {"fitness": 0.5 + random.random() * 0.5, "traits": [random.random()]},
             )
         result = opt.optimize_archive(archive, iterations=20)
         assert isinstance(result, BreedingArchive)

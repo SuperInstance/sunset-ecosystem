@@ -12,6 +12,7 @@ Usage:
     results = bp.process(tasks, processor=lambda t: breed(t))
     # results.successful, results.failed, results.partial
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BatchResult:
     """Result of a batch processing run."""
+
     successful: list[Any] = field(default_factory=list)
     failed: list[tuple[Any, str]] = field(default_factory=list)
     total: int = 0
@@ -131,4 +133,6 @@ class BatchProcessor:
         }
 
     def __repr__(self) -> str:
-        return f"BatchProcessor(workers={self.max_workers}, processed={self._processed})"
+        return (
+            f"BatchProcessor(workers={self.max_workers}, processed={self._processed})"
+        )

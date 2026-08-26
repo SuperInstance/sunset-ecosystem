@@ -36,6 +36,7 @@ class AsyncDeviceBudget:
         max_cost: Maximum thermal cost the device can absorb.
         current_cost: Currently allocated thermal cost.
     """
+
     device_type: DeviceType
     max_cost: float
     current_cost: float = 0.0
@@ -76,9 +77,11 @@ class AsyncThermalBudget:
         self,
         budgets: dict[DeviceType, float] | None = None,
     ) -> None:
-        config = budgets if budgets is not None else {
-            dt: float(max_agents) for dt, max_agents in DEFAULT_BUDGETS.items()
-        }
+        config = (
+            budgets
+            if budgets is not None
+            else {dt: float(max_agents) for dt, max_agents in DEFAULT_BUDGETS.items()}
+        )
         self._devices: dict[DeviceType, AsyncDeviceBudget] = {
             dt: AsyncDeviceBudget(device_type=dt, max_cost=max_cost)
             for dt, max_cost in config.items()
@@ -149,9 +152,7 @@ class AsyncThermalBudget:
         async with self._condition:
             db = self._devices.get(device)
             if db is None:
-                raise ThermalThrottled(
-                    f"Device {device.value!r} not configured"
-                )
+                raise ThermalThrottled(f"Device {device.value!r} not configured")
 
             if wait:
                 # Backpressure: suspend until enough budget is available
@@ -164,8 +165,7 @@ class AsyncThermalBudget:
                     )
                 except asyncio.TimeoutError:
                     raise ThermalThrottled(
-                        f"Timeout waiting for {device.value} budget "
-                        f"after {timeout}s"
+                        f"Timeout waiting for {device.value} budget after {timeout}s"
                     )
 
             if db.current_cost + cost > db.max_cost:

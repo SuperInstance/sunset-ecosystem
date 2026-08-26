@@ -12,6 +12,7 @@ Usage:
     assert rotator.get_secret("api-key") == "new-secret-456"
     # Old secret still valid during grace period
 """
+
 from __future__ import annotations
 
 import time
@@ -86,7 +87,10 @@ class SecretRotator:
         entry = self._secrets.get(name)
         if not entry or not entry["previous"]:
             return None
-        if entry["rotated_at"] is not None and (self._clock() - entry["rotated_at"]) > self._grace_period:
+        if (
+            entry["rotated_at"] is not None
+            and (self._clock() - entry["rotated_at"]) > self._grace_period
+        ):
             return None
         return entry["previous"]
 

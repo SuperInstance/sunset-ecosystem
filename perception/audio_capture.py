@@ -3,6 +3,7 @@
 MicrophoneCapture — sounddevice/pyaudio with frame-dropping for target latency.
 SystemAudioCapture  — pyaudio loopback or ffmpeg for system audio.
 """
+
 from __future__ import annotations
 
 __all__ = ["MicrophoneCapture", "SystemAudioCapture", "AudioCaptureConfig"]
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 _HAS_SOUNDDEVICE = False
 try:
     import sounddevice as sd
+
     _HAS_SOUNDDEVICE = True
 except Exception:
     pass
@@ -29,6 +31,7 @@ except Exception:
 _HAS_PYAUDIO = False
 try:
     import pyaudio
+
     _HAS_PYAUDIO = True
 except Exception:
     pass
@@ -36,6 +39,7 @@ except Exception:
 _HAS_FFMPEG = False
 try:
     import shutil
+
     if shutil.which("ffmpeg"):
         _HAS_FFMPEG = True
 except Exception:
@@ -45,9 +49,10 @@ except Exception:
 @dataclass
 class AudioCaptureConfig:
     """Shared audio capture configuration."""
+
     sample_rate: int = 16000
     channels: int = 1
-    chunk_duration_ms: float = 100.0   # target chunk size
+    chunk_duration_ms: float = 100.0  # target chunk size
     target_latency_ms: float = 100.0  # frame-dropping target
     dtype: str = "float32"
 
@@ -124,11 +129,7 @@ class MicrophoneCapture:
 
     def _open_pyaudio(self) -> None:
         self._pa = pyaudio.PyAudio()
-        fmt = (
-            pyaudio.paFloat32
-            if self.config.dtype == "float32"
-            else pyaudio.paInt16
-        )
+        fmt = pyaudio.paFloat32 if self.config.dtype == "float32" else pyaudio.paInt16
         self._stream = self._pa.open(
             format=fmt,
             channels=self.config.channels,
@@ -216,11 +217,15 @@ class MicrophoneCapture:
                 return np.asarray(data, dtype=np.float32)
             else:
                 # pyaudio
-                raw = self._stream.read(self.config.chunk_samples, exception_on_overflow=False)
+                raw = self._stream.read(
+                    self.config.chunk_samples, exception_on_overflow=False
+                )
                 if self.config.dtype == "float32":
                     arr = np.frombuffer(raw, dtype=np.float32)
                 else:
-                    arr = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+                    arr = (
+                        np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+                    )
                 if self.config.channels > 1:
                     arr = arr.reshape(-1, self.config.channels)[:, 0]
                 return arr
@@ -318,12 +323,18 @@ class SystemAudioCapture:
         fmt = "f32le" if self.config.dtype == "float32" else "s16le"
         cmd = [
             "ffmpeg",
-            "-f", "pulse",  # or alsa
-            "-i", "default",
-            "-ac", str(self.config.channels),
-            "-ar", str(self.config.sample_rate),
-            "-f", fmt,
-            "-acodec", "pcm_" + fmt,
+            "-f",
+            "pulse",  # or alsa
+            "-i",
+            "default",
+            "-ac",
+            str(self.config.channels),
+            "-ar",
+            str(self.config.sample_rate),
+            "-f",
+            fmt,
+            "-acodec",
+            "pcm_" + fmt,
             "-",
         ]
         self._process = subprocess.Popen(
@@ -334,11 +345,7 @@ class SystemAudioCapture:
 
     def _open_pyaudio_loopback(self) -> None:
         self._pa = pyaudio.PyAudio()
-        fmt = (
-            pyaudio.paFloat32
-            if self.config.dtype == "float32"
-            else pyaudio.paInt16
-        )
+        fmt = pyaudio.paFloat32 if self.config.dtype == "float32" else pyaudio.paInt16
         device_idx = self.monitor if isinstance(self.monitor, int) else None
         self._stream = self._pa.open(
             format=fmt,

@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class BenchmarkResult:
     """Result of a single benchmark run."""
+
     problem: str
     breeder: str
     best_fitness: float
@@ -49,15 +50,17 @@ class BenchmarkSuite:
 
     def _sphere(self, genome: np.ndarray) -> float:
         """Sphere function - simple unimodal."""
-        return -np.sum(genome ** 2)
+        return -np.sum(genome**2)
 
     def _rosenbrock(self, genome: np.ndarray) -> float:
         """Rosenbrock function - deceptive valley."""
-        return -np.sum(100 * (genome[1:] - genome[:-1] ** 2) ** 2 + (1 - genome[:-1]) ** 2)
+        return -np.sum(
+            100 * (genome[1:] - genome[:-1] ** 2) ** 2 + (1 - genome[:-1]) ** 2
+        )
 
     def _rastrigin(self, genome: np.ndarray) -> float:
         """Rastrigin function - highly multimodal."""
-        return -np.sum(genome ** 2 - 10 * np.cos(2 * np.pi * genome) + 10)
+        return -np.sum(genome**2 - 10 * np.cos(2 * np.pi * genome) + 10)
 
     def _ackley(self, genome: np.ndarray) -> float:
         """Ackley function - many local minima."""
@@ -65,7 +68,7 @@ class BenchmarkSuite:
         b = 0.2
         c = 2 * np.pi
         d = len(genome)
-        sum1 = np.sum(genome ** 2)
+        sum1 = np.sum(genome**2)
         sum2 = np.sum(np.cos(c * genome))
         return -(a + np.exp(1) - a * np.exp(-b * np.sqrt(sum1 / d)) - np.exp(sum2 / d))
 
@@ -95,8 +98,13 @@ class BenchmarkSuite:
             "leading_ones": self._leading_ones,
         }
 
-    def run_breeder(self, breeder_name: str, breeder_instance: Any,
-                     problem_name: str, dimensions: int = 10) -> BenchmarkResult:
+    def run_breeder(
+        self,
+        breeder_name: str,
+        breeder_instance: Any,
+        problem_name: str,
+        dimensions: int = 10,
+    ) -> BenchmarkResult:
         """
         Run a breeder on a specific problem.
 
@@ -111,41 +119,41 @@ class BenchmarkSuite:
             raise ValueError(f"Unknown problem: {problem_name}")
 
         start_time = time.time()
-        best_fitness = float('-inf')
+        best_fitness = float("-inf")
         success = False
         final_diversity = 0.0
 
         try:
             # Initialize breeder
-            if hasattr(breeder_instance, 'initialize'):
+            if hasattr(breeder_instance, "initialize"):
                 breeder_instance.initialize()
 
             # Evaluate initial population
-            if hasattr(breeder_instance, 'evaluate'):
+            if hasattr(breeder_instance, "evaluate"):
                 breeder_instance.evaluate(problem)
 
             # Evolve
             for gen in range(self.max_generations):
-                if hasattr(breeder_instance, 'evolve'):
+                if hasattr(breeder_instance, "evolve"):
                     breeder_instance.evolve(problem)
                 else:
                     break
 
                 # Check for improvement
-                if hasattr(breeder_instance, 'get_best'):
+                if hasattr(breeder_instance, "get_best"):
                     best = breeder_instance.get_best()
-                    if best and hasattr(best, 'fitness'):
+                    if best and hasattr(best, "fitness"):
                         best_fitness = best.fitness
 
             # Get diversity
-            if hasattr(breeder_instance, 'get_diversity'):
+            if hasattr(breeder_instance, "get_diversity"):
                 final_diversity = breeder_instance.get_diversity()
 
             success = True
 
         except Exception as e:
             success = False
-            best_fitness = float('-inf')
+            best_fitness = float("-inf")
 
         elapsed = time.time() - start_time
 
@@ -161,7 +169,9 @@ class BenchmarkSuite:
         self.results.append(result)
         return result
 
-    def run_all(self, breeder_name: str, breeder_instance: Any) -> List[BenchmarkResult]:
+    def run_all(
+        self, breeder_name: str, breeder_instance: Any
+    ) -> List[BenchmarkResult]:
         """Run all benchmark problems on a breeder."""
         results = []
         for problem in self.get_problems().keys():
@@ -169,7 +179,9 @@ class BenchmarkSuite:
             results.append(result)
         return results
 
-    def compare_breeders(self, breeder_results: Dict[str, List[BenchmarkResult]]) -> Dict[str, Any]:
+    def compare_breeders(
+        self, breeder_results: Dict[str, List[BenchmarkResult]]
+    ) -> Dict[str, Any]:
         """
         Compare multiple breeders across all problems.
 
@@ -181,12 +193,14 @@ class BenchmarkSuite:
             for breeder_name, results in breeder_results.items():
                 for r in results:
                     if r.problem == problem:
-                        problem_results.append({
-                            "breeder": breeder_name,
-                            "fitness": r.best_fitness,
-                            "time": r.time_seconds,
-                            "success": r.success,
-                        })
+                        problem_results.append(
+                            {
+                                "breeder": breeder_name,
+                                "fitness": r.best_fitness,
+                                "time": r.time_seconds,
+                                "success": r.success,
+                            }
+                        )
             if problem_results:
                 best = max(problem_results, key=lambda x: x["fitness"])
                 comparison[problem] = {
@@ -205,10 +219,13 @@ class BenchmarkSuite:
 
     def export_json(self) -> str:
         """Export all results as JSON."""
-        return json.dumps({
-            "max_generations": self.max_generations,
-            "results": [r.to_dict() for r in self.results],
-        }, indent=2)
+        return json.dumps(
+            {
+                "max_generations": self.max_generations,
+                "results": [r.to_dict() for r in self.results],
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

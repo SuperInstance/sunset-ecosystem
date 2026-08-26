@@ -197,8 +197,8 @@ from logos.opcode_capability_index import OpcodeCapabilityIndex
 idx = OpcodeCapabilityIndex()
 
 # Can I use this opcode from Python?
-idx.can_use_from_python("RangeCheck")   # → True
-idx.can_use_from_python("Prove")        # → False
+idx.can_use_from_python("RangeCheck")  # → True
+idx.can_use_from_python("Prove")  # → False
 
 # List all safe opcodes in a category
 idx.get_safe_opcodes(category="arithmetic")
@@ -211,6 +211,7 @@ idx.suggest_path_a_equivalent("RangeCheck")  # → "check_candidate"
 
 # Override after manual testing
 from logos.opcode_capability_index import OpcodeStatus
+
 idx.update_status("SnapVerify", OpcodeStatus.PYTHON_SAFE)
 
 # Persist

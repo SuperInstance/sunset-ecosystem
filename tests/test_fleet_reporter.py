@@ -14,7 +14,9 @@ from fleet.fleet_reporter import FleetReporter, ReportJob, ReportResult
 
 class TestReportJob:
     def test_fields(self) -> None:
-        job = ReportJob(name="test", report_type="dashboard", output_path="docs/test.md")
+        job = ReportJob(
+            name="test", report_type="dashboard", output_path="docs/test.md"
+        )
         assert job.name == "test"
         assert job.schedule_minutes == 0
         assert job.run_count == 0
@@ -73,7 +75,9 @@ class TestFleetReporter:
 
     def test_generate_integration_guide(self, tmp_path: Path) -> None:
         reporter = FleetReporter(output_dir=str(tmp_path / "reports"))
-        result = reporter.generate_integration_guide(tmp_path / "reports" / "INTEGRATION.md")
+        result = reporter.generate_integration_guide(
+            tmp_path / "reports" / "INTEGRATION.md"
+        )
         assert result.success is True
 
     def test_generate_trend_report(self, tmp_path: Path) -> None:

@@ -31,27 +31,35 @@ def sample_entries() -> list[VectorTableEntry]:
     for i in range(20):
         angle = 2 * np.pi * i / 20
         vec = np.array([np.cos(angle), np.sin(angle)], dtype=np.float32)
-        entries.append(VectorTableEntry(
-            agent_id=f"agent_{i:03d}",
-            vector=vec,
-            timestamp=1000.0 + i,
-            node_id="test_node",
-            generation=i,
-            fitness=0.5 + i * 0.025,
-            signature=f"test_signature_{i:03d}",
-        ))
+        entries.append(
+            VectorTableEntry(
+                agent_id=f"agent_{i:03d}",
+                vector=vec,
+                timestamp=1000.0 + i,
+                node_id="test_node",
+                generation=i,
+                fitness=0.5 + i * 0.025,
+                signature=f"test_signature_{i:03d}",
+            )
+        )
     return entries
 
 
 class TestIndexConstruction:
     def test_build_from_empty(self, base_table: MeshVectorTable) -> None:
-        hnsw = HnswMeshTable(base_table, config=HnswIndexConfig(dim=2, max_elements=100))
+        hnsw = HnswMeshTable(
+            base_table, config=HnswIndexConfig(dim=2, max_elements=100)
+        )
         assert hnsw.stats["index_count"] == 0
 
-    def test_build_from_existing(self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]) -> None:
+    def test_build_from_existing(
+        self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]
+    ) -> None:
         for e in sample_entries:
             base_table.insert(e, skip_verify=True)
-        hnsw = HnswMeshTable(base_table, config=HnswIndexConfig(dim=2, max_elements=100))
+        hnsw = HnswMeshTable(
+            base_table, config=HnswIndexConfig(dim=2, max_elements=100)
+        )
         if hnsw.stats["hnsw_available"]:
             assert hnsw.stats["index_count"] == 20
         else:
@@ -59,10 +67,14 @@ class TestIndexConstruction:
 
 
 class TestKnnSearch:
-    def test_knn_basic(self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]) -> None:
+    def test_knn_basic(
+        self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]
+    ) -> None:
         for e in sample_entries:
             base_table.insert(e, skip_verify=True)
-        hnsw = HnswMeshTable(base_table, config=HnswIndexConfig(dim=2, max_elements=100, space="l2"))
+        hnsw = HnswMeshTable(
+            base_table, config=HnswIndexConfig(dim=2, max_elements=100, space="l2")
+        )
 
         # Query near agent_0 (angle 0 = [1, 0])
         query = np.array([1.0, 0.0], dtype=np.float32)
@@ -72,10 +84,14 @@ class TestKnnSearch:
         # First result should be close to agent_0
         assert results[0][0].agent_id in ["agent_000", "agent_001", "agent_019"]
 
-    def test_knn_with_filter(self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]) -> None:
+    def test_knn_with_filter(
+        self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]
+    ) -> None:
         for e in sample_entries:
             base_table.insert(e, skip_verify=True)
-        hnsw = HnswMeshTable(base_table, config=HnswIndexConfig(dim=2, max_elements=100))
+        hnsw = HnswMeshTable(
+            base_table, config=HnswIndexConfig(dim=2, max_elements=100)
+        )
 
         query = np.array([1.0, 0.0], dtype=np.float32)
         # Filter: only high fitness
@@ -84,10 +100,14 @@ class TestKnnSearch:
 
 
 class TestRangeSearch:
-    def test_range_search(self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]) -> None:
+    def test_range_search(
+        self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]
+    ) -> None:
         for e in sample_entries:
             base_table.insert(e, skip_verify=True)
-        hnsw = HnswMeshTable(base_table, config=HnswIndexConfig(dim=2, max_elements=100))
+        hnsw = HnswMeshTable(
+            base_table, config=HnswIndexConfig(dim=2, max_elements=100)
+        )
 
         query = np.array([1.0, 0.0], dtype=np.float32)
         results = hnsw.range_search(query, radius=0.5, max_results=10)
@@ -95,10 +115,14 @@ class TestRangeSearch:
 
 
 class TestNoveltyAndDensity:
-    def test_novelty_neighbors(self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]) -> None:
+    def test_novelty_neighbors(
+        self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]
+    ) -> None:
         for e in sample_entries:
             base_table.insert(e, skip_verify=True)
-        hnsw = HnswMeshTable(base_table, config=HnswIndexConfig(dim=2, max_elements=100))
+        hnsw = HnswMeshTable(
+            base_table, config=HnswIndexConfig(dim=2, max_elements=100)
+        )
 
         entry = sample_entries[0]
         neighbors = hnsw.get_novelty_neighbors(entry, k=5)
@@ -106,19 +130,27 @@ class TestNoveltyAndDensity:
         # All neighbors should be different from self
         assert all(e.agent_id != entry.agent_id for e, _ in neighbors)
 
-    def test_local_density(self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]) -> None:
+    def test_local_density(
+        self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]
+    ) -> None:
         for e in sample_entries:
             base_table.insert(e, skip_verify=True)
-        hnsw = HnswMeshTable(base_table, config=HnswIndexConfig(dim=2, max_elements=100))
+        hnsw = HnswMeshTable(
+            base_table, config=HnswIndexConfig(dim=2, max_elements=100)
+        )
 
         entry = sample_entries[0]
         density = hnsw.compute_local_density(entry, k=5)
         assert density > 0
 
-    def test_find_sparse_regions(self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]) -> None:
+    def test_find_sparse_regions(
+        self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]
+    ) -> None:
         for e in sample_entries:
             base_table.insert(e, skip_verify=True)
-        hnsw = HnswMeshTable(base_table, config=HnswIndexConfig(dim=2, max_elements=100))
+        hnsw = HnswMeshTable(
+            base_table, config=HnswIndexConfig(dim=2, max_elements=100)
+        )
 
         sparse = hnsw.find_sparse_regions(k=3, n_samples=10)
         assert len(sparse) <= 10
@@ -130,7 +162,9 @@ class TestNoveltyAndDensity:
 
 class TestInsertAndRebuild:
     def test_insert_updates_index(self, base_table: MeshVectorTable) -> None:
-        hnsw = HnswMeshTable(base_table, config=HnswIndexConfig(dim=2, max_elements=100))
+        hnsw = HnswMeshTable(
+            base_table, config=HnswIndexConfig(dim=2, max_elements=100)
+        )
         entry = VectorTableEntry(
             agent_id="agent_new",
             vector=np.array([1.0, 0.0], dtype=np.float32),
@@ -173,10 +207,14 @@ class TestInsertAndRebuild:
 
 
 class TestStats:
-    def test_stats(self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]) -> None:
+    def test_stats(
+        self, base_table: MeshVectorTable, sample_entries: list[VectorTableEntry]
+    ) -> None:
         for e in sample_entries:
             base_table.insert(e, skip_verify=True)
-        hnsw = HnswMeshTable(base_table, config=HnswIndexConfig(dim=2, max_elements=100))
+        hnsw = HnswMeshTable(
+            base_table, config=HnswIndexConfig(dim=2, max_elements=100)
+        )
         stats = hnsw.stats
         assert stats["table_id"] == "test_hnsw"
         if stats["hnsw_available"]:

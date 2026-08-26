@@ -9,6 +9,7 @@ Usage:
     buf.record({"metric": "cpu", "value": 45.0})
     batch = buf.flush()
 """
+
 from __future__ import annotations
 
 import time
@@ -47,10 +48,12 @@ class TelemetryBuffer:
 
         :returns: True if buffer should be flushed.
         """
-        self._buffer.append({
-            "timestamp": self._clock(),
-            "data": data,
-        })
+        self._buffer.append(
+            {
+                "timestamp": self._clock(),
+                "data": data,
+            }
+        )
         return self.should_flush()
 
     # ------------------------------------------------------------------

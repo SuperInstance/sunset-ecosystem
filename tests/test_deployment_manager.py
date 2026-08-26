@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_deployment_manager.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import time
@@ -67,7 +68,9 @@ class TestDeploymentManager:
             deploy_fn=lambda n: deployed.append(n) or True,
             health_checker=lambda n: True,
         )
-        dep = dm.deploy(["n1", "n2", "n3"], strategy=DeploymentStrategy(canary=True, canary_count=1))
+        dep = dm.deploy(
+            ["n1", "n2", "n3"], strategy=DeploymentStrategy(canary=True, canary_count=1)
+        )
         assert dep.status == "success"
         assert deployed[0] == "n1"  # canary first
 

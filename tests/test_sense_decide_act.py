@@ -36,8 +36,11 @@ from fleet.sense_decide_act import (
 # Minimal concrete implementations for testing
 # ═══════════════════════════════════════════════════════════════
 
+
 class _DummySense(Sense):
-    def __init__(self, metrics: dict[str, Any] | None = None, severity: str = "info") -> None:
+    def __init__(
+        self, metrics: dict[str, Any] | None = None, severity: str = "info"
+    ) -> None:
         self.metrics = metrics or {"value": 42}
         self.severity = severity
         self.call_order: int | None = None
@@ -71,7 +74,9 @@ class _DummyDecide(Decide):
 
 
 class _DummyAct(Act):
-    def __init__(self, success: bool = True, side_effects: list[str] | None = None) -> None:
+    def __init__(
+        self, success: bool = True, side_effects: list[str] | None = None
+    ) -> None:
         self.success = success
         self.side_effects = side_effects or ["dummy_effect"]
         self.last_decision: Decision | None = None
@@ -122,6 +127,7 @@ _call_counter = _CallCounter()
 # ═══════════════════════════════════════════════════════════════
 # Core abstraction tests
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestSense:
     def test_observe_returns_observation(self):
@@ -188,6 +194,7 @@ class TestAct:
 # Policy engine tests
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestPolicy:
     def test_rule_matching(self):
         """Policy must return the first matching rule's decision."""
@@ -228,6 +235,7 @@ class TestPolicy:
 # ═══════════════════════════════════════════════════════════════
 # SDALoop orchestration tests
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestSDALoop:
     def test_tick_runs_full_pipeline_in_correct_order(self):
@@ -301,7 +309,10 @@ class TestSDALoop:
 
         metrics = loop.get_metrics()
         assert metrics["pipeline_ticks"]["on"] == 1
-        assert "off" not in metrics["pipeline_ticks"] or metrics["pipeline_ticks"]["off"] == 0
+        assert (
+            "off" not in metrics["pipeline_ticks"]
+            or metrics["pipeline_ticks"]["off"] == 0
+        )
 
     def test_decision_confidence_threshold_skips_act(self):
         """If decision.confidence < 0.5, Act must not run."""
@@ -317,8 +328,12 @@ class TestSDALoop:
     def test_multiple_pipelines(self):
         """Tick must run all enabled pipelines independently."""
         loop = SDALoop()
-        loop.register(_DummySense({"a": 1}), _DummyDecide("act_a", 1.0), _DummyAct(), name="p1")
-        loop.register(_DummySense({"b": 2}), _DummyDecide("act_b", 1.0), _DummyAct(), name="p2")
+        loop.register(
+            _DummySense({"a": 1}), _DummyDecide("act_a", 1.0), _DummyAct(), name="p1"
+        )
+        loop.register(
+            _DummySense({"b": 2}), _DummyDecide("act_b", 1.0), _DummyAct(), name="p2"
+        )
 
         results = loop.tick()
         assert len(results) == 2
@@ -335,8 +350,11 @@ class TestSDALoop:
         """Pipelines with interval_ms must throttle."""
         loop = SDALoop()
         loop.register(
-            _DummySense(), _DummyDecide(), _DummyAct(),
-            name="throttled", interval_ms=5000.0,
+            _DummySense(),
+            _DummyDecide(),
+            _DummyAct(),
+            name="throttled",
+            interval_ms=5000.0,
         )
 
         r1 = loop.tick()
@@ -359,7 +377,9 @@ class TestSDALoop:
     def test_thread_safe_concurrent_ticks(self):
         """Multiple threads calling tick() must not corrupt metrics."""
         loop = SDALoop()
-        loop.register(_DummySense(), _DummyDecide("safe", 1.0), _DummyAct(), name="concurrent")
+        loop.register(
+            _DummySense(), _DummyDecide("safe", 1.0), _DummyAct(), name="concurrent"
+        )
 
         errors: list[Exception] = []
 
@@ -383,6 +403,7 @@ class TestSDALoop:
 
     def test_sense_failure_produces_error_act_result(self):
         """If Sense raises, the pipeline returns a failed ActResult."""
+
         class _BrokenSense(Sense):
             def observe(self) -> Observation:
                 raise RuntimeError("sensor offline")
@@ -396,6 +417,7 @@ class TestSDALoop:
 
     def test_decide_failure_produces_error_act_result(self):
         """If Decide raises, the pipeline returns a failed ActResult."""
+
         class _BrokenDecide(Decide):
             def evaluate(self, observation: Observation) -> Decision:
                 raise RuntimeError("policy corrupt")
@@ -411,8 +433,10 @@ class TestSDALoop:
         """Failed Act executions must reduce act_success_rate."""
         loop = SDALoop()
         loop.register(
-            _DummySense(), _DummyDecide("boom", 1.0),
-            _DummyAct(success=False), name="fail",
+            _DummySense(),
+            _DummyDecide("boom", 1.0),
+            _DummyAct(success=False),
+            name="fail",
         )
         loop.tick()
 
@@ -424,12 +448,14 @@ class TestSDALoop:
 # Built-in adapter tests
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestTrapSense:
     def test_trap_sense_observes_registry(self):
         """TrapSense must produce an Observation from a TrapRegistry."""
         from fleet.operational_trap import TrapRegistry, ThermalTrap
 
         registry = TrapRegistry()
+
         # Create a minimal mock budget
         class MockBudget:
             _devices = {}
@@ -611,6 +637,7 @@ class TestBreedCoordinationAct:
 # Integration: full SDA cycle with built-ins
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestBuiltInPipelines:
     def test_all_built_in_pipelines_load_and_tick(self):
         """Register all 5 built-in pipelines and verify they tick without error."""
@@ -693,4 +720,6 @@ class TestBuiltInPipelines:
 
         metrics = loop.get_metrics()
         assert metrics["total_pipelines"] == 5
-        assert all(metrics["pipeline_ticks"].get(n, 0) == 1 for n in loop.list_pipelines())
+        assert all(
+            metrics["pipeline_ticks"].get(n, 0) == 1 for n in loop.list_pipelines()
+        )

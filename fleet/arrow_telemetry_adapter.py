@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 # Optional pyarrow
 try:
     import pyarrow as pa
+
     HAS_PYARROW = True
 except ImportError:
     pa = None  # type: ignore
@@ -53,23 +54,27 @@ except ImportError:
 
 TELEMETRY_SCHEMA = None
 if HAS_PYARROW:
-    TELEMETRY_SCHEMA = pa.schema([
-        ("event_type", pa.string()),
-        ("timestamp", pa.float64()),
-        ("node_id", pa.string()),
-        ("tick", pa.int64()),
-        ("thermal", pa.float32()),
-        ("energy", pa.float32()),
-        ("status", pa.string()),
-        ("payload_json", pa.string()),
-    ])
+    TELEMETRY_SCHEMA = pa.schema(
+        [
+            ("event_type", pa.string()),
+            ("timestamp", pa.float64()),
+            ("node_id", pa.string()),
+            ("tick", pa.int64()),
+            ("thermal", pa.float32()),
+            ("energy", pa.float32()),
+            ("status", pa.string()),
+            ("payload_json", pa.string()),
+        ]
+    )
 
 
 # ── Telemetry Row ─────────────────────────────────────────────────────
 
+
 @dataclass
 class TelemetryRow:
     """Normalized row from a StreamEvent."""
+
     event_type: str = ""
     timestamp: float = 0.0
     node_id: str = ""
@@ -96,6 +101,7 @@ class TelemetryRow:
 
 # ── Adapter ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class ArrowTelemetryAdapter:
     """Consumes SSE events and produces Arrow RecordBatches."""
@@ -104,7 +110,9 @@ class ArrowTelemetryAdapter:
     batch_size: int = 100
     _buffer: List[TelemetryRow] = field(default_factory=list, repr=False)
     _buf_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
-    _subscriber_queue: Optional[queue.Queue[StreamEvent]] = field(default=None, repr=False)
+    _subscriber_queue: Optional[queue.Queue[StreamEvent]] = field(
+        default=None, repr=False
+    )
     _thread: Optional[threading.Thread] = field(default=None, repr=False)
     _running: bool = False
 
@@ -120,7 +128,10 @@ class ArrowTelemetryAdapter:
     def stop(self) -> None:
         """Stop consuming."""
         self._running = False
-        if self._subscriber_queue and self._subscriber_queue in self.dashboard._subscribers:
+        if (
+            self._subscriber_queue
+            and self._subscriber_queue in self.dashboard._subscribers
+        ):
             self.dashboard._subscribers.remove(self._subscriber_queue)
         if self._thread:
             self._thread.join(timeout=2.0)
@@ -144,23 +155,26 @@ class ArrowTelemetryAdapter:
         with self._buf_lock:
             if not self._buffer:
                 return None
-            rows = self._buffer[:self.batch_size]
-            self._buffer = self._buffer[self.batch_size:]
+            rows = self._buffer[: self.batch_size]
+            self._buffer = self._buffer[self.batch_size :]
 
         if not HAS_PYARROW:
             return [r.__dict__ for r in rows]
 
         # Build Arrow arrays
-        batch = pa.record_batch([
-            pa.array([r.event_type for r in rows]),
-            pa.array([r.timestamp for r in rows], type=pa.float64()),
-            pa.array([r.node_id for r in rows]),
-            pa.array([r.tick for r in rows], type=pa.int64()),
-            pa.array([r.thermal for r in rows], type=pa.float32()),
-            pa.array([r.energy for r in rows], type=pa.float32()),
-            pa.array([r.status for r in rows]),
-            pa.array([r.payload_json for r in rows]),
-        ], schema=TELEMETRY_SCHEMA)
+        batch = pa.record_batch(
+            [
+                pa.array([r.event_type for r in rows]),
+                pa.array([r.timestamp for r in rows], type=pa.float64()),
+                pa.array([r.node_id for r in rows]),
+                pa.array([r.tick for r in rows], type=pa.int64()),
+                pa.array([r.thermal for r in rows], type=pa.float32()),
+                pa.array([r.energy for r in rows], type=pa.float32()),
+                pa.array([r.status for r in rows]),
+                pa.array([r.payload_json for r in rows]),
+            ],
+            schema=TELEMETRY_SCHEMA,
+        )
         return batch
 
     def drain_all(self) -> Optional[Any]:
@@ -172,16 +186,19 @@ class ArrowTelemetryAdapter:
             self._buffer = []
         if not HAS_PYARROW:
             return [r.__dict__ for r in rows]
-        return pa.record_batch([
-            pa.array([r.event_type for r in rows]),
-            pa.array([r.timestamp for r in rows], type=pa.float64()),
-            pa.array([r.node_id for r in rows]),
-            pa.array([r.tick for r in rows], type=pa.int64()),
-            pa.array([r.thermal for r in rows], type=pa.float32()),
-            pa.array([r.energy for r in rows], type=pa.float32()),
-            pa.array([r.status for r in rows]),
-            pa.array([r.payload_json for r in rows]),
-        ], schema=TELEMETRY_SCHEMA)
+        return pa.record_batch(
+            [
+                pa.array([r.event_type for r in rows]),
+                pa.array([r.timestamp for r in rows], type=pa.float64()),
+                pa.array([r.node_id for r in rows]),
+                pa.array([r.tick for r in rows], type=pa.int64()),
+                pa.array([r.thermal for r in rows], type=pa.float32()),
+                pa.array([r.energy for r in rows], type=pa.float32()),
+                pa.array([r.status for r in rows]),
+                pa.array([r.payload_json for r in rows]),
+            ],
+            schema=TELEMETRY_SCHEMA,
+        )
 
     def get_buffer_count(self) -> int:
         with self._buf_lock:
@@ -204,4 +221,13 @@ class ArrowTelemetryAdapter:
         """Return list of schema field names."""
         if HAS_PYARROW and TELEMETRY_SCHEMA:
             return [f.name for f in TELEMETRY_SCHEMA]
-        return ["event_type", "timestamp", "node_id", "tick", "thermal", "energy", "status", "payload_json"]
+        return [
+            "event_type",
+            "timestamp",
+            "node_id",
+            "tick",
+            "thermal",
+            "energy",
+            "status",
+            "payload_json",
+        ]

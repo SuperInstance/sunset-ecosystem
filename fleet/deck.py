@@ -86,6 +86,7 @@ class Deck:
 # Fleet-specific templates
 # ═══════════════════════════════════════════════════════════════
 
+
 def breeding_report(
     generation: int,
     pool_size: int,
@@ -98,23 +99,47 @@ def breeding_report(
 ) -> str:
     """Template: Breeding cycle report."""
     deck = Deck(f"Breeding Report — Generation {generation}", "breeding_report")
-    deck.add(Slide("Pool", [
-        f"Pool size: {pool_size}",
-        f"Pass rate: {pass_rate:.1%}",
-        f"Top score: {top_score:.3f}",
-    ]))
-    deck.add(Slide("FLUX Gating", [
-        f"Candidates blocked: {flux_gate_blocks}",
-        f"Proof certificates: {proof_count}",
-        f"Avg VM cycles: {avg_cycles}",
-    ]))
-    deck.add(Slide("Thermal", [
-        f"Violations: {thermal_violations}",
-        "Status: Normal" if thermal_violations == 0 else "⚠️ Elevated pressure detected",
-    ]))
-    deck.add(Slide("Next", [
-        "Continue breeding cycle" if pass_rate > 0.5 else "Review mutation parameters",
-    ]))
+    deck.add(
+        Slide(
+            "Pool",
+            [
+                f"Pool size: {pool_size}",
+                f"Pass rate: {pass_rate:.1%}",
+                f"Top score: {top_score:.3f}",
+            ],
+        )
+    )
+    deck.add(
+        Slide(
+            "FLUX Gating",
+            [
+                f"Candidates blocked: {flux_gate_blocks}",
+                f"Proof certificates: {proof_count}",
+                f"Avg VM cycles: {avg_cycles}",
+            ],
+        )
+    )
+    deck.add(
+        Slide(
+            "Thermal",
+            [
+                f"Violations: {thermal_violations}",
+                "Status: Normal"
+                if thermal_violations == 0
+                else "⚠️ Elevated pressure detected",
+            ],
+        )
+    )
+    deck.add(
+        Slide(
+            "Next",
+            [
+                "Continue breeding cycle"
+                if pass_rate > 0.5
+                else "Review mutation parameters",
+            ],
+        )
+    )
     return deck.render()
 
 
@@ -131,16 +156,19 @@ def flux_gate_decision(
     status = "✅ PASS" if passed else "❌ FAIL"
     deck.add(Slide("Decision", [f"Result: {status}", f"Score: {score:.3f}"]))
     if violations:
-        deck.add(Slide("Violations", [
-            f"{k}: {v:.3f}" for k, v in violations.items()
-        ]))
+        deck.add(Slide("Violations", [f"{k}: {v:.3f}" for k, v in violations.items()]))
     else:
         deck.add(Slide("Violations", ["None."]))
     if proof_hash:
-        deck.add(Slide("Proof", [
-            f"Hash: {proof_hash[:16]}...",
-            f"VM cycles: {vm_cycles}",
-        ]))
+        deck.add(
+            Slide(
+                "Proof",
+                [
+                    f"Hash: {proof_hash[:16]}...",
+                    f"VM cycles: {vm_cycles}",
+                ],
+            )
+        )
     return deck.render()
 
 
@@ -154,14 +182,26 @@ def fleet_status(
     """Template: Fleet status snapshot."""
     deck = Deck("Fleet Status", "fleet_status")
     total = services_up + services_down
-    deck.add(Slide("Services", [
-        f"{services_up}/{total} UP",
-        f"{services_down} DOWN" if services_down else "All services operational",
-    ]))
-    deck.add(Slide("Breeding", [
-        "Active" if breeding_active else "Idle",
-        f"Last proof: {last_proof[:16]}..." if last_proof else "No proofs yet",
-    ]))
+    deck.add(
+        Slide(
+            "Services",
+            [
+                f"{services_up}/{total} UP",
+                f"{services_down} DOWN"
+                if services_down
+                else "All services operational",
+            ],
+        )
+    )
+    deck.add(
+        Slide(
+            "Breeding",
+            [
+                "Active" if breeding_active else "Idle",
+                f"Last proof: {last_proof[:16]}..." if last_proof else "No proofs yet",
+            ],
+        )
+    )
     if blockers:
         deck.add(Slide("Blockers", blockers))
     else:

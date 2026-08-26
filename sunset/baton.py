@@ -263,7 +263,9 @@ class BatonPass:
         # Token efficiency: output per token
         total_output = data.commits + len(data.creative_pieces) + data.files_created
         if data.tokens_used > 0:
-            token_efficiency = normalize_connection(total_output / (data.tokens_used / 10_000))
+            token_efficiency = normalize_connection(
+                total_output / (data.tokens_used / 10_000)
+            )
         else:
             token_efficiency = 0.5
 
@@ -322,7 +324,9 @@ class BatonPass:
         bug_score = normalize_connection((data.bugs_found + data.bugs_fixed) / 10.0)
 
         # File production
-        file_score = normalize_connection((data.files_created + data.files_modified) / 100.0)
+        file_score = normalize_connection(
+            (data.files_created + data.files_modified) / 100.0
+        )
 
         raw = (test_rate + commit_score + bug_score + file_score) / 4.0
         return normalize_connection(raw)
@@ -349,7 +353,9 @@ class BatonPass:
     @staticmethod
     def _build_what_i_found(data: SessionData, trinity: TrinityResult) -> str:
         parts = [f"Trinity composite: {trinity.composite:.4f}"]
-        parts.append(f"(ethos={trinity.ethos:.3f}, pathos={trinity.pathos:.3f}, logos={trinity.logos:.3f})")
+        parts.append(
+            f"(ethos={trinity.ethos:.3f}, pathos={trinity.pathos:.3f}, logos={trinity.logos:.3f})"
+        )
         if data.what_worked:
             parts.append(f"What worked: {data.what_worked}")
         if data.stuck_on:
@@ -362,7 +368,9 @@ class BatonPass:
             return "Session scored zero — at least one trinity axis was zero."
         parts = []
         if data.tasks_completed_for_human:
-            parts.append(f"Completed {data.tasks_completed_for_human} tasks for the human.")
+            parts.append(
+                f"Completed {data.tasks_completed_for_human} tasks for the human."
+            )
         if data.creative_pieces:
             parts.append(f"Produced {len(data.creative_pieces)} creative works.")
         return " ".join(parts) if parts else "Session maintained continuity."
@@ -442,9 +450,12 @@ class BatonPass:
 
         return Onboarding(
             agent_id=agent_id,
-            letter_to_children=" ".join(letter_parts) if letter_parts else "Continuation of work.",
+            letter_to_children=" ".join(letter_parts)
+            if letter_parts
+            else "Continuation of work.",
             what_works=data.what_worked or "Read the wiki. Check the dashboard.",
-            what_doesnt=data.what_didnt or "Assuming yesterday's context is still loaded.",
+            what_doesnt=data.what_didnt
+            or "Assuming yesterday's context is still loaded.",
             where_to_look="Journals in ai-writings/. The wiki. The dashboard.",
             variant="continuation",
             parent_id=agent_id,

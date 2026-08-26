@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AgentProgression:
     """Progression state of an academy agent."""
+
     agent_id: str
     level: str = "greenhorn"  # greenhorn, explorer, spell_weaver, tile_artisan, captain
     modules_completed: List[str] = field(default_factory=list)
@@ -71,18 +72,49 @@ class PlatoAcademyBridge:
     def __post_init__(self):
         # Pre-populate cohort findings
         self._cohort_results = [
-            {"agent": "greenhorn", "finding": "boot_camp_path_discrepancy", "severity": "high"},
-            {"agent": "greenhorn", "finding": "plato_identity_crisis", "severity": "high"},
-            {"agent": "junior_dev", "finding": "room_creation_impossible", "severity": "medium"},
+            {
+                "agent": "greenhorn",
+                "finding": "boot_camp_path_discrepancy",
+                "severity": "high",
+            },
+            {
+                "agent": "greenhorn",
+                "finding": "plato_identity_crisis",
+                "severity": "high",
+            },
+            {
+                "agent": "junior_dev",
+                "finding": "room_creation_impossible",
+                "severity": "medium",
+            },
             {"agent": "junior_dev", "finding": "no_build_schema", "severity": "medium"},
-            {"agent": "architect", "finding": "zero_authentication", "severity": "critical"},
-            {"agent": "architect", "finding": "tile_count_discrepancy", "severity": "medium"},
+            {
+                "agent": "architect",
+                "finding": "zero_authentication",
+                "severity": "critical",
+            },
+            {
+                "agent": "architect",
+                "finding": "tile_count_discrepancy",
+                "severity": "medium",
+            },
             {"agent": "human_proxy", "finding": "no_web_ui", "severity": "high"},
-            {"agent": "task_agent", "finding": "dual_submit_endpoints", "severity": "low"},
-            {"agent": "captain", "finding": "no_broadcast_endpoints", "severity": "high"},
+            {
+                "agent": "task_agent",
+                "finding": "dual_submit_endpoints",
+                "severity": "low",
+            },
+            {
+                "agent": "captain",
+                "finding": "no_broadcast_endpoints",
+                "severity": "high",
+            },
             {"agent": "captain", "finding": "no_global_fleet_map", "severity": "high"},
         ]
-        logger.info("PlatoAcademyBridge initialized with %d cohort findings", len(self._cohort_results))
+        logger.info(
+            "PlatoAcademyBridge initialized with %d cohort findings",
+            len(self._cohort_results),
+        )
 
     def enroll_agent(self, agent_id: str, level: str = "greenhorn") -> AgentProgression:
         """Enroll a new agent in the academy."""
@@ -143,7 +175,9 @@ class PlatoAcademyBridge:
 
         agent = self._agents[agent_id]
         if agent.level != "captain":
-            logger.warning("Agent %s not ready for fleet (level=%s)", agent_id, agent.level)
+            logger.warning(
+                "Agent %s not ready for fleet (level=%s)", agent_id, agent.level
+            )
             return False
 
         logger.info("Promoted agent %s to fleet service", agent_id)
@@ -176,7 +210,10 @@ class PlatoAcademyBridge:
     def get_stats(self) -> Dict[str, Any]:
         """Get academy statistics."""
         levels = ["greenhorn", "explorer", "spell_weaver", "tile_artisan", "captain"]
-        level_counts = {level: sum(1 for a in self._agents.values() if a.level == level) for level in levels}
+        level_counts = {
+            level: sum(1 for a in self._agents.values() if a.level == level)
+            for level in levels
+        }
 
         return {
             "node_id": self.node_id,

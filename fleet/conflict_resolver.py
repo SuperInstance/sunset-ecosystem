@@ -11,6 +11,7 @@ Usage:
     other.merge(reg)
     print(other.value)  # 42
 """
+
 from __future__ import annotations
 
 import time
@@ -31,6 +32,7 @@ class CRDT:
 # ------------------------------------------------------------------
 # LWW Register
 # ------------------------------------------------------------------
+
 
 @dataclass
 class LWWRegister(CRDT):
@@ -59,6 +61,7 @@ class LWWRegister(CRDT):
 # G-Counter
 # ------------------------------------------------------------------
 
+
 class GCounter(CRDT):
     """Grow-only counter (monotonic increment)."""
 
@@ -83,6 +86,7 @@ class GCounter(CRDT):
 # ------------------------------------------------------------------
 # PN-Counter
 # ------------------------------------------------------------------
+
 
 class PNCounter(CRDT):
     """Positive-Negative counter (increment and decrement)."""
@@ -114,6 +118,7 @@ class PNCounter(CRDT):
 # ------------------------------------------------------------------
 # OR-Set
 # ------------------------------------------------------------------
+
 
 class ORSet(CRDT):
     """Observed-Remove Set (add-wins semantics)."""

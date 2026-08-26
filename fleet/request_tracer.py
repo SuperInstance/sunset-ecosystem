@@ -14,6 +14,7 @@ Usage:
         # span auto-closes with duration
     trace = tracer.get_trace("abc123")
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Span:
     """A single span in a trace."""
+
     span_id: str
     name: str
     trace_id: str
@@ -49,6 +51,7 @@ class Span:
 @dataclass
 class Trace:
     """A complete trace with all spans."""
+
     trace_id: str
     spans: list[Span] = field(default_factory=list)
     root_span: Span | None = None
@@ -62,7 +65,9 @@ class RequestTracer:
         self._traces: dict[str, Trace] = {}
         self._active_spans: dict[str, Span] = {}  # span_id -> Span
 
-    def start_trace(self, trace_id: str | None = None, name: str = "root") -> tuple[str, str]:
+    def start_trace(
+        self, trace_id: str | None = None, name: str = "root"
+    ) -> tuple[str, str]:
         """Start a new trace. Returns (trace_id, span_id)."""
         tid = trace_id or uuid.uuid4().hex[:16]
         sid = uuid.uuid4().hex[:16]
@@ -131,11 +136,13 @@ class RequestTracer:
         """Add a log entry to a span."""
         span = self._active_spans.get(span_id)
         if span:
-            span.logs.append({
-                "timestamp": time.time(),
-                "message": message,
-                **kwargs,
-            })
+            span.logs.append(
+                {
+                    "timestamp": time.time(),
+                    "message": message,
+                    **kwargs,
+                }
+            )
 
     def tag(self, span_id: str, key: str, value: Any) -> None:
         """Add a tag to a span."""

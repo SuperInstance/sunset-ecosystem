@@ -19,6 +19,7 @@ from typing import Any
 @dataclass
 class AgentSnapshot:
     """A single agent's state in the tide pool."""
+
     id: str
     domain: str
     fitness: float
@@ -30,6 +31,7 @@ class AgentSnapshot:
 @dataclass
 class FleetSnapshot:
     """A point-in-time snapshot of the entire fleet."""
+
     n_agents: int
     n_rooms: int
     mean_fitness: float
@@ -59,13 +61,13 @@ class TidePoolVisualizer:
 
     # Bioluminescent palette: navy → cyan → white
     PALETTE = {
-        "deep": "#0a1628",      # abyssal background
-        "mid": "#1a3a5c",       # room grid base
-        "shallow": "#2dd4bf",   # cyan glow
-        "bright": "#67e8f9",    # bright cyan
-        "surface": "#ffffff",   # white crest
-        "warm": "#f97316",      # thermal warm
-        "hot": "#ef4444",       # thermal hot
+        "deep": "#0a1628",  # abyssal background
+        "mid": "#1a3a5c",  # room grid base
+        "shallow": "#2dd4bf",  # cyan glow
+        "bright": "#67e8f9",  # bright cyan
+        "surface": "#ffffff",  # white crest
+        "warm": "#f97316",  # thermal warm
+        "hot": "#ef4444",  # thermal hot
     }
 
     def __init__(self, max_events: int = 10, top_k: int = 5):
@@ -143,6 +145,7 @@ class TidePoolVisualizer:
     def _compute_diversity(domains: dict[str, int], total: int) -> float:
         """Normalized Shannon entropy over agent domains."""
         import math
+
         if total <= 1 or not domains:
             return 0.0
         entropy = 0.0
@@ -160,6 +163,7 @@ class TidePoolVisualizer:
     ) -> float:
         """Heuristic chaos: thermal variance + event severity."""
         import math
+
         loads = [a.thermal_load for a in agents if a.thermal_load > 0]
         if not loads:
             thermal_variance = 0.0
@@ -183,7 +187,9 @@ class TidePoolVisualizer:
     # 2. render_html
     # ------------------------------------------------------------------
 
-    def render_html(self, snapshot: FleetSnapshot | None = None, *, template_path: str | None = None) -> str:
+    def render_html(
+        self, snapshot: FleetSnapshot | None = None, *, template_path: str | None = None
+    ) -> str:
         """Return a complete HTML page with embedded CSS/JS.
 
         Parameters
@@ -635,19 +641,27 @@ class TidePoolVisualizer:
             f"║  Agents: {snap.n_agents:4d}  │  Rooms: {snap.n_rooms:4d}  │  "
             f"Fitness: {snap.mean_fitness:.3f}  │  Diversity: {snap.diversity:.1%}  ║"
         )
-        lines.append(f"║  Chaos: {snap.chaos_level:5.1%}                                               ║")
+        lines.append(
+            f"║  Chaos: {snap.chaos_level:5.1%}                                               ║"
+        )
         lines.append("╠══════════════════════════════════════════════════════════════╣")
 
         # Thermal bars (ASCII)
         if snap.thermal_state:
-            lines.append("║  THERMAL                                                     ║")
+            lines.append(
+                "║  THERMAL                                                     ║"
+            )
             for dev, load in snap.thermal_state.items():
                 bar_len = int(min(40, load * 40))
                 bar = "█" * bar_len + "░" * (40 - bar_len)
                 temp_label = "COOL" if load < 0.5 else "WARM" if load < 0.8 else "HOT!"
-                lines.append(f"║  {dev:12s} [{bar}] {load:5.1%} {temp_label:5s}              ║")
+                lines.append(
+                    f"║  {dev:12s} [{bar}] {load:5.1%} {temp_label:5s}              ║"
+                )
         else:
-            lines.append("║  THERMAL: no data                                            ║")
+            lines.append(
+                "║  THERMAL: no data                                            ║"
+            )
 
         lines.append("╠══════════════════════════════════════════════════════════════╣")
 
@@ -662,34 +676,47 @@ class TidePoolVisualizer:
                 hex_chars.append("○")
         for row_start in range(0, n_hex, 8):
             row = hex_chars[row_start : row_start + 8]
-            lines.append("║     " + "  ".join(row) + " " * (53 - len("  ".join(row))) + "║")
+            lines.append(
+                "║     " + "  ".join(row) + " " * (53 - len("  ".join(row))) + "║"
+            )
 
         lines.append("╠══════════════════════════════════════════════════════════════╣")
 
         # Top agents
         if snap.top_agents:
-            lines.append("║  TOP AGENTS                                                  ║")
+            lines.append(
+                "║  TOP AGENTS                                                  ║"
+            )
             for a in snap.top_agents[:5]:
-                status_icon = {"active": "●", "breeding": "◆", "sunset": "◐", "idle": "○"}.get(
-                    a.get("status", "idle"), "○"
-                )
+                status_icon = {
+                    "active": "●",
+                    "breeding": "◆",
+                    "sunset": "◐",
+                    "idle": "○",
+                }.get(a.get("status", "idle"), "○")
                 lines.append(
                     f"║    {status_icon} {a['id'][:20]:20s}  {a['domain'][:12]:12s}  fit={a['fitness']:.3f}    ║"
                 )
         else:
-            lines.append("║  TOP AGENTS: none                                            ║")
+            lines.append(
+                "║  TOP AGENTS: none                                            ║"
+            )
 
         lines.append("╠══════════════════════════════════════════════════════════════╣")
 
         # Recent events
         if snap.recent_events:
-            lines.append("║  RECENT EVENTS                                               ║")
+            lines.append(
+                "║  RECENT EVENTS                                               ║"
+            )
             for ev in snap.recent_events[-5:]:
                 ev_type = ev.get("type", "info")[:6]
                 msg = (ev.get("message", "") or "")[:40]
                 lines.append(f"║    [{ev_type:6s}] {msg:46s} ║")
         else:
-            lines.append("║  RECENT EVENTS: none                                         ║")
+            lines.append(
+                "║  RECENT EVENTS: none                                         ║"
+            )
 
         lines.append("╚══════════════════════════════════════════════════════════════╝")
         return "\n".join(lines)

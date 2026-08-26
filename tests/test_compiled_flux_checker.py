@@ -34,7 +34,9 @@ class TestCompiledFluxCheckerBasics:
         assert result.score == 0.0
 
     def test_weight_bounds_block(self):
-        config = FluxGatingConfig(weight_bounds=(0.0, 4.0), max_l2_norm=4.0, pass_threshold=0.0)
+        config = FluxGatingConfig(
+            weight_bounds=(0.0, 4.0), max_l2_norm=4.0, pass_threshold=0.0
+        )
         checker = CompiledFluxChecker(config)
         result = checker.check_candidate(np.array([3.0, 4.0]))
         assert not result.passed
@@ -168,6 +170,7 @@ class TestCompiledFluxCheckerVMIntegration:
         # FluxTrap only raised on Validate opcode; our constraints compile
         # without Validate, so this test verifies the runner handles it
         from swarm.flux_compiler import compile_constraint, RangeCheckNode, Var
+
         bc, pool, _ = compile_constraint(RangeCheckNode(Var("x"), 0.0, 1.0))
         runner = FluxTrap.__new__(FluxTrap)  # just access the class
         # The actual FluxTrap is raised by MiniFluxVM on Validate.
@@ -184,6 +187,7 @@ class TestBreederDaemonV2CompiledIntegration:
 
     def test_breeder_accepts_compiled_checker(self):
         from swarm.breeder_daemon_v2 import BreederDaemonV2
+
         grid = self._make_mock_grid()
         config = FluxGatingConfig(max_chaos=0.5)
         checker = CompiledFluxChecker(config)
@@ -196,6 +200,7 @@ class TestBreederDaemonV2CompiledIntegration:
 
     def test_breeder_uses_compiled_checker_in_select_parents(self):
         from swarm.breeder_daemon_v2 import BreederDaemonV2
+
         grid = self._make_mock_grid()
         config = FluxGatingConfig(max_chaos=0.5)
         checker = CompiledFluxChecker(config)

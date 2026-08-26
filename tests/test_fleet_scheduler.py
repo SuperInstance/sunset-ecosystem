@@ -96,7 +96,9 @@ class TestFleetScheduler:
         assert not scheduler.is_running()
 
     def test_init_state_file(self, tmp_path) -> None:
-        scheduler = FleetScheduler(workspace=str(tmp_path), state_file="custom_state.json")
+        scheduler = FleetScheduler(
+            workspace=str(tmp_path), state_file="custom_state.json"
+        )
         assert scheduler.state_file.name == "custom_state.json"
 
     def test_add_interval_job(self, tmp_path) -> None:
@@ -110,7 +112,9 @@ class TestFleetScheduler:
 
     def test_add_interval_job_custom_id(self, tmp_path) -> None:
         scheduler = FleetScheduler(workspace=str(tmp_path), state_file="state.json")
-        job = scheduler.add_interval_job("health", interval_seconds=30, job_id="my_health")
+        job = scheduler.add_interval_job(
+            "health", interval_seconds=30, job_id="my_health"
+        )
         assert job.job_id == "my_health"
 
     def test_add_interval_job_disabled(self, tmp_path) -> None:
@@ -190,8 +194,12 @@ class TestFleetScheduler:
 
     def test_get_results_filtered(self, tmp_path) -> None:
         scheduler = FleetScheduler(workspace=str(tmp_path), state_file="state.json")
-        scheduler._results.append(JobResult(job_id="job1", success=True, message="ok", duration_ms=10.0))
-        scheduler._results.append(JobResult(job_id="job2", success=True, message="ok", duration_ms=20.0))
+        scheduler._results.append(
+            JobResult(job_id="job1", success=True, message="ok", duration_ms=10.0)
+        )
+        scheduler._results.append(
+            JobResult(job_id="job2", success=True, message="ok", duration_ms=20.0)
+        )
         results = scheduler.get_results(job_id="job1")
         assert len(results) == 1
         assert results[0].job_id == "job1"
@@ -200,7 +208,9 @@ class TestFleetScheduler:
         scheduler = FleetScheduler(workspace=str(tmp_path), state_file="state.json")
         for i in range(150):
             scheduler._results.append(
-                JobResult(job_id="test", success=True, message=f"run {i}", duration_ms=1.0)
+                JobResult(
+                    job_id="test", success=True, message=f"run {i}", duration_ms=1.0
+                )
             )
         results = scheduler.get_results(limit=10)
         assert len(results) == 10
@@ -236,7 +246,9 @@ class TestFleetScheduler:
 
     def test_state_persistence(self, tmp_path) -> None:
         scheduler = FleetScheduler(workspace=str(tmp_path), state_file="state.json")
-        job = scheduler.add_interval_job("beat", interval_seconds=60, metadata={"key": "val"})
+        job = scheduler.add_interval_job(
+            "beat", interval_seconds=60, metadata={"key": "val"}
+        )
         job_id = job.job_id
 
         # Create new scheduler with same state file

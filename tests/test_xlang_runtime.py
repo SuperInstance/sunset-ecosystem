@@ -126,8 +126,12 @@ class TestExecutionTrace:
 
     def test_constraint_pass_rate(self) -> None:
         t = ExecutionTrace(trace_id="test")
-        t.constraints.append(ConstraintResult(rule_id="r1", rule_text="t1", passed=True))
-        t.constraints.append(ConstraintResult(rule_id="r2", rule_text="t2", passed=False))
+        t.constraints.append(
+            ConstraintResult(rule_id="r1", rule_text="t1", passed=True)
+        )
+        t.constraints.append(
+            ConstraintResult(rule_id="r2", rule_text="t2", passed=False)
+        )
         assert t.constraint_pass_rate == 0.5
 
     def test_to_dict(self) -> None:
@@ -396,4 +400,3 @@ steps:
         assert trace.step_count == 2
         # Each step should see previous context
         assert "initial" in trace.flow_steps[0].input_data
-

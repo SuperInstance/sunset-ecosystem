@@ -29,6 +29,7 @@ Usage
     )
     loop.tick()  # runs a dream step if idle
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -55,6 +56,7 @@ logger = logging.getLogger(__name__)
 
 
 # ── Dream ─────────────────────────────────────────────────────────
+
 
 @dataclass
 class Dream:
@@ -127,6 +129,7 @@ class Dream:
 
 # ── IdleDetector ──────────────────────────────────────────────
 
+
 class IdleDetector(ABC):
     """Abstract strategy for detecting fleet idleness."""
 
@@ -167,6 +170,7 @@ class AlwaysIdleIdleDetector(IdleDetector):
 
 
 # ── DreamArchive ───────────────────────────────────────────────
+
 
 class DreamArchive:
     """CRDT-like storage for dreams with search, retrieval, and pruning.
@@ -211,7 +215,9 @@ class DreamArchive:
             d.touch()
         return dreams
 
-    def search(self, query_tags: List[str], top_k: int = 5) -> List[Tuple[Dream, float]]:
+    def search(
+        self, query_tags: List[str], top_k: int = 5
+    ) -> List[Tuple[Dream, float]]:
         """Return top-k dreams sorted by tag relevance (Jaccard overlap)."""
         scored = []
         for dream in self._dreams.values():
@@ -228,10 +234,7 @@ class DreamArchive:
     def prune_old(self, max_age_seconds: float) -> int:
         """Remove dreams older than ``max_age_seconds``; return count removed."""
         cutoff = time.time() - max_age_seconds
-        to_remove = [
-            did for did, d in self._dreams.items()
-            if d.created_at < cutoff
-        ]
+        to_remove = [did for did, d in self._dreams.items() if d.created_at < cutoff]
         for did in to_remove:
             self._remove(did)
         return len(to_remove)
@@ -270,7 +273,7 @@ class DreamArchive:
         all_dreams = list(self._dreams.values()) + list(other._dreams.values())
         # Sort by access_count descending, then accessed_at descending
         all_dreams.sort(key=lambda d: (d.access_count, d.accessed_at), reverse=True)
-        for dream in all_dreams[:merged.max_size]:
+        for dream in all_dreams[: merged.max_size]:
             merged.add(dream)
         return merged
 
@@ -283,6 +286,7 @@ class DreamArchive:
 
 
 # ── HypothesisGenerator ─────────────────────────────────────────
+
 
 class HypothesisGenerator:
     """Generates "what if" breeding scenarios from a diversity archive.
@@ -349,13 +353,15 @@ class HypothesisGenerator:
             gens = self.rng.randint(5, 25)
 
             desc = self._describe(tags, preset, pop_size, gens)
-            results.append({
-                "tags": tags,
-                "hypothesis": desc,
-                "breeder_preset": preset,
-                "population_size": pop_size,
-                "generations": gens,
-            })
+            results.append(
+                {
+                    "tags": tags,
+                    "hypothesis": desc,
+                    "breeder_preset": preset,
+                    "population_size": pop_size,
+                    "generations": gens,
+                }
+            )
         return results
 
     def _generate_novel(self, n: int) -> List[Dict[str, Any]]:
@@ -366,13 +372,15 @@ class HypothesisGenerator:
             tags = [preset, "speculative"]
             pop_size = self.rng.randint(10, 40)
             gens = self.rng.randint(5, 25)
-            results.append({
-                "tags": tags,
-                "hypothesis": f"What if we run {preset} with a fresh population?",
-                "breeder_preset": preset,
-                "population_size": pop_size,
-                "generations": gens,
-            })
+            results.append(
+                {
+                    "tags": tags,
+                    "hypothesis": f"What if we run {preset} with a fresh population?",
+                    "breeder_preset": preset,
+                    "population_size": pop_size,
+                    "generations": gens,
+                }
+            )
         return results
 
     def _describe(self, tags: List[str], preset: str, pop_size: int, gens: int) -> str:
@@ -385,6 +393,7 @@ class HypothesisGenerator:
 
 
 # ── DreamMatcher ────────────────────────────────────────────────
+
 
 class DreamMatcher:
     """Matches incoming real-world tasks to stored dreams by tag similarity.
@@ -416,13 +425,13 @@ class DreamMatcher:
 
 # ── DreamingLoop ────────────────────────────────────────────────
 
+
 class _BreedingKernelLike(Protocol):
     """Protocol for anything that looks like a BreedingKernel."""
 
     def run(
         self, population: List[Any], generations: int = 100, mutation_rate: float = 0.1
-    ) -> Iterator[Any]:
-        ...
+    ) -> Iterator[Any]: ...
 
 
 class DreamingLoop:
@@ -532,7 +541,11 @@ class DreamingLoop:
     def _make_population(self, size: int) -> List[Any]:
         """Build a simple float-vector population for generic kernels."""
         from swarm.breeding_kernel import Genome
-        return [Genome(genes=np.random.randn(8).astype(np.float32).tolist()) for _ in range(size)]
+
+        return [
+            Genome(genes=np.random.randn(8).astype(np.float32).tolist())
+            for _ in range(size)
+        ]
 
     def _synthetic_fitness(self, dream: Dream) -> float:
         """Deterministic synthetic fitness from tag hash for reproducible tests."""
@@ -582,7 +595,9 @@ class DreamingLoop:
 
     # -- Task matching --------------------------------------------
 
-    def find_dream_for_task(self, task_tags: List[str], matcher: Optional[DreamMatcher] = None) -> Optional[Tuple[Dream, float]]:
+    def find_dream_for_task(
+        self, task_tags: List[str], matcher: Optional[DreamMatcher] = None
+    ) -> Optional[Tuple[Dream, float]]:
         """Check if a stored dream matches an incoming real task."""
         m = matcher or DreamMatcher(self.archive)
         return m.match(task_tags)

@@ -151,7 +151,10 @@ class TestAgentMemoryProfile:
         run_result = {
             "task_description": "fix wal query",
             "outcome": "success",
-            "key_learnings": ["bisect insort preserves ordering", "wal indexes need parsers"],
+            "key_learnings": [
+                "bisect insort preserves ordering",
+                "wal indexes need parsers",
+            ],
             "duration_seconds": 45.0,
         }
         entry = profile.update_from_run(run_result)
@@ -161,32 +164,41 @@ class TestAgentMemoryProfile:
     def test_get_relevant_context(self) -> None:
         store = FleetMemoryStore(MemoryConfig(db_path=":memory:"))
         profile = AgentMemoryProfile(store, "agent_1")
-        profile.update_from_run({
-            "task_description": "refactor pytest collection",
-            "outcome": "success",
-            "key_learnings": ["conftest.py controls fixtures"],
-            "duration_seconds": 30.0,
-        })
+        profile.update_from_run(
+            {
+                "task_description": "refactor pytest collection",
+                "outcome": "success",
+                "key_learnings": ["conftest.py controls fixtures"],
+                "duration_seconds": 30.0,
+            }
+        )
 
         ctx = profile.get_relevant_context("pytest fixtures", top_k=1)
         assert len(ctx) > 0
-        assert "conftest" in ctx[0]["content"].lower() or "pytest" in ctx[0]["content"].lower()
+        assert (
+            "conftest" in ctx[0]["content"].lower()
+            or "pytest" in ctx[0]["content"].lower()
+        )
 
     def test_summarize_history(self) -> None:
         store = FleetMemoryStore(MemoryConfig(db_path=":memory:"))
         profile = AgentMemoryProfile(store, "agent_1")
-        profile.update_from_run({
-            "task_description": "task A",
-            "outcome": "success",
-            "key_learnings": ["learning A"],
-            "duration_seconds": 10.0,
-        })
-        profile.update_from_run({
-            "task_description": "task B",
-            "outcome": "failure",
-            "key_learnings": ["learning B"],
-            "duration_seconds": 20.0,
-        })
+        profile.update_from_run(
+            {
+                "task_description": "task A",
+                "outcome": "success",
+                "key_learnings": ["learning A"],
+                "duration_seconds": 10.0,
+            }
+        )
+        profile.update_from_run(
+            {
+                "task_description": "task B",
+                "outcome": "failure",
+                "key_learnings": ["learning B"],
+                "duration_seconds": 20.0,
+            }
+        )
 
         summary = profile.summarize_history()
         assert summary["agent_id"] == "agent_1"
@@ -198,16 +210,20 @@ class TestAgentMemoryProfile:
     def test_capabilities_accumulation(self) -> None:
         store = FleetMemoryStore(MemoryConfig(db_path=":memory:"))
         profile = AgentMemoryProfile(store, "agent_1")
-        profile.update_from_run({
-            "task_description": "test",
-            "outcome": "success",
-            "key_learnings": ["distributed consensus requires quorum"],
-            "duration_seconds": 5.0,
-        })
+        profile.update_from_run(
+            {
+                "task_description": "test",
+                "outcome": "success",
+                "key_learnings": ["distributed consensus requires quorum"],
+                "duration_seconds": 5.0,
+            }
+        )
 
         prof = store.get_agent_profile("agent_1")
         # The first 3 words become a capability tag
-        assert any("distributed_consensus_requires" in cap for cap in prof["capabilities"])
+        assert any(
+            "distributed_consensus_requires" in cap for cap in prof["capabilities"]
+        )
 
 
 # ═══════════════════════════════════════════════════════════
@@ -263,7 +279,9 @@ class TestCrossAgentMemoryGossip:
         gossip = CrossAgentMemoryGossip(store)
         entry = store.add_memory("shared secret", "agent_alpha")
 
-        targets = gossip.share_memory(entry.memory_id, "agent_alpha", ["agent_beta", "agent_gamma"])
+        targets = gossip.share_memory(
+            entry.memory_id, "agent_alpha", ["agent_beta", "agent_gamma"]
+        )
         assert "agent_beta" in targets
         assert "agent_gamma" in targets
         assert "agent_alpha" not in targets  # skip self
@@ -382,7 +400,9 @@ class TestMem0Adapter:
         adapter = Mem0Adapter()
         adapter.initialize_for_fleet({"db_path": ":memory:"})
         entry = adapter.store.add_memory("shared fact", "agent_1")
-        targets = adapter.share_memory(entry.memory_id, "agent_1", ["agent_2", "agent_3"])
+        targets = adapter.share_memory(
+            entry.memory_id, "agent_1", ["agent_2", "agent_3"]
+        )
         assert len(targets) == 2
 
     def test_build_sync_payload(self) -> None:
@@ -417,18 +437,24 @@ class TestMem0Adapter:
         assert restored.content == "test"
         assert np.allclose(restored.embedding, emb)
 
-    def test_gossip_handler_registration_warns_on_missing_method(self, caplog: Any) -> None:
+    def test_gossip_handler_registration_warns_on_missing_method(
+        self, caplog: Any
+    ) -> None:
         adapter = Mem0Adapter()
         adapter.initialize_for_fleet({"db_path": ":memory:"})
+
         class NoopGossip:
             pass
+
         adapter.attach_to_mesh_gossip(NoopGossip())
         assert "manual wiring required" in caplog.text
 
     def test_sda_attach_warns_on_missing_register(self, caplog: Any) -> None:
         adapter = Mem0Adapter()
         adapter.initialize_for_fleet({"db_path": ":memory:"})
+
         class NoopSDA:
             pass
+
         adapter.attach_to_sda_loop(NoopSDA())
         assert "manual wiring required" in caplog.text

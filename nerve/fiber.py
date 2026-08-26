@@ -36,24 +36,28 @@ try:
         bitvector_similarity,
         find_best_bitvector_match,
     )
+
     HAS_EISENSTEIN = True
 except ImportError:
     HAS_EISENSTEIN = False
 
 try:
     from device_router.router import DeviceRouter
+
     HAS_DEVICE_ROUTER = True
 except ImportError:
     HAS_DEVICE_ROUTER = False
 
 try:
     from tensor_spline.spline import SplineLinear
+
     HAS_TENSOR_SPLINE = True
 except ImportError:
     HAS_TENSOR_SPLINE = False
 
 try:
     from triplet_miner.git_miner import TripletMiner
+
     HAS_TRIPLET_MINER = True
 except ImportError:
     HAS_TRIPLET_MINER = False
@@ -86,10 +90,11 @@ def _get_device_router() -> DeviceRouter | None:
 
 class FiberState(Enum):
     """The lifecycle states of a nerve fiber."""
-    PERCEIVING = "perceiving"      # Soft — full attention, raw inference
-    ADAPTING = "adapting"          # Building confidence, learning pattern
-    COMPILED = "compiled"          # Hard — automatic processing, muscle memory
-    NOVELTY_ALERT = "novelty"     # Something changed — back to full attention
+
+    PERCEIVING = "perceiving"  # Soft — full attention, raw inference
+    ADAPTING = "adapting"  # Building confidence, learning pattern
+    COMPILED = "compiled"  # Hard — automatic processing, muscle memory
+    NOVELTY_ALERT = "novelty"  # Something changed — back to full attention
 
 
 @dataclass
@@ -104,6 +109,7 @@ class SensoryTile:
         state: The fiber's state when producing this tile.
         timestamp: When this tile was produced.
     """
+
     pattern_id: str
     features: dict[str, Any] = field(default_factory=dict)
     confidence: float = 0.0
@@ -250,12 +256,13 @@ class NerveFiber:
 
         with self._lock:
             self._total_signals += 1
-            self._observations[pattern_id] = (
-                self._observations.get(pattern_id, 0) + 1
-            )
+            self._observations[pattern_id] = self._observations.get(pattern_id, 0) + 1
 
             # Check if we have a compiled path for this pattern
-            if pattern_id in self._compiled_patterns and self._state == FiberState.COMPILED:
+            if (
+                pattern_id in self._compiled_patterns
+                and self._state == FiberState.COMPILED
+            ):
                 # Compiled — automatic processing (like not noticing your shoes)
                 self._compiled_signals += 1
                 compiled = self._compiled_patterns[pattern_id]
@@ -349,10 +356,10 @@ class NerveFiber:
         """
         # Cache key: fast hash of the signal
         cache_key = self._hash_signal_fast(signal)
-        if hasattr(self, '_feature_cache') and cache_key in self._feature_cache:
+        if hasattr(self, "_feature_cache") and cache_key in self._feature_cache:
             return self._feature_cache[cache_key].copy()
 
-        if not hasattr(self, '_feature_cache'):
+        if not hasattr(self, "_feature_cache"):
             self._feature_cache = {}
 
         # --- Fast path: numpy array ---
@@ -392,8 +399,12 @@ class NerveFiber:
             if router is not None:
                 try:
                     overview = router.overview()
-                    features["device_cuda"] = overview.get("cuda", {}).get("available", False)
-                    features["device_igpu"] = overview.get("igpu", {}).get("available", False)
+                    features["device_cuda"] = overview.get("cuda", {}).get(
+                        "available", False
+                    )
+                    features["device_igpu"] = overview.get("igpu", {}).get(
+                        "available", False
+                    )
                 except Exception as exc:
                     logger.debug("device-router overview failed: %s", exc)
 

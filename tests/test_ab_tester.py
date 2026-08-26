@@ -26,10 +26,13 @@ class TestABTester:
 
     def test_create(self):
         ab = ABTester()
-        test = ab.create("my_test", [
-            {"name": "control", "config": {"a": 1}},
-            {"name": "variant", "config": {"a": 2}},
-        ])
+        test = ab.create(
+            "my_test",
+            [
+                {"name": "control", "config": {"a": 1}},
+                {"name": "variant", "config": {"a": 2}},
+            ],
+        )
         assert test.name == "my_test"
         assert len(test.variants) == 2
         assert ab.get_stats()["total_tests"] == 1

@@ -16,6 +16,7 @@ from nerve.fiber import NerveFiber, FiberState
 # ShoeState
 # ---------------------------------------------------------------------------
 
+
 class TestShoeState:
     def test_creation(self):
         s = ShoeState(pattern_id="abc")
@@ -25,7 +26,9 @@ class TestShoeState:
         assert s.last_state == FiberState.PERCEIVING
 
     def test_repr(self):
-        s = ShoeState(pattern_id="abc", notice_level=0.5, steps=5, last_state=FiberState.COMPILED)
+        s = ShoeState(
+            pattern_id="abc", notice_level=0.5, steps=5, last_state=FiberState.COMPILED
+        )
         r = repr(s)
         assert "ShoeState" in r
         assert "notice=0.50" in r
@@ -35,6 +38,7 @@ class TestShoeState:
 # ---------------------------------------------------------------------------
 # ShoeTracker
 # ---------------------------------------------------------------------------
+
 
 class TestShoeTracker:
     def test_empty_adaptation(self):
@@ -97,11 +101,14 @@ class TestShoeTracker:
     def test_thread_safety(self):
         tracker = ShoeTracker()
         import threading
+
         results = []
+
         def worker(n):
             for i in range(10):
                 shoe = tracker.step(f"pattern_{n}", FiberState.COMPILED)
             results.append(shoe)
+
         threads = [threading.Thread(target=worker, args=(i,)) for i in range(5)]
         for t in threads:
             t.start()
@@ -114,8 +121,11 @@ class TestShoeTracker:
 # AdaptationEngine
 # ---------------------------------------------------------------------------
 
+
 class TestAdaptationEngine:
-    def _mock_fiber(self, state=FiberState.PERCEIVING, confidence=0.5, pattern_id="mock"):
+    def _mock_fiber(
+        self, state=FiberState.PERCEIVING, confidence=0.5, pattern_id="mock"
+    ):
         fiber = MagicMock(spec=NerveFiber)
         fiber.fiber_id = "f1"
         fiber.state = state

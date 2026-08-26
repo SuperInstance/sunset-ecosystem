@@ -10,6 +10,7 @@ Usage:
     assert "item-1" in bf
     assert "item-2" not in bf  # probably
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -93,7 +94,9 @@ class BloomFilter:
 
     def estimated_fp_rate(self) -> float:
         """Estimate current false-positive rate based on fill."""
-        return (1 - math.exp(-self._hash_count * self._count / self._size)) ** self._hash_count
+        return (
+            1 - math.exp(-self._hash_count * self._count / self._size)
+        ) ** self._hash_count
 
     def fill_ratio(self) -> float:
         """Proportion of bits that are set."""

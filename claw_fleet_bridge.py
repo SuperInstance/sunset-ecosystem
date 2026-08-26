@@ -89,6 +89,7 @@ class FleetBridgeServer:
             def _status(self) -> None:
                 try:
                     from nexus.fleet_conductor_v2 import FleetConductorV2
+
                     conductor = FleetConductorV2()
                     data = conductor.get_status()
                 except Exception as e:
@@ -98,8 +99,12 @@ class FleetBridgeServer:
             def _flux_presets(self) -> None:
                 try:
                     from swarm.flux_preset_library import FluxPresetLibrary
+
                     lib = FluxPresetLibrary()
-                    presets = {name: lib.get_preset(name).description for name in lib.list_presets()}
+                    presets = {
+                        name: lib.get_preset(name).description
+                        for name in lib.list_presets()
+                    }
                 except Exception as e:
                     presets = {"error": str(e)}
                 self._json_response({"presets": presets})
@@ -111,15 +116,18 @@ class FleetBridgeServer:
                 try:
                     from swarm.breeder_daemon_v2 import BreederDaemonV2
                     from swarm.flux_preset_library import FluxPresetLibrary
+
                     breeder = BreederDaemonV2()
                     preset = FluxPresetLibrary().get_preset(preset_name)
                     breeder.flux_preset = preset
                     results = breeder.cycle(n_winners)
-                    self._json_response({
-                        "winners": len(results),
-                        "preset": preset_name,
-                        "agents": [str(r) for r in results],
-                    })
+                    self._json_response(
+                        {
+                            "winners": len(results),
+                            "preset": preset_name,
+                            "agents": [str(r) for r in results],
+                        }
+                    )
                 except Exception as e:
                     self._json_response({"error": str(e)}, status=500)
 
@@ -128,6 +136,7 @@ class FleetBridgeServer:
                 candidate = payload.get("candidate", {})
                 try:
                     from swarm.flux_vm_gating import FluxVMGater
+
                     gater = FluxVMGater()
                     passed, reason = gater.check(candidate)
                     self._json_response({"passed": passed, "reason": reason})
@@ -138,6 +147,7 @@ class FleetBridgeServer:
                 payload = self._read_json()
                 try:
                     from swarm.mesh_vector_tables import MeshVectorTable
+
                     table = MeshVectorTable(table_id=payload.get("table_id", "default"))
                     table.insert_signed(
                         vector=payload["vector"],
@@ -152,15 +162,24 @@ class FleetBridgeServer:
                 payload = self._read_json()
                 try:
                     from swarm.mesh_vector_tables import FleetVectorIndex
+
                     index = FleetVectorIndex()
-                    results = index.query_by_fitness(min_fitness=payload.get("min_fitness", 0.0))
-                    self._json_response({
-                        "count": len(results),
-                        "results": [
-                            {"vector": r.vector, "fitness": r.fitness, "extra": r.extra}
-                            for r in results
-                        ],
-                    })
+                    results = index.query_by_fitness(
+                        min_fitness=payload.get("min_fitness", 0.0)
+                    )
+                    self._json_response(
+                        {
+                            "count": len(results),
+                            "results": [
+                                {
+                                    "vector": r.vector,
+                                    "fitness": r.fitness,
+                                    "extra": r.extra,
+                                }
+                                for r in results
+                            ],
+                        }
+                    )
                 except Exception as e:
                     self._json_response({"error": str(e)}, status=500)
 

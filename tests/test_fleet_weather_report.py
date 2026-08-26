@@ -30,6 +30,7 @@ from fleet.fleet_weather_report import (
 
 # ── fixtures ────────────────────────────────────────────────
 
+
 @pytest.fixture
 def mock_conductor():
     """Return a MagicMock that looks enough like FleetConductorV2."""
@@ -147,9 +148,7 @@ def clean_history(monkeypatch):
     fd, path = tempfile.mkstemp(suffix=".json")
     os.close(fd)
     fake_path = Path(path)
-    monkeypatch.setattr(
-        "fleet.fleet_weather_report._HISTORY_PATH", fake_path
-    )
+    monkeypatch.setattr("fleet.fleet_weather_report._HISTORY_PATH", fake_path)
     yield fake_path
     try:
         os.unlink(path)
@@ -158,6 +157,7 @@ def clean_history(monkeypatch):
 
 
 # ── unit tests for data classes ─────────────────────────────
+
 
 class TestBreedingSummary:
     def test_success_rate_zero_attempts(self):
@@ -178,6 +178,7 @@ class TestBreedingSummary:
 
 
 # ── FleetWeatherReport core tests ───────────────────────────
+
 
 class TestWeatherReportFromMockConductor:
     def test_basic_conductor_parsing(self, mock_conductor):
@@ -238,6 +239,7 @@ class TestWeatherReportFromMockConductor:
 
     def test_thermal_status_tiers(self):
         """Thermal status maps correctly to temperature ranges."""
+
         def make_conductor(temp):
             c = MagicMock()
             c._node_id = "thermal-test"
@@ -441,7 +443,9 @@ class TestMatrixPosting:
 
     def test_post_http_failure(self, mock_conductor):
         report = FleetWeatherReport.from_conductor(mock_conductor)
-        with patch("urllib.request.urlopen", side_effect=Exception("connection refused")):
+        with patch(
+            "urllib.request.urlopen", side_effect=Exception("connection refused")
+        ):
             result = report.post_to_matrix(
                 hook_url="https://bad.example.com/hook",
             )
@@ -480,9 +484,7 @@ class TestHistoryHelpers:
     def test_load_history_no_file(self, monkeypatch):
         # Point to a non-existent path so we don't pick up a real history file
         fake_path = Path("/tmp/nonexistent_fleet_weather_history_12345.json")
-        monkeypatch.setattr(
-            "fleet.fleet_weather_report._HISTORY_PATH", fake_path
-        )
+        monkeypatch.setattr("fleet.fleet_weather_report._HISTORY_PATH", fake_path)
         stats = FleetStats()
         # No history file should not crash
         _maybe_load_history(stats)
@@ -512,9 +514,7 @@ class TestHistoryHelpers:
             }
             for i in range(1, 92)
         ]
-        clean_history.write_text(
-            json.dumps({"entries": entries}), encoding="utf-8"
-        )
+        clean_history.write_text(json.dumps({"entries": entries}), encoding="utf-8")
 
         stats = FleetStats(
             timestamp=datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc),
@@ -528,6 +528,7 @@ class TestHistoryHelpers:
 
 
 # ── edge cases ──────────────────────────────────────────────
+
 
 class TestEdgeCases:
     def test_conductor_get_status_raises(self):

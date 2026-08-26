@@ -7,9 +7,12 @@ import numpy as np
 import pytest
 
 from swarm.adversarial_arena import (
-    SolverGenome, TesterGenome,
-    SolverMutation, TesterMutation,
-    SolverCrossover, TesterCrossover,
+    SolverGenome,
+    TesterGenome,
+    SolverMutation,
+    TesterMutation,
+    SolverCrossover,
+    TesterCrossover,
     AdversarialArena,
 )
 
@@ -84,8 +87,10 @@ class TestTesterCrossover:
 class TestAdversarialArena:
     def test_initialize(self):
         arena = AdversarialArena(
-            solver_pop_size=10, tester_pop_size=5,
-            solver_dim=5, tester_dim=3,
+            solver_pop_size=10,
+            tester_pop_size=5,
+            solver_dim=5,
+            tester_dim=3,
         )
         arena.initialize()
         assert len(arena.solver_pop) == 10
@@ -97,7 +102,8 @@ class TestAdversarialArena:
 
     def test_evaluate(self):
         arena = AdversarialArena(
-            solver_pop_size=10, tester_pop_size=5,
+            solver_pop_size=10,
+            tester_pop_size=5,
             n_interactions_per_gen=3,
         )
         arena.initialize()
@@ -117,7 +123,8 @@ class TestAdversarialArena:
 
     def test_breed(self):
         arena = AdversarialArena(
-            solver_pop_size=10, tester_pop_size=5,
+            solver_pop_size=10,
+            tester_pop_size=5,
             n_interactions_per_gen=3,
         )
         arena.initialize()
@@ -135,8 +142,10 @@ class TestAdversarialArena:
 
     def test_full_coevolution(self):
         arena = AdversarialArena(
-            solver_pop_size=20, tester_pop_size=10,
-            solver_dim=5, tester_dim=5,
+            solver_pop_size=20,
+            tester_pop_size=10,
+            solver_dim=5,
+            tester_dim=5,
             n_interactions_per_gen=5,
         )
         arena.initialize()
@@ -184,7 +193,8 @@ class TestAdversarialArena:
 
     def test_zero_sum_property(self):
         arena = AdversarialArena(
-            solver_pop_size=5, tester_pop_size=5,
+            solver_pop_size=5,
+            tester_pop_size=5,
             n_interactions_per_gen=5,
         )
         arena.initialize()
@@ -207,7 +217,8 @@ class TestAdversarialArena:
 
     def test_elitism(self):
         arena = AdversarialArena(
-            solver_pop_size=10, tester_pop_size=5,
+            solver_pop_size=10,
+            tester_pop_size=5,
             elitism_count=2,
         )
         arena.initialize()
@@ -224,7 +235,8 @@ class TestAdversarialArena:
 
     def test_age_culling(self):
         arena = AdversarialArena(
-            solver_pop_size=10, tester_pop_size=5,
+            solver_pop_size=10,
+            tester_pop_size=5,
             max_age=2,
         )
         arena.initialize()

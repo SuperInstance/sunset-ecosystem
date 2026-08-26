@@ -77,9 +77,11 @@ from typing import Optional
 
 # --- These would be real implementations ---
 
+
 @dataclass
 class RepoMetrics:
     """Health metrics for one repository."""
+
     path: str
     name: str
     last_commit_days: int
@@ -90,12 +92,15 @@ class RepoMetrics:
     open_issues: int
     stale_issues: int  # > 30 days
     health_score: float
-    
+
     @property
     def status(self) -> str:
-        if self.health_score >= 80: return "HEALTHY"
-        if self.health_score >= 60: return "NEEDS_ATTENTION"
-        if self.health_score >= 40: return "DRIFTING"
+        if self.health_score >= 80:
+            return "HEALTHY"
+        if self.health_score >= 60:
+            return "NEEDS_ATTENTION"
+        if self.health_score >= 40:
+            return "DRIFTING"
         return "DEAD"
 
 
@@ -106,7 +111,8 @@ def compute_freshness(days: int) -> float:
 
 def compute_test_score(has_tests: bool, pass_rate: float) -> float:
     """Has tests + they pass → 25 points."""
-    if not has_tests: return 0
+    if not has_tests:
+        return 0
     return 25 * pass_rate
 
 
@@ -117,7 +123,8 @@ def compute_doc_score(has_readme: bool, has_changelog: bool) -> float:
 
 def compute_issue_score(total: int, stale: int) -> float:
     """All issues fresh → 15, all stale → 0."""
-    if total == 0: return 10  # no issues is fine
+    if total == 0:
+        return 10  # no issues is fine
     fresh_ratio = 1.0 - (stale / max(total, 1))
     return 15 * fresh_ratio
 
@@ -126,30 +133,32 @@ def scan_repo(path: str) -> RepoMetrics:
     """Scan one repo and compute health metrics."""
     repo_path = Path(path)
     name = repo_path.name
-    
+
     # Last commit age
     try:
         result = subprocess.run(
             ["git", "log", "-1", "--format=%ct"],
-            capture_output=True, text=True, cwd=path
+            capture_output=True,
+            text=True,
+            cwd=path,
         )
         ts = int(result.stdout.strip())
         days = (datetime.now(tz=timezone.utc).timestamp() - ts) / 86400
     except (ValueError, subprocess.CalledProcessError):
         days = 999
-    
+
     # Has tests?
     has_tests = bool(
-        list(repo_path.glob("test*")) or
-        list(repo_path.glob("**/test_*.py")) or
-        list(repo_path.glob("**/*_test.go")) or
-        list(repo_path.rglob("tests"))
+        list(repo_path.glob("test*"))
+        or list(repo_path.glob("**/test_*.py"))
+        or list(repo_path.glob("**/*_test.go"))
+        or list(repo_path.rglob("tests"))
     )
-    
+
     # Has docs?
     has_readme = (repo_path / "README.md").exists()
     has_changelog = (repo_path / "CHANGELOG.md").exists()
-    
+
     # Compute score
     freshness = compute_freshness(days)
     test_score = compute_test_score(has_tests, 0.8 if has_tests else 0)  # assume pass
@@ -157,15 +166,19 @@ def scan_repo(path: str) -> RepoMetrics:
     # Dependency + issue scores need GitHub API — placeholder
     dep_score = 10  # neutral
     issue_score = 10  # neutral
-    
+
     total = freshness + test_score + doc_score + dep_score + issue_score
-    
+
     return RepoMetrics(
-        path=path, name=name,
+        path=path,
+        name=name,
         last_commit_days=int(days),
-        has_tests=has_tests, test_pass_rate=0.8 if has_tests else 0,
-        has_readme=has_readme, has_changelog=has_changelog,
-        open_issues=0, stale_issues=0,
+        has_tests=has_tests,
+        test_pass_rate=0.8 if has_tests else 0,
+        has_readme=has_readme,
+        has_changelog=has_changelog,
+        open_issues=0,
+        stale_issues=0,
         health_score=total,
     )
 
@@ -179,20 +192,20 @@ def triage_report(workspace: str) -> list[RepoMetrics]:
                 repos.append(scan_repo(entry.path))
             except Exception:
                 pass
-    
+
     repos.sort(key=lambda r: r.health_score)
     return repos
 
 
 def create_github_issue(repo: RepoMetrics) -> Optional[str]:
     """Create a GitHub issue for a drifting repo.
-    
+
     Uses `gh issue create` from the GitHub CLI.
     Returns the issue URL or None on failure.
     """
     if repo.health_score >= 60:
         return None
-    
+
     title = f"[TRIAGE] {repo.name} health score: {repo.health_score:.0f}/100"
     body = f"""## Weekly Triage Report
 
@@ -205,25 +218,34 @@ def create_github_issue(repo: RepoMetrics) -> Optional[str]:
 | Component | Score |
 |-----------|-------|
 | Freshness | {compute_freshness(repo.last_commit_days):.0f}/30 |
-| Tests | {'✅' if repo.has_tests else '❌'} |
-| README | {'✅' if repo.has_readme else '❌'} |
-| CHANGELOG | {'✅' if repo.has_changelog else '❌'} |
+| Tests | {"✅" if repo.has_tests else "❌"} |
+| README | {"✅" if repo.has_readme else "❌"} |
+| CHANGELOG | {"✅" if repo.has_changelog else "❌"} |
 
 ### Recommended Action
-{'Archive this repository' if repo.health_score < 40 else 'Review and update this repository'}
+{"Archive this repository" if repo.health_score < 40 else "Review and update this repository"}
 
 ---
-*Auto-generated by weekly triage on {datetime.now().strftime('%Y-%m-%d')}*
+*Auto-generated by weekly triage on {datetime.now().strftime("%Y-%m-%d")}*
 """
-    
+
     try:
         result = subprocess.run(
-            ["gh", "issue", "create",
-             "--repo", f"SuperInstance/{repo.name}",
-             "--title", title,
-             "--body", body,
-             "--label", "triage"],
-            capture_output=True, text=True,
+            [
+                "gh",
+                "issue",
+                "create",
+                "--repo",
+                f"SuperInstance/{repo.name}",
+                "--title",
+                title,
+                "--body",
+                body,
+                "--label",
+                "triage",
+            ],
+            capture_output=True,
+            text=True,
             cwd=repo.path,
         )
         return result.stdout.strip() if result.returncode == 0 else None

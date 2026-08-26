@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for fleet/i2i_bridge.py."""
+
 import json
 import os
 import tempfile
@@ -65,18 +66,30 @@ class TestIndividualLayer:
     def test_send_bottle(self):
         with tempfile.TemporaryDirectory() as tmp:
             # Init git repo
-            os.system(f"cd {tmp} && git init -q && git config user.email 'test@test' && git config user.name 'Test'")
+            os.system(
+                f"cd {tmp} && git init -q && git config user.email 'test@test' && git config user.name 'Test'"
+            )
             layer = IndividualLayer(repo_path=tmp)
-            bottle = Bottle(from_agent="CCC", to_agent="FM", subject="Test Bottle", body="Hello", repo_path=tmp)
+            bottle = Bottle(
+                from_agent="CCC",
+                to_agent="FM",
+                subject="Test Bottle",
+                body="Hello",
+                repo_path=tmp,
+            )
             commit = layer.send_bottle(bottle)
             assert len(commit) == 40  # git SHA
             assert len(layer.history()) == 1
 
     def test_read_bottles(self):
         with tempfile.TemporaryDirectory() as tmp:
-            os.system(f"cd {tmp} && git init -q && git config user.email 'test@test' && git config user.name 'Test'")
+            os.system(
+                f"cd {tmp} && git init -q && git config user.email 'test@test' && git config user.name 'Test'"
+            )
             layer = IndividualLayer(repo_path=tmp)
-            bottle = Bottle(from_agent="Oracle1", subject="Read Me", body="Content", repo_path=tmp)
+            bottle = Bottle(
+                from_agent="Oracle1", subject="Read Me", body="Content", repo_path=tmp
+            )
             layer.send_bottle(bottle)
             bottles = layer.read_bottles("Oracle1")
             assert len(bottles) >= 1
@@ -102,8 +115,12 @@ class TestIronLayer:
 
     def test_find_by_capability(self):
         layer = IronLayer()
-        layer.register_hardware(AgentIdentity("JC1", "edge", "Jetson", ("tensorrt",)), {"gpu": "Orin"})
-        layer.register_hardware(AgentIdentity("FM", "forge", "RTX", ()), {"gpu": "RTX4050"})
+        layer.register_hardware(
+            AgentIdentity("JC1", "edge", "Jetson", ("tensorrt",)), {"gpu": "Orin"}
+        )
+        layer.register_hardware(
+            AgentIdentity("FM", "forge", "RTX", ()), {"gpu": "RTX4050"}
+        )
         found = layer.find_by_capability("tensorrt")
         assert len(found) == 1
         assert found[0].name == "JC1"

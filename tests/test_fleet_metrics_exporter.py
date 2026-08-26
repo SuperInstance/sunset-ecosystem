@@ -119,7 +119,11 @@ class TestFleetMetricsExporter:
         exporter = FleetMetricsExporter()
         text = exporter.to_prometheus()
         # Should contain actual numeric values
-        lines = [l for l in text.split("\n") if l.startswith("fleet_") and not l.startswith("#")]
+        lines = [
+            l
+            for l in text.split("\n")
+            if l.startswith("fleet_") and not l.startswith("#")
+        ]
         assert len(lines) > 0
         for line in lines:
             parts = line.split()
@@ -180,7 +184,11 @@ class TestFleetMetricsExporter:
     def test_benchmark_to_prometheus_values(self) -> None:
         exporter = FleetMetricsExporter()
         text = exporter.benchmark_to_prometheus()
-        lines = [l for l in text.split("\n") if l.startswith("fleet_benchmark_") and not l.startswith("#")]
+        lines = [
+            l
+            for l in text.split("\n")
+            if l.startswith("fleet_benchmark_") and not l.startswith("#")
+        ]
         assert len(lines) > 0
         for line in lines:
             parts = line.split()

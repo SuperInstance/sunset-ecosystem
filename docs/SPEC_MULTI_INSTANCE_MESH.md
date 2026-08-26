@@ -157,7 +157,7 @@ message BreedResponse {
 # mesh/node.py
 class MeshNode:
     """One node in the multi-instance mesh."""
-    
+
     def __init__(
         self,
         node_id: str,
@@ -165,18 +165,17 @@ class MeshNode:
         grid: RoomGrid,
         vector_table: FluxVectorTable,
         thermal: ThermalBudget,
-    ) -> None:
-        ...
-    
+    ) -> None: ...
+
     async def start(self) -> None:
         """Register with nexus, discover peers, open gRPC streams."""
-        
+
     async def stop(self) -> None:
         """Graceful shutdown: notify peers, close streams."""
-        
+
     async def sync_vectors(self) -> None:
         """Push local vector deltas to all peers."""
-        
+
     async def request_remote_breed(
         self,
         parent_a: int,
@@ -184,7 +183,7 @@ class MeshNode:
         target_room: int,
     ) -> BreedResponse:
         """Ask the coolest peer to produce a child from two parents."""
-        
+
     def peers(self) -> list[PeerInfo]:
         """Currently reachable mesh peers."""
 ```

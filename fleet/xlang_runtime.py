@@ -11,7 +11,7 @@ Usage
     runtime.load_flow("agent_flow.yaml")
     runtime.load_constraints("rules.jsonl")
     runtime.execute()
-    
+
     results = runtime.get_trace()
 """
 
@@ -448,7 +448,11 @@ class XLangRuntime:
     ) -> dict[str, Any]:
         """Execute an action step."""
         action = config.get("action", "noop")
-        return {"action": action, "status": "completed", "context_keys": list(context.keys())}
+        return {
+            "action": action,
+            "status": "completed",
+            "context_keys": list(context.keys()),
+        }
 
     def _execute_vdb_insert_step(
         self,
@@ -462,7 +466,11 @@ class XLangRuntime:
         vector = config.get("vector", [0.0] * 128)
         metadata = config.get("metadata", {})
         self._vdb.insert(vector, metadata)
-        return {"status": "inserted", "vector_dim": len(vector), "metadata_keys": list(metadata.keys())}
+        return {
+            "status": "inserted",
+            "vector_dim": len(vector),
+            "metadata_keys": list(metadata.keys()),
+        }
 
     def _execute_vdb_query_step(
         self,
@@ -494,9 +502,15 @@ class XLangRuntime:
                 all_passed = False
                 break
 
-        return {"status": "checked", "constraints_evaluated": len(self._constraints), "all_passed": all_passed}
+        return {
+            "status": "checked",
+            "constraints_evaluated": len(self._constraints),
+            "all_passed": all_passed,
+        }
 
-    def _apply_constraints(self, trace: ExecutionTrace, context: dict[str, Any]) -> None:
+    def _apply_constraints(
+        self, trace: ExecutionTrace, context: dict[str, Any]
+    ) -> None:
         """Apply constraints and record results."""
         if not self._constraints:
             return
@@ -504,16 +518,16 @@ class XLangRuntime:
         for i, constraint in enumerate(self._constraints):
             rule_id = constraint.get("rule_id", f"rule-{i}")
             rule_text = constraint.get("rule", str(constraint))
-            
+
             # Simple constraint evaluation
             passed = True
             violations: list[str] = []
-            
+
             condition = constraint.get("condition", "")
             if condition and not self._evaluate_condition(condition, context):
                 passed = False
                 violations.append(f"Condition failed: {condition}")
-            
+
             constraint_result = ConstraintResult(
                 rule_id=rule_id,
                 rule_text=rule_text,

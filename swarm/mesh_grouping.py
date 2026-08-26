@@ -67,6 +67,7 @@ except ImportError:
 @dataclass
 class ClusterConfig:
     """Configuration for clustering algorithms."""
+
     algorithm: str = "kmeans"  # "kmeans", "hierarchical", "dbscan", "single_pass"
     n_clusters: int = 5
     max_iterations: int = 100
@@ -83,6 +84,7 @@ class ClusterConfig:
 @dataclass
 class GroupProfile:
     """A discovered group of agents."""
+
     group_id: str
     centroid: np.ndarray
     members: set[str] = field(default_factory=set)
@@ -269,7 +271,13 @@ class MeshGrouping:
                     if entry is not None:
                         # Check distance to centroid
                         dist = np.linalg.norm(entry.vector - group.centroid)
-                        if dist > np.mean([np.linalg.norm(e.vector - group.centroid) for e in self.table.all_entries() if e.agent_id in group.members]):
+                        if dist > np.mean(
+                            [
+                                np.linalg.norm(e.vector - group.centroid)
+                                for e in self.table.all_entries()
+                                if e.agent_id in group.members
+                            ]
+                        ):
                             outliers.append(agent_id)
         return outliers
 
@@ -302,7 +310,11 @@ class MeshGrouping:
         group = self.groups.get(group_id)
         if not group:
             return []
-        return [self.table.query(aid) for aid in group.members if self.table.query(aid) is not None]
+        return [
+            self.table.query(aid)
+            for aid in group.members
+            if self.table.query(aid) is not None
+        ]
 
     def get_group_centroid(self, group_id: str) -> np.ndarray | None:
         """Get the centroid of a group."""
@@ -331,7 +343,9 @@ class MeshGrouping:
     @property
     def stats(self) -> dict[str, Any]:
         return {
-            "table_id": self.table.table_id if hasattr(self.table, "table_id") else "unknown",
+            "table_id": self.table.table_id
+            if hasattr(self.table, "table_id")
+            else "unknown",
             "group_count": len(self.groups),
             "total_members": sum(len(g.members) for g in self.groups.values()),
             "algorithm": self.config.algorithm,
@@ -369,10 +383,12 @@ class MeshGrouping:
         labels = np.zeros(n, dtype=int)
         for _ in range(self.config.max_iterations):
             # Assign
-            new_labels = np.array([
-                int(np.argmin([np.linalg.norm(v - c) for c in centroids]))
-                for v in vectors
-            ])
+            new_labels = np.array(
+                [
+                    int(np.argmin([np.linalg.norm(v - c) for c in centroids]))
+                    for v in vectors
+                ]
+            )
             if np.array_equal(labels, new_labels):
                 break
             labels = new_labels
@@ -445,7 +461,9 @@ class MeshGrouping:
             self.groups[group_id] = group
         return list(self.groups.values())
 
-    def _create_group(self, group_id: str, members: list[tuple[str, np.ndarray]]) -> None:
+    def _create_group(
+        self, group_id: str, members: list[tuple[str, np.ndarray]]
+    ) -> None:
         """Create a GroupProfile from members."""
         agent_ids = [m[0] for m in members]
         vectors = np.array([m[1] for m in members], dtype=np.float32)
@@ -468,10 +486,14 @@ class MeshGrouping:
 
         # Cohesion: average distance to centroid within group
         for group in self.groups.values():
-            member_vectors = np.array([
-                vectors[i] for i, l in enumerate(labels) if l >= 0
-                and self._get_group_label(l) == group.group_id
-            ], dtype=np.float32)
+            member_vectors = np.array(
+                [
+                    vectors[i]
+                    for i, l in enumerate(labels)
+                    if l >= 0 and self._get_group_label(l) == group.group_id
+                ],
+                dtype=np.float32,
+            )
             if len(member_vectors) > 0:
                 distances = np.linalg.norm(member_vectors - group.centroid, axis=1)
                 group.cohesion = float(1.0 / (1.0 + np.mean(distances)))
@@ -481,7 +503,9 @@ class MeshGrouping:
         for i, group in enumerate(self.groups.values()):
             others = [c for j, c in enumerate(centroids) if j != i]
             if others:
-                group.separation = float(np.min([np.linalg.norm(group.centroid - c) for c in others]))
+                group.separation = float(
+                    np.min([np.linalg.norm(group.centroid - c) for c in others])
+                )
 
         # Silhouette (sklearn if available)
         if _SKLEARN_AVAILABLE and silhouette_score is not None and len(set(labels)) > 1:

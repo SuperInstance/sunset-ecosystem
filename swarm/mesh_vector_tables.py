@@ -46,11 +46,13 @@ logger = logging.getLogger(__name__)
 
 class SignatureError(ValueError):
     """Raised when an entry signature fails verification."""
+
     pass
 
 
 class MergeConflictError(RuntimeError):
     """Raised when a CRDT merge encounters an unresolvable conflict."""
+
     pass
 
 
@@ -66,25 +68,25 @@ class VectorTableEntry:
     the canonical JSON of the other fields (excluding signature itself).
     """
 
-    agent_id: str          # e.g. "Oracle1::agent_42"
-    vector: np.ndarray     # float32, shape (dim,)
-    timestamp: float       # Unix time, monotonic from the creating node
-    node_id: str           # e.g. "Oracle1"
-    generation: int        # Breeding generation (0 = seed)
-    fitness: float         # [0, 1], trinity product
-    signature: str         # base64 Ed25519 or SHA-256 fallback
-    capability_mask: int = 0xFFFF   # 16-bit skill mask
-    thermal_pressure: float = 0.0   # [0, 1]
+    agent_id: str  # e.g. "Oracle1::agent_42"
+    vector: np.ndarray  # float32, shape (dim,)
+    timestamp: float  # Unix time, monotonic from the creating node
+    node_id: str  # e.g. "Oracle1"
+    generation: int  # Breeding generation (0 = seed)
+    fitness: float  # [0, 1], trinity product
+    signature: str  # base64 Ed25519 or SHA-256 fallback
+    capability_mask: int = 0xFFFF  # 16-bit skill mask
+    thermal_pressure: float = 0.0  # [0, 1]
     extra: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         # Ensure vector is a contiguous float32 numpy array
         if not isinstance(self.vector, np.ndarray):
-            object.__setattr__(
-                self, "vector", np.array(self.vector, dtype=np.float32)
-            )
+            object.__setattr__(self, "vector", np.array(self.vector, dtype=np.float32))
         else:
-            object.__setattr__(self, "vector", self.vector.astype(np.float32, copy=False))
+            object.__setattr__(
+                self, "vector", self.vector.astype(np.float32, copy=False)
+            )
 
     @property
     def dim(self) -> int:
@@ -173,7 +175,9 @@ class MeshVectorTable:
         self._entries: dict[str, VectorTableEntry] = {}
 
         # Indexes (rebuilt on demand, cached for performance)
-        self._fitness_index: list[tuple[str, float]] = []   # (agent_id, fitness) sorted desc
+        self._fitness_index: list[
+            tuple[str, float]
+        ] = []  # (agent_id, fitness) sorted desc
         self._fitness_index_stale: bool = True
         self._node_breakdown: dict[str, int] = {}
         self._node_breakdown_stale: bool = True
@@ -229,7 +233,10 @@ class MeshVectorTable:
             self._node_breakdown_stale = True
             logger.debug(
                 "Inserted entry %s into table %s (gen=%d, fitness=%.3f)",
-                entry.agent_id, self.table_id, entry.generation, entry.fitness,
+                entry.agent_id,
+                self.table_id,
+                entry.generation,
+                entry.fitness,
             )
             return True
 
@@ -472,7 +479,10 @@ class MeshVectorTable:
             self._merge_count += merged
             logger.info(
                 "Merged table %s ← remote: %d merged, %d rejected, %d skipped",
-                self.table_id, merged, rejected, skipped,
+                self.table_id,
+                merged,
+                rejected,
+                skipped,
             )
             return {"merged": merged, "rejected": rejected, "skipped": skipped}
 
@@ -493,7 +503,9 @@ class MeshVectorTable:
             serial = {
                 "table_id": self.table_id,
                 "timestamp": time.time(),
-                "entries": [e.to_dict(include_vector=True) for e in self._entries.values()],
+                "entries": [
+                    e.to_dict(include_vector=True) for e in self._entries.values()
+                ],
             }
             json_bytes = json.dumps(serial, separators=(",", ":")).encode("utf-8")
             return zlib.compress(json_bytes, level=6)

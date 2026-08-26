@@ -58,13 +58,15 @@ baton = BatonHandoff(
     checkpoint_file=".fleet/baton_checkpoint.json",
 )
 
-baton.save_checkpoint({
-    "task": "Build MeshVectorTable",
-    "progress": "fields defined, tests passing",
-    "next_step": "Add CRDT merge logic",
-    "files_modified": ["swarm/mesh_vector_tables.py"],
-    "tests_status": "12/12 green",
-})
+baton.save_checkpoint(
+    {
+        "task": "Build MeshVectorTable",
+        "progress": "fields defined, tests passing",
+        "next_step": "Add CRDT merge logic",
+        "files_modified": ["swarm/mesh_vector_tables.py"],
+        "tests_status": "12/12 green",
+    }
+)
 
 # Gen2 receives baton and continues
 state = baton.load_checkpoint()
@@ -131,6 +133,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from fleet.gateway_monitor import GatewayMonitor
 from fleet.tmux_runner import TmuxRunner
 
+
 def spawn_or_direct(task_name: str, task_spec: str, monitor: GatewayMonitor) -> str:
     """Spawn subagent if gateway healthy, else run directly in tmux."""
     if not monitor.overload_detected():
@@ -138,11 +141,12 @@ def spawn_or_direct(task_name: str, task_spec: str, monitor: GatewayMonitor) -> 
             return spawn_subagent(task_name, task_spec)
         except GatewayTimeout:
             monitor.record_timeout()
-    
+
     # Fallback: direct work in tmux session
     runner = TmuxRunner(session_name=task_name)
     runner.send_command(f"cd /workspace/sunset-ecosystem && {task_spec}")
     return runner.capture_output(timeout=900)
+
 
 def orchestrate_parallel(tasks: dict) -> dict:
     """
@@ -155,13 +159,13 @@ def orchestrate_parallel(tasks: dict) -> dict:
     """
     monitor = GatewayMonitor()
     results = {}
-    
+
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {
             executor.submit(spawn_or_direct, name, spec, monitor): name
             for name, spec in tasks.items()
         }
-        
+
         for future in as_completed(futures):
             name = futures[future]
             try:
@@ -170,8 +174,9 @@ def orchestrate_parallel(tasks: dict) -> dict:
             except Exception as e:
                 results[name] = f"FAILED: {e}"
                 print(f"❌ {name} failed: {e}")
-    
+
     return results
+
 
 if __name__ == "__main__":
     tasks = {

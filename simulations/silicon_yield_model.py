@@ -37,7 +37,9 @@ def dies_per_wafer(diameter_mm: float = 300.0, die_area_mm2: float = 25.0) -> in
     return max(0, int(math.floor(area_term - edge_term)))
 
 
-def murphy_yield(defect_density_per_cm2: float = 0.5, die_area_mm2: float = 25.0) -> float:
+def murphy_yield(
+    defect_density_per_cm2: float = 0.5, die_area_mm2: float = 25.0
+) -> float:
     """Yield from the Murphy model with defect clustering.
 
     Y = [(1 - e^(-D*A)) / (D*A)]^2
@@ -93,9 +95,7 @@ def simulate(
     """Run the full A2 scenario and return a result summary dict."""
     gross = dies_per_wafer(wafer_diameter_mm, die_area_mm2)
     yield_frac = murphy_yield(defect_density_per_cm2, die_area_mm2)
-    good = good_dies_per_wafer(
-        wafer_diameter_mm, die_area_mm2, defect_density_per_cm2
-    )
+    good = good_dies_per_wafer(wafer_diameter_mm, die_area_mm2, defect_density_per_cm2)
     cpd = cost_per_die(
         wafer_cost_usd=wafer_cost_usd,
         good_dies=good,
@@ -128,8 +128,12 @@ def main() -> None:
     print(f"Good dies per wafer       : {r['good_dies_per_wafer']}")
     print(f"Cost per good die         : ${r['cost_per_die_usd']:.2f}")
     print("-" * 60)
-    print(f"Yield target (>70%)       : {'MET' if r['yield_target_met'] else 'NOT MET'} ({r['yield_fraction'] * 100:.1f}%)")
-    print(f"Cost target (<$15/die)    : {'MET' if r['cost_target_met'] else 'NOT MET'} (${r['cost_per_die_usd']:.2f})")
+    print(
+        f"Yield target (>70%)       : {'MET' if r['yield_target_met'] else 'NOT MET'} ({r['yield_fraction'] * 100:.1f}%)"
+    )
+    print(
+        f"Cost target (<$15/die)    : {'MET' if r['cost_target_met'] else 'NOT MET'} (${r['cost_per_die_usd']:.2f})"
+    )
 
 
 if __name__ == "__main__":

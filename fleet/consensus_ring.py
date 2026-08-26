@@ -10,6 +10,7 @@ Usage:
     if ring.check_quorum("add:node-2"):
         ring.commit("add:node-2")
 """
+
 from __future__ import annotations
 
 import logging
@@ -103,7 +104,9 @@ class ConsensusHashRing:
         self._stats["proposals"] += 1
         return key
 
-    def vote(self, proposal_key: str, approve: bool, voter: Optional[str] = None) -> None:
+    def vote(
+        self, proposal_key: str, approve: bool, voter: Optional[str] = None
+    ) -> None:
         """Vote on a proposal."""
         if proposal_key not in self._proposals:
             raise ConsensusError(f"Unknown proposal: {proposal_key}")

@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 # ── data structures ───────────────────────────────────────────
 
+
 @dataclass(frozen=True, slots=True)
 class CycleReport:
     """Result of verifying one cycle."""
@@ -54,6 +55,7 @@ class EmergenceEvent:
 
 
 # ── core math ─────────────────────────────────────────────────
+
 
 class HolonomyConsensus:
     """Consensus engine for fleet-wide cycle verification.
@@ -210,7 +212,9 @@ class HolonomyConsensus:
         if curr.betti_1 > prev.betti_1:
             # Identify truly new cycles (heuristic: cycles not in prev)
             prev_cycles = {tuple(c) for c in prev.independent_cycles}
-            new_cycles = [c for c in curr.independent_cycles if tuple(c) not in prev_cycles]
+            new_cycles = [
+                c for c in curr.independent_cycles if tuple(c) not in prev_cycles
+            ]
 
             return EmergenceEvent(
                 timestamp=time.time(),
@@ -298,7 +302,9 @@ class HolonomyConsensus:
     def _norm_edge(a: str, b: str) -> tuple[str, str]:
         return (a, b) if a < b else (b, a)
 
-    def _tree_path(self, start: str, end: str, parent: dict[str, Optional[str]]) -> list[str]:
+    def _tree_path(
+        self, start: str, end: str, parent: dict[str, Optional[str]]
+    ) -> list[str]:
         """Return the unique tree path from start to end."""
         # Build path from start to root
         path_start: list[str] = []
@@ -327,5 +333,5 @@ class HolonomyConsensus:
             return []
 
         # path: start → ... → LCA → ... → end
-        cycle = path_start[:lca_idx_start + 1] + list(reversed(path_end[:lca_idx_end]))
+        cycle = path_start[: lca_idx_start + 1] + list(reversed(path_end[:lca_idx_end]))
         return cycle

@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_spectral_mesh_routing.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -17,15 +18,19 @@ from swarm.spectral_mesh_routing import (
 
 # ── GraphLaplacian ──────────────────────────────────────────
 
+
 class TestGraphLaplacian:
     def test_from_adjacency_path_graph(self):
         # Path graph: 0 — 1 — 2 — 3
-        adj = np.array([
-            [0, 1, 0, 0],
-            [1, 0, 1, 0],
-            [0, 1, 0, 1],
-            [0, 0, 1, 0],
-        ], dtype=np.float64)
+        adj = np.array(
+            [
+                [0, 1, 0, 0],
+                [1, 0, 1, 0],
+                [0, 1, 0, 1],
+                [0, 0, 1, 0],
+            ],
+            dtype=np.float64,
+        )
         lap = GraphLaplacian.from_adjacency(adj)
         assert lap.adjacency.shape == (4, 4)
         assert lap.fiedler_value > 0  # connected
@@ -35,27 +40,35 @@ class TestGraphLaplacian:
 
     def test_from_adjacency_cycle_graph(self):
         # Cycle C4
-        adj = np.array([
-            [0, 1, 0, 1],
-            [1, 0, 1, 0],
-            [0, 1, 0, 1],
-            [1, 0, 1, 0],
-        ], dtype=np.float64)
+        adj = np.array(
+            [
+                [0, 1, 0, 1],
+                [1, 0, 1, 0],
+                [0, 1, 0, 1],
+                [1, 0, 1, 0],
+            ],
+            dtype=np.float64,
+        )
         lap = GraphLaplacian.from_adjacency(adj)
         assert lap.fiedler_value > 0
         # Cycle has better connectivity than path
-        path_adj = np.array([[0,1,0,0],[1,0,1,0],[0,1,0,1],[0,0,1,0]], dtype=np.float64)
+        path_adj = np.array(
+            [[0, 1, 0, 0], [1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0]], dtype=np.float64
+        )
         path_lap = GraphLaplacian.from_adjacency(path_adj)
         assert lap.fiedler_value > path_lap.fiedler_value
 
     def test_disconnected_graph(self):
         # Two disconnected edges
-        adj = np.array([
-            [0, 1, 0, 0],
-            [1, 0, 0, 0],
-            [0, 0, 0, 1],
-            [0, 0, 1, 0],
-        ], dtype=np.float64)
+        adj = np.array(
+            [
+                [0, 1, 0, 0],
+                [1, 0, 0, 0],
+                [0, 0, 0, 1],
+                [0, 0, 1, 0],
+            ],
+            dtype=np.float64,
+        )
         lap = GraphLaplacian.from_adjacency(adj)
         assert lap.fiedler_value == pytest.approx(0.0, abs=1e-10)
         assert lap.fiedler_value < 1e-10  # not connected
@@ -69,11 +82,14 @@ class TestGraphLaplacian:
         assert lap.spectral_gap() > 0.5
 
     def test_effective_resistance_symmetry(self):
-        adj = np.array([
-            [0, 1, 1],
-            [1, 0, 1],
-            [1, 1, 0],
-        ], dtype=np.float64)
+        adj = np.array(
+            [
+                [0, 1, 1],
+                [1, 0, 1],
+                [1, 1, 0],
+            ],
+            dtype=np.float64,
+        )
         lap = GraphLaplacian.from_adjacency(adj)
         r01 = lap.effective_resistance(0, 1)
         r10 = lap.effective_resistance(1, 0)
@@ -81,7 +97,7 @@ class TestGraphLaplacian:
         assert r01 > 0
 
     def test_cheeger_bound_positive(self):
-        adj = np.array([[0,1,0],[1,0,1],[0,1,0]], dtype=np.float64)
+        adj = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]], dtype=np.float64)
         lap = GraphLaplacian.from_adjacency(adj)
         assert lap.cheeger_bound() > 0
 
@@ -101,6 +117,7 @@ class TestGraphLaplacian:
 
 
 # ── SpectralMeshRouter ────────────────────────────────────
+
 
 class TestSpectralMeshRouter:
     def test_initially_disconnected(self):
@@ -163,15 +180,16 @@ class TestSpectralMeshRouter:
 
 # ── standalone helpers ──────────────────────────────────────
 
+
 class TestStandaloneHelpers:
     def test_effective_resistance_triangle(self):
         # Triangle: effective resistance between any two nodes is 2/3
-        adj = np.array([[0,1,1],[1,0,1],[1,1,0]], dtype=np.float64)
+        adj = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]], dtype=np.float64)
         r = effective_resistance(adj, 0, 1)
         assert r == pytest.approx(2.0 / 3.0, rel=0.01)
 
     def test_fiedler_vector_sum_zero(self):
-        adj = np.array([[0,1,1],[1,0,1],[1,1,0]], dtype=np.float64)
+        adj = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]], dtype=np.float64)
         v = fiedler_vector(adj)
         # Fiedler vector is orthogonal to constant vector
         assert abs(v.sum()) < 1e-10

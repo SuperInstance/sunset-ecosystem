@@ -16,6 +16,7 @@ from fleet.cli import main
 # Parser / Routing
 # ---------------------------------------------------------------------------
 
+
 class TestCLIParser:
     def test_no_command_prints_help(self, capsys):
         with pytest.raises(SystemExit) as exc:
@@ -57,7 +58,11 @@ class TestCLIParser:
                 mock_cfg.return_value.flux_max_variance = 10.0
                 mock_cfg.return_value.flux_max_chaos = 1.0
                 mock_cfg.return_value.flux_thermal_budget_gate = 0.8
-                with patch.object(sys, "argv", ["sunset", "breed", "--pool", "5", "--generations", "2"]):
+                with patch.object(
+                    sys,
+                    "argv",
+                    ["sunset", "breed", "--pool", "5", "--generations", "2"],
+                ):
                     main()
 
     def test_report_breeding(self, capsys):
@@ -79,7 +84,9 @@ class TestCLIParser:
     def test_report_flux(self, capsys):
         with patch("fleet.deck.flux_gate_decision") as mock_report:
             mock_report.return_value = "# FLUX Report\n"
-            with patch.object(sys, "argv", ["sunset", "report", "--type", "flux", "--proofs", "123"]):
+            with patch.object(
+                sys, "argv", ["sunset", "report", "--type", "flux", "--proofs", "123"]
+            ):
                 main()
             captured = capsys.readouterr()
             assert "# FLUX Report" in captured.out
@@ -88,7 +95,11 @@ class TestCLIParser:
         out = tmp_path / "report.md"
         with patch("fleet.deck.breeding_report") as mock_report:
             mock_report.return_value = "REPORT"
-            with patch.object(sys, "argv", ["sunset", "report", "--type", "breeding", "--output", str(out)]):
+            with patch.object(
+                sys,
+                "argv",
+                ["sunset", "report", "--type", "breeding", "--output", str(out)],
+            ):
                 main()
             assert out.read_text() == "REPORT"
 

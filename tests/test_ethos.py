@@ -65,9 +65,7 @@ def _make_stress(gpu_gflops: float = 0.0, cpu_gflops: float = 50.0) -> StressRep
     cpu_b = DeviceBenchmark(
         device_name="Test CPU",
         device_type="cpu",
-        matrix_benchmarks=[
-            MatrixBenchmark(size=1024, avg_ms=100.0, gflops=cpu_gflops)
-        ],
+        matrix_benchmarks=[MatrixBenchmark(size=1024, avg_ms=100.0, gflops=cpu_gflops)],
         token_throughput=TokenThroughput(tokens_per_second=10.0, avg_latency_ms=100.0),
     )
     benches.append(cpu_b)
@@ -80,7 +78,9 @@ def _make_stress(gpu_gflops: float = 0.0, cpu_gflops: float = 50.0) -> StressRep
             matrix_benchmarks=[
                 MatrixBenchmark(size=1024, avg_ms=5.0, gflops=gpu_gflops)
             ],
-            token_throughput=TokenThroughput(tokens_per_second=200.0, avg_latency_ms=5.0),
+            token_throughput=TokenThroughput(
+                tokens_per_second=200.0, avg_latency_ms=5.0
+            ),
         )
         benches.append(gpu_b)
 
@@ -238,17 +238,13 @@ class TestTrinityConnection:
             CudaGPU(0, "Hot GPU", 8192, 4096, "8.6", 42, temperature_c=82.0)
         ]
         stress = _make_stress(gpu_gflops=300.0)
-        score = score_ethos_connection(
-            profile, stress, agent_thermal_impact=0.9
-        )
+        score = score_ethos_connection(profile, stress, agent_thermal_impact=0.9)
         assert score.thermal_fit < 0.5
 
     def test_score_low_memory(self):
         profile = _make_profile(ram_mb=2048)
         stress = _make_stress()
-        score = score_ethos_connection(
-            profile, stress, agent_memory_mb=1800.0
-        )
+        score = score_ethos_connection(profile, stress, agent_memory_mb=1800.0)
         assert score.memory_fit < 0.5
 
     def test_score_repr(self):
@@ -263,7 +259,12 @@ class TestTrinityConnection:
         stress = _make_stress()
         score = score_ethos_connection(profile, stress)
         assert 0.0 <= score.total <= 1.0
-        for dim in [score.hardware_efficiency, score.latency_fit, score.thermal_fit, score.memory_fit]:
+        for dim in [
+            score.hardware_efficiency,
+            score.latency_fit,
+            score.thermal_fit,
+            score.memory_fit,
+        ]:
             assert 0.0 <= dim <= 1.0
 
 

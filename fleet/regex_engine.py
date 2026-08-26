@@ -11,6 +11,7 @@ Usage:
     result = engine.match("room.alpha.trap")
     # result.action == "allow", result.groups == {"room": "alpha"}
 """
+
 from __future__ import annotations
 
 import re

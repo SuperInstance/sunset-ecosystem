@@ -12,6 +12,7 @@ Usage:
     ha.report("svc-c", "healthy")
     status = ha.status()  # "healthy" (2/3 meet threshold)
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional
@@ -46,7 +47,9 @@ class HealthAggregator:
     # Reporting
     # ------------------------------------------------------------------
 
-    def report(self, source: str, health: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def report(
+        self, source: str, health: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
         """
         Report health status from a source.
 
@@ -103,7 +106,11 @@ class HealthAggregator:
             return "healthy" if ratio >= self._threshold else "unhealthy"
         if self._strategy == "quorum":
             healthy_count = sum(1 for v in values if v >= levels.index("healthy"))
-            return "healthy" if healthy_count / len(values) >= self._threshold else "unhealthy"
+            return (
+                "healthy"
+                if healthy_count / len(values) >= self._threshold
+                else "unhealthy"
+            )
 
         return "unknown"
 

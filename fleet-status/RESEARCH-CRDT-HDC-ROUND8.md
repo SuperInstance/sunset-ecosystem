@@ -87,7 +87,7 @@ When `HAS_AVX512` is true (detected via `/proc/cpuinfo` + `np.bitwise_count` ben
 
 ```python
 xor = np.bitwise_xor(q[:, None, :], r[None, :, :])  # (n_q, n_r, n_words)
-counts = np.bitwise_count(xor).sum(axis=2)           # (n_q, n_r)
+counts = np.bitwise_count(xor).sum(axis=2)  # (n_q, n_r)
 ```
 
 Benchmarking against cosine distance shows **~100× speedup**, making HDC viable for real-time diversity filtering during breeding loops.
@@ -132,8 +132,8 @@ class HolonomyConsensus:
         self,
         crdt_engine: CRDTMergeEngine,
         diversity_scorer: HDCDiversityScorer,
-        novelty_floor: float = 0.15,   # minimum Hamming distance to accept
-        diversity_cap: int = 500,       # max agents after merge
+        novelty_floor: float = 0.15,  # minimum Hamming distance to accept
+        diversity_cap: int = 500,  # max agents after merge
     ):
         self.crdt = crdt_engine
         self.diversity = diversity_scorer

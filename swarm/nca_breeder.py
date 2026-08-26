@@ -48,12 +48,13 @@ class NCARule:
 
     The genotype. Grows into a phenotype via CA iteration.
     """
+
     # Perception kernels (Sobel-ish filters)
     kernel_weights: np.ndarray  # Shape: (n_kernels, n_channels, k, k)
 
     # Update network weights (simple conv layers)
     update_weights: np.ndarray  # Shape: (n_channels, n_kernels * n_channels, 1, 1)
-    update_bias: np.ndarray     # Shape: (n_channels,)
+    update_bias: np.ndarray  # Shape: (n_channels,)
 
     # Alive mask threshold
     alive_threshold: float = 0.1
@@ -90,9 +91,10 @@ class NCARule:
         weight_scale: float = 0.1,
     ) -> NCARule:
         """Generate random NCA rule."""
-        kernel_weights = np.random.randn(
-            n_kernels, n_channels, kernel_size, kernel_size
-        ) * weight_scale
+        kernel_weights = (
+            np.random.randn(n_kernels, n_channels, kernel_size, kernel_size)
+            * weight_scale
+        )
 
         # Standard NCA perception: identity + Sobel x + Sobel y
         if n_kernels >= 3:
@@ -112,9 +114,9 @@ class NCARule:
                 for c in range(n_channels):
                     kernel_weights[2, c] = sobel_y
 
-        update_weights = np.random.randn(
-            n_channels, n_kernels * n_channels, 1, 1
-        ) * weight_scale
+        update_weights = (
+            np.random.randn(n_channels, n_kernels * n_channels, 1, 1) * weight_scale
+        )
         update_bias = np.zeros(n_channels)
 
         return NCARule(
@@ -167,14 +169,12 @@ class NCARule:
         H, W = image.shape
 
         # Pad
-        padded = np.pad(image, pad, mode='edge')
+        padded = np.pad(image, pad, mode="edge")
 
         result = np.zeros((H, W))
         for i in range(H):
             for j in range(W):
-                result[i, j] = np.sum(
-                    padded[i:i+k, j:j+k] * kernel
-                )
+                result[i, j] = np.sum(padded[i : i + k, j : j + k] * kernel)
         return result
 
     def grow(self, seed: Optional[np.ndarray] = None) -> np.ndarray:
@@ -346,7 +346,7 @@ class NCABreeder:
     def select_and_breed(self) -> None:
         """Tournament selection, crossover, mutation, replacement."""
         self.population.sort(key=lambda r: r.fitness, reverse=True)
-        new_pop = [r.copy() for r in self.population[:self.elitism_count]]
+        new_pop = [r.copy() for r in self.population[: self.elitism_count]]
 
         while len(new_pop) < self.population_size:
             p1 = self._tournament_select()

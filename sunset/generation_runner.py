@@ -93,7 +93,9 @@ class GenerationRunner:
         started = datetime.now(timezone.utc)
 
         # 1. Spawn N agents
-        agents = self._spawn_agents(gen, ethos.parallel_capacity, ethos.budget_per_agent)
+        agents = self._spawn_agents(
+            gen, ethos.parallel_capacity, ethos.budget_per_agent
+        )
         if trinity_scores is None:
             trinity_scores = {}
 

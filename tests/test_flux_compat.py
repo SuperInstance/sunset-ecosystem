@@ -3,6 +3,7 @@
 Covers at least 5 creative translation scenarios plus happy-path and
 edge-case coverage.
 """
+
 from __future__ import annotations
 
 import os
@@ -21,6 +22,7 @@ from flux_compat.v3_module import Instruction
 # Helpers
 # ------------------------------------------------------------------
 
+
 def _make_v2(
     constants: list[int] = None,
     instructions: list[tuple[int, int | None]] = None,
@@ -36,8 +38,8 @@ def _make_v2(
         flags |= 0x01
 
     buf = b"FLX2"
-    buf += struct.pack("<B", 0)          # version minor
-    buf += struct.pack("<B", flags)       # flags
+    buf += struct.pack("<B", 0)  # version minor
+    buf += struct.pack("<B", flags)  # flags
     buf += struct.pack("<H", len(constants))
     for c in constants:
         buf += struct.pack("<i", c)
@@ -76,15 +78,16 @@ def _make_v2(
 # Scenario 1 — 1:1 direct translation (happy path)
 # ------------------------------------------------------------------
 
+
 def test_direct_arithmetic_translation():
     """Simple stack + arithmetic opcodes map 1:1 with no warnings."""
     path = _make_v2(
         constants=[42, 7],
         instructions=[
-            (0x01, 42),   # Push 42
-            (0x01, 7),    # Push 7
-            (0x10, None), # Add
-            (0x02, None), # Pop
+            (0x01, 42),  # Push 42
+            (0x01, 7),  # Push 7
+            (0x10, None),  # Add
+            (0x02, None),  # Pop
         ],
     )
     with warnings.catch_warnings(record=True) as w:
@@ -106,12 +109,13 @@ def test_direct_arithmetic_translation():
 # Scenario 2 — v2 "Check" → v3 RangeCheck + Validate (creative #1)
 # ------------------------------------------------------------------
 
+
 def test_check_to_range_check_plus_validate():
     """v2 Check expands to two v3 instructions and emits a warning."""
     path = _make_v2(
         instructions=[
             (0x01, 100),  # Push 100
-            (0x30, None), # Check
+            (0x30, None),  # Check
         ],
     )
     with warnings.catch_warnings(record=True) as w:
@@ -132,12 +136,13 @@ def test_check_to_range_check_plus_validate():
 # Scenario 3 — v2 "Assert" → v3 Prove + HashCommit (creative #2)
 # ------------------------------------------------------------------
 
+
 def test_assert_to_prove_plus_hashcommit():
     """v2 Assert (hard trap) becomes verifiable proof sequence in v3."""
     path = _make_v2(
         instructions=[
-            (0x01, 0),    # Push 0
-            (0x31, None), # Assert
+            (0x01, 0),  # Push 0
+            (0x31, None),  # Assert
         ],
     )
     with warnings.catch_warnings(record=True) as w:
@@ -154,6 +159,7 @@ def test_assert_to_prove_plus_hashcommit():
 # ------------------------------------------------------------------
 # Scenario 4 — v2 "Range" bounds unpacking (creative #3)
 # ------------------------------------------------------------------
+
 
 def test_range_bounds_unpacking():
     """v2 Range packs two i8 bounds into a 2-byte operand.
@@ -172,7 +178,7 @@ def test_range_bounds_unpacking():
 
     path = _make_v2(
         instructions=[
-            (0x01, 25),   # Push 25 (value to range-check)
+            (0x01, 25),  # Push 25 (value to range-check)
             (0x32, operand),  # Range
         ],
     )
@@ -191,6 +197,7 @@ def test_range_bounds_unpacking():
 # ------------------------------------------------------------------
 # Scenario 5 — v2 "Call" → v3 CallBounded with synthetic limit (creative #7)
 # ------------------------------------------------------------------
+
 
 def test_call_to_call_bounded():
     """v2 unbounded Call gets a synthetic 4096 cycle limit in v3."""
@@ -216,12 +223,13 @@ def test_call_to_call_bounded():
 # Scenario 6 — v2 backward Jump → v3 FwdJump + Nop pad (creative #5)
 # ------------------------------------------------------------------
 
+
 def test_backward_jump_forward_only():
     """v2 backward jumps are rejected by v3's forward-only FwdJump.
     Compat layer pads with Nop and warns."""
     path = _make_v2(
         instructions=[
-            (0x40, -4),   # Jump backward 4 (loop head)
+            (0x40, -4),  # Jump backward 4 (loop head)
         ],
     )
     with warnings.catch_warnings(record=True) as w:
@@ -241,11 +249,12 @@ def test_backward_jump_forward_only():
 # Scenario 7 — v2 I/O Read/Write → v3 Streaming (creative #8)
 # ------------------------------------------------------------------
 
+
 def test_read_to_stream_sequence():
     """v2 port Read becomes StreamOpen+StreamCheck+StreamBatch."""
     path = _make_v2(
         instructions=[
-            (0x50, 3),    # Read port 3
+            (0x50, 3),  # Read port 3
         ],
     )
     with warnings.catch_warnings(record=True) as w:
@@ -264,7 +273,7 @@ def test_write_to_stream_sequence():
     """v2 port Write becomes StreamOpen+StreamBatch+StreamClose."""
     path = _make_v2(
         instructions=[
-            (0x51, 1),    # Write port 1
+            (0x51, 1),  # Write port 1
         ],
     )
     with warnings.catch_warnings(record=True) as w:
@@ -282,13 +291,14 @@ def test_write_to_stream_sequence():
 # Scenario 8 — Deprecated opcode removal: Break
 # ------------------------------------------------------------------
 
+
 def test_break_removed():
     """v2 Break has no v3 equivalent; instruction is dropped with warning."""
     path = _make_v2(
         instructions=[
-            (0x01, 1),    # Push 1
-            (0x60, None), # Break
-            (0x02, None), # Pop
+            (0x01, 1),  # Push 1
+            (0x60, None),  # Break
+            (0x02, None),  # Pop
         ],
     )
     with warnings.catch_warnings(record=True) as w:
@@ -307,13 +317,14 @@ def test_break_removed():
 # Scenario 9 — Constraint preservation round-trip
 # ------------------------------------------------------------------
 
+
 def test_constraints_round_trip():
     """v2 constraint payloads are carried forward into v3 ConstraintDefs."""
     path = _make_v2(
         instructions=[(0x44, None)],  # Halt
         constraints=[
             (0x01, b"alt_min=1000;alt_max=40000"),  # aviation
-            (0x02, b"temp_min=-40;temp_max=85"),    # temperature
+            (0x02, b"temp_min=-40;temp_max=85"),  # temperature
         ],
         flags=0x01,
     )
@@ -331,13 +342,14 @@ def test_constraints_round_trip():
 # Scenario 10 — Module serialization produces valid v3 header
 # ------------------------------------------------------------------
 
+
 def test_module_to_bytecode_header():
     """Module.to_bytecode() emits a valid v3 header."""
     path = _make_v2(
         constants=[1, 2, 3],
         instructions=[
-            (0x01, 1),    # Push 1
-            (0x02, None), # Pop
+            (0x01, 1),  # Push 1
+            (0x02, None),  # Pop
         ],
     )
     mod = load_v2(path)
@@ -352,6 +364,7 @@ def test_module_to_bytecode_header():
 # ------------------------------------------------------------------
 # Edge cases
 # ------------------------------------------------------------------
+
 
 def test_unknown_opcode_raises():
     """Parser rejects truly unknown v2 opcodes."""

@@ -8,6 +8,7 @@ The loop runs at the end of each tick when ``enable_cognition=True`` in
 AgentConfig. It observes the grid state, reasons about which rooms need
 attention, and acts by breeding, rebirthing, or adjusting chaos.
 """
+
 from __future__ import annotations
 
 __all__ = ["AgentConfig", "CognitionLoop", "CognitionState"]
@@ -55,6 +56,7 @@ class AgentConfig:
         Number of top-active rooms to include in observations.
         Default 10.
     """
+
     enable_cognition: bool = False
     cognition_interval: int = 1
     cold_threshold: int = 1
@@ -69,12 +71,13 @@ class AgentConfig:
 @dataclass
 class CognitionState:
     """Snapshot of grid state produced by CognitionLoop.observe()."""
+
     tick: int
     n_rooms: int
     active_count: int
     cold_count: int
-    top_active: List[Tuple[int, int]]       # (room_id, activity)
-    top_novel: List[Tuple[int, float]]      # (room_id, novelty_score)
+    top_active: List[Tuple[int, int]]  # (room_id, activity)
+    top_novel: List[Tuple[int, float]]  # (room_id, novelty_score)
     mean_chaos: float
     mean_novelty: float
     fired_ids: List[int]
@@ -154,8 +157,13 @@ class CognitionLoop:
 
         # Top-K novel rooms (if latents available and history exists)
         top_novel: List[Tuple[int, float]] = []
-        if latents is not None and hasattr(grid, "_hist") and hasattr(grid, "_hist_count"):
+        if (
+            latents is not None
+            and hasattr(grid, "_hist")
+            and hasattr(grid, "_hist_count")
+        ):
             from nerve.room_grid import batch_novelty
+
             hist = grid._hist
             hist_count = grid._hist_count
             hist_idx = getattr(grid, "_hist_idx", 0)
@@ -237,22 +245,32 @@ class CognitionLoop:
         if state.cold_count > 0 and self.config.rebirth_candidates > 0:
             # Pick from the bottom of top_active (least active)
             candidates = [
-                rid for rid, act in reversed(state.top_active)
+                rid
+                for rid, act in reversed(state.top_active)
                 if act < self.config.cold_threshold
             ]
             decisions["rebirth_ids"] = candidates[: self.config.rebirth_candidates]
 
         # ── Breed ──────────────────────────────────────────
         # Breed top-active rooms into cold rooms to spread good patterns
-        if state.cold_count > 0 and state.active_count > 0 and self.config.breed_candidates > 0:
-            src_pool = [rid for rid, act in state.top_active if act >= self.config.cold_threshold]
+        if (
+            state.cold_count > 0
+            and state.active_count > 0
+            and self.config.breed_candidates > 0
+        ):
+            src_pool = [
+                rid
+                for rid, act in state.top_active
+                if act >= self.config.cold_threshold
+            ]
             dst_pool = [
-                rid for rid, act in state.top_active
-                if act < self.config.cold_threshold
+                rid for rid, act in state.top_active if act < self.config.cold_threshold
             ]
             pairs: List[Tuple[int, int]] = []
-            for src, dst in zip(src_pool[:self.config.breed_candidates],
-                                dst_pool[:self.config.breed_candidates]):
+            for src, dst in zip(
+                src_pool[: self.config.breed_candidates],
+                dst_pool[: self.config.breed_candidates],
+            ):
                 pairs.append((int(src), int(dst)))
             decisions["breed_pairs"] = pairs
 

@@ -20,6 +20,7 @@ from swarm.holonomy_consensus import (
 # Graph construction
 # ---------------------------------------------------------------------------
 
+
 class TestGraphConstruction:
     def test_empty(self):
         hc = HolonomyConsensus()
@@ -67,6 +68,7 @@ class TestGraphConstruction:
 # ---------------------------------------------------------------------------
 # Cycle verification
 # ---------------------------------------------------------------------------
+
 
 class TestVerifyCycle:
     def test_short_cycle(self):
@@ -116,6 +118,7 @@ class TestVerifyCycle:
 # ---------------------------------------------------------------------------
 # H¹ cohomology
 # ---------------------------------------------------------------------------
+
 
 class TestH1Cohomology:
     def test_empty_graph(self):
@@ -174,6 +177,7 @@ class TestH1Cohomology:
 # Emergence detection
 # ---------------------------------------------------------------------------
 
+
 class TestDetectEmergence:
     def test_no_history(self):
         hc = HolonomyConsensus()
@@ -220,6 +224,7 @@ class TestDetectEmergence:
 # verify_all_cycles
 # ---------------------------------------------------------------------------
 
+
 class TestVerifyAllCycles:
     def test_empty(self):
         hc = HolonomyConsensus()
@@ -251,6 +256,7 @@ class TestVerifyAllCycles:
 # ---------------------------------------------------------------------------
 # CycleReport
 # ---------------------------------------------------------------------------
+
 
 class TestCycleReport:
     def test_immutable(self):

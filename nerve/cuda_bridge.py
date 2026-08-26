@@ -45,7 +45,7 @@ if _lib_path is not None:
             ctypes.POINTER(ctypes.c_float),  # b2 (n, L)
             ctypes.POINTER(ctypes.c_float),  # b3 (n, L)
             ctypes.POINTER(ctypes.c_float),  # out (n, L)
-            ctypes.c_int,                    # n_rooms
+            ctypes.c_int,  # n_rooms
         ]
         _CUDA_LIB.jepa_cuda_tick.restype = None
 
@@ -59,8 +59,8 @@ if _lib_path is not None:
             ctypes.POINTER(ctypes.c_float),  # b2
             ctypes.POINTER(ctypes.c_float),  # b3
             ctypes.POINTER(ctypes.c_float),  # out (batch, n, L)
-            ctypes.c_int,                    # n_rooms
-            ctypes.c_int,                    # batch
+            ctypes.c_int,  # n_rooms
+            ctypes.c_int,  # batch
         ]
         _CUDA_LIB.jepa_cuda_tick_batch.restype = None
 

@@ -36,7 +36,9 @@ from nerve.cuda_bridge import PersistentCUDAGrid
 from nerve.room_grid import make_weights
 
 
-def profile_single(grid: PersistentCUDAGrid, n: int, warmup: int = 10, runs: int = 100) -> dict:
+def profile_single(
+    grid: PersistentCUDAGrid, n: int, warmup: int = 10, runs: int = 100
+) -> dict:
     """Profile single-tick latency."""
     signal = np.random.randn(64).astype(np.float32)
 
@@ -63,7 +65,9 @@ def profile_single(grid: PersistentCUDAGrid, n: int, warmup: int = 10, runs: int
     }
 
 
-def profile_batch(grid: PersistentCUDAGrid, n: int, batch: int, warmup: int = 5, runs: int = 50) -> dict:
+def profile_batch(
+    grid: PersistentCUDAGrid, n: int, batch: int, warmup: int = 5, runs: int = 50
+) -> dict:
     """Profile batch-tick latency."""
     signals = np.random.randn(batch, 64).astype(np.float32)
 
@@ -95,10 +99,20 @@ def profile_batch(grid: PersistentCUDAGrid, n: int, batch: int, warmup: int = 5,
 def main():
     parser = argparse.ArgumentParser(description="Profile CUDA JEPA kernel")
     parser.add_argument("--rooms", type=int, default=10000, help="Number of rooms")
-    parser.add_argument("--batch", type=str, default="1,4,8,16", help="Batch sizes to test (comma-separated)")
+    parser.add_argument(
+        "--batch",
+        type=str,
+        default="1,4,8,16",
+        help="Batch sizes to test (comma-separated)",
+    )
     parser.add_argument("--warmup", type=int, default=10, help="Warmup iterations")
     parser.add_argument("--runs", type=int, default=100, help="Timed iterations")
-    parser.add_argument("--output", type=str, default="docs/CUDA_PROFILE.md", help="Output markdown file")
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="docs/CUDA_PROFILE.md",
+        help="Output markdown file",
+    )
     args = parser.parse_args()
 
     n = args.rooms
@@ -125,8 +139,10 @@ def main():
         else:
             r = profile_batch(grid, n, batch, warmup=args.warmup, runs=args.runs)
         results.append(r)
-        print(f"  batch={batch:2d}: {r['mean_ms']:.2f}ms  "
-              f"({r['throughput_rooms_per_sec']/1e6:.2f}M rooms/sec)")
+        print(
+            f"  batch={batch:2d}: {r['mean_ms']:.2f}ms  "
+            f"({r['throughput_rooms_per_sec'] / 1e6:.2f}M rooms/sec)"
+        )
 
     # Generate markdown report
     lines = [
@@ -145,7 +161,7 @@ def main():
         lines.append(
             f"| {r['batch']:5d} | {r['mean_ms']:9.2f} | {r['median_ms']:11.2f} | "
             f"{r['min_ms']:8.2f} | {r['p99_ms']:8.2f} | "
-            f"{r['throughput_rooms_per_sec']/1e6:25.2f} |"
+            f"{r['throughput_rooms_per_sec'] / 1e6:25.2f} |"
         )
 
     lines += [

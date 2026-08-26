@@ -27,6 +27,7 @@ from logos.decision_log import DecisionType
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def tmp_codebase(tmp_path):
     """Create a small fake codebase."""
@@ -35,21 +36,19 @@ def tmp_codebase(tmp_path):
     pkg.mkdir()
     (pkg / "__init__.py").write_text('"""My package."""\n')
     (pkg / "core.py").write_text(
-        '# TODO: refactor this\n'
-        'import os\nimport json\n\n'
+        "# TODO: refactor this\n"
+        "import os\nimport json\n\n"
         'def hello():\n    return "hello"\n\n'
-        '# FIXME: handle errors\n'
+        "# FIXME: handle errors\n"
         'def world():\n    return "world"\n'
     )
-    (pkg / "utils.py").write_text(
-        'def add(a, b):\n    return a + b\n'
-    )
+    (pkg / "utils.py").write_text("def add(a, b):\n    return a + b\n")
     # Tests
     tests_dir = tmp_path / "tests"
     tests_dir.mkdir()
     (tests_dir / "__init__.py").write_text("")
     (tests_dir / "test_core.py").write_text(
-        'import pytest\nfrom mypkg.core import hello\n\n'
+        "import pytest\nfrom mypkg.core import hello\n\n"
         'def test_hello():\n    assert hello() == "hello"\n'
     )
     # Non-code file
@@ -66,6 +65,7 @@ def tmp_store(tmp_path):
 # ---------------------------------------------------------------------------
 # CodebaseState
 # ---------------------------------------------------------------------------
+
 
 class TestCodebaseState:
     def test_repr(self):
@@ -106,6 +106,7 @@ class TestCodebaseState:
 # ---------------------------------------------------------------------------
 # DecisionLog
 # ---------------------------------------------------------------------------
+
 
 class TestDecisionLog:
     def test_record_and_get(self):
@@ -202,6 +203,7 @@ class TestDecisionLog:
 # GenerationMemory
 # ---------------------------------------------------------------------------
 
+
 class TestGenerationMemory:
     def test_register_and_get(self):
         mem = GenerationMemory()
@@ -288,6 +290,7 @@ class TestGenerationMemory:
 # TrinityConnection
 # ---------------------------------------------------------------------------
 
+
 class TestTrinityConnection:
     def test_repr(self):
         tc = TrinityConnection(overall=0.75)
@@ -338,7 +341,9 @@ class TestTrinityConnection:
     def test_all_components_integrated(self, tmp_codebase):
         """Full integration test: codebase + decisions + generations."""
         log = DecisionLog()
-        log.record("Use pytest", DecisionType.TECHNOLOGY, "team", "Need testing", "pytest")
+        log.record(
+            "Use pytest", DecisionType.TECHNOLOGY, "team", "Need testing", "pytest"
+        )
         mem = GenerationMemory()
         mem.register("logos-1", "Logos Gen 1", 1, purpose="Code memory")
         state = survey_codebase(str(tmp_codebase))
@@ -348,7 +353,12 @@ class TestTrinityConnection:
             generation_memory=mem,
         )
         assert tc.overall > 0.0
-        assert all(0.0 <= v <= 1.0 for v in [
-            tc.overall, tc.codebase_understanding,
-            tc.integration_quality, tc.maintainability,
-        ])
+        assert all(
+            0.0 <= v <= 1.0
+            for v in [
+                tc.overall,
+                tc.codebase_understanding,
+                tc.integration_quality,
+                tc.maintainability,
+            ]
+        )

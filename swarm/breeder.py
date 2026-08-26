@@ -3,6 +3,7 @@
 Implements the breeding pipeline per SPEC-BREEDER:
   Tournament Round → Pareto frontier / sunset candidates → breed → rebirth
 """
+
 from __future__ import annotations
 
 __all__ = ["Breeder", "AgentLifecycle", "spawn_from_template", "BreedingDaemon"]
@@ -84,7 +85,7 @@ def spawn_from_template(
     grid.chaos[room_idx] = template.chaos_initial
 
     bias_scale = template.mean_bias
-    rng_seed = seed if seed is not None else (hash(template.name) % (2 ** 31))
+    rng_seed = seed if seed is not None else (hash(template.name) % (2**31))
     rng = np.random.RandomState(rng_seed)
 
     # Apply template signature as a small weight bias per SPEC-BREEDER §2
@@ -179,7 +180,9 @@ class Breeder:
         winners = tournament.pareto_frontier
 
         if not winners:
-            logger.warning("Evolve: no Pareto winners, skipping generation %d", self.generation)
+            logger.warning(
+                "Evolve: no Pareto winners, skipping generation %d", self.generation
+            )
             return []
 
         # 2. Identify sunset candidates (dominated agents)
@@ -187,8 +190,11 @@ class Breeder:
         num_children = min(len(dominated), self.grid.n - len(winners))
 
         if num_children <= 0:
-            logger.info("Evolve: no room for children (dominated=%d, grid.n=%d)",
-                        len(dominated), self.grid.n)
+            logger.info(
+                "Evolve: no room for children (dominated=%d, grid.n=%d)",
+                len(dominated),
+                self.grid.n,
+            )
             return []
 
         # 3. Breed from winners
@@ -218,11 +224,13 @@ class Breeder:
                 tick_entered=self.grid.ticks,
             )
 
-            placed.append({
-                **child,
-                "room": room_idx,
-                "generation": self.generation,
-            })
+            placed.append(
+                {
+                    **child,
+                    "room": room_idx,
+                    "generation": self.generation,
+                }
+            )
             logger.info(
                 "Evolve: placed child %s in room %d (gen %d)",
                 child.get("id", "?"),
@@ -286,13 +294,16 @@ class Breeder:
     @property
     def stats(self) -> dict:
         """Summary counts per lifecycle state."""
-        counts = {s: 0 for s in (
-            AgentLifecycle.SPAWNED,
-            AgentLifecycle.ACTIVE,
-            AgentLifecycle.ADAPTING,
-            AgentLifecycle.COMPILED,
-            AgentLifecycle.SUNSET,
-        )}
+        counts = {
+            s: 0
+            for s in (
+                AgentLifecycle.SPAWNED,
+                AgentLifecycle.ACTIVE,
+                AgentLifecycle.ADAPTING,
+                AgentLifecycle.COMPILED,
+                AgentLifecycle.SUNSET,
+            )
+        }
         for rec in self._lifecycle.values():
             counts[rec.state] = counts.get(rec.state, 0) + 1
         return {

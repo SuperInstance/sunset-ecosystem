@@ -1,4 +1,5 @@
 """Tests for CCC decision rubric."""
+
 from fleet.ccc_decision_rubric import Input, decide, explain
 
 
@@ -12,7 +13,13 @@ class TestDecide:
         assert decide(inp) == "TELL_NOW"
 
     def test_architecture_multi_repo_tells_now(self):
-        inp = Input("discussion5", "Refactor", "Change bridge", is_architecture=True, affects_repos=3)
+        inp = Input(
+            "discussion5",
+            "Refactor",
+            "Change bridge",
+            is_architecture=True,
+            affects_repos=3,
+        )
         assert decide(inp) == "TELL_NOW"
 
     def test_routine_ignored(self):

@@ -406,8 +406,12 @@ class TestBernsteinOrchestrator:
                 timeout=1.0,
             )
         ]
-        with patch.object(orch._spawner, "spawn", return_value=(str(repo), "agent-t1")) if orch._spawner else patch.object(
-            GitWorktreeSpawner, "spawn", return_value=(str(repo), "agent-t1")
+        with (
+            patch.object(orch._spawner, "spawn", return_value=(str(repo), "agent-t1"))
+            if orch._spawner
+            else patch.object(
+                GitWorktreeSpawner, "spawn", return_value=(str(repo), "agent-t1")
+            )
         ):
             result = orch.orchestrate(str(repo), tasks)
 

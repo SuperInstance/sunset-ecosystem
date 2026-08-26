@@ -16,6 +16,7 @@ References
 - SuperInstance/SuperInstance README — I2I five layers
 - github.com/topics/cocapn — PLATO I2I repo
 """
+
 from __future__ import annotations
 
 import json
@@ -31,9 +32,11 @@ logger = logging.getLogger(__name__)
 
 # ── Data structures ─────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class AgentIdentity:
     """Origin-centric agent identity."""
+
     name: str
     role: str
     hardware: str
@@ -46,6 +49,7 @@ class AgentIdentity:
 @dataclass
 class I2IMessage:
     """A message at any I2I layer."""
+
     layer: str  # instance | iteration | individual | interaction | iron
     sender: AgentIdentity
     recipient: Optional[AgentIdentity]
@@ -54,19 +58,25 @@ class I2IMessage:
     channel: str = ""  # HTTP endpoint, PLATO room, git branch, Matrix room
 
     def to_json(self) -> str:
-        return json.dumps({
-            "layer": self.layer,
-            "sender": {"name": self.sender.name, "role": self.sender.role},
-            "recipient": {"name": self.recipient.name, "role": self.recipient.role} if self.recipient else None,
-            "payload": self.payload,
-            "timestamp": self.timestamp,
-            "channel": self.channel,
-        }, default=str)
+        return json.dumps(
+            {
+                "layer": self.layer,
+                "sender": {"name": self.sender.name, "role": self.sender.role},
+                "recipient": {"name": self.recipient.name, "role": self.recipient.role}
+                if self.recipient
+                else None,
+                "payload": self.payload,
+                "timestamp": self.timestamp,
+                "channel": self.channel,
+            },
+            default=str,
+        )
 
 
 @dataclass
 class Bottle:
     """Git-native message (Individual layer)."""
+
     from_agent: str
     to_agent: Optional[str] = None
     subject: str = ""
@@ -90,8 +100,8 @@ class Bottle:
         content = f"""# {self.subject}
 
 **From:** {self.from_agent}
-**To:** {self.to_agent or 'fleet'}
-**Time:** {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}
+**To:** {self.to_agent or "fleet"}
+**Time:** {time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())}
 
 {self.body}
 """
@@ -100,11 +110,15 @@ class Bottle:
         # Stage and commit
         subprocess.run(
             ["git", "add", str(filepath)],
-            cwd=self.repo_path, capture_output=True, check=True,
+            cwd=self.repo_path,
+            capture_output=True,
+            check=True,
         )
         result = subprocess.run(
             ["git", "commit", "-m", f"bottle: {self.subject} ({self.from_agent})"],
-            cwd=self.repo_path, capture_output=True, text=True,
+            cwd=self.repo_path,
+            capture_output=True,
+            text=True,
         )
         if result.returncode != 0 and "nothing to commit" not in result.stderr:
             raise RuntimeError(f"git commit failed: {result.stderr}")
@@ -112,12 +126,16 @@ class Bottle:
         # Get commit hash
         hash_result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            cwd=self.repo_path, capture_output=True, text=True, check=True,
+            cwd=self.repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
         )
         return hash_result.stdout.strip()
 
 
 # ── Layer implementations ────────────────────────────────────────────────
+
 
 class InstanceLayer:
     """Milliseconds-scale compute↔compute via HTTP/API."""
@@ -126,7 +144,9 @@ class InstanceLayer:
         self.timeout_ms = timeout_ms
         self._log: List[I2IMessage] = []
 
-    def call(self, sender: AgentIdentity, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def call(
+        self, sender: AgentIdentity, endpoint: str, payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Simulated HTTP call — subclasses override for real HTTP."""
         msg = I2IMessage(
             layer="instance",
@@ -150,7 +170,9 @@ class IterationLayer:
         self.plato = plato_bridge
         self._log: List[I2IMessage] = []
 
-    def submit_tile(self, sender: AgentIdentity, domain: str, question: str, answer: str) -> Dict[str, Any]:
+    def submit_tile(
+        self, sender: AgentIdentity, domain: str, question: str, answer: str
+    ) -> Dict[str, Any]:
         payload = {"domain": domain, "question": question, "answer": answer}
         msg = I2IMessage(
             layer="iteration",
@@ -162,7 +184,9 @@ class IterationLayer:
         self._log.append(msg)
         if self.plato is not None:
             try:
-                return self.plato.submit(agent=sender.name, question=question, answer=answer, domain=domain)
+                return self.plato.submit(
+                    agent=sender.name, question=question, answer=answer, domain=domain
+                )
             except Exception as e:
                 logger.warning(f"PLATO submit failed: {e}")
         return {"status": "buffered", "domain": domain, "tile_by": sender.name}
@@ -183,7 +207,9 @@ class IndividualLayer:
         msg = I2IMessage(
             layer="individual",
             sender=AgentIdentity(bottle.from_agent, "sender", "generic"),
-            recipient=AgentIdentity(bottle.to_agent, "recipient", "generic") if bottle.to_agent else None,
+            recipient=AgentIdentity(bottle.to_agent, "recipient", "generic")
+            if bottle.to_agent
+            else None,
             payload={"commit": commit_hash, "subject": bottle.subject},
             channel=f"git://{bottle.branch}",
         )
@@ -203,11 +229,13 @@ class IndividualLayer:
             if not d.is_dir():
                 continue
             for f in sorted(d.glob("*.md")):
-                bottles.append({
-                    "from": d.name,
-                    "file": str(f.relative_to(repo)),
-                    "content": f.read_text(),
-                })
+                bottles.append(
+                    {
+                        "from": d.name,
+                        "file": str(f.relative_to(repo)),
+                        "content": f.read_text(),
+                    }
+                )
         return bottles
 
     def history(self) -> List[I2IMessage]:
@@ -277,6 +305,7 @@ class IronLayer:
 
 
 # ── Unified I2I Bridge ──────────────────────────────────────────────────
+
 
 class I2IBridge:
     """Unified access to all five I2I layers."""

@@ -40,6 +40,7 @@ import numpy as np
 @dataclass
 class SpectralGenome:
     """Genome represented as a complex frequency spectrum."""
+
     spectrum: np.ndarray  # Complex-valued, shape (spectrum_size,)
     fitness: float = 0.0
     age: int = 0
@@ -76,7 +77,9 @@ class SpectralGenome:
         )
 
     @staticmethod
-    def random(spectrum_size: int, band_limit: Optional[float] = None) -> SpectralGenome:
+    def random(
+        spectrum_size: int, band_limit: Optional[float] = None
+    ) -> SpectralGenome:
         """Generate random spectrum with optional band-limiting."""
         # Random complex coefficients
         real = np.random.randn(spectrum_size)
@@ -127,8 +130,9 @@ class SpectralCrossover:
     def __init__(self, alpha: float = 0.5):
         self.alpha = alpha  # Blend factor
 
-    def crossover(self, parent1: SpectralGenome,
-                  parent2: SpectralGenome) -> Tuple[SpectralGenome, SpectralGenome]:
+    def crossover(
+        self, parent1: SpectralGenome, parent2: SpectralGenome
+    ) -> Tuple[SpectralGenome, SpectralGenome]:
         """Spectral convolution crossover."""
         # Pointwise multiplication = convolution in phenotype space
         conv1 = parent1.spectrum * parent2.spectrum
@@ -146,13 +150,15 @@ class SpectralCrossover:
 class SpectralMutation:
     """Mutation operations in the frequency domain."""
 
-    def __init__(self,
-                 harmonic_shift_rate: float = 0.1,
-                 phase_noise_rate: float = 0.2,
-                 amplitude_noise_rate: float = 0.2,
-                 harmonic_shift_std: float = 1.0,
-                 phase_noise_std: float = 0.3,
-                 amplitude_noise_std: float = 0.1):
+    def __init__(
+        self,
+        harmonic_shift_rate: float = 0.1,
+        phase_noise_rate: float = 0.2,
+        amplitude_noise_rate: float = 0.2,
+        harmonic_shift_std: float = 1.0,
+        phase_noise_std: float = 0.3,
+        amplitude_noise_std: float = 0.1,
+    ):
         self.harmonic_shift_rate = harmonic_shift_rate
         self.phase_noise_rate = phase_noise_rate
         self.amplitude_noise_rate = amplitude_noise_rate
@@ -271,7 +277,7 @@ class SpectralBreeder:
         self.population.sort(key=lambda g: g.fitness, reverse=True)
 
         # Elitism
-        new_population = [g.copy() for g in self.population[:self.elitism_count]]
+        new_population = [g.copy() for g in self.population[: self.elitism_count]]
 
         # Fill rest with offspring
         while len(new_population) < self.population_size:

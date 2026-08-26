@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
@@ -76,7 +77,9 @@ def _check_chaos_vector(payload: dict, verbose: bool = True) -> bool:
     # Check tagline for remaining HTML tags
     if "<" in rule.production.tagline or ">" in rule.production.tagline:
         is_safe = False
-        issues.append(f"tagline still contains angle brackets: {rule.production.tagline!r}")
+        issues.append(
+            f"tagline still contains angle brackets: {rule.production.tagline!r}"
+        )
 
     # Check condition for SQLi patterns
     if ";" in rule.production.condition or "DROP" in rule.production.condition.upper():
@@ -111,7 +114,9 @@ def test_chaos_vector_blocked(payload: dict) -> None:
 def test_all_chaos_vectors_blocked():
     """All chaos vectors should be blocked or sanitized."""
     for payload in CHAOS_VECTORS:
-        assert _check_chaos_vector(payload.copy(), verbose=False), f"Attack not blocked: {payload.get('attack', 'unknown')}"
+        assert _check_chaos_vector(payload.copy(), verbose=False), (
+            f"Attack not blocked: {payload.get('attack', 'unknown')}"
+        )
 
 
 def run_all() -> bool:

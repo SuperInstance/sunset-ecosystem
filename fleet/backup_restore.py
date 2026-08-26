@@ -13,6 +13,7 @@ Usage:
     br.validate(snapshot)
     restored = br.restore(snapshot)
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -34,6 +35,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Snapshot:
     """A fleet state snapshot."""
+
     version: str
     timestamp: float
     checksum: str
@@ -91,7 +93,9 @@ class BackupRestore:
         payload = json.dumps(state, sort_keys=True, default=str).encode("utf-8")
         actual_checksum = hashlib.sha256(payload).hexdigest()
         if actual_checksum != snapshot.checksum:
-            raise ValueError(f"Checksum mismatch: expected {snapshot.checksum}, got {actual_checksum}")
+            raise ValueError(
+                f"Checksum mismatch: expected {snapshot.checksum}, got {actual_checksum}"
+            )
 
         return state
 

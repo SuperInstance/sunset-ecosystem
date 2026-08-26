@@ -25,25 +25,28 @@ from typing import Any, Optional
 
 class AgentRole(Enum):
     """Agent roles from Equipment-Swarm-Coordinator."""
+
     COORDINATOR = auto()  # Full knowledge, coordinates others
-    EXECUTOR = auto()     # Partial knowledge, executes tasks
-    VALIDATOR = auto()    # Partial knowledge, validates results
-    SPECIALIST = auto()   # Limited knowledge, specialized tasks
-    OBSERVER = auto()     # Minimal knowledge, observes and reports
-    SCOUT = auto()        # Explores, gathers information
-    BUILDER = auto()      # Constructs, implements solutions
-    AUDITOR = auto()      # Reviews, checks for correctness
+    EXECUTOR = auto()  # Partial knowledge, executes tasks
+    VALIDATOR = auto()  # Partial knowledge, validates results
+    SPECIALIST = auto()  # Limited knowledge, specialized tasks
+    OBSERVER = auto()  # Minimal knowledge, observes and reports
+    SCOUT = auto()  # Explores, gathers information
+    BUILDER = auto()  # Constructs, implements solutions
+    AUDITOR = auto()  # Reviews, checks for correctness
 
 
 class KnowledgeIsolation(Enum):
     """Knowledge isolation levels."""
-    STRICT = auto()    # Only explicitly granted knowledge
+
+    STRICT = auto()  # Only explicitly granted knowledge
     MODERATE = auto()  # Knowledge at or below agent's level
-    RELAXED = auto()   # All knowledge accessible
+    RELAXED = auto()  # All knowledge accessible
 
 
 class DecompositionStrategy(Enum):
     """Task decomposition strategies."""
+
     PARALLEL = auto()
     SEQUENTIAL = auto()
     PIPELINE = auto()
@@ -53,6 +56,7 @@ class DecompositionStrategy(Enum):
 
 class ConflictResolutionStrategy(Enum):
     """Conflict resolution strategies."""
+
     VOTING = auto()
     WEIGHTED = auto()
     HIERARCHICAL = auto()
@@ -62,6 +66,7 @@ class ConflictResolutionStrategy(Enum):
 @dataclass
 class AgentProfile:
     """Profile for a registered agent."""
+
     id: str
     role: AgentRole
     capabilities: list[str] = field(default_factory=list)
@@ -75,6 +80,7 @@ class AgentProfile:
 @dataclass
 class TaskNode:
     """A task in a decomposition graph."""
+
     id: str
     description: str
     agent_id: Optional[str] = None
@@ -86,6 +92,7 @@ class TaskNode:
 @dataclass
 class ConflictReport:
     """Report from conflict resolution."""
+
     winner: str
     strategy: str
     votes: dict
@@ -204,7 +211,11 @@ class SwarmCoordinator:
                         if agent.hierarchy_level > best_level:
                             best_level = agent.hierarchy_level
                             best_agent = agent_id
-                winner = agent_votes.get(best_agent, options[0]) if best_agent else options[0]
+                winner = (
+                    agent_votes.get(best_agent, options[0])
+                    if best_agent
+                    else options[0]
+                )
             else:
                 winner = options[0]
             return ConflictReport(
@@ -273,11 +284,15 @@ class SwarmCoordinator:
                     deps = [subtasks[i - 1]] if i > 0 else []
                 elif strategy_enum == DecompositionStrategy.PIPELINE:
                     deps = [f"stage-{i - 1}"] if i > 0 else []
-                nodes.append(TaskNode(
-                    id=f"stage-{i}" if strategy_enum == DecompositionStrategy.PIPELINE else f"task-{i}",
-                    description=st,
-                    dependencies=deps,
-                ))
+                nodes.append(
+                    TaskNode(
+                        id=f"stage-{i}"
+                        if strategy_enum == DecompositionStrategy.PIPELINE
+                        else f"task-{i}",
+                        description=st,
+                        dependencies=deps,
+                    )
+                )
             return nodes
 
         # Default decomposition for common strategies
@@ -285,14 +300,30 @@ class SwarmCoordinator:
             return [
                 TaskNode(id="map-1", description=f"Map: {description}"),
                 TaskNode(id="map-2", description=f"Map: {description}"),
-                TaskNode(id="reduce", description=f"Reduce: {description}", dependencies=["map-1", "map-2"]),
+                TaskNode(
+                    id="reduce",
+                    description=f"Reduce: {description}",
+                    dependencies=["map-1", "map-2"],
+                ),
             ]
         elif strategy_enum == DecompositionStrategy.DIVIDE_CONQUER:
             return [
                 TaskNode(id="divide", description=f"Divide: {description}"),
-                TaskNode(id="conquer-1", description="Conquer left half", dependencies=["divide"]),
-                TaskNode(id="conquer-2", description="Conquer right half", dependencies=["divide"]),
-                TaskNode(id="merge", description="Merge results", dependencies=["conquer-1", "conquer-2"]),
+                TaskNode(
+                    id="conquer-1",
+                    description="Conquer left half",
+                    dependencies=["divide"],
+                ),
+                TaskNode(
+                    id="conquer-2",
+                    description="Conquer right half",
+                    dependencies=["divide"],
+                ),
+                TaskNode(
+                    id="merge",
+                    description="Merge results",
+                    dependencies=["conquer-1", "conquer-2"],
+                ),
             ]
         else:
             return [TaskNode(id="task-0", description=description)]
@@ -336,16 +367,16 @@ class SwarmCoordinator:
                 }
                 for aid, a in self.agents.items()
             },
-            "trust_matrix": {
-                f"{k[0]}→{k[1]}": v for k, v in self.trust_matrix.items()
-            },
+            "trust_matrix": {f"{k[0]}→{k[1]}": v for k, v in self.trust_matrix.items()},
         }
 
     def render_ascii(self) -> str:
         """Render ASCII swarm visualization."""
-        lines = ["+" + "-" * 48 + "+",
-                 "| SWARM COORDINATOR                              |",
-                 "+" + "-" * 48 + "+"]
+        lines = [
+            "+" + "-" * 48 + "+",
+            "| SWARM COORDINATOR                              |",
+            "+" + "-" * 48 + "+",
+        ]
         for agent_id, profile in self.agents.items():
             role_icon = {
                 AgentRole.COORDINATOR: "👑",
@@ -357,6 +388,8 @@ class SwarmCoordinator:
                 AgentRole.BUILDER: "🏗",
                 AgentRole.AUDITOR: "🔍",
             }.get(profile.role, "?")
-            lines.append(f"| {role_icon} {agent_id:12} | {profile.role.name:12} | trust={profile.trust_score:.2f} |")
+            lines.append(
+                f"| {role_icon} {agent_id:12} | {profile.role.name:12} | trust={profile.trust_score:.2f} |"
+            )
         lines.append("+" + "-" * 48 + "+")
         return "\n".join(lines)

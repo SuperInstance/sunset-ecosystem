@@ -67,6 +67,7 @@ class CalibrationReport:
         drift_score: How much room A's latent has drifted (0-1).
         corrected: Whether room A was recalibrated.
     """
+
     room_a: int
     room_b: int
     pred_error: float
@@ -208,7 +209,8 @@ class WorldModel:
         for i in range(n_rooms):
             torch.manual_seed(42 + i * 7)
             enc = nn.Sequential(
-                nn.Linear(latent_dim * 4, latent_dim * 2), nn.ReLU(),
+                nn.Linear(latent_dim * 4, latent_dim * 2),
+                nn.ReLU(),
                 nn.Linear(latent_dim * 2, latent_dim),
             )
             self.room_jepas.append(enc)

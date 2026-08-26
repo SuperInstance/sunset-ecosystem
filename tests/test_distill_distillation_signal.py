@@ -29,7 +29,9 @@ class TestDistillationSignal:
         return UserRanking(
             prompt="test",
             responses=[
-                RankedResponse(response="distilled", source="distilled_v3", rank=distilled_rank),
+                RankedResponse(
+                    response="distilled", source="distilled_v3", rank=distilled_rank
+                ),
                 RankedResponse(response="big", source="gpt-4", rank=big_rank),
             ],
             user_notes=notes,

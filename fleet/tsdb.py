@@ -12,6 +12,7 @@ Features:
 
 No external dependencies — pure Python with numpy for aggregation.
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -45,6 +46,7 @@ class Aggregation(enum.Enum):
 @dataclass(frozen=True)
 class DataPoint:
     """Single time-series data point."""
+
     timestamp_ns: int
     value: float
 
@@ -56,6 +58,7 @@ class DataPoint:
 @dataclass
 class MetricSeries:
     """A named time-series with circular buffer storage."""
+
     name: str
     labels: dict[str, str]
     unit: str = ""
@@ -84,16 +87,20 @@ class MetricSeries:
     def _get_sorted(self) -> tuple[np.ndarray, np.ndarray]:
         """Return (timestamps, values) in chronological order."""
         if self._count < self.retention:
-            return self._timestamps[:self._count], self._values[:self._count]
+            return self._timestamps[: self._count], self._values[: self._count]
         # Wraparound: oldest is at _write_idx
-        ts = np.concatenate([
-            self._timestamps[self._write_idx:],
-            self._timestamps[:self._write_idx],
-        ])
-        vs = np.concatenate([
-            self._values[self._write_idx:],
-            self._values[:self._write_idx],
-        ])
+        ts = np.concatenate(
+            [
+                self._timestamps[self._write_idx :],
+                self._timestamps[: self._write_idx],
+            ]
+        )
+        vs = np.concatenate(
+            [
+                self._values[self._write_idx :],
+                self._values[: self._write_idx],
+            ]
+        )
         return ts, vs
 
     def range_query(
@@ -180,6 +187,7 @@ class MetricSeries:
 
 # ── TimeSeriesDB ──────────────────────────────────────────────
 
+
 class TimeSeriesDB:
     """Multi-metric time-series database."""
 
@@ -249,7 +257,7 @@ class TimeSeriesDB:
                 lines.append(f"# TYPE {series.name} gauge")
                 last = series.last()
                 if last:
-                    lines.append(f'{series.name}{{{label_str}}} {last.value}')
+                    lines.append(f"{series.name}{{{label_str}}} {last.value}")
         return "\n".join(lines)
 
     # ── aggregation across series ─────────────────────

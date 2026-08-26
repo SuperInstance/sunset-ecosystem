@@ -47,7 +47,9 @@ class TestKnowledgeSync:
     def test_ingest_with_related(self):
         ks = KnowledgeSync()
         ks.add_node("agent_42", "agent")
-        eid = ks.ingest_fleet_event({"type": "breeding", "id": "e2", "agent_id": "agent_42"})
+        eid = ks.ingest_fleet_event(
+            {"type": "breeding", "id": "e2", "agent_id": "agent_42"}
+        )
         assert eid == "e2"
         edges = [e for e in ks.edges if e.source == "e2"]
         assert len(edges) == 1

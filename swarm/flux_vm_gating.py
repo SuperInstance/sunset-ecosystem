@@ -140,9 +140,7 @@ class FluxVMGatingChecker:
 
         w_min, w_max = cfg.weight_bounds
         if np.any(w < w_min) or np.any(w > w_max):
-            violations["bounds"] = float(
-                np.mean((w < w_min) | (w > w_max))
-            )
+            violations["bounds"] = float(np.mean((w < w_min) | (w > w_max)))
             score += violations["bounds"] * cfg.severity_weights.get("bounds", 1.0)
 
         l2 = float(np.linalg.norm(w))
@@ -152,7 +150,9 @@ class FluxVMGatingChecker:
 
         var = float(np.var(w))
         if var > cfg.max_variance:
-            violations["variance"] = min(1.0, (var - cfg.max_variance) / cfg.max_variance)
+            violations["variance"] = min(
+                1.0, (var - cfg.max_variance) / cfg.max_variance
+            )
             score += violations["variance"] * cfg.severity_weights.get("variance", 0.3)
 
         if chaos > cfg.max_chaos:
@@ -161,7 +161,8 @@ class FluxVMGatingChecker:
 
         if thermal_pressure > cfg.thermal_budget_gate:
             violations["thermal"] = min(
-                1.0, (thermal_pressure - cfg.thermal_budget_gate) / cfg.thermal_budget_gate
+                1.0,
+                (thermal_pressure - cfg.thermal_budget_gate) / cfg.thermal_budget_gate,
             )
             score += violations["thermal"] * cfg.severity_weights.get("thermal", 0.7)
 

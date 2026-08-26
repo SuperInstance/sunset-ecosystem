@@ -47,6 +47,7 @@ Specifically:
 ```python
 # conftest.py — add at top
 import os
+
 os.environ["NUMBA_DISABLE_JIT"] = "1"  # Disable JIT during collection
 ```
 

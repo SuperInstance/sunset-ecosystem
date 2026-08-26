@@ -30,6 +30,7 @@ import numpy as np
 @dataclass
 class VocabularyEntry:
     """A single vocabulary entry."""
+
     term: str
     human_definition: str
     agent_schema: Dict[str, Any]
@@ -67,9 +68,13 @@ class HAVBridge:
         self.agent_to_human: Dict[str, str] = {}  # agent term -> human phrase
         self.contexts: Set[str] = set()
 
-    def teach_agent(self, human_phrase: str, human_definition: str,
-                    agent_schema: Optional[Dict[str, Any]] = None,
-                    context: str = "general"):
+    def teach_agent(
+        self,
+        human_phrase: str,
+        human_definition: str,
+        agent_schema: Optional[Dict[str, Any]] = None,
+        context: str = "general",
+    ):
         """
         Teach the agent a human term.
 
@@ -91,9 +96,13 @@ class HAVBridge:
         self.agent_to_human[human_phrase] = human_phrase
         self.contexts.add(context)
 
-    def teach_human(self, agent_term: str, human_friendly: str,
-                    agent_schema: Optional[Dict[str, Any]] = None,
-                    context: str = "general"):
+    def teach_human(
+        self,
+        agent_term: str,
+        human_friendly: str,
+        agent_schema: Optional[Dict[str, Any]] = None,
+        context: str = "general",
+    ):
         """
         Teach humans an agent-native term.
 
@@ -132,7 +141,9 @@ class HAVBridge:
             entry.frequency += 1
             return {
                 "original": phrase,
-                "translation": entry.human_definition if direction == "agent_to_human" else entry.agent_schema,
+                "translation": entry.human_definition
+                if direction == "agent_to_human"
+                else entry.agent_schema,
                 "confidence": 1.0,
                 "context": entry.context,
                 "term": entry.term,
@@ -144,7 +155,9 @@ class HAVBridge:
                 entry.frequency += 1
                 return {
                     "original": phrase,
-                    "translation": entry.human_definition if direction == "agent_to_human" else entry.agent_schema,
+                    "translation": entry.human_definition
+                    if direction == "agent_to_human"
+                    else entry.agent_schema,
                     "confidence": 0.9,
                     "context": entry.context,
                     "term": entry.term,
@@ -156,7 +169,9 @@ class HAVBridge:
                 entry.frequency += 1
                 return {
                     "original": phrase,
-                    "translation": entry.human_definition if direction == "agent_to_human" else entry.agent_schema,
+                    "translation": entry.human_definition
+                    if direction == "agent_to_human"
+                    else entry.agent_schema,
                     "confidence": 0.7,
                     "context": entry.context,
                     "term": entry.term,
@@ -181,7 +196,9 @@ class HAVBridge:
 
     def get_popular_terms(self, n: int = 10) -> List[VocabularyEntry]:
         """Get most frequently used terms."""
-        sorted_terms = sorted(self.vocabulary.values(), key=lambda e: e.frequency, reverse=True)
+        sorted_terms = sorted(
+            self.vocabulary.values(), key=lambda e: e.frequency, reverse=True
+        )
         return sorted_terms[:n]
 
     def add_synonym(self, term: str, synonym: str):
@@ -217,9 +234,11 @@ class HAVBridge:
             "total_terms": len(self.vocabulary),
             "contexts": list(self.contexts),
             "total_translations": sum(e.frequency for e in self.vocabulary.values()),
-            "avg_confidence": np.mean([
-                len(e.synonyms) for e in self.vocabulary.values()
-            ]) if self.vocabulary else 0,
+            "avg_confidence": np.mean(
+                [len(e.synonyms) for e in self.vocabulary.values()]
+            )
+            if self.vocabulary
+            else 0,
         }
 
     def to_dict(self) -> Dict[str, Any]:
@@ -257,8 +276,5 @@ class HAVBridge:
         return {
             "context": context,
             "schema_version": "1.0",
-            "terms": {
-                entry.term: entry.agent_schema
-                for entry in entries
-            },
+            "terms": {entry.term: entry.agent_schema for entry in entries},
         }

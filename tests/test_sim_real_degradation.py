@@ -1,4 +1,5 @@
 """Tests for fleet/sim_real_degradation.py — SIM/REAL degradation stack."""
+
 from __future__ import annotations
 
 import time
@@ -17,6 +18,7 @@ from fleet.sim_real_degradation import (
 # ---------------------------------------------------------------------------
 # 1. DataSource
 # ---------------------------------------------------------------------------
+
 
 class TestDataSource:
     def test_health_score_perfect(self):
@@ -42,6 +44,7 @@ class TestDataSource:
 # ---------------------------------------------------------------------------
 # 2. SimRealDegradationStack — transitions
 # ---------------------------------------------------------------------------
+
 
 class TestSimRealDegradationStack:
     def test_starts_green(self):
@@ -170,6 +173,7 @@ class TestSimRealDegradationStack:
 # 3. FleetDegradationMonitor
 # ---------------------------------------------------------------------------
 
+
 class TestFleetDegradationMonitor:
     def test_register_subsystem(self):
         monitor = FleetDegradationMonitor()
@@ -224,6 +228,7 @@ class TestFleetDegradationMonitor:
 # ---------------------------------------------------------------------------
 # 4. DegradationState
 # ---------------------------------------------------------------------------
+
 
 class TestDegradationState:
     def test_overall_health_empty(self):

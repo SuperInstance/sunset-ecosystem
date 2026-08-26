@@ -33,6 +33,7 @@ class ShoeState:
         steps: How many times this pattern has been processed.
         last_state: The fiber state at last observation.
     """
+
     pattern_id: str
     put_on_time: float = field(default_factory=time.time)
     notice_level: float = 1.0
@@ -64,8 +65,7 @@ class ShoeTracker:
     def __repr__(self) -> str:
         total = len(self._shoes)
         compiled = sum(
-            1 for s in self._shoes.values()
-            if s.last_state == FiberState.COMPILED
+            1 for s in self._shoes.values() if s.last_state == FiberState.COMPILED
         )
         return f"ShoeTracker(total={total}, compiled={compiled})"
 
@@ -107,8 +107,7 @@ class ShoeTracker:
             if not self._shoes:
                 return 0.0
             return 1.0 - (
-                sum(s.notice_level for s in self._shoes.values())
-                / len(self._shoes)
+                sum(s.notice_level for s in self._shoes.values()) / len(self._shoes)
             )
 
     @property
@@ -116,8 +115,7 @@ class ShoeTracker:
         """Number of patterns that have reached muscle memory."""
         with self._lock:
             return sum(
-                1 for s in self._shoes.values()
-                if s.last_state == FiberState.COMPILED
+                1 for s in self._shoes.values() if s.last_state == FiberState.COMPILED
             )
 
     @property

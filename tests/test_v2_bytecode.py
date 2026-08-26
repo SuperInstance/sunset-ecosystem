@@ -34,6 +34,7 @@ def _build_v2(constants=None, instructions=None, constraints=None, flags=0) -> b
         if op_name is None:
             continue  # unknown opcode, no operand
         from flux_compat.v2_bytecode import V2_OPCODE_IMM_BYTES
+
         imm_sz = V2_OPCODE_IMM_BYTES.get(op_name, 0)
         if imm_sz == 4:
             data += struct.pack("<i", operand or 0)

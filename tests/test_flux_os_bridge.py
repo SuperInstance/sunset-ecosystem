@@ -34,7 +34,9 @@ class TestFluxOSBridge:
         bridge = FluxOSBridge(node_id="alpha")
         md = bridge.generate_flux_md("deploy_agent", {"population_size": 50})
         bridge.compile_breeding_agent("deploy_agent", md)
-        result = bridge.deploy("deploy_agent", target="arm64", board="rpi4", strategy="canary")
+        result = bridge.deploy(
+            "deploy_agent", target="arm64", board="rpi4", strategy="canary"
+        )
         assert result is True
         assert len(bridge._deployments) == 1
 
@@ -73,7 +75,7 @@ class TestFluxOSBridge:
             md = bridge.generate_flux_md(f"agent_{i}", {})
             bridge.compile_breeding_agent(f"agent_{i}", md)
             bridge.deploy(f"agent_{i}", target="native")
-        
+
         status = bridge.get_deployment_status()
         assert status["compiled_agents"] == 3
         assert status["active_deployments"] == 3
@@ -83,7 +85,7 @@ class TestFluxOSBridge:
         md = bridge.generate_flux_md("field_agent", {})
         bridge.compile_breeding_agent("field_agent", md)
         bridge.deploy("field_agent", target="arm64", board="rpi4", strategy="rolling")
-        
+
         dep = bridge._deployments[0]
         assert dep["agent"] == "field_agent"
         assert dep["target"] == "arm64"

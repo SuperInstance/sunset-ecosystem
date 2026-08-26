@@ -23,6 +23,7 @@ from swarm.vector_table import AgentVector, FluxVectorTable
 
 # ── helpers ─────────────────────────────────────────────────
 
+
 def _make_table(dim: int = 64) -> FluxVectorTable:
     return FluxVectorTable(dim=dim, bit_width=4)
 
@@ -37,6 +38,7 @@ def _agent(
     last_updated: float | None = None,
 ) -> Agent:
     import time
+
     vec = vector if vector is not None else [0.1] * 64
     ts = last_updated if last_updated is not None else time.time()
     return Agent(
@@ -52,6 +54,7 @@ def _agent(
 
 
 # ── tests ───────────────────────────────────────────────────
+
 
 class TestSimpleMerge:
     """Union of two disjoint populations."""
@@ -190,7 +193,9 @@ class TestLineageConflictMerge:
         vt = _make_table()
         engine = CRDTMergeEngine(vt)
 
-        local = [_agent(1, generation=0, parent_a=None, parent_b=None, last_updated=200.0)]
+        local = [
+            _agent(1, generation=0, parent_a=None, parent_b=None, last_updated=200.0)
+        ]
         remote = [_agent(1, generation=1, parent_a=10, parent_b=11, last_updated=100.0)]
 
         merged = engine.merge_populations(local, remote)

@@ -10,6 +10,7 @@ from swarm.trajectory_monitor import TrajectoryMonitor, SecurityEvent
 
 # ── fixtures ──────────────────────────────────────────────
 
+
 @pytest.fixture
 def monitor():
     """Default monitor: window=10, z_threshold=3.0."""
@@ -42,6 +43,7 @@ def sleeper_trajectory():
 
 
 # ── core tests ────────────────────────────────────────────
+
 
 class TestBenignAgent:
     """Smooth trajectories should never be flagged."""
@@ -117,7 +119,9 @@ class TestCircuitBreakerIntegration:
         np.random.seed(99)
         base = np.random.randn(64).astype(np.float32)
         for i in range(12):
-            monitor.record(agent_id=8, vector=base + np.random.randn(64).astype(np.float32) * 0.05)
+            monitor.record(
+                agent_id=8, vector=base + np.random.randn(64).astype(np.float32) * 0.05
+            )
 
         # Check circuit breaker
         flagged = monitor.circuit_breaker([7, 8])

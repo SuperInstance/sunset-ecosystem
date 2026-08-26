@@ -9,6 +9,7 @@ Provides:
 
 Reference: Karger et al. (1997) "Consistent Hashing and Random Trees"
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -28,8 +29,9 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class RingNode:
     """A physical node in the hash ring."""
+
     name: str
-    weight: int = 1          # virtual node multiplier
+    weight: int = 1  # virtual node multiplier
     metadata: dict[str, Any] = None
 
     def __post_init__(self):
@@ -55,8 +57,8 @@ class HashRing:
     ) -> None:
         self.replicas = replicas
         self._nodes: dict[str, RingNode] = {}  # name -> RingNode
-        self._ring: dict[int, str] = {}        # hash -> node_name
-        self._sorted_hashes: list[int] = []    # sorted list for bisect
+        self._ring: dict[int, str] = {}  # hash -> node_name
+        self._sorted_hashes: list[int] = []  # sorted list for bisect
 
         if nodes:
             for n in nodes:
@@ -162,6 +164,7 @@ class HashRing:
         """Sample key distribution across nodes."""
         counts: dict[str, int] = {name: 0 for name in self._nodes}
         import random
+
         for i in range(num_samples):
             key = f"sample_key_{i}_{random.random()}"
             name = self.get_node_name(key)
@@ -175,6 +178,7 @@ class HashRing:
         if not counts:
             return 0.0
         import numpy as np
+
         values = list(counts.values())
         return float(np.std(values) / np.mean(values)) if np.mean(values) > 0 else 0.0
 

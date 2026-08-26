@@ -19,6 +19,7 @@ from fleet.deckboss import DeckbossGrid, FleetFormulaEnv
 # Init
 # ---------------------------------------------------------------------------
 
+
 class TestInit:
     def test_default_grid(self):
         bridge = ParquetBridge()
@@ -35,6 +36,7 @@ class TestInit:
 # ---------------------------------------------------------------------------
 # CSV loading (pure Python, always works)
 # ---------------------------------------------------------------------------
+
 
 class TestCSVLoad:
     def test_load_csv_string(self):
@@ -83,6 +85,7 @@ class TestCSVLoad:
 # Parquet loading (requires pyarrow)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.skipif(not HAS_PYARROW, reason="pyarrow not installed")
 class TestParquetLoad:
     def test_load_parquet_basic(self):
@@ -130,6 +133,7 @@ class TestParquetLoad:
 # Formula operations
 # ---------------------------------------------------------------------------
 
+
 class TestFormulaOperations:
     def test_set_formula(self):
         bridge = ParquetBridge()
@@ -169,6 +173,7 @@ class TestFormulaOperations:
 # ---------------------------------------------------------------------------
 # Export
 # ---------------------------------------------------------------------------
+
 
 class TestCSVExport:
     def test_export_csv_basic(self):
@@ -220,6 +225,7 @@ class TestParquetExport:
 # Fleet helpers
 # ---------------------------------------------------------------------------
 
+
 class TestFleetHelpers:
     def test_load_fleet_snapshot(self):
         bridge = ParquetBridge()
@@ -248,6 +254,7 @@ class TestFleetHelpers:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class TestHelpers:
     def test_col_letter(self):

@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_neural_topology_breeding.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -109,7 +110,9 @@ class TestAddNodeMutation:
         assert len(mutated.connections) == 3  # disabled old + 2 new
 
         # Original connection should be disabled
-        orig = [c for c in mutated.connections.values() if c.from_id == 0 and c.to_id == 1]
+        orig = [
+            c for c in mutated.connections.values() if c.from_id == 0 and c.to_id == 1
+        ]
         assert len(orig) == 1
         assert not orig[0].enabled
 
@@ -133,7 +136,9 @@ class TestAddConnectionMutation:
         # Try reverse connection (should fail due to depth)
         mutated = add_connection_mutation(g.copy())
         # Should not add backward connection
-        rev = [c for c in mutated.connections.values() if c.from_id == 1 and c.to_id == 0]
+        rev = [
+            c for c in mutated.connections.values() if c.from_id == 1 and c.to_id == 0
+        ]
         assert len(rev) == 0
 
 
@@ -214,8 +219,10 @@ class TestNEATBreeder:
 
     def test_best_genome(self):
         breeder = NEATBreeder(num_inputs=2, num_outputs=1, population_size=10)
+
         def fitness(g):
             return len(g.connections) * 0.1 + len(g.neurons) * 0.5
+
         breeder.evolve(fitness)
         best = breeder.best_genome
         assert best.fitness > 0
@@ -231,6 +238,7 @@ class TestNEATBreeder:
 
     def test_topology_grows(self):
         breeder = NEATBreeder(num_inputs=2, num_outputs=1, population_size=20)
+
         def fitness(g):
             return float(len(g.connections))
 

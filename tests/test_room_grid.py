@@ -1,9 +1,17 @@
 """Tests for RoomGrid — forward consistency, novelty, breeding, chaos, FLUX."""
+
 import numpy as np
 import pytest
 from unittest import mock
 
-from nerve.room_grid import RoomGrid, make_weights, batch_novelty, forward_einsum, forward_rust_oneshot, _RUST_LIB
+from nerve.room_grid import (
+    RoomGrid,
+    make_weights,
+    batch_novelty,
+    forward_einsum,
+    forward_rust_oneshot,
+    _RUST_LIB,
+)
 from sunset.flux_integration import FluxConstraintChecker, apply_constraint_feedback
 
 
@@ -73,7 +81,9 @@ class TestRoomGridDiversity:
         g = RoomGrid(10)
         assert g.diversity() == 0.0
 
-    @pytest.mark.skip(reason="diversity() returns non-zero after single tick — needs algorithm review")
+    @pytest.mark.skip(
+        reason="diversity() returns non-zero after single tick — needs algorithm review"
+    )
     def test_single_active_room_zero_diversity(self):
         g = RoomGrid(10)
         g.tick(np.random.randn(64))
@@ -136,7 +146,7 @@ class TestRoomGridDiversity:
         for _ in range(5):
             g.tick(np.random.randn(64).astype(np.float32))
         # Force HDC import to fail by hiding the module
-        with mock.patch.dict('sys.modules', {'swarm.hdc_novelty': None}):
+        with mock.patch.dict("sys.modules", {"swarm.hdc_novelty": None}):
             div_fallback = g.diversity(use_hdc=True)
         div_cosine = g.diversity(use_hdc=False)
         # Fallback should match cosine path

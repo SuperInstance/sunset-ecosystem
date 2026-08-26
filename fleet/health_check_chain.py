@@ -14,6 +14,7 @@ Usage:
     status = chain.run()
     # status.healthy, status.probes, status.blockers
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -33,14 +34,15 @@ logger = logging.getLogger(__name__)
 
 
 class HealthTier(enum.Enum):
-    CRITICAL = "critical"    # Failure = system down
-    WARNING = "warning"      # Failure = degraded but operational
-    INFO = "info"            # Failure = logged but not impactful
+    CRITICAL = "critical"  # Failure = system down
+    WARNING = "warning"  # Failure = degraded but operational
+    INFO = "info"  # Failure = logged but not impactful
 
 
 @dataclass
 class ProbeResult:
     """Result of a single health probe."""
+
     name: str
     healthy: bool
     tier: HealthTier
@@ -52,6 +54,7 @@ class ProbeResult:
 @dataclass
 class ChainStatus:
     """Aggregated health status from all probes."""
+
     healthy: bool
     critical_healthy: bool
     warning_healthy: bool
@@ -114,27 +117,27 @@ class HealthCheckChain:
 
         while remaining:
             runnable = {
-                name for name in remaining
+                name
+                for name in remaining
                 if self._probes[name]["depends_on"] <= completed
             }
             if not runnable:
                 # Deadlock: circular dependency or blocked
                 for name in remaining:
-                    results.append(ProbeResult(
-                        name=name,
-                        healthy=False,
-                        tier=self._probes[name]["tier"],
-                        latency_ms=0.0,
-                        message="Dependency deadlock or unsatisfied",
-                    ))
+                    results.append(
+                        ProbeResult(
+                            name=name,
+                            healthy=False,
+                            tier=self._probes[name]["tier"],
+                            latency_ms=0.0,
+                            message="Dependency deadlock or unsatisfied",
+                        )
+                    )
                 break
 
             # Run runnable probes in parallel
             with ThreadPoolExecutor(max_workers=self._max_workers) as ex:
-                futures = {
-                    ex.submit(self._run_probe, name): name
-                    for name in runnable
-                }
+                futures = {ex.submit(self._run_probe, name): name for name in runnable}
                 for future in as_completed(futures):
                     name = futures[future]
                     try:

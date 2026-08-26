@@ -25,6 +25,7 @@ import numpy as np
 @dataclass
 class KnowledgeNode:
     """A node in the knowledge graph."""
+
     id: str
     type: str
     properties: Dict[str, Any] = field(default_factory=dict)
@@ -44,6 +45,7 @@ class KnowledgeNode:
 @dataclass
 class KnowledgeEdge:
     """An edge between knowledge nodes."""
+
     source: str
     target: str
     relation: str
@@ -75,8 +77,9 @@ class KnowledgeSync:
         self.edges: List[KnowledgeEdge] = []
         self._node_types: Dict[str, int] = {}
 
-    def add_node(self, node_id: str, node_type: str,
-                 properties: Optional[Dict[str, Any]] = None) -> KnowledgeNode:
+    def add_node(
+        self, node_id: str, node_type: str, properties: Optional[Dict[str, Any]] = None
+    ) -> KnowledgeNode:
         """Add a node to the knowledge graph."""
         node = KnowledgeNode(
             id=node_id,
@@ -88,8 +91,9 @@ class KnowledgeSync:
         self._node_types[node_type] = self._node_types.get(node_type, 0) + 1
         return node
 
-    def add_edge(self, source: str, target: str, relation: str,
-                 weight: float = 1.0) -> KnowledgeEdge:
+    def add_edge(
+        self, source: str, target: str, relation: str, weight: float = 1.0
+    ) -> KnowledgeEdge:
         """Add an edge between nodes."""
         edge = KnowledgeEdge(source, target, relation, weight)
         self.edges.append(edge)
@@ -114,8 +118,9 @@ class KnowledgeSync:
 
         return event_id
 
-    def query_knowledge(self, query_type: str,
-                        filters: Optional[Dict[str, Any]] = None) -> List[KnowledgeNode]:
+    def query_knowledge(
+        self, query_type: str, filters: Optional[Dict[str, Any]] = None
+    ) -> List[KnowledgeNode]:
         """
         Query the knowledge graph.
 
@@ -128,16 +133,15 @@ class KnowledgeSync:
             if node.type != query_type:
                 continue
             if filters:
-                match = all(
-                    node.properties.get(k) == v
-                    for k, v in filters.items()
-                )
+                match = all(node.properties.get(k) == v for k, v in filters.items())
                 if not match:
                     continue
             results.append(node)
         return results
 
-    def get_related(self, node_id: str, relation: Optional[str] = None) -> List[KnowledgeNode]:
+    def get_related(
+        self, node_id: str, relation: Optional[str] = None
+    ) -> List[KnowledgeNode]:
         """Get nodes related to a given node."""
         related_ids = []
         for edge in self.edges:
@@ -188,19 +192,24 @@ class KnowledgeSync:
                 f'    <edge source="{edge.source}" target="{edge.target}" '
                 f'label="{edge.relation}"/>'
             )
-        lines.extend([
-            '  </graph>',
-            '</graphml>',
-        ])
+        lines.extend(
+            [
+                "  </graph>",
+                "</graphml>",
+            ]
+        )
         return "\n".join(lines)
 
     def export_json(self) -> str:
         """Export as JSON."""
-        return json.dumps({
-            "nodes": [n.to_dict() for n in self.nodes.values()],
-            "edges": [e.to_dict() for e in self.edges],
-            "stats": self.get_graph_stats(),
-        }, indent=2)
+        return json.dumps(
+            {
+                "nodes": [n.to_dict() for n in self.nodes.values()],
+                "edges": [e.to_dict() for e in self.edges],
+                "stats": self.get_graph_stats(),
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

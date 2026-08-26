@@ -41,9 +41,13 @@ class TestPatternLoading:
         # Create mock repo structure
         repo = tmp_path / "agent-ops"
         (repo / "patterns").mkdir(parents=True)
-        (repo / "patterns" / "repo-sweeps.md").write_text("- **Rule:** Batch in groups of 5.\n- Verify output after each batch.")
+        (repo / "patterns" / "repo-sweeps.md").write_text(
+            "- **Rule:** Batch in groups of 5.\n- Verify output after each batch."
+        )
         (repo / "docs").mkdir(parents=True)
-        (repo / "docs" / "agent-reliability.md").write_text("- **Rule:** 5 repos max per task.\n- Agents fail silently.")
+        (repo / "docs" / "agent-reliability.md").write_text(
+            "- **Rule:** 5 repos max per task.\n- Agents fail silently."
+        )
 
         miner = PatternMine(repo_path=repo)
         patterns = miner.load_patterns()
@@ -225,7 +229,9 @@ class TestReports:
         miner.write_report(path=report_path)
         content = report_path.read_text()
         # Should mention critical patterns
-        assert "silent_failure_detection" in content or "a2a_handoff_contract" in content
+        assert (
+            "silent_failure_detection" in content or "a2a_handoff_contract" in content
+        )
 
 
 class TestApplyToMonitor:

@@ -27,6 +27,7 @@ from swarm.thermal import DeviceType, ThermalBudget
 
 # ── Fixtures ──────────────────────────────────────────────
 
+
 @pytest.fixture
 def grid():
     return JEPAGrid(n=20)
@@ -87,10 +88,18 @@ def mock_agent_identity():
 
 # ── 1. Initialization ───────────────────────────────────
 
+
 class TestInitialization:
-    def test_all_modules_attached(self, grid, thermal, mock_metronome, mock_fleet_index,
-                                   mock_trap_registry, mock_flux_preset_library,
-                                   mock_agent_identity):
+    def test_all_modules_attached(
+        self,
+        grid,
+        thermal,
+        mock_metronome,
+        mock_fleet_index,
+        mock_trap_registry,
+        mock_flux_preset_library,
+        mock_agent_identity,
+    ):
         daemon = BreederDaemonV2(
             grid=grid,
             thermal=thermal,
@@ -126,6 +135,7 @@ class TestInitialization:
 
 # ── 2. Metronome tick ───────────────────────────────────
 
+
 class TestMetronomeTick:
     def test_cycle_ticks_metronome(self, breeder, mock_metronome):
         breeder._metronome_bridge = mock_metronome
@@ -145,6 +155,7 @@ class TestMetronomeTick:
 
 
 # ── 3. Fleet vector index parent selection ────────────────
+
 
 class TestFleetVectorIndex:
     def test_cycle_queries_fleet_index(self, grid, thermal, mock_fleet_index):
@@ -204,14 +215,19 @@ class TestFleetVectorIndex:
 
 # ── 4. Flux preset library ────────────────────────────────
 
+
 class TestFluxPresetLibrary:
     def test_cycle_applies_preset(self, breeder, mock_flux_preset_library):
         breeder._flux_preset_library = mock_flux_preset_library
         breeder.auto_breed(n_winners=1)
-        mock_flux_preset_library.suggest_preset_for_task.assert_called_once_with("breeding")
+        mock_flux_preset_library.suggest_preset_for_task.assert_called_once_with(
+            "breeding"
+        )
         mock_flux_preset_library.apply_preset.assert_called_once()
 
-    def test_preset_exception_logged_not_raised(self, breeder, mock_flux_preset_library):
+    def test_preset_exception_logged_not_raised(
+        self, breeder, mock_flux_preset_library
+    ):
         mock_flux_preset_library.apply_preset.side_effect = RuntimeError("flux boom")
         breeder._flux_preset_library = mock_flux_preset_library
         breeder.auto_breed(n_winners=1)
@@ -222,6 +238,7 @@ class TestFluxPresetLibrary:
 
 
 # ── 5. Agent identity signing ─────────────────────────────
+
 
 class TestAgentIdentity:
     def test_cycle_signs_wal_entries(self, grid, thermal, mock_agent_identity):
@@ -245,7 +262,9 @@ class TestAgentIdentity:
         for sig in daemon._breed_signatures.values():
             assert sig == "sig_deadbeef"
 
-    def test_identity_exception_logged_not_raised(self, grid, thermal, mock_agent_identity):
+    def test_identity_exception_logged_not_raised(
+        self, grid, thermal, mock_agent_identity
+    ):
         mock_agent_identity.sign_task.side_effect = RuntimeError("sign boom")
         daemon = BreederDaemonV2(
             grid=grid,
@@ -257,6 +276,7 @@ class TestAgentIdentity:
 
 
 # ── 6. Trap registry ────────────────────────────────────
+
 
 class TestTrapRegistry:
     def test_cycle_runs_traps(self, breeder, mock_trap_registry):
@@ -276,10 +296,18 @@ class TestTrapRegistry:
 
 # ── 7. get_fleet_status ─────────────────────────────────
 
+
 class TestGetFleetStatus:
-    def test_includes_all_modules(self, grid, thermal, mock_metronome, mock_fleet_index,
-                                   mock_trap_registry, mock_flux_preset_library,
-                                   mock_agent_identity):
+    def test_includes_all_modules(
+        self,
+        grid,
+        thermal,
+        mock_metronome,
+        mock_fleet_index,
+        mock_trap_registry,
+        mock_flux_preset_library,
+        mock_agent_identity,
+    ):
         daemon = BreederDaemonV2(
             grid=grid,
             thermal=thermal,
@@ -318,6 +346,7 @@ class TestGetFleetStatus:
 
 
 # ── 8. Thread-safe concurrent cycles ─────────────────────
+
 
 class TestThreadSafety:
     def test_concurrent_cycles(self, grid, thermal, mock_metronome, mock_trap_registry):

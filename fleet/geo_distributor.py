@@ -10,6 +10,7 @@ Usage:
     node = geo.select("us-east")
     assert node in ["node-1", "node-2"]
 """
+
 from __future__ import annotations
 
 import random
@@ -127,4 +128,6 @@ class GeoDistributor:
         }
 
     def __repr__(self) -> str:
-        return f"<GeoDistributor regions={len(self._regions)} nodes={self.node_count()}>"
+        return (
+            f"<GeoDistributor regions={len(self._regions)} nodes={self.node_count()}>"
+        )

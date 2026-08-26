@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 # ── data structures ───────────────────────────────────────────
 
+
 class EventType(Enum):
     BEAT = auto()
     PARENT_SELECT = auto()
@@ -84,6 +85,7 @@ class DashboardConfig:
 
 
 # ── dashboard ─────────────────────────────────────────────────
+
 
 class SSEStreamDashboard:
     """Real-time breeding progress stream.
@@ -131,7 +133,9 @@ class SSEStreamDashboard:
             self._queue.put_nowait(event)
         except queue.Full:
             if self.config.enable_backpressure:
-                logger.warning("SSE queue full, dropping %s event", event.event_type.name)
+                logger.warning(
+                    "SSE queue full, dropping %s event", event.event_type.name
+                )
                 return False
             # drop oldest
             try:
@@ -237,6 +241,7 @@ class SSEStreamDashboard:
 
 
 # ── integration helpers ───────────────────────────────────────
+
 
 def wire_to_fleet_conductor(
     dashboard: SSEStreamDashboard,
@@ -359,7 +364,7 @@ class DashboardServer:
                         self.wfile.flush()
                 except queue.Empty:
                     # heartbeat
-                    self.wfile.write(b"data: {\"type\":\"HEARTBEAT\"}\n\n")
+                    self.wfile.write(b'data: {"type":"HEARTBEAT"}\n\n')
                     self.wfile.flush()
                 finally:
                     dashboard.unsubscribe(q)
@@ -394,6 +399,7 @@ class DashboardServer:
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     """Thread-per-request HTTP server."""
+
     allow_reuse_address = True
     daemon_threads = True
 

@@ -11,6 +11,7 @@ Usage:
     other = VectorClock({"node-1": 1, "node-2": 0})
     assert vc.compare(other) == "greater"
 """
+
 from __future__ import annotations
 
 from copy import deepcopy

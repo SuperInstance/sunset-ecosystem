@@ -33,6 +33,7 @@ HTML_TAG_PATTERN = re.compile(r"<[^>]*>")
 
 # ── Data Classes ─────────────────────────────────────────────────────
 
+
 @dataclass
 class Production:
     tagline: str = ""
@@ -48,6 +49,7 @@ class Rule:
 
 # ── Validation Exceptions ──────────────────────────────────────────
 
+
 class ValidationError(ValueError):
     """Raised when a rule field fails security validation."""
 
@@ -55,6 +57,7 @@ class ValidationError(ValueError):
 
 
 # ── Core Validation Functions ──────────────────────────────────────
+
 
 def validate_rule_name(name: str) -> str:
     """Sanitize rule name.
@@ -69,8 +72,7 @@ def validate_rule_name(name: str) -> str:
         raise ValidationError(f"Rule name exceeds {RULE_NAME_MAX_LEN} characters.")
     if not RULE_NAME_PATTERN.match(name):
         raise ValidationError(
-            "Rule name contains illegal characters. "
-            "Allowed: a-z, A-Z, 0-9, _, -."
+            "Rule name contains illegal characters. Allowed: a-z, A-Z, 0-9, _, -."
         )
     return name
 
@@ -137,6 +139,7 @@ def validate_exec_field(exec_code: Optional[str]) -> Optional[str]:
 
 # ── Rule Creation API ────────────────────────────────────────────────
 
+
 def create_rule(
     name: str,
     tagline: str = "",
@@ -169,12 +172,29 @@ from typing import Any, Dict, Tuple
 
 
 # Allowed AST node types for condition evaluation
-_CONDITION_AST_WHITELIST = frozenset({
-    ast.Expression, ast.BoolOp, ast.And, ast.Or,
-    ast.Compare, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.Eq, ast.NotEq,
-    ast.BinOp, ast.Add, ast.Sub, ast.Mult, ast.Div,
-    ast.Name, ast.Load, ast.Constant,
-})
+_CONDITION_AST_WHITELIST = frozenset(
+    {
+        ast.Expression,
+        ast.BoolOp,
+        ast.And,
+        ast.Or,
+        ast.Compare,
+        ast.Lt,
+        ast.LtE,
+        ast.Gt,
+        ast.GtE,
+        ast.Eq,
+        ast.NotEq,
+        ast.BinOp,
+        ast.Add,
+        ast.Sub,
+        ast.Mult,
+        ast.Div,
+        ast.Name,
+        ast.Load,
+        ast.Constant,
+    }
+)
 
 
 def score_rule(
@@ -219,7 +239,9 @@ def score_rule(
         try:
             tree = ast.parse(condition, mode="eval")
         except SyntaxError as exc:
-            raise ValidationError(f"Condition is not a valid expression: {exc}") from exc
+            raise ValidationError(
+                f"Condition is not a valid expression: {exc}"
+            ) from exc
 
         # Validate AST whitelist
         for node in ast.walk(tree):
@@ -243,9 +265,7 @@ def score_rule(
                 f"Condition references unknown metric: {exc}"
             ) from exc
         except Exception as exc:
-            raise ValidationError(
-                f"Condition evaluation failed: {exc}"
-            ) from exc
+            raise ValidationError(f"Condition evaluation failed: {exc}") from exc
 
     # Trinity heuristics
     ethos = 0.9
@@ -272,6 +292,7 @@ def score_rule(
 
 
 # ── Batch Operations ───────────────────────────────────────────────
+
 
 def batch_create_rules(rule_dicts: list) -> Tuple[list[Rule], list[ValidationError]]:
     """Validate a batch of rule dicts, returning successes and failures separately.
@@ -318,11 +339,15 @@ def _mutate_condition(condition: str, sigma: float = 0.05) -> str:
         return condition
     delta = random.gauss(0, sigma * threshold)
     new_val = max(0.0, threshold + delta)
+
     # Replace the old threshold with the new one
     def repl(m):
         op = m.group(1)
         return f"{op} {new_val:.4g}"
-    return _re_module.sub(r"(<>|!=|>=|<=|>|<|=)\s*[0-9]+\.?[0-9]*", repl, condition, count=1)
+
+    return _re_module.sub(
+        r"(<>|!=|>=|<=|>|<|=)\s*[0-9]+\.?[0-9]*", repl, condition, count=1
+    )
 
 
 def evolve(
@@ -382,15 +407,24 @@ def evolve(
     winners = [population[i] for i in frontier_idx]
     if not winners:
         # Fallback: keep top half by trinity
-        sorted_idx = sorted(range(len(scores)), key=lambda i: scores[i]["trinity"], reverse=True)
-        winners = [population[i] for i in sorted_idx[:max(1, len(population) // 2)]]
+        sorted_idx = sorted(
+            range(len(scores)), key=lambda i: scores[i]["trinity"], reverse=True
+        )
+        winners = [population[i] for i in sorted_idx[: max(1, len(population) // 2)]]
 
     # Breed children
     children: list[Rule] = []
-    generation = max(
-        (int(_re_module.search(r"gen(\d+)", r.name).group(1)) for r in winners if _re_module.search(r"gen(\d+)", r.name)),
-        default=0,
-    ) + 1
+    generation = (
+        max(
+            (
+                int(_re_module.search(r"gen(\d+)", r.name).group(1))
+                for r in winners
+                if _re_module.search(r"gen(\d+)", r.name)
+            ),
+            default=0,
+        )
+        + 1
+    )
 
     for _ in range(num_children):
         if len(winners) < 2:
@@ -399,10 +433,14 @@ def evolve(
             parent_a, parent_b = random.sample(winners, 2)
 
         child_name = f"{parent_a.name}_{parent_b.name}_gen{generation}"
-        child_tagline = (parent_a.production.tagline + " " + parent_b.production.tagline)[:TAGLINE_MAX_LEN]
+        child_tagline = (
+            parent_a.production.tagline + " " + parent_b.production.tagline
+        )[:TAGLINE_MAX_LEN]
 
         # Crossover condition: mutate threshold of parent_a's condition
-        child_condition = _mutate_condition(parent_a.production.condition, mutation_sigma)
+        child_condition = _mutate_condition(
+            parent_a.production.condition, mutation_sigma
+        )
         if not child_condition:
             child_condition = parent_b.production.condition
 
@@ -437,6 +475,7 @@ def evolve(
 
 # ── Batch / JSON ingestion helper ──────────────────────────────────
 
+
 def create_rule_from_dict(data: dict) -> Rule:
     """Convenience wrapper for JSON/rule-dict ingestion."""
     return create_rule(
@@ -445,4 +484,3 @@ def create_rule_from_dict(data: dict) -> Rule:
         condition=data.get("production", {}).get("condition", ""),
         exec_field=data.get("production", {}).get("exec"),
     )
-

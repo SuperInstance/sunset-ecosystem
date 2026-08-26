@@ -24,6 +24,7 @@ logger = logging.getLogger("distill.baseline_gate")
 
 class GateAction(Enum):
     """What the gate decided to do."""
+
     SKIP = "skip"
     FULL = "full"
     REDUCED = "reduced"
@@ -41,6 +42,7 @@ class GateDecision:
         allow_repetition: Whether repetition passes are allowed.
         reason: Human-readable explanation.
     """
+
     action: GateAction
     baseline_score: float
     max_passes: int
@@ -100,7 +102,9 @@ class BaselineConfidenceGate:
             f"full<{self.full_threshold})"
         )
 
-    def evaluate(self, baseline_score: float, topic: Optional[str] = None) -> GateDecision:
+    def evaluate(
+        self, baseline_score: float, topic: Optional[str] = None
+    ) -> GateDecision:
         """Evaluate whether teaching should proceed.
 
         Args:
@@ -126,7 +130,9 @@ class BaselineConfidenceGate:
             )
             logger.info(
                 "baseline_confident: skip | topic=%s score=%.3f threshold=%.2f",
-                topic_str, baseline_score, self.skip_threshold,
+                topic_str,
+                baseline_score,
+                self.skip_threshold,
             )
 
         elif baseline_score < self.full_threshold:
@@ -143,7 +149,9 @@ class BaselineConfidenceGate:
             )
             logger.info(
                 "baseline_low: full intensity | topic=%s score=%.3f passes=%d",
-                topic_str, baseline_score, self.full_max_passes,
+                topic_str,
+                baseline_score,
+                self.full_max_passes,
             )
 
         else:
@@ -160,7 +168,10 @@ class BaselineConfidenceGate:
             )
             logger.info(
                 "baseline_moderate: reduced | topic=%s score=%.3f passes=%d hints=%.0f%%",
-                topic_str, baseline_score, self.reduced_max_passes, self.reduced_hint_pct,
+                topic_str,
+                baseline_score,
+                self.reduced_max_passes,
+                self.reduced_hint_pct,
             )
 
         self._history.append(decision)
@@ -176,7 +187,9 @@ class BaselineConfidenceGate:
         """Fraction of evaluations that resulted in SKIP."""
         if not self._history:
             return 0.0
-        return sum(1 for d in self._history if d.action is GateAction.SKIP) / len(self._history)
+        return sum(1 for d in self._history if d.action is GateAction.SKIP) / len(
+            self._history
+        )
 
     def reset(self) -> None:
         """Clear decision history."""

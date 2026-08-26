@@ -225,19 +225,24 @@ class TestCCCOSIntegrationPattern:
 
         def on_act_now(ev: FleetEvent) -> None:
             if ev.payload.get("category") == "architecture":
-                spawned.append({
-                    "repo": ev.payload["repo"],
-                    "priority": ev.payload["priority"],
-                })
+                spawned.append(
+                    {
+                        "repo": ev.payload["repo"],
+                        "priority": ev.payload["priority"],
+                    }
+                )
 
         bus.on("ACT_NOW", on_act_now)
 
-        bus.emit({
-            "type": "ACT_NOW",
-            "category": "architecture",
-            "repo": "sunset-ecosystem",
-            "priority": "P0",
-        }, source="ccc-os")
+        bus.emit(
+            {
+                "type": "ACT_NOW",
+                "category": "architecture",
+                "repo": "sunset-ecosystem",
+                "priority": "P0",
+            },
+            source="ccc-os",
+        )
 
         assert len(spawned) == 1
         assert spawned[0]["repo"] == "sunset-ecosystem"
@@ -249,10 +254,13 @@ class TestCCCOSIntegrationPattern:
 
         bus.on("service_down", lambda ev: rebalanced.append(ev.payload["node"]))
 
-        bus.emit({
-            "type": "service_down",
-            "node": "plato-pipeline-1",
-        }, source="cocapn-health")
+        bus.emit(
+            {
+                "type": "service_down",
+                "node": "plato-pipeline-1",
+            },
+            source="cocapn-health",
+        )
 
         assert rebalanced == ["plato-pipeline-1"]
 
@@ -266,11 +274,14 @@ class TestCCCOSIntegrationPattern:
             filter_fn=lambda ev: ev.payload.get("rule_count", 0) > 500,
         )
 
-        bus.emit({
-            "type": "rule_injection_spike",
-            "agent_id": "scout-42",
-            "rule_count": 1000,
-        }, source="cocapn-traps")
+        bus.emit(
+            {
+                "type": "rule_injection_spike",
+                "agent_id": "scout-42",
+                "rule_count": 1000,
+            },
+            source="cocapn-traps",
+        )
 
         assert quarantined == ["scout-42"]
 

@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_health_aggregator.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -52,7 +53,7 @@ class TestHealthAggregator:
         ha = HealthAggregator(strategy="average")
         # critical=0, unhealthy=1, degraded=2, healthy=3, excellent=4
         ha.report("a", "degraded")  # 2
-        ha.report("b", "healthy")   # 3
+        ha.report("b", "healthy")  # 3
         assert ha.status() == "degraded"  # avg = 2.5 -> int -> 2
 
     def test_threshold_strategy(self):

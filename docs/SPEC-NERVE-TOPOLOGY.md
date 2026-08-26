@@ -70,6 +70,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class TickResult:
     """Snapshot of one topology tick."""
+
     tick: int
     fibers_perceived: int
     rooms_fired: int
@@ -139,6 +140,7 @@ class NerveTopology:
 
         # Hebbian channels between adjacent rooms (Penrose neighbors)
         from swarm.penrose import assign_positions
+
         positions = assign_positions([f"room-{i}" for i in range(n_rooms)])
         for i in range(len(positions) - 1):
             a = positions[i].agent_id
@@ -161,8 +163,7 @@ class NerveTopology:
     @property
     def stats(self) -> dict[str, Any]:
         compiled_fibers = sum(
-            1 for f in self.fibers.values()
-            if f.state == FiberState.COMPILED
+            1 for f in self.fibers.values() if f.state == FiberState.COMPILED
         )
         return {
             "tick": self.tick_count,
@@ -184,23 +185,21 @@ class NerveTopology:
         Compiled tiles produce lower-energy signals (they're routine).
         Novel tiles produce higher-energy signals (they demand attention).
         """
-        rng = np.random.RandomState(
-            hash(tile.pattern_id) % (2**31)
-        )
+        rng = np.random.RandomState(hash(tile.pattern_id) % (2**31))
         signal = rng.randn(self.signal_dim).astype(np.float32) * 0.1
 
         # Energy scaling by fiber state
         if tile.state == FiberState.COMPILED:
-            signal *= 0.3   # compiled = routine, low energy
+            signal *= 0.3  # compiled = routine, low energy
         elif tile.state == FiberState.NOVELTY_ALERT:
-            signal *= 2.0   # novelty = important, high energy
+            signal *= 2.0  # novelty = important, high energy
         elif tile.state == FiberState.PERCEIVING:
-            signal *= 1.0   # normal perception
+            signal *= 1.0  # normal perception
         elif tile.state == FiberState.ADAPTING:
-            signal *= 0.7   # adapting = building confidence
+            signal *= 0.7  # adapting = building confidence
 
         # Confidence-weighted
-        signal *= (0.5 + tile.confidence * 0.5)
+        signal *= 0.5 + tile.confidence * 0.5
 
         return signal
 
@@ -222,7 +221,9 @@ class NerveTopology:
         novel_count = 0
 
         for fid, fiber in self.fibers.items():
-            raw = signals.get(fid, np.random.randn(self.signal_dim)) if signals else None
+            raw = (
+                signals.get(fid, np.random.randn(self.signal_dim)) if signals else None
+            )
             if raw is None:
                 # Auto-generate signal from grid state
                 raw = np.random.randn(self.signal_dim).astype(np.float32)
@@ -283,7 +284,7 @@ class NerveTopology:
         # Chaos decays as more routes compile (less exploration needed)
         self.routing.chaos = max(
             0.01,
-            self._base_chaos * (1.0 - compiled_fraction) * 0.99 ** self.tick_count,
+            self._base_chaos * (1.0 - compiled_fraction) * 0.99**self.tick_count,
         )
 
         # ── Periodic: Decay Hebbian channels ──────────────────
@@ -440,6 +441,7 @@ def test_topology_run_batch():
 
 ```python
 """Benchmark the full topology tick cycle."""
+
 import time
 import numpy as np
 from nerve.topology import NerveTopology

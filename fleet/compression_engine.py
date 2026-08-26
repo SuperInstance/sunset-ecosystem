@@ -18,7 +18,11 @@ class CompressionEngine:
 
     def __init__(self, fleet_node_id: str = "default"):
         self.fleet_node_id = fleet_node_id
-        self._stats: Dict[str, int] = {"compressed": 0, "decompressed": 0, "bytes_saved": 0}
+        self._stats: Dict[str, int] = {
+            "compressed": 0,
+            "decompressed": 0,
+            "bytes_saved": 0,
+        }
 
     def compress(self, data: str, level: int = 6) -> bytes:
         """Compress string data with gzip."""
@@ -47,7 +51,8 @@ class CompressionEngine:
         """Get compression statistics."""
         return {
             **self._stats,
-            "avg_bytes_saved": self._stats["bytes_saved"] / max(1, self._stats["compressed"]),
+            "avg_bytes_saved": self._stats["bytes_saved"]
+            / max(1, self._stats["compressed"]),
         }
 
     def to_dict(self) -> Dict[str, Any]:

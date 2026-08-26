@@ -34,6 +34,7 @@ def severity_rank(s: str) -> int:
 # Git diff helper
 # ---------------------------------------------------------------------------
 
+
 def get_changed_files(base_ref: str = "HEAD~1") -> List[str]:
     """Return list of changed Python files in the PR."""
     result = subprocess.run(
@@ -68,6 +69,7 @@ def get_pr_files_from_env() -> List[str]:
 # ---------------------------------------------------------------------------
 # CI review runner
 # ---------------------------------------------------------------------------
+
 
 def run_ci_review(
     files: List[str],
@@ -148,11 +150,17 @@ def format_markdown_comment(result: Dict[str, Any]) -> str:
         if info["count"] == 0:
             continue
         lines.append(f"### `{filepath}`")
-        lines.append(f"{info['critical']} critical, {info['warning']} warning, {info['info']} info")
+        lines.append(
+            f"{info['critical']} critical, {info['warning']} warning, {info['info']} info"
+        )
         lines.append("")
         for f in info["findings"]:
-            emoji = {"critical": "🔴", "warning": "🟡", "info": "🔵"}.get(f["severity"], "⚪")
-            lines.append(f"- {emoji} **{f['persona']}** (line {f['line']}): {f['message']}")
+            emoji = {"critical": "🔴", "warning": "🟡", "info": "🔵"}.get(
+                f["severity"], "⚪"
+            )
+            lines.append(
+                f"- {emoji} **{f['persona']}** (line {f['line']}): {f['message']}"
+            )
         lines.append("")
     return "\n".join(lines)
 
@@ -165,13 +173,25 @@ def format_json_output(result: Dict[str, Any]) -> str:
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fleet Code Review CI Runner")
-    parser.add_argument("--pr-files", action="store_true", help="Read changed files from git diff")
+    parser.add_argument(
+        "--pr-files", action="store_true", help="Read changed files from git diff"
+    )
     parser.add_argument("--files", nargs="+", help="Explicit file list to review")
-    parser.add_argument("--output", choices=["json", "markdown"], default="json", help="Output format")
-    parser.add_argument("--fail-on-severity", default="critical", choices=["info", "warning", "critical"], help="Severity threshold to fail CI")
-    parser.add_argument("--comment-file", help="Write markdown comment to file for GitHub Actions")
+    parser.add_argument(
+        "--output", choices=["json", "markdown"], default="json", help="Output format"
+    )
+    parser.add_argument(
+        "--fail-on-severity",
+        default="critical",
+        choices=["info", "warning", "critical"],
+        help="Severity threshold to fail CI",
+    )
+    parser.add_argument(
+        "--comment-file", help="Write markdown comment to file for GitHub Actions"
+    )
     args = parser.parse_args()
 
     files: List[str] = []
@@ -187,7 +207,17 @@ def main() -> None:
         files = [str(p) for p in Path(".").rglob("*.py") if ".git" not in str(p)]
 
     if not files:
-        print(json.dumps({"summary": {"total_files": 0, "total_findings": 0, "should_fail": False}}))
+        print(
+            json.dumps(
+                {
+                    "summary": {
+                        "total_files": 0,
+                        "total_findings": 0,
+                        "should_fail": False,
+                    }
+                }
+            )
+        )
         sys.exit(0)
 
     result = run_ci_review(files, fail_on_severity=args.fail_on_severity)

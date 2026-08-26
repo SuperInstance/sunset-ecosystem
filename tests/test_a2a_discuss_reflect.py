@@ -23,11 +23,15 @@ class TestDiscussion:
 
     def test_debate_reaches_majority(self):
         d = Discussion(topic="deploy v2", mode=DiscourseMode.DEBATE)
-        d.add_round([
-            Turn("A", AgentPosition("A", [0.8, 0.2]), ConfidenceScore(0.9), "yes"),
-            Turn("B", AgentPosition("B", [0.75, 0.25]), ConfidenceScore(0.8), "yes"),
-            Turn("C", AgentPosition("C", [0.1, 0.9]), ConfidenceScore(0.7), "no"),
-        ])
+        d.add_round(
+            [
+                Turn("A", AgentPosition("A", [0.8, 0.2]), ConfidenceScore(0.9), "yes"),
+                Turn(
+                    "B", AgentPosition("B", [0.75, 0.25]), ConfidenceScore(0.8), "yes"
+                ),
+                Turn("C", AgentPosition("C", [0.1, 0.9]), ConfidenceScore(0.7), "no"),
+            ]
+        )
         result = d.consensus()
         assert result.type == ConsensusType.MAJORITY
         assert result.agreement_count == 2
@@ -35,25 +39,31 @@ class TestDiscussion:
 
     def test_brainstorm_unanimous(self):
         d = Discussion(topic="name the fleet", mode=DiscourseMode.BRAINSTORM)
-        d.add_round([
-            Turn("A", AgentPosition("A", [1.0, 0.0]), ConfidenceScore(0.9)),
-            Turn("B", AgentPosition("B", [0.95, 0.05]), ConfidenceScore(0.8)),
-        ])
+        d.add_round(
+            [
+                Turn("A", AgentPosition("A", [1.0, 0.0]), ConfidenceScore(0.9)),
+                Turn("B", AgentPosition("B", [0.95, 0.05]), ConfidenceScore(0.8)),
+            ]
+        )
         result = d.consensus()
         assert result.type == ConsensusType.UNANIMOUS
 
     def test_convergence_trend(self):
         d = Discussion(topic="refactor", mode=DiscourseMode.REVIEW, max_rounds=3)
         # Round 1: split
-        d.add_round([
-            Turn("A", AgentPosition("A", [0.9, 0.1]), ConfidenceScore(0.8)),
-            Turn("B", AgentPosition("B", [0.1, 0.9]), ConfidenceScore(0.8)),
-        ])
+        d.add_round(
+            [
+                Turn("A", AgentPosition("A", [0.9, 0.1]), ConfidenceScore(0.8)),
+                Turn("B", AgentPosition("B", [0.1, 0.9]), ConfidenceScore(0.8)),
+            ]
+        )
         # Round 2: converging
-        d.add_round([
-            Turn("A", AgentPosition("A", [0.7, 0.3]), ConfidenceScore(0.8)),
-            Turn("B", AgentPosition("B", [0.6, 0.4]), ConfidenceScore(0.8)),
-        ])
+        d.add_round(
+            [
+                Turn("A", AgentPosition("A", [0.7, 0.3]), ConfidenceScore(0.8)),
+                Turn("B", AgentPosition("B", [0.6, 0.4]), ConfidenceScore(0.8)),
+            ]
+        )
         trend = d.convergence_trend()
         assert trend in ("converging", "stable")
 

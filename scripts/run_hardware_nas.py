@@ -6,6 +6,7 @@ Usage:
     python scripts/run_hardware_nas.py --profile oracle1 --generations 20 --population 30
     python scripts/run_hardware_nas.py --profile laptop --max-evals 200 --output configs.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -108,10 +109,14 @@ Examples:
 
     def progress_cb(stage, a, b, result):
         if stage == "init":
-            print(f"   [init] {a:2d}/{b}  {result.config}  tps={result.ticks_per_second:8.1f}  mem={result.memory_mb:7.2f}MB")
+            print(
+                f"   [init] {a:2d}/{b}  {result.config}  tps={result.ticks_per_second:8.1f}  mem={result.memory_mb:7.2f}MB"
+            )
         elif stage == "gen":
             if a % 2 == 0 or a == b - 1:
-                print(f"   [gen {a:2d}] {result.config}  tps={result.ticks_per_second:8.1f}  div={result.diversity:.3f}  stab={result.stability:.3f}")
+                print(
+                    f"   [gen {a:2d}] {result.config}  tps={result.ticks_per_second:8.1f}  div={result.diversity:.3f}  stab={result.stability:.3f}"
+                )
         elif stage == "gen_infeasible":
             print(f"   [gen {a:2d}] infeasible config skipped")
 
@@ -129,9 +134,7 @@ Examples:
     scored = []
     for p in frontier:
         score = (
-            p.get("ticks_per_second", 0)
-            * p.get("diversity", 0)
-            * p.get("stability", 0)
+            p.get("ticks_per_second", 0) * p.get("diversity", 0) * p.get("stability", 0)
         ) / (1.0 + p.get("memory_mb", 1))
         scored.append((score, p))
     scored.sort(key=lambda x: x[0], reverse=True)

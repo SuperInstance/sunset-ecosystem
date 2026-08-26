@@ -10,6 +10,7 @@ Usage:
     if chaos.should_trigger("users-service"):
         chaos.apply_fault("users-service")
 """
+
 from __future__ import annotations
 
 import random
@@ -51,12 +52,14 @@ class ChaosEngine:
         """
         if target not in self._faults:
             self._faults[target] = []
-        self._faults[target].append({
-            "name": name,
-            "probability": probability,
-            "type": fault_type,
-            "params": params or {},
-        })
+        self._faults[target].append(
+            {
+                "name": name,
+                "probability": probability,
+                "type": fault_type,
+                "params": params or {},
+            }
+        )
 
     def remove_fault(self, target: str, name: str) -> bool:
         """Remove a fault rule."""

@@ -12,6 +12,7 @@ Usage:
     counter.merge(other)
     assert counter.value() == 8
 """
+
 from __future__ import annotations
 
 from typing import Dict, Any

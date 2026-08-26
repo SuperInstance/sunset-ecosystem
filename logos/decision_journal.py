@@ -28,12 +28,12 @@ class Decision:
     """A single logged human-fleet decision."""
 
     timestamp: float
-    why: str        # human intent
-    what: str       # action taken
-    expected: str   # expected outcome
-    actual: str     # actual outcome (filled later)
+    why: str  # human intent
+    what: str  # action taken
+    expected: str  # expected outcome
+    actual: str  # actual outcome (filled later)
     confidence: float  # 0-1
-    scope: str      # which agents affected
+    scope: str  # which agents affected
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -84,7 +84,9 @@ class DecisionJournal:
             self._load()
 
     def __repr__(self) -> str:
-        return f"DecisionJournal(entries={len(self._entries)}, store={self._store_path})"
+        return (
+            f"DecisionJournal(entries={len(self._entries)}, store={self._store_path})"
+        )
 
     def record(
         self,
@@ -254,7 +256,8 @@ def log_breed(
         "agent_id": child_id,
         "generation": generation,
         "parents": [parent_a, parent_b] if parent_b is not None else [parent_a],
-        "why": f"breed child {child_id} from {parent_a}" + (f" × {parent_b}" if parent_b else ""),
+        "why": f"breed child {child_id} from {parent_a}"
+        + (f" × {parent_b}" if parent_b else ""),
         "what": "BREED queue → step",
         "expected": "viable child",
         "actual": "",

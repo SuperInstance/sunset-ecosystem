@@ -1,4 +1,5 @@
 """Tests for fleet/plato_engine_block.py."""
+
 import pytest
 from fleet.plato_engine_block import PlatoEngineBlock, Tick
 
@@ -45,6 +46,7 @@ class TestPlatoEngineBlock:
         engine.tick_sync()
         result = engine.handle_command("tick")
         import json
+
         data = json.loads(result)
         assert data["seq"] == 1
         assert data["x"] == 7.0
@@ -57,6 +59,7 @@ class TestPlatoEngineBlock:
             engine.tick_sync()
         result = engine.handle_command("history 3")
         import json
+
         data = json.loads(result)
         assert len(data) == 3
         assert data[0]["seq"] == 3
@@ -75,6 +78,7 @@ class TestPlatoEngineBlock:
         engine.add_alarm("a2", "y < 0", "warn")
         result = engine.handle_command("alarm list")
         import json
+
         data = json.loads(result)
         assert len(data) == 2
         assert data[0]["name"] == "a1"

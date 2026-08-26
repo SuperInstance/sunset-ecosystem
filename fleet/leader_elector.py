@@ -14,6 +14,7 @@ In production, back this with a distributed store (etcd, Redis,
 Consul). The in-memory implementation here is for single-node testing
 and can be swapped via the _store protocol.
 """
+
 from __future__ import annotations
 
 import logging
@@ -166,9 +167,7 @@ class LeaderElector:
         """List all roles with active (unexpired) leaders."""
         now = self._clock()
         with self._lock:
-            return [
-                role for role, rec in self._store.items() if rec.expires_at > now
-            ]
+            return [role for role, rec in self._store.items() if rec.expires_at > now]
 
     def stats(self) -> Dict[str, int]:
         return {

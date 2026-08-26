@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class DashboardPanel:
     """A panel in the dashboard."""
+
     title: str
     content: str
     width: int = 40
@@ -76,7 +77,7 @@ class FleetDashboard:
             title="🧬 Breeding Campaigns",
             content="\n".join(lines),
             width=60,
-            height=max(5, len(lines) + 2)
+            height=max(5, len(lines) + 2),
         )
 
     def build_spatial_panel(self, spatial_state: Dict) -> DashboardPanel:
@@ -102,7 +103,7 @@ class FleetDashboard:
             title="🗺️ Spatial State",
             content="\n".join(lines),
             width=60,
-            height=max(5, len(lines) + 2)
+            height=max(5, len(lines) + 2),
         )
 
     def build_health_panel(self, health: Dict) -> DashboardPanel:
@@ -113,7 +114,7 @@ class FleetDashboard:
         lines.append(f"Tests: {tests.get('passed', 0)}/{tests.get('total', 0)} passed")
         if tests.get("total", 0) > 0:
             ratio = tests["passed"] / tests["total"]
-            lines.append(f"  [{self._format_bar(ratio, 1.0)}] {ratio*100:.0f}%")
+            lines.append(f"  [{self._format_bar(ratio, 1.0)}] {ratio * 100:.0f}%")
 
         lines.append("")
         modules = health.get("modules", [])
@@ -130,7 +131,7 @@ class FleetDashboard:
             title="💓 Fleet Health",
             content="\n".join(lines),
             width=40,
-            height=max(5, len(lines) + 2)
+            height=max(5, len(lines) + 2),
         )
 
     def build_swarm_panel(self, swarm: Dict) -> DashboardPanel:
@@ -139,18 +140,19 @@ class FleetDashboard:
 
         lines.append(f"Generation: {swarm.get('generation', 0)}")
         lines.append(f"Particles: {swarm.get('n_particles', 0)}")
-        lines.append(f"Best Fitness: {self._format_number(swarm.get('best_fitness', 0))}")
+        lines.append(
+            f"Best Fitness: {self._format_number(swarm.get('best_fitness', 0))}"
+        )
         lines.append(f"Avg Fitness: {self._format_number(swarm.get('avg_fitness', 0))}")
         lines.append(f"Diversity: {self._format_number(swarm.get('diversity', 0))}")
         lines.append(f"Pheromones: {swarm.get('pheromone_trails', 0)}")
         lines.append("")
-        lines.append(f"Clustering: {self._format_number(swarm.get('avg_clustering', 0))}")
+        lines.append(
+            f"Clustering: {self._format_number(swarm.get('avg_clustering', 0))}"
+        )
 
         return DashboardPanel(
-            title="🐝 Swarm State",
-            content="\n".join(lines),
-            width=35,
-            height=10
+            title="🐝 Swarm State", content="\n".join(lines), width=35, height=10
         )
 
     def build_trinity_panel(self, scores: Dict) -> DashboardPanel:
@@ -172,7 +174,7 @@ class FleetDashboard:
             title="🔥 Trinity Scores",
             content="\n".join(lines),
             width=55,
-            height=max(5, len(lines) + 2)
+            height=max(5, len(lines) + 2),
         )
 
     def render(self, data: Optional[Dict] = None) -> str:
@@ -228,13 +230,15 @@ class FleetDashboard:
         agents = spatial.get("total_agents", 0)
 
         return (
-            f"[Fleet] tests={passed}/{total} "
-            f"gen={gen} best={best:.2f} "
-            f"agents={agents}"
+            f"[Fleet] tests={passed}/{total} gen={gen} best={best:.2f} agents={agents}"
         )
 
-    def run_live(self, data_source: Optional[Callable] = None,
-                 update_interval: float = 1.0, max_iterations: int = 100):
+    def run_live(
+        self,
+        data_source: Optional[Callable] = None,
+        update_interval: float = 1.0,
+        max_iterations: int = 100,
+    ):
         """
         Run live dashboard (would use curses in real implementation).
         For now, just prints periodically.

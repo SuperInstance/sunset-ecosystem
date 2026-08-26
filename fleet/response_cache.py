@@ -9,6 +9,7 @@ Usage:
     cache.put("/users", {"body": "..."}, vary_headers=["accept"])
     response = cache.get("/users", headers={"accept": "json"})
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -76,7 +77,9 @@ class ResponseCache:
             "vary_headers": vary_headers or [],
         }
 
-    def get(self, url: str, headers: Optional[Dict[str, str]] = None) -> Optional[Dict[str, Any]]:
+    def get(
+        self, url: str, headers: Optional[Dict[str, str]] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Get a cached response.
 
@@ -102,7 +105,9 @@ class ResponseCache:
         self._hits += 1
         return dict(entry["response"])
 
-    def get_with_etag(self, url: str, if_none_match: Optional[str] = None) -> tuple[Optional[Dict[str, Any]], bool]:
+    def get_with_etag(
+        self, url: str, if_none_match: Optional[str] = None
+    ) -> tuple[Optional[Dict[str, Any]], bool]:
         """
         Get response with ETag validation.
 

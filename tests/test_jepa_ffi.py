@@ -3,6 +3,7 @@
 Requires libjepa_kernel.so built via cargo build --release.
 Run: pytest tests/test_jepa_ffi.py -v
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -46,18 +47,24 @@ class TestForwardBatch:
     def test_forward_different_weights_different_outputs(self, kernel):
         n = 2
         x = np.ones(64, dtype=np.float32)
-        w1 = np.array([
-            np.random.randn(64, 32).astype(np.float32) * 0.01,
-            np.random.randn(64, 32).astype(np.float32) * 0.01,
-        ])
-        w2 = np.array([
-            np.random.randn(32, 16).astype(np.float32) * 0.01,
-            np.random.randn(32, 16).astype(np.float32) * 0.01,
-        ])
-        w3 = np.array([
-            np.random.randn(16, 16).astype(np.float32) * 0.01,
-            np.random.randn(16, 16).astype(np.float32) * 0.01,
-        ])
+        w1 = np.array(
+            [
+                np.random.randn(64, 32).astype(np.float32) * 0.01,
+                np.random.randn(64, 32).astype(np.float32) * 0.01,
+            ]
+        )
+        w2 = np.array(
+            [
+                np.random.randn(32, 16).astype(np.float32) * 0.01,
+                np.random.randn(32, 16).astype(np.float32) * 0.01,
+            ]
+        )
+        w3 = np.array(
+            [
+                np.random.randn(16, 16).astype(np.float32) * 0.01,
+                np.random.randn(16, 16).astype(np.float32) * 0.01,
+            ]
+        )
         b1 = np.zeros((2, 32), dtype=np.float32)
         b2 = np.zeros((2, 16), dtype=np.float32)
         b3 = np.zeros((2, 16), dtype=np.float32)

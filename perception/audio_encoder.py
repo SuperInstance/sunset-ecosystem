@@ -11,6 +11,7 @@ Backends (in order of preference):
 All backends converge to a 512-dim float32 embedding that feeds into
 NerveTopology as a first-class audio tile.
 """
+
 from __future__ import annotations
 
 __all__ = ["AudioTileEncoder", "AudioEncoderBackend"]
@@ -32,6 +33,7 @@ _HAS_TRANSFORMERS = False
 try:
     import transformers
     from transformers import AutoFeatureExtractor, AutoModel
+
     _HAS_TRANSFORMERS = True
 except Exception:
     pass
@@ -39,6 +41,7 @@ except Exception:
 _HAS_SPEECHBRAIN = False
 try:
     import speechbrain
+
     _HAS_SPEECHBRAIN = True
 except Exception:
     pass
@@ -46,6 +49,7 @@ except Exception:
 _HAS_OPENAI_WHISPER = False
 try:
     import whisper as _whisper_module
+
     _HAS_OPENAI_WHISPER = True
 except Exception:
     pass
@@ -53,6 +57,7 @@ except Exception:
 _HAS_ONNX = False
 try:
     import onnxruntime as ort
+
     _HAS_ONNX = True
 except Exception:
     pass
@@ -60,6 +65,7 @@ except Exception:
 _HAS_TORCH = False
 try:
     import torch
+
     _HAS_TORCH = True
 except Exception:
     pass
@@ -67,6 +73,7 @@ except Exception:
 _HAS_SCIPY = False
 try:
     import scipy.signal
+
     _HAS_SCIPY = True
 except Exception:
     pass
@@ -74,18 +81,20 @@ except Exception:
 
 class AudioEncoderBackend(Enum):
     """Available audio encoder backends, ordered by capability."""
-    WHISPER = auto()         # transformers Whisper — STT + embedding
-    WAV2VEC2 = auto()        # transformers Wav2Vec2 — audio-only
-    CLAP = auto()            # transformers CLAP — audio-text aligned
-    SPEECHBRAIN = auto()     # speechbrain wav2vec
+
+    WHISPER = auto()  # transformers Whisper — STT + embedding
+    WAV2VEC2 = auto()  # transformers Wav2Vec2 — audio-only
+    CLAP = auto()  # transformers CLAP — audio-text aligned
+    SPEECHBRAIN = auto()  # speechbrain wav2vec
     OPENAI_WHISPER = auto()  # openai-whisper
-    ONNX = auto()            # onnxruntime edge inference
+    ONNX = auto()  # onnxruntime edge inference
     RANDOM_PROJECTION = auto()  # deterministic fallback, no deps
 
 
 @dataclass(frozen=True)
 class ModelSpec:
     """Specification for an audio model backend."""
+
     name: str
     embedding_dim: int
     sample_rate: int
@@ -95,7 +104,7 @@ class ModelSpec:
 MODEL_SPECS: dict[str, ModelSpec] = {
     "whisper": ModelSpec(
         name="openai/whisper-tiny",
-        embedding_dim=384,      # whisper-tiny encoder output
+        embedding_dim=384,  # whisper-tiny encoder output
         sample_rate=16000,
         chunk_duration_sec=30.0,
     ),
@@ -164,7 +173,7 @@ class AudioTileEncoder:
         self._backend: AudioEncoderBackend | None = None
         self._processor: Any = None
         self._model: Any = None
-        self._session: Any = None          # ONNX session
+        self._session: Any = None  # ONNX session
         self._projection: np.ndarray | None = None
         self._segment_count = 0
         self._latency_window: list[float] = []
@@ -200,7 +209,9 @@ class AudioTileEncoder:
                 self._backend = backend
                 logger.info(
                     "AudioTileEncoder initialised: backend=%s device=%s dim=%d",
-                    backend.name, self.device, self.target_dim,
+                    backend.name,
+                    self.device,
+                    self.target_dim,
                 )
                 return
             except Exception as exc:
@@ -234,6 +245,7 @@ class AudioTileEncoder:
         if not _HAS_TRANSFORMERS:
             raise ImportError("transformers not installed")
         from transformers import WhisperModel, WhisperProcessor
+
         self._processor = WhisperProcessor.from_pretrained(self.spec.name)
         self._model = WhisperModel.from_pretrained(self.spec.name)
         self._model.eval()
@@ -245,6 +257,7 @@ class AudioTileEncoder:
         if not _HAS_TRANSFORMERS:
             raise ImportError("transformers not installed")
         from transformers import Wav2Vec2Model, Wav2Vec2Processor
+
         self._processor = Wav2Vec2Processor.from_pretrained(self.spec.name)
         self._model = Wav2Vec2Model.from_pretrained(self.spec.name)
         self._model.eval()
@@ -256,6 +269,7 @@ class AudioTileEncoder:
         if not _HAS_TRANSFORMERS:
             raise ImportError("transformers not installed")
         from transformers import ClapModel, ClapProcessor
+
         self._processor = ClapProcessor.from_pretrained(self.spec.name)
         self._model = ClapModel.from_pretrained(self.spec.name)
         self._model.eval()
@@ -268,6 +282,7 @@ class AudioTileEncoder:
         if not _HAS_SPEECHBRAIN:
             raise ImportError("speechbrain not installed")
         from speechbrain.pretrained import EncoderClassifier
+
         self._model = EncoderClassifier.from_hparams(source=self.spec.name)
         self._maybe_build_projection(self.spec.embedding_dim)
 
@@ -275,6 +290,7 @@ class AudioTileEncoder:
         if not _HAS_OPENAI_WHISPER:
             raise ImportError("openai-whisper not installed")
         import whisper
+
         self._model = whisper.load_model(self.spec.name, device=self.device)
         self._maybe_build_projection(self.spec.embedding_dim)
 
@@ -287,9 +303,7 @@ class AudioTileEncoder:
             prov = ["CUDAExecutionProvider", "CPUExecutionProvider"]
         else:
             prov = ["CPUExecutionProvider"]
-        self._session = ort.InferenceSession(
-            self.spec.name, opts, providers=prov
-        )
+        self._session = ort.InferenceSession(self.spec.name, opts, providers=prov)
         self._input_name = self._session.get_inputs()[0].name
 
     def _setup_random_projection(self) -> None:
@@ -447,9 +461,8 @@ class AudioTileEncoder:
 
     def _encode_whisper(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
         import torch
-        inputs = self._processor(
-            audio, sampling_rate=sample_rate, return_tensors="pt"
-        )
+
+        inputs = self._processor(audio, sampling_rate=sample_rate, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
             out = self._model.encoder(inputs["input_features"])
@@ -458,12 +471,17 @@ class AudioTileEncoder:
             emb = emb @ self._projection
         return emb
 
-    def _batch_whisper(self, segments: list[np.ndarray], sample_rate: int) -> np.ndarray:
+    def _batch_whisper(
+        self, segments: list[np.ndarray], sample_rate: int
+    ) -> np.ndarray:
         import torch
+
         # Whisper expects mel spectrograms; batch by stacking features
         features = []
         for seg in segments:
-            inputs = self._processor(seg, sampling_rate=sample_rate, return_tensors="pt")
+            inputs = self._processor(
+                seg, sampling_rate=sample_rate, return_tensors="pt"
+            )
             features.append(inputs["input_features"])
         batch_features = torch.cat(features, dim=0).to(self.device)
         with torch.no_grad():
@@ -477,9 +495,8 @@ class AudioTileEncoder:
 
     def _encode_wav2vec2(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
         import torch
-        inputs = self._processor(
-            audio, sampling_rate=sample_rate, return_tensors="pt"
-        )
+
+        inputs = self._processor(audio, sampling_rate=sample_rate, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         with torch.no_grad():
             out = self._model(**inputs)
@@ -488,8 +505,11 @@ class AudioTileEncoder:
             emb = emb @ self._projection
         return emb
 
-    def _batch_wav2vec2(self, segments: list[np.ndarray], sample_rate: int) -> np.ndarray:
+    def _batch_wav2vec2(
+        self, segments: list[np.ndarray], sample_rate: int
+    ) -> np.ndarray:
         import torch
+
         # Pad to max length for batching
         max_len = max(len(s) for s in segments)
         padded = [np.pad(s, (0, max_len - len(s))) for s in segments]
@@ -507,6 +527,7 @@ class AudioTileEncoder:
 
     def _encode_clap(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
         import torch
+
         inputs = self._processor(
             audios=audio, sampling_rate=sample_rate, return_tensors="pt"
         )
@@ -520,6 +541,7 @@ class AudioTileEncoder:
 
     def _batch_clap(self, segments: list[np.ndarray], sample_rate: int) -> np.ndarray:
         import torch
+
         # CLAP processor handles batched audio natively
         inputs = self._processor(
             audios=segments, sampling_rate=sample_rate, return_tensors="pt"
@@ -550,6 +572,7 @@ class AudioTileEncoder:
 
     def _encode_openai_whisper(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
         import whisper
+
         # Resample to 16kHz if needed
         if sample_rate != 16000 and _HAS_SCIPY:
             audio = scipy.signal.resample(audio, int(len(audio) * 16000 / sample_rate))
@@ -578,11 +601,15 @@ class AudioTileEncoder:
 
     # ── Random projection (fallback) ──────────────────────────
 
-    def _encode_random_projection(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
+    def _encode_random_projection(
+        self, audio: np.ndarray, sample_rate: int
+    ) -> np.ndarray:
         """Deterministic FFT-feature random projection."""
         # Resample to target sample rate if scipy available
         if sample_rate != self.spec.sample_rate and _HAS_SCIPY:
-            audio = scipy.signal.resample(audio, int(len(audio) * self.spec.sample_rate / sample_rate))
+            audio = scipy.signal.resample(
+                audio, int(len(audio) * self.spec.sample_rate / sample_rate)
+            )
 
         # Target 1 second of audio at spec sample rate
         target_len = self.spec.sample_rate
@@ -604,16 +631,19 @@ class AudioTileEncoder:
             mag = mag[:n_bins]
 
         # Basic stats
-        stats = np.array([
-            float(np.mean(audio)),
-            float(np.std(audio)),
-            float(np.max(audio)),
-            float(np.min(audio)),
-            float(np.mean(mag)),
-            float(np.std(mag)),
-            float(np.percentile(audio, 25)),
-            float(np.percentile(audio, 75)),
-        ], dtype=np.float32)
+        stats = np.array(
+            [
+                float(np.mean(audio)),
+                float(np.std(audio)),
+                float(np.max(audio)),
+                float(np.min(audio)),
+                float(np.mean(mag)),
+                float(np.std(mag)),
+                float(np.percentile(audio, 25)),
+                float(np.percentile(audio, 75)),
+            ],
+            dtype=np.float32,
+        )
 
         features = np.concatenate([mag, stats])
         # features shape = (8192 + 8,) = 8200

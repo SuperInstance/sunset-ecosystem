@@ -32,6 +32,7 @@ from fleet.conservation_spectral_bridge import (
 # ---------------------------------------------------------------------------
 # Core spectral math
 
+
 class TestSpectralMath:
     """Test the pure-Python fallback implementations."""
 
@@ -99,6 +100,7 @@ class TestSpectralMath:
 # ---------------------------------------------------------------------------
 # SpectralFingerprint
 
+
 class TestSpectralFingerprint:
     def test_from_adjacency_basic(self):
         adj = np.array([[0, 1, 1], [1, 0, 0], [1, 0, 0]], dtype=float)
@@ -154,12 +156,14 @@ class TestSpectralFingerprint:
         d = fp.to_dict()
         # All values should be JSON-serializable
         import json
+
         json_str = json.dumps(d)
         assert isinstance(json_str, str)
 
 
 # ---------------------------------------------------------------------------
 # SpectralAlignmentScorer
+
 
 class TestSpectralAlignmentScorer:
     def test_score_identical(self):
@@ -206,9 +210,7 @@ class TestSpectralAlignmentScorer:
     def test_select_diverse_parents_insufficient_pool(self):
         adj_a = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 0]], dtype=float)
         fp_a = SpectralFingerprint.from_adjacency("a", adj_a)
-        parents = SpectralAlignmentScorer.select_diverse_parents(
-            [fp_a], n_parents=2
-        )
+        parents = SpectralAlignmentScorer.select_diverse_parents([fp_a], n_parents=2)
         assert parents == ["a"]
 
     def test_select_diverse_parents_high_threshold(self):
@@ -225,6 +227,7 @@ class TestSpectralAlignmentScorer:
 
 # ---------------------------------------------------------------------------
 # ConservationRatioMonitor
+
 
 class TestConservationRatioMonitor:
     def test_record_and_history(self):
@@ -276,6 +279,7 @@ class TestConservationRatioMonitor:
 # ---------------------------------------------------------------------------
 # SpectralBreederDiversity
 
+
 class TestSpectralBreederDiversity:
     def test_register_agent(self):
         sbd = SpectralBreederDiversity()
@@ -289,11 +293,13 @@ class TestSpectralBreederDiversity:
     def test_score_diversity(self):
         sbd = SpectralBreederDiversity()
         sbd.register_agent(
-            agent_id="a", capabilities=["vision", "audio"],
+            agent_id="a",
+            capabilities=["vision", "audio"],
             capability_links=[("vision", "audio", 0.9)],
         )
         sbd.register_agent(
-            agent_id="b", capabilities=["vision", "audio"],
+            agent_id="b",
+            capabilities=["vision", "audio"],
             capability_links=[("vision", "audio", 0.1)],
         )
         score = sbd.score_diversity("a", "b")
@@ -311,9 +317,7 @@ class TestSpectralBreederDiversity:
         sbd = SpectralBreederDiversity()
         # Register with high conservation ratio
         for i in range(5):
-            sbd.register_agent(
-                f"agent_{i}", ["vision", "audio", "reasoning"]
-            )
+            sbd.register_agent(f"agent_{i}", ["vision", "audio", "reasoning"])
         # All registered agents have the same capabilities → same CR
         # No anomalies expected initially
         anomalies = sbd.detect_anomalies()
@@ -334,6 +338,7 @@ class TestSpectralBreederDiversity:
 
 # ---------------------------------------------------------------------------
 # ConservationSpectralEngine
+
 
 class TestConservationSpectralEngine:
     def test_analyze_returns_metrics(self):
@@ -362,6 +367,7 @@ class TestConservationSpectralEngine:
 
 # ---------------------------------------------------------------------------
 # Edge cases
+
 
 class TestEdgeCases:
     def test_single_node_graph(self):

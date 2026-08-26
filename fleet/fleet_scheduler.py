@@ -355,7 +355,17 @@ class FleetScheduler:
 
                 # Calculate next occurrence
                 next_time = time.mktime(
-                    (now.tm_year, now.tm_mon, now.tm_mday, target_hour, target_min, 0, 0, 0, -1)
+                    (
+                        now.tm_year,
+                        now.tm_mon,
+                        now.tm_mday,
+                        target_hour,
+                        target_min,
+                        0,
+                        0,
+                        0,
+                        -1,
+                    )
                 )
                 if next_time <= time.time():
                     next_time += 86400  # Add 1 day
@@ -481,7 +491,9 @@ class FleetScheduler:
         with self._lock:
             return self._jobs.get(job_id)
 
-    def get_results(self, job_id: str | None = None, limit: int = 100) -> list[JobResult]:
+    def get_results(
+        self, job_id: str | None = None, limit: int = 100
+    ) -> list[JobResult]:
         """Get job results.
 
         Parameters

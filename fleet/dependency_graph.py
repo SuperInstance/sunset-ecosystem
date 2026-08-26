@@ -10,6 +10,7 @@ Usage:
     order = g.topological_sort()
     # -> ["health-monitor", "conductor", "breeder"]
 """
+
 from __future__ import annotations
 
 import logging

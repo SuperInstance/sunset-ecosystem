@@ -111,9 +111,9 @@ def test_adaptive_throttle_on_slow_forward(scheduler, caplog):
     with caplog.at_level(logging.WARNING, logger="nerve.metronome"):
         scheduler.tick_now()
 
-    assert any(
-        "exceeded 80%" in rec.message for rec in caplog.records
-    ), f"Expected throttle warning in logs, got: {[r.message for r in caplog.records]}"
+    assert any("exceeded 80%" in rec.message for rec in caplog.records), (
+        f"Expected throttle warning in logs, got: {[r.message for r in caplog.records]}"
+    )
 
     scheduler.grid.tick = orig_tick
 

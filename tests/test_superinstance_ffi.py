@@ -37,6 +37,7 @@ class TestSuperinstanceFFIBindings:
             with patch("os.path.exists", return_value=True):
                 import importlib
                 import swarm.superinstance_ffi as ffi
+
                 importlib.reload(ffi)
                 return ffi
 
@@ -106,4 +107,5 @@ class TestSuperinstanceFFIBindings:
             with pytest.raises(RuntimeError, match="libsuperinstance_ffi.so not found"):
                 import importlib
                 import swarm.superinstance_ffi as ffi
+
                 importlib.reload(ffi)

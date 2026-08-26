@@ -89,13 +89,33 @@ class MockFleetSource:
             self.n_agents -= 1
 
         events = [
-            {"type": "breed", "message": f"agent-{self._tick % 100:04d} bred into research", "time": time.strftime("%H:%M:%S")},
-            {"type": "info", "message": f"Metronome tick {self._tick} complete", "time": time.strftime("%H:%M:%S")},
+            {
+                "type": "breed",
+                "message": f"agent-{self._tick % 100:04d} bred into research",
+                "time": time.strftime("%H:%M:%S"),
+            },
+            {
+                "type": "info",
+                "message": f"Metronome tick {self._tick} complete",
+                "time": time.strftime("%H:%M:%S"),
+            },
         ]
         if self._tick % 5 == 0:
-            events.append({"type": "sunset", "message": f"agent-{(self._tick * 3) % 100:04d} archived epilogue", "time": time.strftime("%H:%M:%S")})
+            events.append(
+                {
+                    "type": "sunset",
+                    "message": f"agent-{(self._tick * 3) % 100:04d} archived epilogue",
+                    "time": time.strftime("%H:%M:%S"),
+                }
+            )
         if self._tick % 11 == 0:
-            events.append({"type": "error", "message": "Thermal threshold breached on cuda:1", "time": time.strftime("%H:%M:%S")})
+            events.append(
+                {
+                    "type": "error",
+                    "message": "Thermal threshold breached on cuda:1",
+                    "time": time.strftime("%H:%M:%S"),
+                }
+            )
 
         thermal = {
             "cuda:0": 0.45 + 0.1 * ((self._tick * 3) % 10) / 10,
@@ -120,7 +140,9 @@ def make_app(data_source=None, template_path: str | None = None) -> "FastAPI | F
     """Create and configure the web app."""
     viz = TidePoolVisualizer()
     source = data_source if data_source is not None else MockFleetSource()
-    tpl = template_path or str(Path(__file__).parent.parent / "logos" / "templates" / "tide_pool.html")
+    tpl = template_path or str(
+        Path(__file__).parent.parent / "logos" / "templates" / "tide_pool.html"
+    )
 
     if FASTAPI_AVAILABLE:
         app = FastAPI(title="Tide Pool")
@@ -213,10 +235,18 @@ def make_app(data_source=None, template_path: str | None = None) -> "FastAPI | F
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Tide Pool ambient visualization server")
-    parser.add_argument("--host", default="127.0.0.1", help="Bind address (default: 127.0.0.1)")
+    parser = argparse.ArgumentParser(
+        description="Tide Pool ambient visualization server"
+    )
+    parser.add_argument(
+        "--host", default="127.0.0.1", help="Bind address (default: 127.0.0.1)"
+    )
     parser.add_argument("--port", type=int, default=8080, help="Port (default: 8080)")
-    parser.add_argument("--data-module", default=None, help="Dotted path to a callable that returns fleet raw data")
+    parser.add_argument(
+        "--data-module",
+        default=None,
+        help="Dotted path to a callable that returns fleet raw data",
+    )
     parser.add_argument("--template", default=None, help="Path to custom HTML template")
     args = parser.parse_args()
 

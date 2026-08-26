@@ -25,6 +25,7 @@ from swarm.constraint_bridge import (
 
 # ── Exact Pythagorean Snap ─────────────────────────────────────────
 
+
 class TestExactSnap:
     """exact_pythagorean_snap single-vector tests."""
 
@@ -100,6 +101,7 @@ class TestExactSnap:
 
 
 # ── Batch Snap ─────────────────────────────────────────────────────
+
 
 class TestBatchSnap:
     """Vectorised batch_snap tests."""
@@ -180,6 +182,7 @@ class TestBatchSnap:
 
 # ── Cache ──────────────────────────────────────────────────────────
 
+
 class TestTripleCache:
     """LRU-cache behaviour for Pythagorean triples."""
 
@@ -223,6 +226,7 @@ class TestTripleCache:
 
 
 # ── Exact Quantization ─────────────────────────────────────────────
+
 
 class TestExactQuantization:
     """quantize_embedding(mode='exact') tests."""
@@ -276,6 +280,7 @@ class TestExactQuantization:
 
 # ── FFI Fallback ───────────────────────────────────────────────────
 
+
 class TestFFIFallback:
     """When libsuperinstance_ffi.so is absent, mocks / pure Python work."""
 
@@ -316,6 +321,7 @@ class TestFFIFallback:
 
 
 # ── Round-trip fidelity ────────────────────────────────────────────
+
 
 class TestRoundTrip:
     """snap → unscale should stay close to the original direction."""
@@ -366,6 +372,7 @@ class TestRoundTrip:
 
 # ── Stats & Introspection ──────────────────────────────────────────
 
+
 class TestStats:
     def test_stats_contains_ffi_so_exists(self):
         bridge = ConstraintBridge(dim=256, density=50)
@@ -380,6 +387,7 @@ class TestStats:
 
 
 # ── Backward compatibility ───────────────────────────────────────
+
 
 class TestBackwardCompatibility:
     def test_old_snap_vector_api_unchanged(self):

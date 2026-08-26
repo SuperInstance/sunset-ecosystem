@@ -9,6 +9,7 @@ Usage:
     ciphertext = helper.encrypt("hello", key=b"32-byte-key-here!!")
     plaintext = helper.decrypt(ciphertext, key=b"32-byte-key-here!!")
 """
+
 from __future__ import annotations
 
 import hashlib

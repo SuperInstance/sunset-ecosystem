@@ -9,6 +9,7 @@ Usage:
     signals.connect("breed_complete", lambda ctx: print(ctx))
     signals.emit("breed_complete", {"agent": "alpha"})
 """
+
 from __future__ import annotations
 
 import logging

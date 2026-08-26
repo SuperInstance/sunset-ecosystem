@@ -29,21 +29,36 @@ def base_table() -> MeshVectorTable:
 
 @pytest.fixture
 def tracker(base_table: MeshVectorTable) -> SceneTracker:
-    return SceneTracker(base_table, strategy=CacheStrategy(
-        hot_threshold_accesses=2,
-        scene_timeout_seconds=1.0,  # short for fast tests
-    ))
+    return SceneTracker(
+        base_table,
+        strategy=CacheStrategy(
+            hot_threshold_accesses=2,
+            scene_timeout_seconds=1.0,  # short for fast tests
+        ),
+    )
 
 
 class TestQueryTracking:
     def test_track_single(self, tracker: SceneTracker) -> None:
-        tracker.track_query("by_id", "none", result_size=1, latency_ms=10.0, query_params={"agent_id": "a"})
+        tracker.track_query(
+            "by_id",
+            "none",
+            result_size=1,
+            latency_ms=10.0,
+            query_params={"agent_id": "a"},
+        )
         assert tracker._query_count == 1
         assert tracker.stats["total_queries"] == 1
 
     def test_track_multiple(self, tracker: SceneTracker) -> None:
         for i in range(5):
-            tracker.track_query("by_id", "none", result_size=1, latency_ms=10.0, query_params={"agent_id": f"a{i}"})
+            tracker.track_query(
+                "by_id",
+                "none",
+                result_size=1,
+                latency_ms=10.0,
+                query_params={"agent_id": f"a{i}"},
+            )
         assert tracker._query_count == 5
 
     def test_histogram(self, tracker: SceneTracker) -> None:
@@ -96,7 +111,9 @@ class TestSceneDetection:
 
 
 class TestCacheRecommendations:
-    def test_high_access_promotion(self, base_table: MeshVectorTable, tracker: SceneTracker) -> None:
+    def test_high_access_promotion(
+        self, base_table: MeshVectorTable, tracker: SceneTracker
+    ) -> None:
         # Insert entries
         for i in range(5):
             entry = VectorTableEntry(
@@ -112,12 +129,20 @@ class TestCacheRecommendations:
 
         # Track queries for same agent multiple times
         for _ in range(3):
-            tracker.track_query("by_id", "none", result_size=1, latency_ms=10.0, query_params={"agent_id": "agent_0"})
+            tracker.track_query(
+                "by_id",
+                "none",
+                result_size=1,
+                latency_ms=10.0,
+                query_params={"agent_id": "agent_0"},
+            )
 
         recs = tracker.get_cache_recommendations()
         assert "agent_0" in recs
 
-    def test_cooccurrence_preload(self, base_table: MeshVectorTable, tracker: SceneTracker) -> None:
+    def test_cooccurrence_preload(
+        self, base_table: MeshVectorTable, tracker: SceneTracker
+    ) -> None:
         # Insert entries
         for i in range(5):
             entry = VectorTableEntry(
@@ -133,8 +158,20 @@ class TestCacheRecommendations:
 
         # Track alternating queries: agent_0 -> agent_1 -> agent_0 -> agent_1
         for _ in range(3):
-            tracker.track_query("by_id", "none", result_size=1, latency_ms=10.0, query_params={"agent_id": "agent_0"})
-            tracker.track_query("by_id", "none", result_size=1, latency_ms=10.0, query_params={"agent_id": "agent_1"})
+            tracker.track_query(
+                "by_id",
+                "none",
+                result_size=1,
+                latency_ms=10.0,
+                query_params={"agent_id": "agent_0"},
+            )
+            tracker.track_query(
+                "by_id",
+                "none",
+                result_size=1,
+                latency_ms=10.0,
+                query_params={"agent_id": "agent_1"},
+            )
 
         recs = tracker.get_cache_recommendations()
         # agent_0 should recommend agent_1 via co-occurrence

@@ -20,7 +20,7 @@ Architecture:
 Usage:
     from sunset.flux_integration import FluxConstraintChecker
     checker = FluxConstraintChecker()
-    
+
     # After grid tick:
     violations = checker.check_batch(latents, preset="neural_bounds")
     if violations.any():
@@ -28,6 +28,7 @@ Usage:
 
 See docs/FLUX_INTEGRATION.md for full specification.
 """
+
 from __future__ import annotations
 
 import logging
@@ -41,15 +42,21 @@ log = logging.getLogger(__name__)
 
 # ── Configuration ───────────────────────────────────────────
 
-FLUX_VM_PATH = os.environ.get("FLUX_VM_PATH", "../flux-vm-v3-temp/target/release/flux_vm")
-FLUST_COMPILER_PATH = os.environ.get("FLUX_COMPILER_PATH", "../flux-compiler-v0.1.0/compiler/fluxc.py")
+FLUX_VM_PATH = os.environ.get(
+    "FLUX_VM_PATH", "../flux-vm-v3-temp/target/release/flux_vm"
+)
+FLUST_COMPILER_PATH = os.environ.get(
+    "FLUX_COMPILER_PATH", "../flux-compiler-v0.1.0/compiler/fluxc.py"
+)
 
 
 # ── Data structures ───────────────────────────────────────
 
+
 @dataclass
 class ConstraintViolation:
     """A single constraint violation in a room."""
+
     room_idx: int
     room_id: str
     constraint_name: str
@@ -60,6 +67,7 @@ class ConstraintViolation:
 @dataclass
 class ConstraintPreset:
     """Named set of constraints with parameters."""
+
     name: str
     bounds: Tuple[float, float]  # (min, max) for latent values
     max_l2_norm: float
@@ -94,6 +102,7 @@ PRESETS: Dict[str, ConstraintPreset] = {
 
 
 # ── Backends ────────────────────────────────────────────────
+
 
 class _FluxBackend:
     """Abstract base for constraint checking backends."""
@@ -130,7 +139,7 @@ class _PythonBackend(_FluxBackend):
         violations |= (latents > preset.bounds[1]).any(axis=1)
 
         # 2. L2 norm check
-        l2_norms = np.sqrt(np.sum(latents ** 2, axis=1))
+        l2_norms = np.sqrt(np.sum(latents**2, axis=1))
         violations |= l2_norms > preset.max_l2_norm
 
         # 3. Variance check
@@ -153,7 +162,9 @@ class _RustBackend(_FluxBackend):
         import ctypes
 
         if not os.path.exists(self.vm_path):
-            log.warning("FLUX VM not found at %s — falling back to Python", self.vm_path)
+            log.warning(
+                "FLUX VM not found at %s — falling back to Python", self.vm_path
+            )
             return
 
         try:
@@ -213,6 +224,7 @@ class _RustBackend(_FluxBackend):
 
 # ── Public API ──────────────────────────────────────────────
 
+
 class FluxConstraintChecker:
     """Constraint checker for room grid outputs.
 
@@ -244,7 +256,9 @@ class FluxConstraintChecker:
             log.info("FLUX VM not found — using Python backend")
             self._backend = self._python_backend
 
-    def check_batch(self, latents: np.ndarray, preset_name: Optional[str] = None) -> np.ndarray:
+    def check_batch(
+        self, latents: np.ndarray, preset_name: Optional[str] = None
+    ) -> np.ndarray:
         """Check a batch of room latents against constraints.
 
         Args:
@@ -286,7 +300,7 @@ class FluxConstraintChecker:
             reasons = []
             if (room < preset.bounds[0]).any() or (room > preset.bounds[1]).any():
                 reasons.append("bounds")
-            l2 = float(np.sqrt(np.sum(room ** 2)))
+            l2 = float(np.sqrt(np.sum(room**2)))
             if l2 > preset.max_l2_norm:
                 reasons.append(f"l2_norm({l2:.1f})")
             var = float(np.var(room))
@@ -307,6 +321,7 @@ class FluxConstraintChecker:
 
 
 # ── RoomGrid integration hook ─────────────────────────────
+
 
 def apply_constraint_feedback(
     grid: Any,
@@ -333,6 +348,8 @@ def apply_constraint_feedback(
     if n_violations > 0 and hasattr(grid, "chaos"):
         # Increase chaos for violating rooms — they need to explore more
         grid.chaos[violations] += chaos_increase
-        log.debug("Constraint feedback: %d/%d rooms penalized", n_violations, len(latents))
+        log.debug(
+            "Constraint feedback: %d/%d rooms penalized", n_violations, len(latents)
+        )
 
     return n_violations

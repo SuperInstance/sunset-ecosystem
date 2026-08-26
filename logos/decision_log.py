@@ -198,19 +198,29 @@ class DecisionLog:
                 continue
 
             if topic_lower:
-                searchable = " ".join([
-                    rec.title, rec.context, rec.decision,
-                    rec.rationale, " ".join(rec.tags),
-                    " ".join(rec.components),
-                ]).lower()
+                searchable = " ".join(
+                    [
+                        rec.title,
+                        rec.context,
+                        rec.decision,
+                        rec.rationale,
+                        " ".join(rec.tags),
+                        " ".join(rec.components),
+                    ]
+                ).lower()
                 if topic_lower not in searchable:
                     continue
 
             if text_lower:
-                searchable = " ".join([
-                    rec.title, rec.context, rec.decision,
-                    rec.rationale, " ".join(rec.alternatives),
-                ]).lower()
+                searchable = " ".join(
+                    [
+                        rec.title,
+                        rec.context,
+                        rec.decision,
+                        rec.rationale,
+                        " ".join(rec.alternatives),
+                    ]
+                ).lower()
                 if text_lower not in searchable:
                     continue
 
@@ -227,7 +237,8 @@ class DecisionLog:
     def all_records(self, include_superseded: bool = False) -> DecisionRecords:
         """Return all records."""
         recs = [
-            r for r in self._records.values()
+            r
+            for r in self._records.values()
             if include_superseded or not r.superseded_by
         ]
         recs.sort(key=lambda r: r.decided_at, reverse=True)

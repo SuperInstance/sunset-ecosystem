@@ -16,13 +16,29 @@ from nerve.fiber import FiberState
 
 class TestTickResult:
     def test_creation(self):
-        tr = TickResult(tick=1, fibers_perceived=2, rooms_fired=3, routes_activated=4, routes_compiled=5, novel_signals=6, latency_ms=10.0)
+        tr = TickResult(
+            tick=1,
+            fibers_perceived=2,
+            rooms_fired=3,
+            routes_activated=4,
+            routes_compiled=5,
+            novel_signals=6,
+            latency_ms=10.0,
+        )
         assert tr.tick == 1
         assert tr.fibers_perceived == 2
         assert tr.routes_compiled == 5
 
     def test_defaults(self):
-        tr = TickResult(tick=0, fibers_perceived=0, rooms_fired=0, routes_activated=0, routes_compiled=0, novel_signals=0, latency_ms=0.0)
+        tr = TickResult(
+            tick=0,
+            fibers_perceived=0,
+            rooms_fired=0,
+            routes_activated=0,
+            routes_compiled=0,
+            novel_signals=0,
+            latency_ms=0.0,
+        )
         assert tr.compiled_funcs == []
 
 
@@ -86,7 +102,7 @@ class TestNerveTopology:
         v1 = topo._encode_tile(tile)
         v2 = topo._encode_tile(tile)
         assert np.array_equal(v1, v2)
-        assert hasattr(topo, '_tile_cache')
+        assert hasattr(topo, "_tile_cache")
 
     def test_results_deque(self):
         topo = NerveTopology(n_fibers=2, n_rooms=5)

@@ -155,7 +155,7 @@ result = shell.spawn(
     attachment="pythagorean",
     generations=50,
     task_fn=lambda matrix: {"fitness": float(matrix.sum())},
-    config={"population_size": 100, "elitism_count": 5}
+    config={"population_size": 100, "elitism_count": 5},
 )
 # result = {"best_genome": ..., "best_fitness": 123.4, "generations": 50}
 ```
@@ -187,10 +187,10 @@ projector.project_state(
         semantics={
             "role": "breeder",
             "temperature": 65.4,
-            "current_task": "my-experiment"
+            "current_task": "my-experiment",
         },
-        confidence=0.95
-    )
+        confidence=0.95,
+    ),
 )
 ```
 
@@ -214,9 +214,8 @@ prediction = projector.predict_trajectory("your-agent-id", horizon=10)
 
 # Add a thermal constraint
 from fleet.spatial_projector import create_thermal_constraint
-projector.add_flux_constraint(
-    create_thermal_constraint(max_temp=75.0, hard=True)
-)
+
+projector.add_flux_constraint(create_thermal_constraint(max_temp=75.0, hard=True))
 
 # Validate (raises if violation)
 validated = projector.apply_flux_gate(prediction)
@@ -236,7 +235,7 @@ reading = SensorReading(
     queue_depth=3,
     flux_gate_pass=True,
     mesh_sync_delta=0.12,
-    timestamp=time.time()
+    timestamp=time.time(),
 )
 
 # Self-heal if needed
@@ -376,23 +375,20 @@ campaigns = [
         "name": "exact-arithmetic",
         "attachment": "pythagorean",
         "generations": 100,
-        "config": {"elitism_count": 5}
+        "config": {"elitism_count": 5},
     },
     {
         "name": "fourier-evolution",
         "attachment": "spectral",
         "generations": 80,
-        "config": {"mutation_rate": 0.1}
+        "config": {"mutation_rate": 0.1},
     },
     {
         "name": "adversarial-robustness",
         "attachment": "adversarial",
         "generations": 60,
-        "config": {
-            "solver_pop_size": 30,
-            "tester_pop_size": 20
-        }
-    }
+        "config": {"solver_pop_size": 30, "tester_pop_size": 20},
+    },
 ]
 
 result = shell.execute("breed parallel", campaigns)
@@ -423,9 +419,7 @@ FLUX is the constraint system that keeps agents safe.
 from fleet.spatial_projector import create_thermal_constraint
 
 # Kill the prediction if it exceeds thermal budget
-projector.add_flux_constraint(
-    create_thermal_constraint(max_temp=75.0, hard=True)
-)
+projector.add_flux_constraint(create_thermal_constraint(max_temp=75.0, hard=True))
 
 prediction = projector.predict_trajectory("agent-1", horizon=20)
 try:

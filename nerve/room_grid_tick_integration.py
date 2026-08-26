@@ -26,6 +26,7 @@ Usage::
     )
     results = integration.tick_batch(signals)
 """
+
 from __future__ import annotations
 
 __all__ = ["RoomGridTickIntegration", "TickMetrics"]
@@ -43,6 +44,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class TickMetrics:
     """Metrics emitted per tick cycle."""
+
     tick: int
     n_rooms: int
     fired_count: int
@@ -225,8 +227,10 @@ class RoomGridTickIntegration:
         try:
             result = self.compiler_swap.check_and_compile()
             if result is not None and getattr(result, "success", False):
-                log.debug("Compiler hot-swap triggered: compile_time_ms=%.2f",
-                          getattr(result, "compile_time_ms", 0))
+                log.debug(
+                    "Compiler hot-swap triggered: compile_time_ms=%.2f",
+                    getattr(result, "compile_time_ms", 0),
+                )
                 self._emit_event(
                     "compiler_hot_swap",
                     {
@@ -266,7 +270,9 @@ class RoomGridTickIntegration:
 
         return status if status else None
 
-    def _build_metrics(self, tick_result: dict[str, Any], duration_ms: float) -> TickMetrics:
+    def _build_metrics(
+        self, tick_result: dict[str, Any], duration_ms: float
+    ) -> TickMetrics:
         """Build TickMetrics from a tick result dict."""
         n = getattr(self.grid, "n", 0)
         active = getattr(self.grid, "activity", None)
@@ -289,6 +295,7 @@ class RoomGridTickIntegration:
             # Try calling the module-level function
             try:
                 from nerve.room_grid import _select_backend
+
                 backend = _select_backend(n)
             except Exception:
                 backend = "numpy"
@@ -314,6 +321,8 @@ class RoomGridTickIntegration:
         if not hasattr(self.event_bus, "emit"):
             return
         try:
-            self.event_bus.emit({"type": event_type, **payload}, source="room_grid_tick_integration")
+            self.event_bus.emit(
+                {"type": event_type, **payload}, source="room_grid_tick_integration"
+            )
         except Exception as e:
             log.warning("EventBus emit failed (non-fatal): %s", e)

@@ -124,23 +124,30 @@ agents receive higher breeding priority in `swarm/breeder_daemon_v2.py`.
 from ranking.user_ranking import UserRanking
 from ranking.ranked_response import RankedResponse
 from ranking.feedback_loop import FeedbackLoop
-from fleet.conservation_spectral_bridge import SpectralAlignmentScorer, SpectralFingerprint
+from fleet.conservation_spectral_bridge import (
+    SpectralAlignmentScorer,
+    SpectralFingerprint,
+)
 from swarm.breeder_daemon_v2 import BreederDaemonV2, DiversityConfig, ThermalConfig
 
 # 1. Collect user ranking
 ranking = UserRanking(prompt="Explain JEPA latent spaces")
-ranking.add_response(RankedResponse(
-    response="JEPA predicts latent views...",
-    source="nerve_compiled",
-    rank=1,
-    latency_ms=45.2,
-))
-ranking.add_response(RankedResponse(
-    response="Joint embedding predictive architecture...",
-    source="distilled_v3",
-    rank=2,
-    latency_ms=120.0,
-))
+ranking.add_response(
+    RankedResponse(
+        response="JEPA predicts latent views...",
+        source="nerve_compiled",
+        rank=1,
+        latency_ms=45.2,
+    )
+)
+ranking.add_response(
+    RankedResponse(
+        response="Joint embedding predictive architecture...",
+        source="distilled_v3",
+        rank=2,
+        latency_ms=120.0,
+    )
+)
 
 # 2. Feed ranking back into the ecosystem
 from ranking.personalization import PersonalizationStore
@@ -271,7 +278,8 @@ import subprocess, json
 
 result = subprocess.run(
     ["si", "scan", "sunset-ecosystem", "--format", "json"],
-    capture_output=True, text=True,
+    capture_output=True,
+    text=True,
 )
 capabilities = json.loads(result.stdout)
 for cap in capabilities["provides"]:
@@ -304,7 +312,9 @@ resp = requests.get(
     headers={"Authorization": "Bearer <fleet-token>"},
 )
 budget = resp.json()
-print(f"GPU: {budget['gpu_used']}/{budget['gpu_max']}  CPU: {budget['cpu_used']}/{budget['cpu_max']}")
+print(
+    f"GPU: {budget['gpu_used']}/{budget['gpu_max']}  CPU: {budget['cpu_used']}/{budget['cpu_max']}"
+)
 
 # Query conservation ratios across the fleet
 resp = requests.get(f"{FLEET_API}/fleet/conservation-ratios")
@@ -369,7 +379,7 @@ lib.laman_check_subset.restype = ctypes.c_int
 lib.holonomy_consistency_check.argtypes = [
     ctypes.POINTER(ctypes.c_double),  # vec_a
     ctypes.POINTER(ctypes.c_double),  # vec_b
-    ctypes.c_size_t,                  # n
+    ctypes.c_size_t,  # n
 ]
 lib.holonomy_consistency_check.restype = ctypes.c_int
 
@@ -445,9 +455,9 @@ agents = [
 # 2. Score each agent on the trinity
 for agent in agents:
     score = trinity_score(
-        ethos_score=0.85,   # hardware efficiency
+        ethos_score=0.85,  # hardware efficiency
         pathos_score=0.72,  # human relevance
-        logos_score=0.91,   # logical coherence
+        logos_score=0.91,  # logical coherence
     )
     agent.trinity_score = score
     print(f"{agent.agent_id}: trinity={score:.3f}")
@@ -458,10 +468,12 @@ runner = GenerationRunner(
     seed_bank=SeedBank(),
 )
 report: GenerationReport = runner.run(agents)
-print(f"Generation {report.generation}: "
-      f"spawned={report.agents_spawned}, "
-      f"survived={report.agents_survived}, "
-      f"peak={report.peak_score:.4f}")
+print(
+    f"Generation {report.generation}: "
+    f"spawned={report.agents_spawned}, "
+    f"survived={report.agents_survived}, "
+    f"peak={report.peak_score:.4f}"
+)
 ```
 
 ### Integration with the PLATO bridge
@@ -516,30 +528,38 @@ supabase = create_client(
 )
 
 # Get all capabilities for sunset-ecosystem
-caps = supabase.table("capabilities") \
-    .select("name, module, description") \
-    .eq("repo", "sunset-ecosystem") \
+caps = (
+    supabase.table("capabilities")
+    .select("name, module, description")
+    .eq("repo", "sunset-ecosystem")
     .execute()
+)
 for cap in caps.data:
     print(f"  {cap['name']}: {cap['module']}")
 
 # Get latest trinity scores
-scores = supabase.table("trinity_scores") \
-    .select("agent_id, ethos, pathos, logos, composite") \
-    .order("timestamp", desc=True) \
-    .limit(5) \
+scores = (
+    supabase.table("trinity_scores")
+    .select("agent_id, ethos, pathos, logos, composite")
+    .order("timestamp", desc=True)
+    .limit(5)
     .execute()
+)
 for s in scores.data:
-    print(f"  {s['agent_id']}: ethos={s['ethos']:.2f} pathos={s['pathos']:.2f} logos={s['logos']:.2f}")
+    print(
+        f"  {s['agent_id']}: ethos={s['ethos']:.2f} pathos={s['pathos']:.2f} logos={s['logos']:.2f}"
+    )
 
 # Insert a breeding event
-supabase.table("breeding_events").insert({
-    "agent_id": "agent-42-gen-5",
-    "parent_ids": ["agent-12-gen-4", "agent-19-gen-4"],
-    "fitness": 0.9147,
-    "method": "tournament",
-    "thermal_cost": 2.5,
-}).execute()
+supabase.table("breeding_events").insert(
+    {
+        "agent_id": "agent-42-gen-5",
+        "parent_ids": ["agent-12-gen-4", "agent-19-gen-4"],
+        "fitness": 0.9147,
+        "method": "tournament",
+        "thermal_cost": 2.5,
+    }
+).execute()
 ```
 
 ### Real-time subscription to fleet events
@@ -551,9 +571,8 @@ def on_ratio_update(payload):
     if data["ratio"] < 0.95:
         print(f"⚠ Conservation anomaly on {data['node']}: {data['ratio']:.4f}")
 
-supabase.table("conservation_ratios") \
-    .on("INSERT", on_ratio_update) \
-    .subscribe()
+
+supabase.table("conservation_ratios").on("INSERT", on_ratio_update).subscribe()
 ```
 
 ---

@@ -10,6 +10,7 @@ Usage::
     results = suite.run_all()
     # results is a dict of test_name → pass/fail with measurements
 """
+
 from __future__ import annotations
 
 __all__ = ["EMBenchmarkSuite", "EMTestResult"]
@@ -24,6 +25,7 @@ import numpy as np
 @dataclass
 class EMTestResult:
     """Result of a single EM compatibility test."""
+
     test_name: str
     passed: bool
     measurement: float

@@ -63,7 +63,7 @@ Built-in traps:
 ```python
 @dataclass(frozen=True)
 class TrapResult:
-    condition: str          # e.g. "thermal_overcommit"
+    condition: str  # e.g. "thermal_overcommit"
     severity: TrapSeverity
     message: str
     metadata: dict[str, Any]

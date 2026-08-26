@@ -9,6 +9,7 @@ Usage:
     rec = planner.recommend()
     # rec["action"] == "scale_up"
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -51,10 +52,7 @@ class CapacityPlanner:
 
     def current_utilization(self) -> Dict[str, float]:
         """Get latest utilization per resource."""
-        return {
-            r: values[-1] if values else 0.0
-            for r, values in self._usage.items()
-        }
+        return {r: values[-1] if values else 0.0 for r, values in self._usage.items()}
 
     def avg_utilization(self) -> Dict[str, float]:
         """Get average utilization per resource."""

@@ -10,6 +10,7 @@ AVX-512/NEON-style parallelism. Provides:
 All operations process vectors in chunks of 16 (simulating AVX-512
 registers on 64-bit floats) or 32 (simulating AVX-512 on 32-bit floats).
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -170,6 +171,7 @@ def topk_select(
 
 # ── SIMD Ops class (convenience wrapper) ──────────────────────
 
+
 class SIMDOps:
     """Namespace for SIMD-style vector operations.
 
@@ -180,7 +182,9 @@ class SIMDOps:
     BLOCK = SIMD_WIDTH
 
     @classmethod
-    def distance_matrix(cls, a: np.ndarray, b: np.ndarray, metric: str = "euclidean") -> np.ndarray:
+    def distance_matrix(
+        cls, a: np.ndarray, b: np.ndarray, metric: str = "euclidean"
+    ) -> np.ndarray:
         """Pairwise distance matrix between two populations.
 
         a: (n, dim), b: (m, dim) -> returns (n, m)
@@ -223,7 +227,9 @@ class SIMDOps:
         return D
 
     @classmethod
-    def batch_fitness_gradient(cls, population: np.ndarray, objective: np.ndarray) -> np.ndarray:
+    def batch_fitness_gradient(
+        cls, population: np.ndarray, objective: np.ndarray
+    ) -> np.ndarray:
         """Compute fitness gradient for each individual.
 
         For cosine similarity: gradient points toward objective.
@@ -235,7 +241,9 @@ class SIMDOps:
         return objective[None, :] - population
 
     @classmethod
-    def accelerate_crossover(cls, a: np.ndarray, b: np.ndarray, alpha: float = 0.5) -> np.ndarray:
+    def accelerate_crossover(
+        cls, a: np.ndarray, b: np.ndarray, alpha: float = 0.5
+    ) -> np.ndarray:
         """Blend crossover with SIMD-width block processing."""
         a = np.asarray(a, dtype=np.float64)
         b = np.asarray(b, dtype=np.float64)

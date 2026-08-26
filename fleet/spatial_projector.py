@@ -23,9 +23,11 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 # ────────────────────────────── Data Structures ──────────────────────────────
 
+
 @dataclass
 class WorldState:
     """Typed perceptual state tensor for an agent in a Plato room."""
+
     position: Tuple[float, ...]
     velocity: Optional[Tuple[float, ...]] = None
     orientation: Optional[float] = None
@@ -83,6 +85,7 @@ class WorldState:
 @dataclass
 class Prediction:
     """World model prediction output: trajectory, rewards, uncertainty."""
+
     trajectory: List[WorldState]
     rewards: Optional[List[float]] = None
     values: Optional[List[float]] = None
@@ -101,7 +104,9 @@ class Prediction:
     @property
     def mean_uncertainty(self) -> float:
         """Average uncertainty across trajectory."""
-        return sum(self.uncertainty) / len(self.uncertainty) if self.uncertainty else 0.0
+        return (
+            sum(self.uncertainty) / len(self.uncertainty) if self.uncertainty else 0.0
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -119,9 +124,11 @@ class Prediction:
 
 # ────────────────────────────── Flux Constraint ──────────────────────────────
 
+
 @dataclass
 class FluxConstraint:
     """FLUX constraint for gating predictions."""
+
     name: str
     check: Callable[[Prediction], bool]
     penalty: Optional[Callable[[Prediction], float]] = None
@@ -138,6 +145,7 @@ class FluxConstraint:
 
 
 # ────────────────────────────── Spatial Index ──────────────────────────────
+
 
 class SpatialIndex:
     """
@@ -156,12 +164,15 @@ class SpatialIndex:
         """Index a world state."""
         self._entries[projection_id] = state
         self._vectors[projection_id] = state.to_vector()
-        self._by_agent.setdefault(state.agent_id or "anonymous", []).append(projection_id)
+        self._by_agent.setdefault(state.agent_id or "anonymous", []).append(
+            projection_id
+        )
         if state.room_id:
             self._by_room.setdefault(state.room_id, []).append(projection_id)
 
-    def query_radius(self, center: WorldState, radius: float,
-                     room_filter: Optional[str] = None) -> List[Tuple[str, WorldState, float]]:
+    def query_radius(
+        self, center: WorldState, radius: float, room_filter: Optional[str] = None
+    ) -> List[Tuple[str, WorldState, float]]:
         """Find all entries within radius, returning (id, state, distance)."""
         results = []
         for pid, state in self._entries.items():
@@ -172,8 +183,9 @@ class SpatialIndex:
                 results.append((pid, state, dist))
         return sorted(results, key=lambda x: x[2])
 
-    def query_knn(self, center: WorldState, k: int = 5,
-                  room_filter: Optional[str] = None) -> List[Tuple[str, WorldState, float]]:
+    def query_knn(
+        self, center: WorldState, k: int = 5, room_filter: Optional[str] = None
+    ) -> List[Tuple[str, WorldState, float]]:
         """K-nearest neighbors."""
         all_in_radius = self.query_radius(center, float("inf"), room_filter)
         return all_in_radius[:k]
@@ -197,12 +209,14 @@ class SpatialIndex:
         self._vectors.pop(projection_id, None)
         if state and state.agent_id:
             self._by_agent[state.agent_id] = [
-                pid for pid in self._by_agent.get(state.agent_id, [])
+                pid
+                for pid in self._by_agent.get(state.agent_id, [])
                 if pid != projection_id
             ]
         if state and state.room_id:
             self._by_room[state.room_id] = [
-                pid for pid in self._by_room.get(state.room_id, [])
+                pid
+                for pid in self._by_room.get(state.room_id, [])
                 if pid != projection_id
             ]
 
@@ -217,6 +231,7 @@ class SpatialIndex:
 
 # ────────────────────────────── Projector ──────────────────────────────
 
+
 class SpatialProjector:
     """
     Fleet-native spatial awareness projector.
@@ -224,8 +239,9 @@ class SpatialProjector:
     Predictions flow through FLUX gates before A2A broadcast.
     """
 
-    def __init__(self, fleet_node_id: str, db_path: Optional[str] = None,
-                 dimension: int = 3):
+    def __init__(
+        self, fleet_node_id: str, db_path: Optional[str] = None, dimension: int = 3
+    ):
         self.fleet_node_id = fleet_node_id
         self.db_path = db_path
         self.index = SpatialIndex(dimension=dimension)
@@ -235,9 +251,9 @@ class SpatialProjector:
 
     def update(self, state: WorldState) -> str:
         """Upsert an agent's state into the spatial index."""
-        return self.project_state(state.agent_id or "anonymous",
-                                   state.room_id or "default",
-                                   state)
+        return self.project_state(
+            state.agent_id or "anonymous", state.room_id or "default", state
+        )
 
     def remove(self, state: WorldState) -> None:
         """Remove all projections for an agent."""
@@ -269,9 +285,13 @@ class SpatialProjector:
 
     # ── State Projection ──
 
-    def project_state(self, agent_id: str, room_id: str,
-                      state: WorldState,
-                      timestamp: Optional[float] = None) -> str:
+    def project_state(
+        self,
+        agent_id: str,
+        room_id: str,
+        state: WorldState,
+        timestamp: Optional[float] = None,
+    ) -> str:
         """
         Project an agent's perceptual state into the spatial index.
         Returns projection ID for later reference.
@@ -290,9 +310,13 @@ class SpatialProjector:
 
     # ── Spatial Queries ──
 
-    def query_neighbors(self, agent_id: str, radius: float,
-                        room_filter: Optional[str] = None,
-                        exclude_self: bool = True) -> List[WorldState]:
+    def query_neighbors(
+        self,
+        agent_id: str,
+        radius: float,
+        room_filter: Optional[str] = None,
+        exclude_self: bool = True,
+    ) -> List[WorldState]:
         """
         Find all agents within radius of the given agent's latest state.
         """
@@ -305,8 +329,9 @@ class SpatialProjector:
             states = [s for s in states if s.agent_id != agent_id]
         return states
 
-    def query_knn(self, agent_id: str, k: int = 5,
-                  room_filter: Optional[str] = None) -> List[WorldState]:
+    def query_knn(
+        self, agent_id: str, k: int = 5, room_filter: Optional[str] = None
+    ) -> List[WorldState]:
         """K-nearest neighbors to an agent's latest state."""
         center = self.index.get_latest(agent_id)
         if center is None:
@@ -324,9 +349,13 @@ class SpatialProjector:
 
     # ── Prediction ──
 
-    def predict_trajectory(self, agent_id: str, horizon: int = 10,
-                           model_id: str = "default",
-                           worldmodel_bridge: Optional[Any] = None) -> Prediction:
+    def predict_trajectory(
+        self,
+        agent_id: str,
+        horizon: int = 10,
+        model_id: str = "default",
+        worldmodel_bridge: Optional[Any] = None,
+    ) -> Prediction:
         """
         Predict an agent's future trajectory.
         If worldmodel_bridge is provided, uses real world model.
@@ -353,7 +382,7 @@ class SpatialProjector:
                     position=new_pos,
                     velocity=current.velocity,
                     semantics=current.semantics.copy(),
-                    confidence=current.confidence * (0.9 ** step),
+                    confidence=current.confidence * (0.9**step),
                     timestamp=current.timestamp + step,
                     agent_id=agent_id,
                     room_id=current.room_id,
@@ -366,7 +395,7 @@ class SpatialProjector:
                 state = WorldState(
                     position=current.position,
                     semantics=current.semantics.copy(),
-                    confidence=current.confidence * (0.8 ** step),
+                    confidence=current.confidence * (0.8**step),
                     timestamp=current.timestamp + step,
                     agent_id=agent_id,
                     room_id=current.room_id,
@@ -401,9 +430,7 @@ class SpatialProjector:
         for constraint in self._flux_constraints:
             passed, penalty = constraint.evaluate(prediction)
             if constraint.hard and not passed:
-                raise ValueError(
-                    f"FLUX hard constraint '{constraint.name}' violated"
-                )
+                raise ValueError(f"FLUX hard constraint '{constraint.name}' violated")
             total_penalty += penalty
 
         if total_penalty > 0.0:
@@ -419,8 +446,9 @@ class SpatialProjector:
         """Register callback for validated predictions."""
         self._a2a_callbacks.append(callback)
 
-    def broadcast_prediction(self, prediction: Prediction,
-                             target_agents: Optional[List[str]] = None) -> Dict[str, Any]:
+    def broadcast_prediction(
+        self, prediction: Prediction, target_agents: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
         """
         Broadcast a validated prediction to other agents.
         Returns broadcast metadata.
@@ -450,8 +478,9 @@ class SpatialProjector:
 
     # ── Spatial Breeding Context ──
 
-    def get_proximal_agents(self, agent_id: str, radius: float = 5.0,
-                            room_filter: Optional[str] = None) -> List[str]:
+    def get_proximal_agents(
+        self, agent_id: str, radius: float = 5.0, room_filter: Optional[str] = None
+    ) -> List[str]:
         """Get agent IDs within radius (for breeding parent selection)."""
         states = self.query_neighbors(agent_id, radius, room_filter)
         return list(dict.fromkeys(s.agent_id for s in states if s.agent_id))
@@ -504,21 +533,18 @@ class SpatialProjector:
 
 # ────────────────────────────── Utilities ──────────────────────────────
 
-def create_thermal_constraint(max_temp: float = 80.0,
-                               hard: bool = False) -> FluxConstraint:
+
+def create_thermal_constraint(
+    max_temp: float = 80.0, hard: bool = False
+) -> FluxConstraint:
     """Factory: thermal feasibility constraint."""
+
     def check(pred: Prediction) -> bool:
-        temps = [
-            s.semantics.get("temperature", 0.0)
-            for s in pred.trajectory
-        ]
+        temps = [s.semantics.get("temperature", 0.0) for s in pred.trajectory]
         return all(t <= max_temp for t in temps)
 
     def penalty(pred: Prediction) -> float:
-        temps = [
-            s.semantics.get("temperature", 0.0)
-            for s in pred.trajectory
-        ]
+        temps = [s.semantics.get("temperature", 0.0) for s in pred.trajectory]
         max_t = max(temps) if temps else 0.0
         return max(0.0, (max_t - max_temp) / max_temp)
 
@@ -531,9 +557,11 @@ def create_thermal_constraint(max_temp: float = 80.0,
     )
 
 
-def create_uncertainty_constraint(max_uncertainty: float = 0.5,
-                                  hard: bool = False) -> FluxConstraint:
+def create_uncertainty_constraint(
+    max_uncertainty: float = 0.5, hard: bool = False
+) -> FluxConstraint:
     """Factory: uncertainty threshold constraint."""
+
     def check(pred: Prediction) -> bool:
         return pred.mean_uncertainty <= max_uncertainty
 
@@ -549,8 +577,9 @@ def create_uncertainty_constraint(max_uncertainty: float = 0.5,
     )
 
 
-def create_room_constraint(allowed_rooms: List[str],
-                           hard: bool = True) -> FluxConstraint:
+def create_room_constraint(
+    allowed_rooms: List[str], hard: bool = True
+) -> FluxConstraint:
     """Factory: prediction must stay within allowed rooms."""
     allowed_set = set(allowed_rooms)
 

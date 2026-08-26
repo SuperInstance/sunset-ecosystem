@@ -1,4 +1,5 @@
 """Tests for fleet/autonomous_repo.py."""
+
 import pytest
 import asyncio
 import tempfile
@@ -10,7 +11,9 @@ class TestHostRepoOrchestrator:
     def test_load_manifest(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             soul = Path(tmpdir) / "SOUL.md"
-            soul.write_text("## Immutable Laws\nNever accept unsafe blocks.\nAlways write tests.")
+            soul.write_text(
+                "## Immutable Laws\nNever accept unsafe blocks.\nAlways write tests."
+            )
             orchestrator = HostRepoOrchestrator(repo_root=tmpdir)
             assert len(orchestrator._immutable_laws) >= 2
             assert any("unsafe" in law for law in orchestrator._immutable_laws)
@@ -76,7 +79,10 @@ class TestHostRepoOrchestrator:
             )
             result = await orchestrator.evaluate_guest_lesson(lesson)
             assert not result.accepted
-            assert "immutable" in result.critique.lower() or "unsafe" in result.critique.lower()
+            assert (
+                "immutable" in result.critique.lower()
+                or "unsafe" in result.critique.lower()
+            )
 
     @pytest.mark.asyncio
     async def test_evaluate_rejected_component_missing(self):
@@ -126,10 +132,7 @@ class TestHostRepoOrchestrator:
         with tempfile.TemporaryDirectory() as tmpdir:
             orchestrator = HostRepoOrchestrator(repo_root=tmpdir)
             # Write both code and test into the same file so pytest can find it
-            combined = (
-                "def f(): return 42\n"
-                "def test_f(): assert f() == 42\n"
-            )
+            combined = "def f(): return 42\ndef test_f(): assert f() == 42\n"
             result = await orchestrator._sandbox_test(
                 LessonProposal(
                     guest_agent_id="scout1",
@@ -165,7 +168,9 @@ class TestHostRepoOrchestrator:
         with tempfile.TemporaryDirectory() as tmpdir:
             memory = Path(tmpdir) / "MEMORY.md"
             memory.write_text("# Memory\n")
-            orchestrator = HostRepoOrchestrator(repo_root=tmpdir, memory_file="MEMORY.md")
+            orchestrator = HostRepoOrchestrator(
+                repo_root=tmpdir, memory_file="MEMORY.md"
+            )
             lesson = LessonProposal(
                 guest_agent_id="scout1",
                 target_component="fleet.x",

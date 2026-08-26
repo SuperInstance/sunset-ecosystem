@@ -13,6 +13,7 @@ Usage:
     scheduler.schedule("cleanup", cron="0 */6 * * *", fn=cleanup_old_agents)
     scheduler.run()  # blocks until stop()
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TaskExecution:
     """Record of a single task execution."""
+
     task_name: str
     started_at: float
     finished_at: float
@@ -43,6 +45,7 @@ class TaskExecution:
 @dataclass
 class ScheduledTask:
     """A scheduled task definition."""
+
     name: str
     fn: Callable[[], Any]
     interval: float | None = None
@@ -128,7 +131,11 @@ class TaskScheduler:
         except ValueError:
             return False
         tm = time.localtime(now)
-        return tm.tm_min == target_min and tm.tm_hour == target_hour and now - last_run >= 60
+        return (
+            tm.tm_min == target_min
+            and tm.tm_hour == target_hour
+            and now - last_run >= 60
+        )
 
     def _execute(self, task: ScheduledTask) -> None:
         task.running = True
@@ -153,7 +160,7 @@ class TaskScheduler:
             )
         task.executions.append(execution)
         if len(task.executions) > task.max_history:
-            task.executions = task.executions[-task.max_history:]
+            task.executions = task.executions[-task.max_history :]
         task.running = False
 
     def stop(self) -> None:
@@ -183,9 +190,7 @@ class TaskScheduler:
         return {
             "tasks": len(self._tasks),
             "running": self._running,
-            "executions": {
-                name: len(t.executions) for name, t in self._tasks.items()
-            },
+            "executions": {name: len(t.executions) for name, t in self._tasks.items()},
         }
 
     def __repr__(self) -> str:

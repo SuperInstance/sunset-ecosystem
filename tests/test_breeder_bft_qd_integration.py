@@ -17,19 +17,26 @@ import pytest
 # -- Mock cocapn_traps before swarm.breeder_daemon_v2 import --
 _mock_cocapn_traps = types.ModuleType("cocapn_traps")
 _mock_cocapn_traps_traps = types.ModuleType("cocapn_traps.traps")
-_mock_cocapn_traps_diversity = types.ModuleType("cocapn_traps.traps.diversity_collapse_trap")
+_mock_cocapn_traps_diversity = types.ModuleType(
+    "cocapn_traps.traps.diversity_collapse_trap"
+)
+
 
 class _MockAlert:
     level = "WARNING"
     recommended_action = "mock alert"
 
+
 class _MockDiversityCollapseTrap:
     def __init__(self, bus=None):
         self._history = []
+
     def record(self, value: float) -> None:
         self._history.append(value)
+
     def check(self):
         return None
+
 
 _mock_cocapn_traps_diversity.DiversityCollapseTrap = _MockDiversityCollapseTrap
 _mock_cocapn_traps_diversity.Alert = _MockAlert
@@ -121,6 +128,7 @@ def make_daemon(grid, thermal, wal_path, vector_table=None, consensus=None):
 
 # -- fixtures for BFT network --
 
+
 @pytest.fixture
 def network_four(key):
     ids = ["n0", "n1", "n2", "n3"]
@@ -158,6 +166,7 @@ def integration_replica_four(consensus_replica_four, network_four):
 
 # -- helpers --
 
+
 def seed_breedable_agents(daemon, count=8, base_id=100):
     rng = np.random.RandomState(77)
     for i in range(count):
@@ -181,9 +190,14 @@ def seed_breedable_agents(daemon, count=8, base_id=100):
 
 # -- Test: consensus path --
 
+
 class TestConsensusPath:
-    def test_consensus_returns_pairs(self, grid, thermal, wal_path, vector_table, integration_primary_four):
-        daemon = make_daemon(grid, thermal, wal_path, vector_table, consensus=integration_primary_four)
+    def test_consensus_returns_pairs(
+        self, grid, thermal, wal_path, vector_table, integration_primary_four
+    ):
+        daemon = make_daemon(
+            grid, thermal, wal_path, vector_table, consensus=integration_primary_four
+        )
         daemon.start()
         seed_breedable_agents(daemon, count=8)
 
@@ -197,8 +211,12 @@ class TestConsensusPath:
             assert isinstance(a, int)
             assert isinstance(b, int)
 
-    def test_consensus_pairs_are_from_candidates(self, grid, thermal, wal_path, vector_table, integration_primary_four):
-        daemon = make_daemon(grid, thermal, wal_path, vector_table, consensus=integration_primary_four)
+    def test_consensus_pairs_are_from_candidates(
+        self, grid, thermal, wal_path, vector_table, integration_primary_four
+    ):
+        daemon = make_daemon(
+            grid, thermal, wal_path, vector_table, consensus=integration_primary_four
+        )
         daemon.start()
         seed_breedable_agents(daemon, count=6, base_id=200)
         candidate_ids = {200 + i for i in range(6)}
@@ -209,8 +227,12 @@ class TestConsensusPath:
         for a, b in pairs:
             assert a in candidate_ids or b in candidate_ids
 
-    def test_consensus_batch_id_increments(self, grid, thermal, wal_path, vector_table, integration_primary_four):
-        daemon = make_daemon(grid, thermal, wal_path, vector_table, consensus=integration_primary_four)
+    def test_consensus_batch_id_increments(
+        self, grid, thermal, wal_path, vector_table, integration_primary_four
+    ):
+        daemon = make_daemon(
+            grid, thermal, wal_path, vector_table, consensus=integration_primary_four
+        )
         daemon.start()
         seed_breedable_agents(daemon, count=8)
 
@@ -226,8 +248,11 @@ class TestConsensusPath:
 
 # -- Test: no-consensus fallback --
 
+
 class TestNoConsensusFallback:
-    def test_without_consensus_uses_normal_path(self, grid, thermal, wal_path, vector_table):
+    def test_without_consensus_uses_normal_path(
+        self, grid, thermal, wal_path, vector_table
+    ):
         daemon = make_daemon(grid, thermal, wal_path, vector_table, consensus=None)
         daemon.start()
         seed_breedable_agents(daemon, count=8)
@@ -245,8 +270,11 @@ class TestNoConsensusFallback:
 
 # -- Test: Byzantine fault tolerance --
 
+
 class TestByzantineFaultTolerance:
-    def test_4_nodes_tolerates_1_byzantine(self, grid, thermal, wal_path, vector_table, key):
+    def test_4_nodes_tolerates_1_byzantine(
+        self, grid, thermal, wal_path, vector_table, key
+    ):
         ids = ["n0", "n1", "n2", "n3"]
         nodes = [PBFTNode(i, ids, key) for i in ids]
         network = FleetBFTNetwork(nodes)
@@ -255,7 +283,9 @@ class TestByzantineFaultTolerance:
         consensus = FleetBreederConsensus("n0", ids, key)
         integration = BreederBFTIntegration(consensus, network, timeout_sec=2.0)
 
-        daemon = make_daemon(grid, thermal, wal_path, vector_table, consensus=integration)
+        daemon = make_daemon(
+            grid, thermal, wal_path, vector_table, consensus=integration
+        )
         daemon.start()
         seed_breedable_agents(daemon, count=8)
 
@@ -266,7 +296,9 @@ class TestByzantineFaultTolerance:
         assert isinstance(pairs, list)
         assert len(pairs) > 0
 
-    def test_7_nodes_tolerates_2_byzantine(self, grid, thermal, wal_path, vector_table, key):
+    def test_7_nodes_tolerates_2_byzantine(
+        self, grid, thermal, wal_path, vector_table, key
+    ):
         ids = [f"n{i}" for i in range(7)]
         nodes = [PBFTNode(i, ids, key) for i in ids]
         network = FleetBFTNetwork(nodes)
@@ -275,7 +307,9 @@ class TestByzantineFaultTolerance:
         consensus = FleetBreederConsensus("n0", ids, key)
         integration = BreederBFTIntegration(consensus, network, timeout_sec=2.0)
 
-        daemon = make_daemon(grid, thermal, wal_path, vector_table, consensus=integration)
+        daemon = make_daemon(
+            grid, thermal, wal_path, vector_table, consensus=integration
+        )
         daemon.start()
         seed_breedable_agents(daemon, count=10)
 
@@ -289,8 +323,11 @@ class TestByzantineFaultTolerance:
 
 # -- Test: timeout handling (consensus failure fallback) --
 
+
 class TestTimeoutHandling:
-    def test_4_nodes_2_byzantine_falls_back(self, grid, thermal, wal_path, vector_table, key):
+    def test_4_nodes_2_byzantine_falls_back(
+        self, grid, thermal, wal_path, vector_table, key
+    ):
         ids = ["n0", "n1", "n2", "n3"]
         nodes = [PBFTNode(i, ids, key) for i in ids]
         network = FleetBFTNetwork(nodes)
@@ -300,7 +337,9 @@ class TestTimeoutHandling:
         consensus = FleetBreederConsensus("n0", ids, key)
         integration = BreederBFTIntegration(consensus, network, timeout_sec=2.0)
 
-        daemon = make_daemon(grid, thermal, wal_path, vector_table, consensus=integration)
+        daemon = make_daemon(
+            grid, thermal, wal_path, vector_table, consensus=integration
+        )
         daemon.start()
         seed_breedable_agents(daemon, count=8)
 
@@ -313,8 +352,12 @@ class TestTimeoutHandling:
         assert isinstance(pairs, list)
         assert len(pairs) > 0
 
-    def test_replica_cannot_propose(self, grid, thermal, wal_path, vector_table, integration_replica_four):
-        daemon = make_daemon(grid, thermal, wal_path, vector_table, consensus=integration_replica_four)
+    def test_replica_cannot_propose(
+        self, grid, thermal, wal_path, vector_table, integration_replica_four
+    ):
+        daemon = make_daemon(
+            grid, thermal, wal_path, vector_table, consensus=integration_replica_four
+        )
         daemon.start()
         seed_breedable_agents(daemon, count=8)
 
@@ -327,6 +370,7 @@ class TestTimeoutHandling:
 
 
 # -- Test: QD archive updates after breeding --
+
 
 class TestQDArchiveUpdates:
     def test_archive_updated_after_commit(self, key):
@@ -358,7 +402,9 @@ class TestQDArchiveUpdates:
         assert consensus.archive.stats["n_occupied"] == 0
 
         child = {"id": "c1"}
-        added = consensus.evaluate_offspring(child, fitness=0.9, behavior=np.array([0.5, 0.5]))
+        added = consensus.evaluate_offspring(
+            child, fitness=0.9, behavior=np.array([0.5, 0.5])
+        )
         assert added
 
         stats = consensus.archive.stats
@@ -372,20 +418,26 @@ class TestQDArchiveUpdates:
         for i in range(5):
             child = {"id": f"c{i}"}
             behavior = np.array([i / 5.0 + 0.05, 0.5])
-            consensus.evaluate_offspring(child, fitness=0.5 + i * 0.1, behavior=behavior)
+            consensus.evaluate_offspring(
+                child, fitness=0.5 + i * 0.1, behavior=behavior
+            )
 
         stats = consensus.archive.stats
         assert stats["n_occupied"] == 5
         assert stats["coverage"] == 5 / 100  # 10x10 grid = 100 cells
 
-    def test_end_to_end_breeding_log_and_archive(self, grid, thermal, wal_path, vector_table, key):
+    def test_end_to_end_breeding_log_and_archive(
+        self, grid, thermal, wal_path, vector_table, key
+    ):
         ids = ["n0", "n1", "n2", "n3"]
         nodes = [PBFTNode(i, ids, key) for i in ids]
         network = FleetBFTNetwork(nodes)
         consensus = FleetBreederConsensus("n0", ids, key)
         integration = BreederBFTIntegration(consensus, network, timeout_sec=2.0)
 
-        daemon = make_daemon(grid, thermal, wal_path, vector_table, consensus=integration)
+        daemon = make_daemon(
+            grid, thermal, wal_path, vector_table, consensus=integration
+        )
         daemon.start()
         seed_breedable_agents(daemon, count=8)
 
@@ -403,6 +455,7 @@ class TestQDArchiveUpdates:
 
 
 # -- Test: BreederBFTIntegration unit methods --
+
 
 class TestIntegrationUnit:
     def test_commit_parents_clears_pending(self, key):

@@ -27,9 +27,17 @@ from ethos.hardware_survey import (
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 class TestDataclasses:
     def test_cuda_gpu_repr(self):
-        gpu = CudaGPU(index=0, name="RTX 4090", total_memory_mb=24576, free_memory_mb=12000, compute_capability="8.9", multiprocessor_count=128)
+        gpu = CudaGPU(
+            index=0,
+            name="RTX 4090",
+            total_memory_mb=24576,
+            free_memory_mb=12000,
+            compute_capability="8.9",
+            multiprocessor_count=128,
+        )
         assert "RTX 4090" in repr(gpu)
         assert "24576MB" in repr(gpu)
 
@@ -39,7 +47,12 @@ class TestDataclasses:
         assert "64P/128L" in repr(cpu)
 
     def test_memory_info_repr(self):
-        mem = MemoryInfo(total_ram_mb=65536, available_ram_mb=32768, total_swap_mb=8192, available_swap_mb=4096)
+        mem = MemoryInfo(
+            total_ram_mb=65536,
+            available_ram_mb=32768,
+            total_swap_mb=8192,
+            available_swap_mb=4096,
+        )
         assert "RAM=65536/32768MB" in repr(mem)
 
     def test_thermal_zone_repr(self):
@@ -52,7 +65,12 @@ class TestDataclasses:
             hostname="test",
             platform="linux",
             cpu=CPUInfo(model="x86", cores_physical=4, cores_logical=8),
-            memory=MemoryInfo(total_ram_mb=16000, available_ram_mb=8000, total_swap_mb=2000, available_swap_mb=1000),
+            memory=MemoryInfo(
+                total_ram_mb=16000,
+                available_ram_mb=8000,
+                total_swap_mb=2000,
+                available_swap_mb=1000,
+            ),
         )
         assert "test" in repr(hp)
         assert "0 GPU(s)" in repr(hp)  # 0 GPUs
@@ -62,6 +80,7 @@ class TestDataclasses:
 # CUDA detection
 # ---------------------------------------------------------------------------
 
+
 class TestCudaDetection:
     def test_detect_cuda_via_smi_no_binary(self):
         with patch("subprocess.run", side_effect=FileNotFoundError()):
@@ -70,6 +89,7 @@ class TestCudaDetection:
 
     def test_detect_cuda_via_smi_timeout(self):
         import subprocess as sp
+
         with patch("subprocess.run", side_effect=sp.TimeoutExpired("cmd", 10)):
             gpus = _detect_cuda_via_smi()
             assert gpus == []
@@ -88,6 +108,7 @@ class TestCudaDetection:
 # ---------------------------------------------------------------------------
 # CPU detection
 # ---------------------------------------------------------------------------
+
 
 class TestCpuDetection:
     def test_detect_cpu_fallback(self):
@@ -112,6 +133,7 @@ class TestCpuDetection:
 # Import helpers
 # ---------------------------------------------------------------------------
 
+
 class TestImportHelpers:
     def test_try_import_numpy(self):
         ok, version = _try_import_numpy()
@@ -129,12 +151,26 @@ class TestImportHelpers:
 # survey_hardware
 # ---------------------------------------------------------------------------
 
+
 class TestSurveyHardware:
     def test_survey_returns_profile(self):
         with patch("ethos.hardware_survey._detect_cuda_via_smi", return_value=[]):
-            with patch("ethos.hardware_survey._detect_cpu", return_value=CPUInfo(model="x86", cores_physical=4, cores_logical=8)):
-                with patch("ethos.hardware_survey._detect_memory", return_value=MemoryInfo(total_ram_mb=16000, available_ram_mb=8000, total_swap_mb=2000, available_swap_mb=1000)):
-                    with patch("ethos.hardware_survey._read_thermal_zones", return_value=[]):
+            with patch(
+                "ethos.hardware_survey._detect_cpu",
+                return_value=CPUInfo(model="x86", cores_physical=4, cores_logical=8),
+            ):
+                with patch(
+                    "ethos.hardware_survey._detect_memory",
+                    return_value=MemoryInfo(
+                        total_ram_mb=16000,
+                        available_ram_mb=8000,
+                        total_swap_mb=2000,
+                        available_swap_mb=1000,
+                    ),
+                ):
+                    with patch(
+                        "ethos.hardware_survey._read_thermal_zones", return_value=[]
+                    ):
                         profile = survey_hardware()
                         assert isinstance(profile, HardwareProfile)
                         assert profile.hostname != ""
@@ -144,17 +180,43 @@ class TestSurveyHardware:
 
     def test_survey_has_numpy(self):
         with patch("ethos.hardware_survey._detect_cuda_via_smi", return_value=[]):
-            with patch("ethos.hardware_survey._detect_cpu", return_value=CPUInfo(model="x86", cores_physical=4, cores_logical=8)):
-                with patch("ethos.hardware_survey._detect_memory", return_value=MemoryInfo(total_ram_mb=16000, available_ram_mb=8000, total_swap_mb=2000, available_swap_mb=1000)):
-                    with patch("ethos.hardware_survey._read_thermal_zones", return_value=[]):
+            with patch(
+                "ethos.hardware_survey._detect_cpu",
+                return_value=CPUInfo(model="x86", cores_physical=4, cores_logical=8),
+            ):
+                with patch(
+                    "ethos.hardware_survey._detect_memory",
+                    return_value=MemoryInfo(
+                        total_ram_mb=16000,
+                        available_ram_mb=8000,
+                        total_swap_mb=2000,
+                        available_swap_mb=1000,
+                    ),
+                ):
+                    with patch(
+                        "ethos.hardware_survey._read_thermal_zones", return_value=[]
+                    ):
                         profile = survey_hardware()
                         assert profile.numpy_available is True
                         assert profile.numpy_version is not None
 
     def test_survey_torch_field(self):
         with patch("ethos.hardware_survey._detect_cuda_via_smi", return_value=[]):
-            with patch("ethos.hardware_survey._detect_cpu", return_value=CPUInfo(model="x86", cores_physical=4, cores_logical=8)):
-                with patch("ethos.hardware_survey._detect_memory", return_value=MemoryInfo(total_ram_mb=16000, available_ram_mb=8000, total_swap_mb=2000, available_swap_mb=1000)):
-                    with patch("ethos.hardware_survey._read_thermal_zones", return_value=[]):
+            with patch(
+                "ethos.hardware_survey._detect_cpu",
+                return_value=CPUInfo(model="x86", cores_physical=4, cores_logical=8),
+            ):
+                with patch(
+                    "ethos.hardware_survey._detect_memory",
+                    return_value=MemoryInfo(
+                        total_ram_mb=16000,
+                        available_ram_mb=8000,
+                        total_swap_mb=2000,
+                        available_swap_mb=1000,
+                    ),
+                ):
+                    with patch(
+                        "ethos.hardware_survey._read_thermal_zones", return_value=[]
+                    ):
                         profile = survey_hardware()
                         assert isinstance(profile.torch_available, bool)

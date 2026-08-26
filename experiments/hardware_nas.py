@@ -2,6 +2,7 @@
 
 Experiment 2 from RESEARCH_SELF_IMPROVEMENT.md.
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -74,6 +75,7 @@ _SEARCH_SPACE_SIZE = math.prod(len(v) for v in _SEARCH_SPACE.values())
 
 # ── Config utilities ───────────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True, slots=True)
 class Config:
     """Immutable config key for hashing / dedup."""
@@ -118,9 +120,18 @@ def _random_config(rng: random.Random) -> Config:
     )
 
 
-def _mutate_config(parent: Config, rng: random.Random, p_mutate: float = 0.10) -> Config:
+def _mutate_config(
+    parent: Config, rng: random.Random, p_mutate: float = 0.10
+) -> Config:
     """Independent parameter crossover + adjacent-value mutation."""
-    fields = ["n_rooms", "d_latent", "h_history", "l_signal", "chaos_decay", "route_density"]
+    fields = [
+        "n_rooms",
+        "d_latent",
+        "h_history",
+        "l_signal",
+        "chaos_decay",
+        "route_density",
+    ]
     vals: dict = {}
     for f in fields:
         choices = _SEARCH_SPACE[f]
@@ -155,7 +166,10 @@ def _feasible_for_hardware(config: Config, profile: dict) -> bool:
 
 # ── Pareto helpers ────────────────────────────────────────────────────────────
 
-def pareto_dominates(a: dict, b: dict, objectives: list[str], maximize: set[str]) -> bool:
+
+def pareto_dominates(
+    a: dict, b: dict, objectives: list[str], maximize: set[str]
+) -> bool:
     """Return True if a Pareto-dominates b.
 
     objectives: list of metric names.
@@ -196,12 +210,15 @@ def compute_pareto_frontier(
                 break
         if not dominated:
             # Remove any points that p dominates
-            frontier = [q for q in frontier if not pareto_dominates(p, q, objectives, maximize)]
+            frontier = [
+                q for q in frontier if not pareto_dominates(p, q, objectives, maximize)
+            ]
             frontier.append(p)
     return frontier
 
 
 # ── Core NAS class ───────────────────────────────────────────────────────────
+
 
 @dataclass
 class EvalResult:
@@ -217,13 +234,15 @@ class EvalResult:
 
     def to_dict(self) -> dict:
         d = self.config.to_dict()
-        d.update({
-            "ticks_per_second": self.ticks_per_second,
-            "memory_mb": self.memory_mb,
-            "diversity": self.diversity,
-            "stability": self.stability,
-            "age": self.age,
-        })
+        d.update(
+            {
+                "ticks_per_second": self.ticks_per_second,
+                "memory_mb": self.memory_mb,
+                "diversity": self.diversity,
+                "stability": self.stability,
+                "age": self.age,
+            }
+        )
         return d
 
 
@@ -311,8 +330,11 @@ class HardwareConditionalNAS:
         # Also compute actual novelty if history is warm
         if grid._hist_count.min() >= 3:
             nv = batch_novelty(
-                latents, grid._hist, grid._hist_count,
-                grid._hist_idx, grid._hist_max,
+                latents,
+                grid._hist,
+                grid._hist_count,
+                grid._hist_idx,
+                grid._hist_max,
             )
             diversity = float(nv.mean())
 
@@ -422,6 +444,7 @@ class HardwareConditionalNAS:
 
 # ── CLI helpers ────────────────────────────────────────────────────────────────
 
+
 def run_nas_for_profile(profile: dict, profile_name: str, **kwargs) -> list[dict]:
     """High-level wrapper: run NAS for a named hardware profile."""
     nas = HardwareConditionalNAS(profile, **kwargs)
@@ -431,12 +454,23 @@ def run_nas_for_profile(profile: dict, profile_name: str, **kwargs) -> list[dict
 
     def cb(stage, a, b, result):
         if stage == "init":
-            print(f"   Init {a}/{b}: {result.config} → tps={result.ticks_per_second:.1f}")
+            print(
+                f"   Init {a}/{b}: {result.config} → tps={result.ticks_per_second:.1f}"
+            )
         elif stage == "gen":
             if a % 2 == 0 or a == b - 1:
-                print(f"   Gen {a}: {result.config} → tps={result.ticks_per_second:.1f}, div={result.diversity:.3f}")
+                print(
+                    f"   Gen {a}: {result.config} → tps={result.ticks_per_second:.1f}, div={result.diversity:.3f}"
+                )
 
-    frontier = nas.aging_evolution(progress_cb=cb, **{k: v for k, v in kwargs.items() if k not in ("max_evals", "seed", "hardware_profile")})
+    frontier = nas.aging_evolution(
+        progress_cb=cb,
+        **{
+            k: v
+            for k, v in kwargs.items()
+            if k not in ("max_evals", "seed", "hardware_profile")
+        },
+    )
     print(f"   Pareto frontier: {len(frontier)} configs ({nas.eval_count} evals)")
     return frontier
 
@@ -446,7 +480,16 @@ if __name__ == "__main__":
 
     # Simple smoke-test
     nas = HardwareConditionalNAS(jetson_profile, max_evals=10)
-    result = nas.evaluate(Config(n_rooms=100, d_latent=32, h_history=8, l_signal=8, chaos_decay=0.95, route_density=0.05))
+    result = nas.evaluate(
+        Config(
+            n_rooms=100,
+            d_latent=32,
+            h_history=8,
+            l_signal=8,
+            chaos_decay=0.95,
+            route_density=0.05,
+        )
+    )
     print("Smoke test result:", result)
     frontier = nas.aging_evolution(population_size=5, generations=3)
     print(f"Frontier ({len(frontier)}):")

@@ -17,6 +17,7 @@ v2 bytecode layout (invented but grounded in typical stack-VM practice):
     ???     2     Constraint count (C)  [if flags bit 0 set]
     ???     C*?   Constraint payloads     [if flags bit 0 set]
 """
+
 from __future__ import annotations
 
 import struct
@@ -71,10 +72,10 @@ V2_OPCODE_IMM_BYTES: dict[str, int] = {
     "Jump": 2,
     "JumpZero": 2,
     "Call": 2,
-    "Range": 2,        # lower, upper bounds packed as two i8s
-    "Batch": 1,        # batch size
-    "Read": 1,         # port id
-    "Write": 1,        # port id
+    "Range": 2,  # lower, upper bounds packed as two i8s
+    "Batch": 1,  # batch size
+    "Read": 1,  # port id
+    "Write": 1,  # port id
 }
 
 
@@ -94,6 +95,7 @@ class V2Constraint:
 @dataclass
 class V2Module:
     """Parsed v2 module — intermediate representation before translation."""
+
     magic: bytes
     version_minor: int
     flags: int
@@ -122,8 +124,7 @@ def parse_v2(path: str) -> V2Module:
 
         const_count = struct.unpack("<H", _read_exact(f, 2))[0]
         constants = [
-            struct.unpack("<i", _read_exact(f, 4))[0]
-            for _ in range(const_count)
+            struct.unpack("<i", _read_exact(f, 4))[0] for _ in range(const_count)
         ]
 
         inst_count = struct.unpack("<H", _read_exact(f, 2))[0]
@@ -141,7 +142,9 @@ def parse_v2(path: str) -> V2Module:
                 operand = struct.unpack("<h", _read_exact(f, 2))[0]
             elif imm_sz == 1:
                 operand = struct.unpack("<B", _read_exact(f, 1))[0]
-            instructions.append(V2Instruction(opcode=op_name, raw=raw_op, operand=operand))
+            instructions.append(
+                V2Instruction(opcode=op_name, raw=raw_op, operand=operand)
+            )
 
         constraints: List[V2Constraint] = []
         if flags & 0x01:
@@ -151,7 +154,9 @@ def parse_v2(path: str) -> V2Module:
                 c_kind = struct.unpack("<B", _read_exact(f, 1))[0]
                 c_len = struct.unpack("<H", _read_exact(f, 2))[0]
                 c_payload = _read_exact(f, c_len)
-                kind_str = {0x01: "aviation", 0x02: "temperature", 0x03: "custom"}.get(c_kind, "unknown")
+                kind_str = {0x01: "aviation", 0x02: "temperature", 0x03: "custom"}.get(
+                    c_kind, "unknown"
+                )
                 constraints.append(V2Constraint(kind=kind_str, payload=c_payload))
 
         debug_symbols = None

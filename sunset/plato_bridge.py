@@ -73,12 +73,16 @@ class AgentTileAdapter:
             state=TileLifecycle.ACTIVE,
             lamport=clock.tick() if clock else 0,
             name="trinity_score",
-            description=json.dumps({"ethos": ethos, "pathos": pathos, "logos": logos, "fitness": fitness}),
+            description=json.dumps(
+                {"ethos": ethos, "pathos": pathos, "logos": logos, "fitness": fitness}
+            ),
             content_hash="",
         )
 
     @staticmethod
-    def epilogue_tile(epilogue: Epilogue, clock: LamportClock | None = None) -> TrainingTile:
+    def epilogue_tile(
+        epilogue: Epilogue, clock: LamportClock | None = None
+    ) -> TrainingTile:
         return TrainingTile(
             tile_id=f"epilogue:{epilogue.agent_id}",
             room=epilogue.agent_id,
@@ -86,13 +90,15 @@ class AgentTileAdapter:
             state=TileLifecycle.ACTIVE,
             lamport=clock.tick() if clock else 0,
             name="epilogue",
-            description=json.dumps({
-                "what_i_tried": epilogue.what_i_tried,
-                "what_i_found": epilogue.what_i_found,
-                "why_not_relevant": epilogue.why_not_relevant,
-                "peak_trinity_score": epilogue.peak_trinity_score,
-                "generation": epilogue.generation,
-            }),
+            description=json.dumps(
+                {
+                    "what_i_tried": epilogue.what_i_tried,
+                    "what_i_found": epilogue.what_i_found,
+                    "why_not_relevant": epilogue.why_not_relevant,
+                    "peak_trinity_score": epilogue.peak_trinity_score,
+                    "generation": epilogue.generation,
+                }
+            ),
             content_hash="",
         )
 
@@ -106,17 +112,19 @@ class AgentTileAdapter:
             state=TileLifecycle.ACTIVE,
             lamport=clock.tick() if clock else 0,
             name="seed_bank",
-            description=json.dumps({
-                "letter": onboarding.letter_to_children,
-                "what_works": onboarding.what_works,
-                "what_doesnt": onboarding.what_doesnt,
-                "where_to_look": onboarding.where_to_look,
-                "variant": onboarding.variant,
-                "parent_id": onboarding.parent_id,
-                "generation": onboarding.generation,
-                "relevance": entry.relevance,
-                "novelty": entry.novelty,
-            }),
+            description=json.dumps(
+                {
+                    "letter": onboarding.letter_to_children,
+                    "what_works": onboarding.what_works,
+                    "what_doesnt": onboarding.what_doesnt,
+                    "where_to_look": onboarding.where_to_look,
+                    "variant": onboarding.variant,
+                    "parent_id": onboarding.parent_id,
+                    "generation": onboarding.generation,
+                    "relevance": entry.relevance,
+                    "novelty": entry.novelty,
+                }
+            ),
             content_hash="",
         )
 
@@ -174,7 +182,7 @@ class PlatoBridge:
         self.room = room
         self._clock = clock or LamportClock()
         self._store: Dict[str, TrainingTile] = {}  # legacy store
-        self._tiles: Dict[str, TrainingTile] = {}   # adapter-style store
+        self._tiles: Dict[str, TrainingTile] = {}  # adapter-style store
         self._store_path = Path(store_path) if store_path else None
         if self._store_path and self._store_path.exists():
             self._load()
@@ -220,7 +228,9 @@ class PlatoBridge:
 
     def _save(self) -> None:
         data = {tid: tile.to_dict() for tid, tile in self._tiles.items()}
-        self._store_path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+        self._store_path.write_text(
+            json.dumps(data, indent=2, default=str), encoding="utf-8"
+        )
 
     def _load(self) -> None:
         raw = json.loads(self._store_path.read_text(encoding="utf-8"))
@@ -253,8 +263,14 @@ class PlatoBridge:
         * Mixed: ``write_trinity_score("a1", 0.8, 0.7, 0.9)``
         """
         # Adapter-style: positional (agent_id, ethos, pathos, logos)
-        if isinstance(scores_or_ethos, (int, float)) and pathos is not None and logos is not None:
-            tile = AgentTileAdapter.trinity_tile(agent_id, float(scores_or_ethos), pathos, logos, self._clock)
+        if (
+            isinstance(scores_or_ethos, (int, float))
+            and pathos is not None
+            and logos is not None
+        ):
+            tile = AgentTileAdapter.trinity_tile(
+                agent_id, float(scores_or_ethos), pathos, logos, self._clock
+            )
             self._tiles[tile.tile_id] = tile
             self._maybe_save()
             return tile
@@ -283,10 +299,14 @@ class PlatoBridge:
             return tile
 
         # Adapter-style keyword
-        ethos_val = scores_or_ethos if isinstance(scores_or_ethos, (int, float)) else 0.0
+        ethos_val = (
+            scores_or_ethos if isinstance(scores_or_ethos, (int, float)) else 0.0
+        )
         p = pathos if pathos is not None else 0.0
         l = logos if logos is not None else 0.0
-        tile = AgentTileAdapter.trinity_tile(agent_id, float(ethos_val), float(p), float(l), self._clock)
+        tile = AgentTileAdapter.trinity_tile(
+            agent_id, float(ethos_val), float(p), float(l), self._clock
+        )
         self._tiles[tile.tile_id] = tile
         self._maybe_save()
         return tile
@@ -381,7 +401,9 @@ class PlatoBridge:
         reason: str = "",
     ) -> TrainingTile:
         """Write a lifecycle transition using AgentTileAdapter (adapter-style)."""
-        tile = AgentTileAdapter.lifecycle_tile(agent_id, from_phase, to_phase, reason, self._clock)
+        tile = AgentTileAdapter.lifecycle_tile(
+            agent_id, from_phase, to_phase, reason, self._clock
+        )
         self._tiles[tile.tile_id] = tile
         self._maybe_save()
         return tile
@@ -395,15 +417,17 @@ class PlatoBridge:
             state=AgentTileAdapter.phase_to_lifecycle(agent.phase),
             lamport=self._clock.tick(),
             name="agent_snapshot",
-            description=json.dumps({
-                "generation": agent.generation,
-                "parent_id": agent.parent_id,
-                "phase": agent.phase.value,
-                "trinity_score": agent.trinity_score,
-                "max_tokens": agent.resource_budget.max_tokens,
-                "max_time_seconds": agent.resource_budget.max_time_seconds,
-                "parallel_slots": agent.resource_budget.parallel_slots,
-            }),
+            description=json.dumps(
+                {
+                    "generation": agent.generation,
+                    "parent_id": agent.parent_id,
+                    "phase": agent.phase.value,
+                    "trinity_score": agent.trinity_score,
+                    "max_tokens": agent.resource_budget.max_tokens,
+                    "max_time_seconds": agent.resource_budget.max_time_seconds,
+                    "parallel_slots": agent.resource_budget.parallel_slots,
+                }
+            ),
             content_hash="",
         )
         self._tiles[tile.tile_id] = tile

@@ -42,6 +42,7 @@ from logos.opcode_capability_index import OpcodeCapabilityIndex, OpcodeStatus
 
 # ── categories ────────────────────────────────────────────
 
+
 class PresetCategory(Enum):
     """Taxonomy for preset families."""
 
@@ -59,6 +60,7 @@ PRESET_CATEGORIES = {c.name.lower(): c for c in PresetCategory}
 
 
 # ── data structures ───────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class FluxPreset:
@@ -250,8 +252,10 @@ def _mesh_gossip_consistency_check(ctx: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "passed": passed,
         "severity": "warning" if not passed else "info",
-        "detail": {"local": local_hash[:8] if isinstance(local_hash, str) else local_hash,
-                   "gossip": gossip_hash[:8] if isinstance(gossip_hash, str) else gossip_hash},
+        "detail": {
+            "local": local_hash[:8] if isinstance(local_hash, str) else local_hash,
+            "gossip": gossip_hash[:8] if isinstance(gossip_hash, str) else gossip_hash,
+        },
         "opcode_trace": ["Sub", "Validate"],
     }
 
@@ -272,7 +276,12 @@ def _signature_verification_check(ctx: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "passed": passed,
         "severity": "critical" if not passed else "info",
-        "detail": {"expected_prefix": expected, "received_prefix": signature[:16] if isinstance(signature, str) else signature},
+        "detail": {
+            "expected_prefix": expected,
+            "received_prefix": signature[:16]
+            if isinstance(signature, str)
+            else signature,
+        },
         "opcode_trace": ["EmitEvent"],  # PYTHON_SAFE logging only
     }
 
@@ -311,7 +320,9 @@ _DEF_PRESETS: List[FluxPreset] = [
         description="Signature verification and hash commitment for provenance. Pure-Python fallbacks (EmitEvent) until Rust Prove/HashCommit FFI is ready.",
         category=PresetCategory.CRYPTO,
         constraints=(_signature_verification_check, _hash_commitment_check),
-        required_opcodes=("EmitEvent",),  # PYTHON_SAFE only; Prove/HashCommit are RUST_ONLY
+        required_opcodes=(
+            "EmitEvent",
+        ),  # PYTHON_SAFE only; Prove/HashCommit are RUST_ONLY
         python_safe=True,
     ),
     # 3. StreamBatch — batch size limits, rate limiting
@@ -373,7 +384,12 @@ _DEF_PRESETS: List[FluxPreset] = [
         name="BreedingStandard",
         description="Default breeding gate: weights, chaos, thermal, and diversity.",
         category=PresetCategory.BREEDING,
-        constraints=(_weight_bounds_check, _chaos_limit_check, _thermal_budget_check, _diversity_floor_check),
+        constraints=(
+            _weight_bounds_check,
+            _chaos_limit_check,
+            _thermal_budget_check,
+            _diversity_floor_check,
+        ),
         required_opcodes=("RangeCheck", "Validate", "ClassifySeverity", "Min", "Abs"),
         python_safe=True,
     ),
@@ -382,7 +398,11 @@ _DEF_PRESETS: List[FluxPreset] = [
         name="FleetHealth",
         description="Fleet-wide health gate: thermal ceiling and agent liveness.",
         category=PresetCategory.THERMAL,
-        constraints=(_thermal_ceiling_hard_check, _heartbeat_timeout_check, _crash_detection_check),
+        constraints=(
+            _thermal_ceiling_hard_check,
+            _heartbeat_timeout_check,
+            _crash_detection_check,
+        ),
         required_opcodes=("Validate", "Sub", "EmitEvent"),
         python_safe=True,
     ),
@@ -390,6 +410,7 @@ _DEF_PRESETS: List[FluxPreset] = [
 
 
 # ── preset library ──────────────────────────────────────────
+
 
 class FluxPresetLibrary:
     """Registry of reusable FLUX constraint presets.
@@ -443,7 +464,9 @@ class FluxPresetLibrary:
         """Return a preset by exact name. Raises KeyError if missing."""
         preset = self._by_name.get(name)
         if preset is None:
-            raise KeyError(f"No preset named '{name}'. Available: {list(self._by_name.keys())}")
+            raise KeyError(
+                f"No preset named '{name}'. Available: {list(self._by_name.keys())}"
+            )
         return preset
 
     def list_presets(
@@ -504,14 +527,34 @@ class FluxPresetLibrary:
         # Keyword maps
         keywords: Dict[str, List[str]] = {
             "RangeCheck": ["range", "bound", "weight", "norm", "check"],
-            "ProveAndHashCommit": ["prove", "hash", "commit", "signature", "verify", "crypto"],
+            "ProveAndHashCommit": [
+                "prove",
+                "hash",
+                "commit",
+                "signature",
+                "verify",
+                "crypto",
+            ],
             "StreamBatch": ["batch", "stream", "rate", "limit", "rps", "throughput"],
             "MemoryBudget": ["memory", "ram", "heap", "budget", "cap"],
             "DiversityFloor": ["diversity", "variety", "floor", "population"],
             "ThermalCeiling": ["thermal", "heat", "temperature", "ceiling", "throttle"],
-            "AgentLiveness": ["liveness", "heartbeat", "crash", "alive", "dead", "health"],
+            "AgentLiveness": [
+                "liveness",
+                "heartbeat",
+                "crash",
+                "alive",
+                "dead",
+                "health",
+            ],
             "CrossNodeSync": ["sync", "gossip", "mesh", "consistency", "node", "peer"],
-            "BreedingStandard": ["breed", "breeding", "spawn", "new agent", "tournament"],
+            "BreedingStandard": [
+                "breed",
+                "breeding",
+                "spawn",
+                "new agent",
+                "tournament",
+            ],
             "FleetHealth": ["fleet", "health", "system", "overall", "status"],
         }
 
@@ -537,7 +580,5 @@ class FluxPresetLibrary:
     def __repr__(self) -> str:
         safe_count = sum(1 for p in self._by_name.values() if p.python_safe)
         return (
-            f"FluxPresetLibrary("
-            f"presets={self.preset_count}, "
-            f"python_safe={safe_count})"
+            f"FluxPresetLibrary(presets={self.preset_count}, python_safe={safe_count})"
         )

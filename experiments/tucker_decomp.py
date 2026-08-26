@@ -21,6 +21,7 @@ import numpy as np
 try:
     import torch
     import torch.nn as nn
+
     _HAS_TORCH = True
 except Exception:  # pragma: no cover
     torch = None  # type: ignore[assignment]
@@ -74,7 +75,9 @@ def _hosvd_factorize(
     return core, A, B, C
 
 
-def _reconstruct_dense(core: np.ndarray, A: np.ndarray, B: np.ndarray, C: np.ndarray) -> np.ndarray:
+def _reconstruct_dense(
+    core: np.ndarray, A: np.ndarray, B: np.ndarray, C: np.ndarray
+) -> np.ndarray:
     """Reconstruct the dense tensor from Tucker factors.
 
     W_hat[i1,i2,i3] = Σ_{r1,r2,r3} G[r1,r2,r3] · A[i1,r1] · B[i2,r2] · C[i3,r3]
@@ -125,6 +128,7 @@ def _tucker_forward_torch(
 
 
 # ── TuckerLayer ──────────────────────────────────────────────────────────
+
 
 class TuckerLayer:
     """A 3-D tensor-contraction layer compressed via Tucker decomposition.
@@ -221,23 +225,13 @@ class TuckerLayer:
     def compression_ratio(self) -> float:
         """Dense parameter count / Tucker parameter count."""
         dense_params = self.d1 * self.d2 * self.d3
-        tucker_params = (
-            self.core.size
-            + self.A.size
-            + self.B.size
-            + self.C.size
-        )
+        tucker_params = self.core.size + self.A.size + self.B.size + self.C.size
         return float(dense_params) / float(tucker_params)
 
     def param_counts(self) -> dict:
         """Return dict with dense and tucker parameter counts."""
         dense_params = self.d1 * self.d2 * self.d3
-        tucker_params = (
-            self.core.size
-            + self.A.size
-            + self.B.size
-            + self.C.size
-        )
+        tucker_params = self.core.size + self.A.size + self.B.size + self.C.size
         return {
             "dense": int(dense_params),
             "tucker": int(tucker_params),
@@ -281,6 +275,7 @@ class TuckerLayer:
 
 
 # ── CLI / quick test ──────────────────────────────────────────────────────
+
 
 def _demo() -> None:
     """Run a quick sanity check from the command line."""

@@ -126,10 +126,7 @@ class TestJEPARoom:
 
 class TestJEPAPrediction:
     def test_defaults(self):
-        p = JEPAPrediction(
-            predicted_embedding=np.zeros(128),
-            confidence=0.8
-        )
+        p = JEPAPrediction(predicted_embedding=np.zeros(128), confidence=0.8)
         assert p.latency_ms == 0.0
         assert p.source == "jepa"
         assert p.similar_tiles == []

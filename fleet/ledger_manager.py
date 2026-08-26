@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class LedgerEntry:
     """An immutable ledger entry."""
+
     entry_id: str
     timestamp: float
     action: str
@@ -22,14 +23,18 @@ class LedgerEntry:
     def compute_hash(self) -> str:
         """Compute hash of this entry."""
         import hashlib
-        content = json.dumps({
-            "entry_id": self.entry_id,
-            "timestamp": self.timestamp,
-            "action": self.action,
-            "actor": self.actor,
-            "data": self.data,
-            "previous_hash": self.previous_hash,
-        }, sort_keys=True)
+
+        content = json.dumps(
+            {
+                "entry_id": self.entry_id,
+                "timestamp": self.timestamp,
+                "action": self.action,
+                "actor": self.actor,
+                "data": self.data,
+                "previous_hash": self.previous_hash,
+            },
+            sort_keys=True,
+        )
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
     def to_dict(self) -> Dict[str, Any]:
@@ -109,10 +114,13 @@ class LedgerManager:
 
     def export_json(self) -> str:
         """Export ledger as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "entries": [e.to_dict() for e in self._entries],
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "entries": [e.to_dict() for e in self._entries],
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

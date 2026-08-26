@@ -230,10 +230,7 @@ class TestGNNBreeder:
 
     def test_elitism(self):
         breeder = GNNBreeder(population_size=10)
-        pop = [
-            ({"gene_a": float(i)}, float(i * 10))
-            for i in range(10)
-        ]
+        pop = [({"gene_a": float(i)}, float(i * 10)) for i in range(10)]
 
         def task_fn(genome):
             return {"fitness": genome["gene_a"] * 10}

@@ -38,12 +38,13 @@ import numpy as np
 @dataclass
 class Particle:
     """A particle in the swarm."""
+
     genome: Dict[str, float]
     velocity: Dict[str, float]
     fitness: float = 0.0
     # Personal best
     best_genome: Optional[Dict[str, float]] = None
-    best_fitness: float = -float('inf')
+    best_fitness: float = -float("inf")
     # Particle ID
     id: int = 0
 
@@ -56,13 +57,14 @@ class Particle:
 @dataclass
 class PheromoneTrail:
     """Pheromone trail on a path between two genome states."""
+
     source: Dict[str, float]
     target: Dict[str, float]
     strength: float = 1.0
     last_update: float = 0.0
 
     def decay(self, rate: float = 0.1):
-        self.strength *= (1 - rate)
+        self.strength *= 1 - rate
 
 
 class SwarmTopology:
@@ -71,7 +73,9 @@ class SwarmTopology:
     Small-world network: mostly local connections + random long-range links.
     """
 
-    def __init__(self, n_particles: int, k_neighbors: int = 3, rewire_prob: float = 0.2):
+    def __init__(
+        self, n_particles: int, k_neighbors: int = 3, rewire_prob: float = 0.2
+    ):
         self.n_particles = n_particles
         self.k_neighbors = k_neighbors
         self.rewire_prob = rewire_prob
@@ -101,14 +105,16 @@ class SwarmTopology:
                     if new_neighbor != i and new_neighbor not in self.neighbors[i]:
                         self.neighbors[i][j_idx] = new_neighbor
 
-    def get_neighborhood_best(self, particles: List[Particle], particle_idx: int) -> Optional[Particle]:
+    def get_neighborhood_best(
+        self, particles: List[Particle], particle_idx: int
+    ) -> Optional[Particle]:
         """Get the best particle in the neighborhood."""
         neighbor_indices = self.neighbors.get(particle_idx, [])
         if not neighbor_indices:
             return None
 
         best = None
-        best_fitness = -float('inf')
+        best_fitness = -float("inf")
         for idx in neighbor_indices:
             if 0 <= idx < len(particles):
                 if particles[idx].best_fitness > best_fitness:
@@ -124,7 +130,7 @@ class SwarmTopology:
 
         triangles = 0
         for i, n1 in enumerate(neighbors):
-            for n2 in neighbors[i + 1:]:
+            for n2 in neighbors[i + 1 :]:
                 n1_neighbors = set(self.neighbors.get(n1, []))
                 if n2 in n1_neighbors:
                     triangles += 1
@@ -140,13 +146,15 @@ class SwarmIntelligenceBreeder:
     Combines PSO velocity updates with evolutionary selection pressure.
     """
 
-    def __init__(self,
-                 population_size: int = 50,
-                 w_inertia: float = 0.7,  # Inertia weight
-                 c_cognitive: float = 1.5,  # Cognitive coefficient
-                 c_social: float = 1.5,  # Social coefficient
-                 max_velocity: float = 0.5,
-                 topology_neighbors: int = 3):
+    def __init__(
+        self,
+        population_size: int = 50,
+        w_inertia: float = 0.7,  # Inertia weight
+        c_cognitive: float = 1.5,  # Cognitive coefficient
+        c_social: float = 1.5,  # Social coefficient
+        max_velocity: float = 0.5,
+        topology_neighbors: int = 3,
+    ):
         self.population_size = population_size
         self.w_inertia = w_inertia
         self.c_cognitive = c_cognitive
@@ -160,10 +168,13 @@ class SwarmIntelligenceBreeder:
 
         # Global best
         self.global_best_genome: Optional[Dict[str, float]] = None
-        self.global_best_fitness: float = -float('inf')
+        self.global_best_fitness: float = -float("inf")
 
-    def initialize(self, task_fn: Callable[[Dict[str, float]], Any],
-                   bounds: Optional[Dict[str, Tuple[float, float]]] = None):
+    def initialize(
+        self,
+        task_fn: Callable[[Dict[str, float]], Any],
+        bounds: Optional[Dict[str, Tuple[float, float]]] = None,
+    ):
         """Initialize swarm with random particles."""
         self.particles = []
         for i in range(self.population_size):
@@ -173,14 +184,20 @@ class SwarmIntelligenceBreeder:
             if bounds:
                 for gene, (low, high) in bounds.items():
                     genome[gene] = random.uniform(low, high)
-                    velocity[gene] = random.uniform(-self.max_velocity, self.max_velocity)
+                    velocity[gene] = random.uniform(
+                        -self.max_velocity, self.max_velocity
+                    )
             else:
                 for gene in range(10):  # Default 10 genes
                     genome[f"gene_{gene}"] = random.gauss(0, 1)
                     velocity[f"gene_{gene}"] = random.gauss(0, self.max_velocity)
 
             result = task_fn(genome)
-            fitness = result.get("fitness", 0.0) if isinstance(result, dict) else float(result)
+            fitness = (
+                result.get("fitness", 0.0)
+                if isinstance(result, dict)
+                else float(result)
+            )
 
             particle = Particle(
                 genome=genome,
@@ -188,7 +205,7 @@ class SwarmIntelligenceBreeder:
                 fitness=fitness,
                 best_genome=genome.copy(),
                 best_fitness=fitness,
-                id=i
+                id=i,
             )
             self.particles.append(particle)
 
@@ -196,7 +213,9 @@ class SwarmIntelligenceBreeder:
                 self.global_best_fitness = fitness
                 self.global_best_genome = genome.copy()
 
-    def _update_velocity(self, particle: Particle, neighborhood_best: Optional[Particle]):
+    def _update_velocity(
+        self, particle: Particle, neighborhood_best: Optional[Particle]
+    ):
         """PSO velocity update equation."""
         for gene in particle.velocity:
             if gene not in particle.genome:
@@ -207,15 +226,25 @@ class SwarmIntelligenceBreeder:
 
             # Cognitive component: pull toward personal best
             if particle.best_genome and gene in particle.best_genome:
-                cognitive = self.c_cognitive * random.random() * \
-                    (particle.best_genome[gene] - particle.genome[gene])
+                cognitive = (
+                    self.c_cognitive
+                    * random.random()
+                    * (particle.best_genome[gene] - particle.genome[gene])
+                )
             else:
                 cognitive = 0
 
             # Social component: pull toward neighborhood best
-            if neighborhood_best and neighborhood_best.best_genome and gene in neighborhood_best.best_genome:
-                social = self.c_social * random.random() * \
-                    (neighborhood_best.best_genome[gene] - particle.genome[gene])
+            if (
+                neighborhood_best
+                and neighborhood_best.best_genome
+                and gene in neighborhood_best.best_genome
+            ):
+                social = (
+                    self.c_social
+                    * random.random()
+                    * (neighborhood_best.best_genome[gene] - particle.genome[gene])
+                )
             else:
                 social = 0
 
@@ -224,8 +253,9 @@ class SwarmIntelligenceBreeder:
 
             new_velocity = inertia + cognitive + social + pheromone_bias
             # Clamp velocity
-            particle.velocity[gene] = max(-self.max_velocity,
-                                            min(self.max_velocity, new_velocity))
+            particle.velocity[gene] = max(
+                -self.max_velocity, min(self.max_velocity, new_velocity)
+            )
 
     def _pheromone_bias(self, genome: Dict[str, float], gene: str) -> float:
         """Compute bias from pheromone trails for a gene."""
@@ -249,15 +279,19 @@ class SwarmIntelligenceBreeder:
             if gene in particle.velocity:
                 particle.genome[gene] += particle.velocity[gene]
 
-    def _deposit_pheromone(self, old_genome: Dict[str, float], new_genome: Dict[str, float],
-                           fitness_improvement: float):
+    def _deposit_pheromone(
+        self,
+        old_genome: Dict[str, float],
+        new_genome: Dict[str, float],
+        fitness_improvement: float,
+    ):
         """Deposit pheromone if fitness improved."""
         if fitness_improvement > 0:
             trail = PheromoneTrail(
                 source=old_genome,
                 target=new_genome,
                 strength=min(1.0, fitness_improvement),
-                last_update=time.time() if 'time' in dir() else 0
+                last_update=time.time() if "time" in dir() else 0,
             )
             self.pheromones.append(trail)
             # Keep only top 100 trails
@@ -270,8 +304,9 @@ class SwarmIntelligenceBreeder:
             trail.decay(rate)
         self.pheromones = [t for t in self.pheromones if t.strength > 0.01]
 
-    def breed_generation(self,
-                         task_fn: Callable[[Dict[str, float]], Any]) -> List[Tuple[Dict[str, float], float]]:
+    def breed_generation(
+        self, task_fn: Callable[[Dict[str, float]], Any]
+    ) -> List[Tuple[Dict[str, float], float]]:
         """Run one generation of swarm breeding."""
         self.generation += 1
         self._decay_pheromones()
@@ -289,7 +324,11 @@ class SwarmIntelligenceBreeder:
 
             # Evaluate new position
             result = task_fn(particle.genome)
-            fitness = result.get("fitness", 0.0) if isinstance(result, dict) else float(result)
+            fitness = (
+                result.get("fitness", 0.0)
+                if isinstance(result, dict)
+                else float(result)
+            )
             particle.fitness = fitness
 
             # Update personal best
@@ -318,13 +357,19 @@ class SwarmIntelligenceBreeder:
             "avg_fitness": np.mean(fitnesses) if fitnesses else 0,
             "best_fitness": self.global_best_fitness,
             "avg_personal_best": np.mean(personal_bests) if personal_bests else 0,
-            "avg_velocity": np.mean([np.mean(list(p.velocity.values())) for p in self.particles]),
+            "avg_velocity": np.mean(
+                [np.mean(list(p.velocity.values())) for p in self.particles]
+            ),
             "diversity": self._compute_diversity(),
             "pheromone_trails": len(self.pheromones),
-            "avg_clustering": np.mean([
-                self.topology.get_clustering_coefficient(i)
-                for i in range(len(self.particles))
-            ]) if self.particles else 0,
+            "avg_clustering": np.mean(
+                [
+                    self.topology.get_clustering_coefficient(i)
+                    for i in range(len(self.particles))
+                ]
+            )
+            if self.particles
+            else 0,
         }
 
     def _compute_diversity(self) -> float:
@@ -334,12 +379,14 @@ class SwarmIntelligenceBreeder:
 
         distances = []
         for i, p1 in enumerate(self.particles):
-            for p2 in self.particles[i + 1:]:
+            for p2 in self.particles[i + 1 :]:
                 # Compute Euclidean distance between genomes
                 common_keys = set(p1.genome.keys()) & set(p2.genome.keys())
                 if not common_keys:
                     continue
-                dist = np.sqrt(sum((p1.genome[k] - p2.genome[k])**2 for k in common_keys))
+                dist = np.sqrt(
+                    sum((p1.genome[k] - p2.genome[k]) ** 2 for k in common_keys)
+                )
                 distances.append(dist)
 
         return np.mean(distances) if distances else 0.0

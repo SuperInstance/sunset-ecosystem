@@ -107,7 +107,7 @@ class TestDifferentialBreeder:
     def test_fitness_improvement(self):
         db = DifferentialBreeder(population_size=20, dimensions=2, F=0.8, CR=0.9)
         db.initialize()
-        fitness_fn = lambda g: -np.sum((g - 1.0)**2)
+        fitness_fn = lambda g: -np.sum((g - 1.0) ** 2)
         db.evaluate(fitness_fn)
         best_before = db.best_individual.fitness
         for _ in range(50):

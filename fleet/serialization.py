@@ -9,6 +9,7 @@ Usage:
     blob = ser.serialize("breed_result", {"score": 0.95})
     obj = ser.deserialize("breed_result", blob)
 """
+
 from __future__ import annotations
 
 import json
@@ -70,7 +71,12 @@ class SerializationRegistry:
         self._default_format = default_format
         self._default_compression = default_compression
         self._schemas: Dict[str, Schema] = {}
-        self._stats: Dict[str, int] = {"serialized": 0, "deserialized": 0, "bytes_in": 0, "bytes_out": 0}
+        self._stats: Dict[str, int] = {
+            "serialized": 0,
+            "deserialized": 0,
+            "bytes_in": 0,
+            "bytes_out": 0,
+        }
 
     # ------------------------------------------------------------------
     # Schema registry
@@ -105,7 +111,9 @@ class SerializationRegistry:
                 schema.validate(obj)
 
         if fmt == "json":
-            payload = json.dumps(obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            payload = json.dumps(obj, separators=(",", ":"), ensure_ascii=False).encode(
+                "utf-8"
+            )
         elif fmt == "bytes":
             if not isinstance(obj, bytes):
                 raise SerializationError("bytes format requires a bytes object")

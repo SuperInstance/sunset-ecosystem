@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_data_validator.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -16,7 +17,10 @@ class TestDataValidator:
 
     def test_add_schema(self):
         validator = DataValidator()
-        assert validator.add_schema("user", {"name": {"type": str, "required": True}}) is True
+        assert (
+            validator.add_schema("user", {"name": {"type": str, "required": True}})
+            is True
+        )
         assert "user" in validator.schemas()
 
     def test_add_schema_duplicate(self):
@@ -58,7 +62,9 @@ class TestDataValidator:
 
     def test_validate_length(self):
         validator = DataValidator()
-        validator.add_schema("user", {"name": {"type": str, "min_length": 2, "max_length": 10}})
+        validator.add_schema(
+            "user", {"name": {"type": str, "min_length": 2, "max_length": 10}}
+        )
         errors = validator.validate("user", {"name": "A"})
         assert "Field 'name' length must be >= 2" in errors
         errors = validator.validate("user", {"name": "A" * 20})
@@ -66,7 +72,9 @@ class TestDataValidator:
 
     def test_validate_custom_validator(self):
         validator = DataValidator()
-        validator.add_schema("user", {"email": {"type": str, "validator": lambda v: "@" in v}})
+        validator.add_schema(
+            "user", {"email": {"type": str, "validator": lambda v: "@" in v}}
+        )
         errors = validator.validate("user", {"email": "invalid"})
         assert "Field 'email' failed custom validation" in errors
         errors = validator.validate("user", {"email": "valid@example.com"})

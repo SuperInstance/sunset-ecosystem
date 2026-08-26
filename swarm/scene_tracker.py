@@ -64,6 +64,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class QueryPattern:
     """A single query event."""
+
     query_type: str  # "by_id", "by_fitness", "similarity", "knn", "range", "all"
     filter_type: str  # "none", "fitness", "agent_id", "keyword", "temporal"
     result_size: int
@@ -91,6 +92,7 @@ class QueryPattern:
 @dataclass
 class Scene:
     """A temporal cluster of related queries."""
+
     scene_id: str
     queries: list[QueryPattern] = field(default_factory=list)
     start_time: float = 0.0
@@ -113,6 +115,7 @@ class Scene:
 @dataclass
 class CacheStrategy:
     """Adaptive caching strategy based on query patterns."""
+
     hot_threshold_accesses: int = 3
     hot_threshold_latency_ms: float = 50.0
     preload_cooccurrence_count: int = 2
@@ -152,7 +155,9 @@ class SceneTracker:
         self._scene_counter = 0
 
         # Predictive caching
-        self._cooccurrence_map: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self._cooccurrence_map: dict[str, dict[str, int]] = defaultdict(
+            lambda: defaultdict(int)
+        )
         self._access_counts: dict[str, int] = defaultdict(int)
         self._cached_entries: set[str] = set()
 
@@ -245,13 +250,16 @@ class SceneTracker:
 
         # Co-occurrence preloading
         for agent_id, cooccurs in self._cooccurrence_map.items():
-            if self._access_counts.get(agent_id, 0) >= self.strategy.hot_threshold_accesses:
+            if (
+                self._access_counts.get(agent_id, 0)
+                >= self.strategy.hot_threshold_accesses
+            ):
                 for co_id, count in cooccurs.items():
                     if count >= self.strategy.preload_cooccurrence_count:
                         recommendations.append(co_id)
 
         # Deduplicate
-        return list(dict.fromkeys(recommendations))[:self.strategy.max_cache_entries]
+        return list(dict.fromkeys(recommendations))[: self.strategy.max_cache_entries]
 
     def apply_cache_recommendations(self, tiered_storage: Any | None = None) -> int:
         """Apply cache recommendations to promote entries.
@@ -298,7 +306,10 @@ class SceneTracker:
         """
         # Close current scene if old
         if self._current_scene is not None:
-            if time.time() - self._current_scene.end_time > self.strategy.scene_timeout_seconds:
+            if (
+                time.time() - self._current_scene.end_time
+                > self.strategy.scene_timeout_seconds
+            ):
                 self._scenes.append(self._current_scene)
                 self._current_scene = None
 
@@ -312,7 +323,10 @@ class SceneTracker:
     def get_current_scene(self) -> Scene | None:
         """Get the currently active scene."""
         if self._current_scene is not None:
-            if time.time() - self._current_scene.end_time <= self.strategy.scene_timeout_seconds:
+            if (
+                time.time() - self._current_scene.end_time
+                <= self.strategy.scene_timeout_seconds
+            ):
                 return self._current_scene
         return None
 
@@ -354,7 +368,9 @@ class SceneTracker:
         list[tuple[str, int]]
             (pattern_hash, frequency) sorted descending.
         """
-        patterns = sorted(self._pattern_histogram.items(), key=lambda x: x[1], reverse=True)
+        patterns = sorted(
+            self._pattern_histogram.items(), key=lambda x: x[1], reverse=True
+        )
         return patterns[:k]
 
     # ── stats ─────────────────────────────────────────────────
@@ -362,12 +378,16 @@ class SceneTracker:
     @property
     def stats(self) -> dict[str, Any]:
         return {
-            "table_id": self.table.table_id if hasattr(self.table, "table_id") else "unknown",
+            "table_id": self.table.table_id
+            if hasattr(self.table, "table_id")
+            else "unknown",
             "total_queries": self._query_count,
             "unique_patterns": len(self._pattern_histogram),
             "scene_count": len(self._scenes) + (1 if self._current_scene else 0),
             "cached_entries": len(self._cached_entries),
-            "mean_latency_ms": self._total_latency_ms / self._query_count if self._query_count > 0 else 0.0,
+            "mean_latency_ms": self._total_latency_ms / self._query_count
+            if self._query_count > 0
+            else 0.0,
             "query_rate_per_minute": len(self._query_rate_window),
             "latency_stats": self.get_latency_stats(),
             "hot_queries": self.get_hot_queries(5),
@@ -390,7 +410,10 @@ class SceneTracker:
             )
         else:
             # Check if pattern fits current scene (same type within timeout)
-            if pattern.timestamp - self._current_scene.end_time <= self.strategy.scene_timeout_seconds:
+            if (
+                pattern.timestamp - self._current_scene.end_time
+                <= self.strategy.scene_timeout_seconds
+            ):
                 self._current_scene.queries.append(pattern)
                 self._current_scene.end_time = pattern.timestamp
                 self._current_scene.frequency += 1

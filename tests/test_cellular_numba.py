@@ -22,6 +22,7 @@ from swarm.cellular_numba import (
 # Engine init
 # ---------------------------------------------------------------------------
 
+
 class TestEngineInit:
     def test_default_size(self):
         engine = NumbaCellularEngine()
@@ -43,6 +44,7 @@ class TestEngineInit:
 # ---------------------------------------------------------------------------
 # Seeding
 # ---------------------------------------------------------------------------
+
 
 class TestSeeding:
     def test_seed_single(self):
@@ -74,10 +76,13 @@ class TestSeeding:
 # Rule registration
 # ---------------------------------------------------------------------------
 
+
 class TestRuleRegistration:
     def test_register_survival(self):
         engine = NumbaCellularEngine(grid_size=(10, 10))
-        engine.register_rule(rule_survival, params=np.array([0.5, 0.1], dtype=np.float32))
+        engine.register_rule(
+            rule_survival, params=np.array([0.5, 0.1], dtype=np.float32)
+        )
         assert len(engine.rules) == 1
 
     def test_register_multiple(self):
@@ -96,7 +101,8 @@ class TestRuleRegistration:
         assert len(engine.rules) == 1
         # Should be callable
         engine.rules[0](
-            engine.energies, engine.states,
+            engine.energies,
+            engine.states,
             np.zeros((10, 10), dtype=np.float32),
             np.zeros((10, 10), dtype=np.float32),
             np.zeros((10, 10), dtype=np.float32),
@@ -115,10 +121,13 @@ class TestRuleRegistration:
 # Tick evaluation
 # ---------------------------------------------------------------------------
 
+
 class TestTickEvaluation:
     def test_tick_empty_grid(self):
         engine = NumbaCellularEngine(grid_size=(10, 10))
-        engine.register_rule(rule_survival, params=np.array([0.5, 0.1], dtype=np.float32))
+        engine.register_rule(
+            rule_survival, params=np.array([0.5, 0.1], dtype=np.float32)
+        )
         stats = engine.tick()
         assert stats["active_cells"] == 0
         assert stats["total_energy"] == 0.0
@@ -126,7 +135,9 @@ class TestTickEvaluation:
     def test_tick_survival(self):
         engine = NumbaCellularEngine(grid_size=(10, 10))
         engine.seed([(5, 5)], energy=1.0, state=1.0)
-        engine.register_rule(rule_survival, params=np.array([0.5, 0.1], dtype=np.float32))
+        engine.register_rule(
+            rule_survival, params=np.array([0.5, 0.1], dtype=np.float32)
+        )
         stats = engine.tick()
         assert stats["active_cells"] == 1
         # Energy decayed by 10%
@@ -135,7 +146,9 @@ class TestTickEvaluation:
     def test_tick_survival_kills_weak(self):
         engine = NumbaCellularEngine(grid_size=(10, 10))
         engine.seed([(5, 5)], energy=0.3, state=1.0)
-        engine.register_rule(rule_survival, params=np.array([0.5, 0.1], dtype=np.float32))
+        engine.register_rule(
+            rule_survival, params=np.array([0.5, 0.1], dtype=np.float32)
+        )
         engine.tick()
         assert engine.energies[5, 5] == 0.0  # killed (energy < 0.5)
 
@@ -143,7 +156,9 @@ class TestTickEvaluation:
         engine = NumbaCellularEngine(grid_size=(10, 10))
         # Two energetic neighbors around (5,5)
         engine.seed([(4, 5), (6, 5)], energy=1.0, state=1.0)
-        engine.register_rule(rule_reproduction, params=np.array([0.5, 0.8, 0.01], dtype=np.float32))
+        engine.register_rule(
+            rule_reproduction, params=np.array([0.5, 0.8, 0.01], dtype=np.float32)
+        )
         stats = engine.tick()
         # (5,5) should be born because it has 2 energetic neighbors
         assert engine.energies[5, 5] > 0.0
@@ -151,7 +166,9 @@ class TestTickEvaluation:
     def test_multiple_ticks(self):
         engine = NumbaCellularEngine(grid_size=(10, 10))
         engine.seed([(5, 5)], energy=1.0, state=1.0)
-        engine.register_rule(rule_survival, params=np.array([0.5, 0.1], dtype=np.float32))
+        engine.register_rule(
+            rule_survival, params=np.array([0.5, 0.1], dtype=np.float32)
+        )
         history = engine.run(ticks=5)
         assert len(history) == 5
         assert history[4]["tick"] == 5
@@ -167,6 +184,7 @@ class TestTickEvaluation:
 # ---------------------------------------------------------------------------
 # Energy conservation
 # ---------------------------------------------------------------------------
+
 
 class TestEnergyConservation:
     def test_energy_never_negative(self):
@@ -189,6 +207,7 @@ class TestEnergyConservation:
 # ---------------------------------------------------------------------------
 # Benchmark
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.skipif(not HAS_NUMBA, reason="numba not installed")
 class TestBenchmark:
@@ -213,6 +232,7 @@ class TestBenchmark:
 # Serialization
 # ---------------------------------------------------------------------------
 
+
 class TestSerialization:
     def test_to_dict_basic(self):
         engine = NumbaCellularEngine(grid_size=(5, 5))
@@ -226,6 +246,7 @@ class TestSerialization:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_no_rules_tick(self):
@@ -250,7 +271,9 @@ class TestEdgeCases:
     def test_all_cells_dead_after_survival(self):
         engine = NumbaCellularEngine(grid_size=(10, 10))
         engine.seed([(5, 5)], energy=0.1)
-        engine.register_rule(rule_survival, params=np.array([0.5, 0.1], dtype=np.float32))
+        engine.register_rule(
+            rule_survival, params=np.array([0.5, 0.1], dtype=np.float32)
+        )
         stats = engine.tick()
         assert stats["active_cells"] == 0
 

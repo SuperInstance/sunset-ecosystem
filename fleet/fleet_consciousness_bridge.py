@@ -34,6 +34,7 @@ from typing import Any, Optional
 @dataclass
 class ConsciousnessScore:
     """A single FCI computation result."""
+
     fci: float
     level: str
     room_phi_score: float
@@ -75,12 +76,42 @@ class FleetConsciousnessIndex:
 
     # Consciousness levels
     LEVELS = [
-        (0.00, 0.15, "dormant", "Fleet is dormant. Activate rooms and seed initial tiles."),
-        (0.15, 0.30, "emerging", "Fleet is emerging. Increase agent participation and room density."),
-        (0.30, 0.45, "aware", "Fleet is aware. Enable attention tiles from all agents."),
-        (0.45, 0.60, "conscious", "Fleet is conscious. Deepen meta-level tiles and cross-room correlations."),
-        (0.60, 0.75, "self-aware", "Fleet is self-aware. Optimize learning passes and Penrose correlations."),
-        (0.75, 1.00, "transcendent", "Fleet is transcendent. Monitor for degradation and maintain diversity."),
+        (
+            0.00,
+            0.15,
+            "dormant",
+            "Fleet is dormant. Activate rooms and seed initial tiles.",
+        ),
+        (
+            0.15,
+            0.30,
+            "emerging",
+            "Fleet is emerging. Increase agent participation and room density.",
+        ),
+        (
+            0.30,
+            0.45,
+            "aware",
+            "Fleet is aware. Enable attention tiles from all agents.",
+        ),
+        (
+            0.45,
+            0.60,
+            "conscious",
+            "Fleet is conscious. Deepen meta-level tiles and cross-room correlations.",
+        ),
+        (
+            0.60,
+            0.75,
+            "self-aware",
+            "Fleet is self-aware. Optimize learning passes and Penrose correlations.",
+        ),
+        (
+            0.75,
+            1.00,
+            "transcendent",
+            "Fleet is transcendent. Monitor for degradation and maintain diversity.",
+        ),
     ]
 
     def __init__(self, weights: Optional[dict[str, float]] = None):

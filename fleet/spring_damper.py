@@ -8,6 +8,7 @@ continuity in JEPA models.
 Reference: flux-compass + analog-spectral patterns from SuperInstance
 ecosystem audit (May 30, 2026).
 """
+
 from __future__ import annotations
 
 import math
@@ -54,9 +55,9 @@ class SpringDamperConfig:
 class SpringDamper:
     """Spring-damper model for smooth transitions.
 
-    Replaces instantaneous state changes with physically plausible
-transitions. Target heading exerts a restoring force; damping controls
-oscillation; natural frequency controls speed.
+        Replaces instantaneous state changes with physically plausible
+    transitions. Target heading exerts a restoring force; damping controls
+    oscillation; natural frequency controls speed.
     """
 
     def __init__(self, config: Optional[SpringDamperConfig] = None) -> None:
@@ -235,7 +236,9 @@ class AgentTransitionSmoother:
                 )
             self._damper.set_target(arr)
         else:
-            raise TypeError(f"new_state type {type(new_state)} not compatible with dim={self.dim}")
+            raise TypeError(
+                f"new_state type {type(new_state)} not compatible with dim={self.dim}"
+            )
 
     def tick(self, dt: float) -> bool:
         """Advance transition. Returns True when settled."""

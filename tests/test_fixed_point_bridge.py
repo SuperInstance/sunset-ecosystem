@@ -22,6 +22,7 @@ from flux_compat.fixed_point_bridge import FixedPointBridge, OverflowMode
 
 # ── 1. Auto-scaling ───────────────────────────────────────
 
+
 class TestAutoScale:
     def test_max_abs_strategy(self):
         bridge = FixedPointBridge.auto_scale(
@@ -72,12 +73,8 @@ class TestAutoScale:
         assert bridge.encode(0.0) == 0
 
     def test_safety_margin_headroom(self):
-        bridge_narrow = FixedPointBridge.auto_scale(
-            [10.0], safety_margin=1.0
-        )
-        bridge_wide = FixedPointBridge.auto_scale(
-            [10.0], safety_margin=4.0
-        )
+        bridge_narrow = FixedPointBridge.auto_scale([10.0], safety_margin=1.0)
+        bridge_wide = FixedPointBridge.auto_scale([10.0], safety_margin=4.0)
         # Wider margin = smaller scale factor
         assert bridge_wide.scale_factor < bridge_narrow.scale_factor
 
@@ -87,6 +84,7 @@ class TestAutoScale:
 
 
 # ── 2. Round-trip accuracy ────────────────────────────────
+
 
 class TestRoundTrip:
     def test_identity_at_zero(self):
@@ -105,9 +103,7 @@ class TestRoundTrip:
             assert err <= bridge.resolution
 
     def test_round_trip_8bit(self):
-        bridge = FixedPointBridge.auto_scale(
-            [10.0, 20.0], frac_bits=8, total_bits=16
-        )
+        bridge = FixedPointBridge.auto_scale([10.0, 20.0], frac_bits=8, total_bits=16)
         for val in [10.0, 15.0, 20.0]:
             fp = bridge.encode(val)
             back = bridge.decode(fp)
@@ -127,10 +123,13 @@ class TestRoundTrip:
 
 # ── 3. Overflow modes ────────────────────────────────────
 
+
 class TestOverflowModes:
     def test_saturate_at_max(self):
         bridge = FixedPointBridge(
-            frac_bits=16, total_bits=32, scale_factor=1e6,
+            frac_bits=16,
+            total_bits=32,
+            scale_factor=1e6,
             overflow=OverflowMode.SATURATE,
         )
         huge = bridge.max_representable * 2.0
@@ -139,7 +138,9 @@ class TestOverflowModes:
 
     def test_saturate_at_min(self):
         bridge = FixedPointBridge(
-            frac_bits=16, total_bits=32, scale_factor=1e6,
+            frac_bits=16,
+            total_bits=32,
+            scale_factor=1e6,
             overflow=OverflowMode.SATURATE,
         )
         tiny = bridge.min_representable * 2.0
@@ -148,7 +149,9 @@ class TestOverflowModes:
 
     def test_wrap_behavior(self):
         bridge = FixedPointBridge(
-            frac_bits=8, total_bits=16, scale_factor=1.0,
+            frac_bits=8,
+            total_bits=16,
+            scale_factor=1.0,
             overflow=OverflowMode.WRAP,
         )
         max_val = bridge._max_raw  # 32767
@@ -158,7 +161,9 @@ class TestOverflowModes:
 
     def test_raise_on_overflow(self):
         bridge = FixedPointBridge(
-            frac_bits=16, total_bits=32, scale_factor=1.0,
+            frac_bits=16,
+            total_bits=32,
+            scale_factor=1.0,
             overflow=OverflowMode.RAISE,
         )
         with pytest.raises(OverflowError):
@@ -166,7 +171,9 @@ class TestOverflowModes:
 
     def test_raise_on_underflow(self):
         bridge = FixedPointBridge(
-            frac_bits=16, total_bits=32, scale_factor=1.0,
+            frac_bits=16,
+            total_bits=32,
+            scale_factor=1.0,
             overflow=OverflowMode.RAISE,
         )
         with pytest.raises(OverflowError):
@@ -174,6 +181,7 @@ class TestOverflowModes:
 
 
 # ── 4. Different bit widths ───────────────────────────────
+
 
 class TestBitWidths:
     def test_8_frac_16_total(self):
@@ -194,6 +202,7 @@ class TestBitWidths:
 
 
 # ── 5. Batch operations ───────────────────────────────────
+
 
 class TestBatch:
     def test_encode_batch(self):
@@ -219,6 +228,7 @@ class TestBatch:
 
 # ── 6. FLUX constant generation ───────────────────────────
 
+
 class TestFluxConstant:
     def test_flux_constant_structure(self):
         bridge = FixedPointBridge(scale_factor=1e6)
@@ -239,6 +249,7 @@ class TestFluxConstant:
 
 
 # ── 7. Properties ─────────────────────────────────────────
+
 
 class TestProperties:
     def test_resolution(self):

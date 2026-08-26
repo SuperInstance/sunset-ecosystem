@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import logging
 import socket
+import concurrent.futures
+from typing import Optional
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -53,6 +55,7 @@ class InvalidEndpointError(NexusError):
 
 # ── data structures ─────────────────────────────────────────────
 
+
 @dataclass(slots=True)
 class FederationEndpoint:
     """An HTTP endpoint for the Federated Nexus."""
@@ -78,17 +81,34 @@ class FederationEndpoint:
 
     @staticmethod
     def _is_localhost(host: str) -> bool:
-        """Return True if *host* resolves to a loopback address."""
+        """Return True if *host* resolves to a loopback address.
+
+        DNS resolution is bounded (2s) so an unresolvable host (e.g. a
+        ``.local`` name triggering slow mDNS/LLMNR lookups) cannot hang the
+        caller — CI runners have seen multi-hour stalls on this call.
+        """
+
+        def _resolve() -> Optional[str]:
+            try:
+                addrinfo = socket.getaddrinfo(host, None)
+                for _, _, _, _, sockaddr in addrinfo:
+                    ip = sockaddr[0]
+                    if ip.startswith("127.") or ip == "::1":
+                        return ip
+            except socket.gaierror:
+                # If we cannot resolve, be permissive; the network layer will fail later.
+                return None
+            return None
+
         try:
-            addrinfo = socket.getaddrinfo(host, None)
-            for _, _, _, _, sockaddr in addrinfo:
-                ip = sockaddr[0]
-                if ip.startswith("127.") or ip == "::1":
-                    return True
-        except socket.gaierror:
-            # If we cannot resolve, be permissive; the network layer will fail later.
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(_resolve)
+                return future.result(timeout=2.0) is not None
+        except concurrent.futures.TimeoutError:
+            # Unresolvable within budget: permissive, matching gaierror behavior.
             return False
-        return False
+        except Exception:
+            return False
 
 
 @dataclass(slots=True)
@@ -106,6 +126,7 @@ class RegistrationRecord:
 
 
 # ── core class ──────────────────────────────────────────────────
+
 
 class FederatedNexus:
     """Client for registering and heart-beating with the fleet nexus.

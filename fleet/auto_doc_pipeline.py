@@ -26,6 +26,7 @@ from fleet.doc_generator import DocGenerator
 @dataclass
 class DocFile:
     """A tracked documentation file."""
+
     path: str
     content: str = ""
     last_hash: str = ""
@@ -89,7 +90,10 @@ class AutoDocPipeline:
                         with open(path, "r") as f:
                             content = f.read()
                         new_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
-                        if path in self.code_hashes and self.code_hashes[path] != new_hash:
+                        if (
+                            path in self.code_hashes
+                            and self.code_hashes[path] != new_hash
+                        ):
                             changed.append(path)
         self.changes_detected = changed
         return changed

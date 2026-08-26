@@ -200,7 +200,9 @@ class MomentScorer:
             A MomentScore for the aggregate.
         """
         resolved = resolved_count > 0 and total_interactions > 0
-        resolution_rate = resolved_count / total_interactions if total_interactions > 0 else 0.0
+        resolution_rate = (
+            resolved_count / total_interactions if total_interactions > 0 else 0.0
+        )
 
         return self.score(
             need_state=need_state,

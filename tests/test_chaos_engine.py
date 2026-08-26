@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_chaos_engine.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -42,7 +43,13 @@ class TestChaosEngine:
 
     def test_get_triggered_fault(self):
         chaos = ChaosEngine(seed=42)
-        chaos.add_fault("delay", target="users", probability=1.0, fault_type="latency", params={"delay_sec": 2})
+        chaos.add_fault(
+            "delay",
+            target="users",
+            probability=1.0,
+            fault_type="latency",
+            params={"delay_sec": 2},
+        )
         fault = chaos.get_triggered_fault("users")
         assert fault is not None
         assert fault["name"] == "delay"

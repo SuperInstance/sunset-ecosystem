@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_tsdb.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import time
@@ -126,7 +127,7 @@ class TestTimeSeriesDB:
         db.record("cpu", 0.5, labels={"node": "a"})
         exp = db.prometheus_exposition()
         assert "cpu" in exp
-        assert "node=\"a\"" in exp
+        assert 'node="a"' in exp
         assert "0.5" in exp
 
     def test_series_key_sorting(self):
@@ -166,7 +167,9 @@ class TestTimeSeriesDB:
 
     def test_downsample_std(self):
         db = TimeSeriesDB()
-        now = (time.time_ns() // 10_000_000_000) * 10_000_000_000  # align to 10s boundary
+        now = (
+            time.time_ns() // 10_000_000_000
+        ) * 10_000_000_000  # align to 10s boundary
         for i in range(10):
             db.record("val", float(i), timestamp_ns=now + i * 1_000_000_000)
         results = db.query(

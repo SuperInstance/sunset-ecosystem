@@ -55,17 +55,17 @@ class HashRing:
     """
 
     DEFAULT_REPLICAS = 160  # Virtual nodes per physical node per weight unit.
-                          # 160 is the classic Ketama default for memcached.
+    # 160 is the classic Ketama default for memcached.
 
     def __init__(self, replicas: int = DEFAULT_REPLICAS):
         self._replicas = replicas
 
         # Sorted structures (kept in sync)
-        self._keys: List[int] = []   # sorted 32-bit hash integers
+        self._keys: List[int] = []  # sorted 32-bit hash integers
         self._nodes: List[str] = []  # physical node name per hash
 
         # Metadata
-        self._weights: Dict[str, int] = {}          # configured weight per node
+        self._weights: Dict[str, int] = {}  # configured weight per node
         self._node_hashes: Dict[str, List[int]] = {}  # hashes owned by each node
 
     # ------------------------------------------------------------------
@@ -227,15 +227,13 @@ class HashRing:
                 self._nodes.pop(idx)
 
     def __repr__(self) -> str:
-        return (
-            f"<HashRing nodes={self.node_count} "
-            f"virtual={self.virtual_node_count}>"
-        )
+        return f"<HashRing nodes={self.node_count} virtual={self.virtual_node_count}>"
 
 
 # ----------------------------------------------------------------------
 # Hash functions (Ketama-compatible)
 # ----------------------------------------------------------------------
+
 
 def _ketama_hash(point: str) -> int:
     """
@@ -305,8 +303,8 @@ if __name__ == "__main__":
             moved += 1
 
     print(f"\nAfter removing {removed}:")
-    print(f"  Keys moved: {moved} / 10,000 ({moved/100:.1f}%)")
-    print(f"  Theoretical ideal: ~{100/ring.node_count:.1f}%")
+    print(f"  Keys moved: {moved} / 10,000 ({moved / 100:.1f}%)")
+    print(f"  Theoretical ideal: ~{100 / ring.node_count:.1f}%")
 
     # 4. Replica placement example (primary + 2 backups).
     sample_task = "task:breed:beta-9999"

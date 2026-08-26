@@ -31,6 +31,7 @@ except Exception:
 # Helpers — mock digest / delta
 # ---------------------------------------------------------------------------
 
+
 class MockDigest:
     def __init__(self):
         self.node_id = "Oracle1"
@@ -50,6 +51,7 @@ class MockDeltaBatch:
 # ---------------------------------------------------------------------------
 # JSON fallback (always available)
 # ---------------------------------------------------------------------------
+
 
 class TestJsonFallback:
     def test_digest_roundtrip(self):
@@ -107,6 +109,7 @@ class TestJsonFallback:
 # Wire framing
 # ---------------------------------------------------------------------------
 
+
 class TestWireFraming:
     def test_encode_decode_digest(self):
         codec = ArrowMeshCodec(use_arrow=False)
@@ -142,6 +145,7 @@ class TestWireFraming:
 # ---------------------------------------------------------------------------
 # Arrow round-trips (skipped if pyarrow missing)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.skipif(not HAS_PYARROW, reason="pyarrow not installed")
 class TestArrowCodec:
@@ -203,6 +207,7 @@ class TestArrowCodec:
 # ArrowMeshGossip shim
 # ---------------------------------------------------------------------------
 
+
 class MockMeshGossip:
     def __init__(self):
         self.node_id = "Oracle1"
@@ -248,6 +253,7 @@ class TestArrowMeshGossip:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_empty_delta_batch_json(self):

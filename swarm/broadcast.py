@@ -22,6 +22,7 @@ class BroadcastMessage:
         relevance_score: How relevant this message is (0-1).
         timestamp: When it was sent.
     """
+
     content: Any
     source_agent: str = ""
     target_room: str = ""
@@ -94,7 +95,9 @@ class BroadcastingChannel:
                     self._queues[agent_id].append(message)
                     # Trim queue if too long
                     if len(self._queues[agent_id]) > self._max_queue:
-                        self._queues[agent_id] = self._queues[agent_id][-self._max_queue:]
+                        self._queues[agent_id] = self._queues[agent_id][
+                            -self._max_queue :
+                        ]
                     recipients.append(agent_id)
 
                     # Strengthen Hebbian channel

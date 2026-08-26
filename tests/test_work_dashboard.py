@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_work_dashboard.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -67,7 +68,10 @@ class TestFleetWorkDashboard:
         d.register("broken", lambda: (_ for _ in ()).throw(ValueError("boom")))
         snap = d.snapshot()
         # 1 healthy out of 2 = 50%
-        assert snap["health_level"] in (FleetHealthLevel.WARNING.name, FleetHealthLevel.CRITICAL.name)
+        assert snap["health_level"] in (
+            FleetHealthLevel.WARNING.name,
+            FleetHealthLevel.CRITICAL.name,
+        )
         assert snap["overall_healthy"] is False
 
     def test_history(self):

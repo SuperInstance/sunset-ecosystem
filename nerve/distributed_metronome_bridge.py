@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 # ── Exceptions ──────────────────────────────────────────────
 
+
 class MetronomeBridgeError(Exception):
     """Raised when the bridge encounters an unrecoverable state."""
 
@@ -48,6 +49,7 @@ class SignatureValidationError(MetronomeBridgeError):
 
 
 # ── Data structures ─────────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class UnifiedBeat:
@@ -125,6 +127,7 @@ class SyncMessage:
 
 # ── DriftCorrection (PID) ───────────────────────────────────
 
+
 @dataclass
 class DriftCorrection:
     """PID-style BPM corrector.
@@ -191,7 +194,9 @@ class DriftCorrection:
         # Overshoot guard: if drift sign flipped, dampen correction
         # to prevent oscillation around the target.
         if self._last_drift != 0.0:
-            if (drift_ms > 0 and self._last_drift < 0) or (drift_ms < 0 and self._last_drift > 0):
+            if (drift_ms > 0 and self._last_drift < 0) or (
+                drift_ms < 0 and self._last_drift > 0
+            ):
                 p_term *= self.overshoot_damping
                 i_term *= self.overshoot_damping
                 d_term *= self.overshoot_damping
@@ -214,6 +219,7 @@ class DriftCorrection:
 
 
 # ── MetronomeBridge ─────────────────────────────────────────
+
 
 class MetronomeBridge:
     """Cross-node metronome synchronisation engine.
@@ -313,7 +319,9 @@ class MetronomeBridge:
 
             # Sign
             if self._identity is not None and hasattr(self._identity, "sign_task"):
-                payload.signature = self._identity.sign_task(payload.payload_for_signing())
+                payload.signature = self._identity.sign_task(
+                    payload.payload_for_signing()
+                )
 
             for peer_id in self.peers:
                 msg = SyncMessage(
@@ -380,7 +388,9 @@ class MetronomeBridge:
                 return False
         elif signature:
             # We have a signature but no identity to verify it — reject
-            logger.warning("Cannot verify sync signature from %s (no identity)", node_id)
+            logger.warning(
+                "Cannot verify sync signature from %s (no identity)", node_id
+            )
             return False
         # If both identity and signature are absent, we accept (no-crypto mode)
 
@@ -437,13 +447,15 @@ class MetronomeBridge:
             new_bpm = max(min_bpm, min(max_bpm, old_bpm * factor))
             self._bpm = new_bpm
 
-            self._adjustment_history.append({
-                "timestamp_ns": time.time_ns(),
-                "old_bpm": old_bpm,
-                "new_bpm": new_bpm,
-                "factor": factor,
-                "reason": "drift_correction",
-            })
+            self._adjustment_history.append(
+                {
+                    "timestamp_ns": time.time_ns(),
+                    "old_bpm": old_bpm,
+                    "new_bpm": new_bpm,
+                    "factor": factor,
+                    "reason": "drift_correction",
+                }
+            )
 
             logger.info(
                 "BPM adjusted on %s: %.3f → %.3f (factor %.4f)",

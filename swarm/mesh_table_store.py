@@ -82,7 +82,9 @@ class MeshTableStore:
                 (table.table_id,),
             )
             # Clear old entries for this table
-            conn.execute("DELETE FROM mesh_entries WHERE table_id = ?", (table.table_id,))
+            conn.execute(
+                "DELETE FROM mesh_entries WHERE table_id = ?", (table.table_id,)
+            )
             # Insert current entries
             entries = table.all_entries()
             for e in entries:
@@ -150,7 +152,9 @@ class MeshTableStore:
                 table._entries[entry.agent_id] = entry
         return table
 
-    def load_index(self, node_id: str = "restored", prefix: str = "") -> FleetVectorIndex:
+    def load_index(
+        self, node_id: str = "restored", prefix: str = ""
+    ) -> FleetVectorIndex:
         """Restore a FleetVectorIndex with all persisted tables."""
         index = FleetVectorIndex(node_id=node_id)
         with self._lock, sqlite3.connect(str(self.db_path)) as conn:
@@ -181,7 +185,9 @@ class MeshTableStore:
 
     # ── query ───────────────────────────────────────────────────
 
-    def query_by_fitness(self, table_id: str, min_fitness: float = 0.0, limit: int = 1000):
+    def query_by_fitness(
+        self, table_id: str, min_fitness: float = 0.0, limit: int = 1000
+    ):
         """Query entries by fitness threshold."""
         with self._lock, sqlite3.connect(str(self.db_path)) as conn:
             cursor = conn.execute(
@@ -196,18 +202,20 @@ class MeshTableStore:
             results = []
             for row in cursor:
                 extra = json.loads(row[9]) if row[9] else {}
-                results.append(VectorTableEntry(
-                    agent_id=row[0],
-                    vector=_b64_to_vec(row[1]),
-                    timestamp=row[2],
-                    node_id=row[3],
-                    generation=row[4],
-                    fitness=row[5],
-                    signature=row[6],
-                    capability_mask=row[7],
-                    thermal_pressure=row[8],
-                    extra=extra,
-                ))
+                results.append(
+                    VectorTableEntry(
+                        agent_id=row[0],
+                        vector=_b64_to_vec(row[1]),
+                        timestamp=row[2],
+                        node_id=row[3],
+                        generation=row[4],
+                        fitness=row[5],
+                        signature=row[6],
+                        capability_mask=row[7],
+                        thermal_pressure=row[8],
+                        extra=extra,
+                    )
+                )
             return results
 
     def count_entries(self, table_id: str | None = None) -> int:
@@ -247,9 +255,12 @@ class MeshTableStore:
 
 # ── helpers ─────────────────────────────────────────────────────
 
+
 def _vec_to_b64(vec: np.ndarray) -> str:
     """Float32 vector → base64 string."""
-    return __import__("base64").b64encode(vec.astype(np.float32).tobytes()).decode("ascii")
+    return (
+        __import__("base64").b64encode(vec.astype(np.float32).tobytes()).decode("ascii")
+    )
 
 
 def _b64_to_vec(b64: str) -> np.ndarray:

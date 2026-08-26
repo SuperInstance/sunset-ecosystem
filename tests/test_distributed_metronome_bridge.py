@@ -32,6 +32,7 @@ from nerve.distributed_metronome_bridge import (
 
 # ── Fixtures ────────────────────────────────────────────────
 
+
 @pytest.fixture
 def mock_identity():
     """AgentIdentity-like mock with deterministic sign/verify."""
@@ -72,6 +73,7 @@ def bridge_three_peers(mock_identity):
 
 # ── UnifiedBeat ─────────────────────────────────────────────
 
+
 class TestUnifiedBeat:
     def test_creation_and_fields(self):
         ub = UnifiedBeat(
@@ -86,7 +88,9 @@ class TestUnifiedBeat:
         assert ub.peer_count == 3
 
     def test_to_dict_roundtrip(self):
-        ub = UnifiedBeat(global_beat_count=7, local_beat_count=5, drift_ms=3.0, peer_count=1)
+        ub = UnifiedBeat(
+            global_beat_count=7, local_beat_count=5, drift_ms=3.0, peer_count=1
+        )
         d = ub.to_dict()
         assert d["global_beat_count"] == 7
         assert d["drift_ms"] == 3.0
@@ -94,6 +98,7 @@ class TestUnifiedBeat:
 
 
 # ── DriftCorrection ─────────────────────────────────────────
+
 
 class TestDriftCorrection:
     def test_should_correct_true_when_above_threshold(self):
@@ -121,7 +126,7 @@ class TestDriftCorrection:
 
     def test_pid_integral_accumulates_error(self):
         dc = DriftCorrection(ki=0.1, kp=0.0, kd=0.0)
-        dc.correction_factor(20.0)   # first call establishes dt
+        dc.correction_factor(20.0)  # first call establishes dt
         time.sleep(0.01)
         f = dc.correction_factor(20.0)
         # With positive drift and non-zero ki, factor should be > 1.0
@@ -175,6 +180,7 @@ class TestDriftCorrection:
 
 # ── MetronomeBridge.tick ────────────────────────────────────
 
+
 class TestTick:
     def test_tick_increments_correctly(self, bridge_no_peers):
         b = bridge_no_peers
@@ -193,6 +199,7 @@ class TestTick:
 
 
 # ── MetronomeBridge.sync_with_peers ──────────────────────────
+
 
 class TestSyncWithPeers:
     def test_sync_message_sent_to_all_peers(self, bridge_three_peers, mock_identity):
@@ -237,6 +244,7 @@ class TestSyncWithPeers:
 
 
 # ── MetronomeBridge.receive_sync ────────────────────────────
+
 
 class TestReceiveSync:
     def test_valid_signature_accepted(self, bridge_three_peers, mock_identity):
@@ -289,11 +297,14 @@ class TestReceiveSync:
 
 # ── MetronomeBridge.compute_drift ───────────────────────────
 
+
 class TestComputeDrift:
     def test_drift_zero_when_no_peers(self, bridge_no_peers):
         assert bridge_no_peers.compute_drift() == 0.0
 
-    def test_drift_computed_from_peer_timestamps(self, bridge_three_peers, mock_identity):
+    def test_drift_computed_from_peer_timestamps(
+        self, bridge_three_peers, mock_identity
+    ):
         b = bridge_three_peers
         local_ts = time.time_ns()
         b._last_tick_ns = local_ts
@@ -320,8 +331,11 @@ class TestComputeDrift:
 
 # ── MetronomeBridge.adjust_bpm ─────────────────────────────
 
+
 class TestAdjustBpm:
-    def test_bpm_adjusted_when_drift_above_threshold(self, bridge_three_peers, mock_identity):
+    def test_bpm_adjusted_when_drift_above_threshold(
+        self, bridge_three_peers, mock_identity
+    ):
         b = bridge_three_peers
         local_ts = time.time_ns()
         b._last_tick_ns = local_ts
@@ -330,7 +344,9 @@ class TestAdjustBpm:
         assert did_adjust is True
         assert new_bpm != 120.0
 
-    def test_bpm_not_adjusted_when_drift_below_threshold(self, bridge_three_peers, mock_identity):
+    def test_bpm_not_adjusted_when_drift_below_threshold(
+        self, bridge_three_peers, mock_identity
+    ):
         b = bridge_three_peers
         b._drift_correction.threshold_ms = 100.0
         local_ts = time.time_ns()
@@ -369,6 +385,7 @@ class TestAdjustBpm:
 
 # ── MetronomeBridge.status ──────────────────────────────────
 
+
 class TestStatus:
     def test_status_dict_accurate(self, bridge_three_peers, mock_identity):
         b = bridge_three_peers
@@ -393,6 +410,7 @@ class TestStatus:
 
 
 # ── Thread safety ───────────────────────────────────────────
+
 
 class TestThreadSafety:
     def test_thread_safe_concurrent_syncs(self, mock_identity):
@@ -453,15 +471,20 @@ class TestThreadSafety:
 
 # ── SyncMessage ─────────────────────────────────────────────
 
+
 class TestSyncMessage:
     def test_payload_for_signing_stable(self):
-        m = SyncMessage(node_id="a", beat_count=1, timestamp_ns=2, bpm=3.0, signature="x")
+        m = SyncMessage(
+            node_id="a", beat_count=1, timestamp_ns=2, bpm=3.0, signature="x"
+        )
         p = m.payload_for_signing()
         assert "signature" not in p
         assert p == {"node_id": "a", "beat_count": 1, "timestamp_ns": 2, "bpm": 3.0}
 
     def test_roundtrip_dict(self):
-        original = SyncMessage(node_id="n", beat_count=5, timestamp_ns=9, bpm=120.0, signature="s")
+        original = SyncMessage(
+            node_id="n", beat_count=5, timestamp_ns=9, bpm=120.0, signature="s"
+        )
         d = original.to_dict()
         restored = SyncMessage.from_dict(d)
         assert restored == original

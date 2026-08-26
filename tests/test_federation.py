@@ -24,6 +24,7 @@ from nexus.federation import (
 # FederationEndpoint
 # ---------------------------------------------------------------------------
 
+
 class TestFederationEndpoint:
     def test_url_http(self):
         ep = FederationEndpoint(host="1.2.3.4", port=8080)
@@ -59,6 +60,7 @@ class TestFederationEndpoint:
 # RegistrationRecord
 # ---------------------------------------------------------------------------
 
+
 class TestRegistrationRecord:
     def test_not_stale(self):
         rec = RegistrationRecord(node_id="n1", hostname="h1")
@@ -76,6 +78,7 @@ class TestRegistrationRecord:
 # ---------------------------------------------------------------------------
 # FederatedNexus init
 # ---------------------------------------------------------------------------
+
 
 class TestFederatedNexusInit:
     def test_defaults(self):
@@ -100,6 +103,7 @@ class TestFederatedNexusInit:
 # ---------------------------------------------------------------------------
 # register
 # ---------------------------------------------------------------------------
+
 
 class TestRegister:
     @patch("nexus.federation.requests.Session.post")
@@ -135,6 +139,7 @@ class TestRegister:
 # heartbeat
 # ---------------------------------------------------------------------------
 
+
 class TestHeartbeat:
     @patch("nexus.federation.requests.Session.post")
     def test_success(self, mock_post):
@@ -156,6 +161,7 @@ class TestHeartbeat:
 # ---------------------------------------------------------------------------
 # maybe_heartbeat
 # ---------------------------------------------------------------------------
+
 
 class TestMaybeHeartbeat:
     @patch("nexus.federation.requests.Session.post")
@@ -188,6 +194,7 @@ class TestMaybeHeartbeat:
 # close
 # ---------------------------------------------------------------------------
 
+
 class TestClose:
     def test_closes_session(self):
         ep = FederationEndpoint(host="1.2.3.4")
@@ -199,6 +206,7 @@ class TestClose:
 # ---------------------------------------------------------------------------
 # topology_check
 # ---------------------------------------------------------------------------
+
 
 class TestTopologyCheck:
     def test_delegates_to_holonomy(self):

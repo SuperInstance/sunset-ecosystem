@@ -32,26 +32,34 @@ class TestWorldModelObservation:
 class TestWorldModelProjector:
     def test_init(self, monkeypatch):
         # Patch _try_import_worldmodel to avoid hanging on stable_worldmodel import
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         assert proj.mock_mode is True
         assert proj.worldmodel is None
 
     def test_init_with_spatial(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         spatial = SpatialProjector("test-node")
         proj = WorldModelProjector(spatial_projector=spatial)
         assert proj.spatial is spatial
 
     def test_initialize_fleet_space(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=3, n_agents=5)
         assert len(proj.rooms) == 3
         assert len(proj.agent_positions) == 5
 
     def test_agent_in_room(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=1, n_agents=1)
         room_id = proj._get_room_for_agent("agent_0")
@@ -59,7 +67,9 @@ class TestWorldModelProjector:
         assert room_id.startswith("room_")
 
     def test_move_agent(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=1, n_agents=1, room_size=100.0)
         pos_before = proj.agent_positions["agent_0"]
@@ -69,20 +79,26 @@ class TestWorldModelProjector:
         assert pos_after != pos_before
 
     def test_move_agent_out_of_bounds(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=1, n_agents=1, room_size=10.0)
         result = proj.move_agent("agent_0", (100.0, 0.0, 0.0))
         assert result is False
 
     def test_move_nonexistent_agent(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         result = proj.move_agent("nonexistent", (1.0, 0.0, 0.0))
         assert result is False
 
     def test_get_observation(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=2, n_agents=3)
         obs = proj.get_observation("agent_0")
@@ -91,14 +107,18 @@ class TestWorldModelProjector:
         assert len(obs.position) == 3
 
     def test_get_observation_unknown_agent(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         obs = proj.get_observation("nonexistent")
         assert obs.agent_id == "nonexistent"
         assert obs.room_id == "unknown"
 
     def test_get_all_observations(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=2, n_agents=5)
         all_obs = proj.get_all_observations()
@@ -106,7 +126,9 @@ class TestWorldModelProjector:
         assert all(isinstance(o, WorldModelObservation) for o in all_obs)
 
     def test_predict_collision(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=1, n_agents=2, room_size=100.0)
         # Place agents close together
@@ -117,7 +139,9 @@ class TestWorldModelProjector:
         assert collision == "agent_1"
 
     def test_predict_no_collision(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=1, n_agents=2, room_size=100.0)
         proj.agent_positions["agent_0"] = (0.0, 0.0, 0.0)
@@ -127,7 +151,9 @@ class TestWorldModelProjector:
         assert collision is None
 
     def test_to_fleet_state(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=2, n_agents=3)
         state = proj.to_fleet_state()
@@ -138,7 +164,9 @@ class TestWorldModelProjector:
         assert "agents" in state
 
     def test_get_a2a_spatial_broadcast(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=1, n_agents=2)
         cards = proj.get_a2a_spatial_broadcast()
@@ -146,7 +174,9 @@ class TestWorldModelProjector:
         assert all(c["type"] == "spatial_observation" for c in cards)
 
     def test_step(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=1, n_agents=2, room_size=100.0)
         actions = {
@@ -159,7 +189,9 @@ class TestWorldModelProjector:
         assert "agent_1" in observations
 
     def test_random_position_in_room(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=1, n_agents=0, room_size=50.0)
         pos = proj._random_position_in_room("room_0")
@@ -168,7 +200,9 @@ class TestWorldModelProjector:
         assert 0 <= pos[1] <= 50.0
 
     def test_in_room_bounds(self, monkeypatch):
-        monkeypatch.setattr(WorldModelProjector, '_try_import_worldmodel', lambda self: None)
+        monkeypatch.setattr(
+            WorldModelProjector, "_try_import_worldmodel", lambda self: None
+        )
         proj = WorldModelProjector()
         proj.initialize_fleet_space(n_rooms=1, n_agents=0, room_size=10.0)
         assert proj._in_room_bounds((5.0, 5.0, 5.0), "room_0") is True

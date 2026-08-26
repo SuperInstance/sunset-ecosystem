@@ -26,6 +26,7 @@ from nexus.fleet_conductor_v2 import (
 
 # ── fixtures ──────────────────────────────────────────────
 
+
 @pytest.fixture(autouse=True)
 def mock_heavy_subsystems(monkeypatch):
     """Mock all heavy subsystem imports so tests never instantiate real I/O."""
@@ -34,7 +35,10 @@ def mock_heavy_subsystems(monkeypatch):
     mock_nerve.MetronomeBridge = MagicMock()
     mock_nerve.MetronomeBridge.return_value.tick.return_value = 1
     mock_nerve.MetronomeBridge.return_value.sync_with_peers.return_value = []
-    mock_nerve.MetronomeBridge.return_value.maybe_correct_drift.return_value = (False, 120.0)
+    mock_nerve.MetronomeBridge.return_value.maybe_correct_drift.return_value = (
+        False,
+        120.0,
+    )
     mock_nerve.MetronomeBridge.return_value.compute_drift.return_value = 0.0
     mock_nerve.MetronomeBridge.return_value.peers = []
     monkeypatch.setitem(sys.modules, "nerve.distributed_metronome_bridge", mock_nerve)
@@ -76,19 +80,24 @@ def mock_heavy_subsystems(monkeypatch):
         def __init__(self):
             self._timeouts = 0
             self._state = "OPEN"
+
         def can_dispatch(self):
             if self._state == "CLOSED":
                 return (False, "CLOSED — dispatch blocked")
             return (True, "OPEN — dispatch allowed")
+
         def record_timeout(self):
             self._timeouts += 1
             if self._timeouts >= 2:
                 self._state = "CLOSED"
+
         def record_success(self):
             self._timeouts = 0
             self._state = "OPEN"
+
         def record_failure(self):
             pass
+
         def get_status(self):
             return {"state": self._state}
 
@@ -141,9 +150,7 @@ def default_config() -> ConductorConfig:
 @pytest.fixture(autouse=True)
 def mock_identity(monkeypatch):
     """Patch FleetConductorV2._get_identity to avoid ed25519 key generation hangs."""
-    monkeypatch.setattr(
-        FleetConductorV2, "_get_identity", lambda self: None
-    )
+    monkeypatch.setattr(FleetConductorV2, "_get_identity", lambda self: None)
 
 
 @pytest.fixture
@@ -386,6 +393,7 @@ def test_spawn_agent_direct_execution(conductor: FleetConductorV2):
 
 def test_spawn_agent_subagent_routing(conductor: FleetConductorV2):
     conductor.start()
+
     # Mock router to return subagent mode
     class FakeRouter:
         def route(self, desc: str) -> dict[str, Any]:
@@ -624,7 +632,10 @@ def test_dispatch_router_unavailable(default_config: ConductorConfig):
 
 def test_conductor_health():
     h = ConductorHealth(
-        subsystem="test", state="healthy", last_ok=time.monotonic(), consecutive_failures=0
+        subsystem="test",
+        state="healthy",
+        last_ok=time.monotonic(),
+        consecutive_failures=0,
     )
     assert h.subsystem == "test"
     assert h.state == "healthy"

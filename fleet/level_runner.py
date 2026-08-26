@@ -106,13 +106,17 @@ class Entity:
         return base[:dim]
 
     @classmethod
-    def from_vector(cls, entity_id: str, entity_type: str, vector: np.ndarray, **kwargs: Any) -> "Entity":
+    def from_vector(
+        cls, entity_id: str, entity_type: str, vector: np.ndarray, **kwargs: Any
+    ) -> "Entity":
         """Reconstruct entity from VDB vector (partial, loses fidelity)."""
         return cls(
             entity_id=entity_id,
             entity_type=entity_type,
             position=vector[:3] if len(vector) >= 3 else np.zeros(3),
-            health=max(0.0, min(100.0, vector[6] * 100.0)) if len(vector) > 6 else 100.0,
+            health=max(0.0, min(100.0, vector[6] * 100.0))
+            if len(vector) > 6
+            else 100.0,
             **kwargs,
         )
 
@@ -141,11 +145,15 @@ class LevelDefinition:
             trigger = rule.get("trigger", "tick")
             action = rule.get("action", "noop")
             params = rule.get("params", {})
-            lines.append(json.dumps({
-                "op": "flow.set",
-                "name": f"rule_{trigger}",
-                "value": json.dumps({"action": action, "params": params}),
-            }))
+            lines.append(
+                json.dumps(
+                    {
+                        "op": "flow.set",
+                        "name": f"rule_{trigger}",
+                        "value": json.dumps({"action": action, "params": params}),
+                    }
+                )
+            )
         return "\n".join(lines) + "\n"
 
 
@@ -203,11 +211,14 @@ class LevelState:
             if len(self.entities) >= self.definition.max_entities:
                 return False
             self.entities[entity.entity_id] = entity
-            self.events.emit("entity_spawned", {
-                "entity_id": entity.entity_id,
-                "type": entity.entity_type,
-                "position": entity.position.tolist(),
-            })
+            self.events.emit(
+                "entity_spawned",
+                {
+                    "entity_id": entity.entity_id,
+                    "type": entity.entity_type,
+                    "position": entity.position.tolist(),
+                },
+            )
             return True
 
     def remove_entity(self, entity_id: str) -> bool:
@@ -370,7 +381,9 @@ class LevelRunner:
                 if sleep_time > 0:
                     time.sleep(sleep_time)
 
-        thread = threading.Thread(target=tick_loop, name=f"LevelRunner-{level_id}", daemon=True)
+        thread = threading.Thread(
+            target=tick_loop, name=f"LevelRunner-{level_id}", daemon=True
+        )
         thread.start()
         self._threads[level_id] = thread
         return True
@@ -448,6 +461,7 @@ class LevelRunner:
                 try:
                     # Parse and execute AI script
                     from .caslang_executor import CaslangScript
+
                     script = CaslangScript.from_jsonl(entity.ai_script)
                     result = self.caslang_executor.execute(script)
                     if result["status"] == "success":
@@ -457,7 +471,9 @@ class LevelRunner:
                             direction = np.array(output["move"], dtype=np.float32)
                             entity.velocity += direction * 0.5
                 except Exception as exc:
-                    logger.debug("AI execution failed for %s: %s", entity.entity_id, exc)
+                    logger.debug(
+                        "AI execution failed for %s: %s", entity.entity_id, exc
+                    )
             else:
                 # Fallback: simple random wander
                 if state.tick_count % 10 == 0:
@@ -470,7 +486,9 @@ class LevelRunner:
             entity.position += entity.velocity * 0.1  # dt = 0.1s
             # Clamp to bounds
             for i in range(3):
-                entity.position[i] = max(bounds[i], min(bounds[i + 3], entity.position[i]))
+                entity.position[i] = max(
+                    bounds[i], min(bounds[i + 3], entity.position[i])
+                )
             # Damping
             entity.velocity *= 0.9
 
@@ -482,23 +500,30 @@ class LevelRunner:
                 a, b = entities[i], entities[j]
                 dist = float(np.linalg.norm(a.position - b.position))
                 if dist < 2.0:  # collision radius
-                    state.events.emit("collision", {
-                        "entity_a": a.entity_id,
-                        "entity_b": b.entity_id,
-                        "distance": dist,
-                        "position": ((a.position + b.position) / 2).tolist(),
-                    })
+                    state.events.emit(
+                        "collision",
+                        {
+                            "entity_a": a.entity_id,
+                            "entity_b": b.entity_id,
+                            "distance": dist,
+                            "position": ((a.position + b.position) / 2).tolist(),
+                        },
+                    )
 
     def _handle_collision(self, payload: dict[str, Any]) -> None:
         """Default collision handler."""
-        logger.debug("Collision: %s <-> %s", payload.get("entity_a"), payload.get("entity_b"))
+        logger.debug(
+            "Collision: %s <-> %s", payload.get("entity_a"), payload.get("entity_b")
+        )
 
     def _handle_combat(self, payload: dict[str, Any]) -> None:
         """Default combat handler."""
         attacker = payload.get("attacker")
         defender = payload.get("defender")
         damage = payload.get("damage", 10.0)
-        logger.debug("Combat: %s attacks %s for %.1f damage", attacker, defender, damage)
+        logger.debug(
+            "Combat: %s attacks %s for %.1f damage", attacker, defender, damage
+        )
 
     def _handle_spawn(self, payload: dict[str, Any]) -> None:
         """Default spawn handler."""
@@ -510,6 +535,7 @@ class LevelRunner:
             return
         try:
             from .quanta_vdb_bridge import QuantaTableEntry
+
             for entity in state.entities.values():
                 entry = QuantaTableEntry(
                     agent_id=entity.entity_id,

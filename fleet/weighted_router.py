@@ -11,6 +11,7 @@ Usage:
     router.add_backend("svc-b", weight=3, health="degraded")
     target = router.select()  # Probabilistic weighted selection
 """
+
 from __future__ import annotations
 
 import random

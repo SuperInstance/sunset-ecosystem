@@ -9,6 +9,7 @@ Usage:
     mgr.set_secret("api_key", "secret123")
     assert mgr.get_secret("api_key") == "secret123"
 """
+
 from __future__ import annotations
 
 import hashlib

@@ -25,6 +25,7 @@ from nexus.federation import (
 # FederationEndpoint validation
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestFederationEndpoint:
     """Endpoint must reject localhost and accept real IPs."""
 
@@ -76,6 +77,7 @@ class TestFederationEndpoint:
 # FederatedNexus registration
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestFederatedNexusRegister:
     """Registration heartbeat must target the correct endpoint."""
 
@@ -100,7 +102,9 @@ class TestFederatedNexusRegister:
         nexus = FederatedNexus(endpoint=ep, node_id="node-42")
         record = nexus.register()
 
-        expected_url = f"http://{DEFAULT_NEXUS_IP}:{DEFAULT_NEXUS_PORT}{FEDERATION_PATH}"
+        expected_url = (
+            f"http://{DEFAULT_NEXUS_IP}:{DEFAULT_NEXUS_PORT}{FEDERATION_PATH}"
+        )
         mock_post.assert_called_once()
         call_args, call_kwargs = mock_post.call_args
         assert call_args[0] == expected_url
@@ -148,12 +152,11 @@ class TestFederatedNexusRegister:
 # RegistrationRecord
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestRegistrationRecord:
     def test_stale_detection(self):
         """A record older than the timeout must report stale."""
-        record = RegistrationRecord(
-            node_id="node-1", hostname="h1", last_seen=0.0
-        )
+        record = RegistrationRecord(node_id="node-1", hostname="h1", last_seen=0.0)
         assert record.is_stale(timeout_sec=1.0)
 
     def test_fresh_record(self):

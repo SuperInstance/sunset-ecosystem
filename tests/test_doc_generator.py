@@ -65,7 +65,13 @@ class TestDocGenerator:
     def test_generate_module_index(self):
         gen = DocGenerator()
         gen.modules = [
-            ModuleDoc(name="a.py", path="a.py", classes=[{"name": "A"}], functions=[{"name": "f"}], test_count=5),
+            ModuleDoc(
+                name="a.py",
+                path="a.py",
+                classes=[{"name": "A"}],
+                functions=[{"name": "f"}],
+                test_count=5,
+            ),
             ModuleDoc(name="b.py", path="b.py", classes=[], functions=[], test_count=0),
         ]
         gen.total_tests = 5
@@ -78,10 +84,15 @@ class TestDocGenerator:
         gen = DocGenerator()
         gen.modules = [
             ModuleDoc(
-                name="test.py", path="test.py",
+                name="test.py",
+                path="test.py",
                 docstring="Test module",
-                classes=[{"name": "MyClass", "docstring": "A class", "methods": ["method"]}],
-                functions=[{"name": "my_func", "docstring": "A function", "args": ["a", "b"]}],
+                classes=[
+                    {"name": "MyClass", "docstring": "A class", "methods": ["method"]}
+                ],
+                functions=[
+                    {"name": "my_func", "docstring": "A function", "args": ["a", "b"]}
+                ],
             ),
         ]
         md = gen.generate_api_reference()
@@ -132,14 +143,25 @@ class TestDocGenerator:
             assert os.path.exists(result)
             with open(result) as f:
                 import json
+
                 data = json.load(f)
                 assert data["project"] == "my-project"
 
     def test_get_stats(self):
         gen = DocGenerator()
         gen.modules = [
-            ModuleDoc(name="a.py", path="a.py", classes=[{"name": "A"}], functions=[{"name": "f"}]),
-            ModuleDoc(name="b.py", path="b.py", classes=[], functions=[{"name": "g"}, {"name": "h"}]),
+            ModuleDoc(
+                name="a.py",
+                path="a.py",
+                classes=[{"name": "A"}],
+                functions=[{"name": "f"}],
+            ),
+            ModuleDoc(
+                name="b.py",
+                path="b.py",
+                classes=[],
+                functions=[{"name": "g"}, {"name": "h"}],
+            ),
         ]
         stats = gen.get_stats()
         assert stats["modules"] == 2

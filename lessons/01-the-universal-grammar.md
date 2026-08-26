@@ -38,7 +38,9 @@ result = topo.tick()
 # COLLECT: fibers perceived signals
 # SELECT: routing chose which rooms to fire
 # COMPILE: routes that succeeded got reinforced
-print(f"Tick {result.tick}: {result.fibers_perceived} fibers, {result.rooms_fired} rooms fired")
+print(
+    f"Tick {result.tick}: {result.fibers_perceived} fibers, {result.rooms_fired} rooms fired"
+)
 ```
 
 ## Verification

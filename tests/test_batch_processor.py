@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_batch_processor.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -50,7 +51,11 @@ class TestBatchProcessor:
         bp = BatchProcessor(max_workers=2)
         progress = []
         items = [1, 2, 3]
-        bp.process(items, lambda x: x, on_progress=lambda done, total: progress.append((done, total)))
+        bp.process(
+            items,
+            lambda x: x,
+            on_progress=lambda done, total: progress.append((done, total)),
+        )
         assert len(progress) == 3
         assert progress[-1] == (3, 3)
 

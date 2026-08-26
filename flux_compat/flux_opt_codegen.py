@@ -11,6 +11,7 @@ bytecode program with:
 
 Reference: docs/EXOTICA_NLOPT_RESEARCH_BRIEF.md (§2.2, §2.4)
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -102,6 +103,7 @@ def _i(opcode: int, operand: Optional[int] = None) -> Instruction:
 
 # ── helper: proof certificate tail ─────────────────────────
 
+
 def _proof_tail() -> List[Instruction]:
     """Standard proof-carrying suffix: Validate, HashCommit, Seal."""
     return [
@@ -113,6 +115,7 @@ def _proof_tail() -> List[Instruction]:
 
 # ── helper: fixed-point constants block ─────────────────────
 
+
 def _fp_constants(bridge: FixedPointBridge, *values: float) -> List[int]:
     """Encode a sequence of floats as fixed-point constants."""
     return [bridge.encode(v) for v in values]
@@ -121,6 +124,7 @@ def _fp_constants(bridge: FixedPointBridge, *values: float) -> List[int]:
 # ────────────────────────────────────────────────────────────
 #  DIRECT  (Dividing RECTangles)
 # ────────────────────────────────────────────────────────────
+
 
 def generate_direct_module(
     dim: int,
@@ -172,13 +176,13 @@ def generate_direct_module(
 
     # ── metadata header ──
     instructions.append(_i(_Op.Push, maxeval))
-    instructions.append(_i(_Op.StoreReg, 0))   # r0 = maxeval counter
+    instructions.append(_i(_Op.StoreReg, 0))  # r0 = maxeval counter
 
     # ── fixed-point scale factor as constant ──
     scale_fp = bridge.encode(bridge.scale_factor)
     constants.append(scale_fp)
     instructions.append(_i(_Op.LoadConst, scale_fp))
-    instructions.append(_i(_Op.StoreReg, 1))    # r1 = scale_factor
+    instructions.append(_i(_Op.StoreReg, 1))  # r1 = scale_factor
 
     # ── ftol as fixed-point constant ──
     ftol_fp = bridge.encode(ftol)
@@ -190,65 +194,81 @@ def generate_direct_module(
         lo_fp = bridge.encode(lo)
         hi_fp = bridge.encode(hi)
         constants.extend([lo_fp, hi_fp])
-        instructions.extend([
-            _i(_Op.LoadConst, lo_fp),
-            _i(_Op.LoadConst, hi_fp),
-        ])
+        instructions.extend(
+            [
+                _i(_Op.LoadConst, lo_fp),
+                _i(_Op.LoadConst, hi_fp),
+            ]
+        )
     # Push dimension for vector ops
-    instructions.extend([
-        _i(_Op.Push, dim * 2),      # total bound values loaded
-        _i(_Op.VecLoad),             # load into vec reg 0 (implicit)
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, dim * 2),  # total bound values loaded
+            _i(_Op.VecLoad),  # load into vec reg 0 (implicit)
+        ]
+    )
 
     # ── compute rectangle center (lo+hi)/2 via VecReduce ──
     # Simplified: average the bounds pair-wise
-    instructions.extend([
-        _i(_Op.Push, dim),
-        _i(_Op.VecReduce),           # sum of bounds → stack top
-        _i(_Op.Push, 2),
-        _i(_Op.Div),                 # /2 for average
-        _i(_Op.Saturate),            # clamp to fixed-point range
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, dim),
+            _i(_Op.VecReduce),  # sum of bounds → stack top
+            _i(_Op.Push, 2),
+            _i(_Op.Div),  # /2 for average
+            _i(_Op.Saturate),  # clamp to fixed-point range
+        ]
+    )
 
     # ── evaluate objective at center via CallBounded ──
     # Cycle limit = maxeval; target = 0 (native objective bridge)
-    instructions.extend([
-        _i(_Op.Push, 0),             # call target 0 = objective bridge
-        _i(_Op.Push, maxeval),       # cycle limit
-        _i(_Op.CallBounded),
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, 0),  # call target 0 = objective bridge
+            _i(_Op.Push, maxeval),  # cycle limit
+            _i(_Op.CallBounded),
+        ]
+    )
 
     # ── check rectangle size vs ftol ──
     # Push ftol constant, then RangeCheck on rectangle width
-    instructions.extend([
-        _i(_Op.LoadConst, ftol_fp),
-        _i(_Op.RangeCheck),
-        _i(_Op.Validate),
-    ])
+    instructions.extend(
+        [
+            _i(_Op.LoadConst, ftol_fp),
+            _i(_Op.RangeCheck),
+            _i(_Op.Validate),
+        ]
+    )
 
     # ── store evaluated result and update global best ──
-    instructions.extend([
-        _i(_Op.StoreReg, 2),         # r2 = current objective value
-        _i(_Op.LoadReg, 2),
-        _i(_Op.LoadReg, 3),          # r3 = best so far (0 initially)
-        _i(_Op.Min),
-        _i(_Op.StoreReg, 3),         # r3 = updated best
-    ])
+    instructions.extend(
+        [
+            _i(_Op.StoreReg, 2),  # r2 = current objective value
+            _i(_Op.LoadReg, 2),
+            _i(_Op.LoadReg, 3),  # r3 = best so far (0 initially)
+            _i(_Op.Min),
+            _i(_Op.StoreReg, 3),  # r3 = updated best
+        ]
+    )
 
     # ── VecStore of current center point ──
-    instructions.extend([
-        _i(_Op.Push, dim),
-        _i(_Op.VecStore),            # store vec reg 0 → memory
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, dim),
+            _i(_Op.VecStore),  # store vec reg 0 → memory
+        ]
+    )
 
     # ── proof certificate ──
     instructions.extend(_proof_tail())
 
     # ── result and halt ──
-    instructions.extend([
-        _i(_Op.GetResult),
-        _i(_Op.Halt),
-    ])
+    instructions.extend(
+        [
+            _i(_Op.GetResult),
+            _i(_Op.Halt),
+        ]
+    )
 
     # ── constraints metadata ──
     constraints = [
@@ -285,6 +305,7 @@ def generate_direct_module(
 # ────────────────────────────────────────────────────────────
 #  ESCH  (Evolutionary Strategy with Cauchy mutation)
 # ────────────────────────────────────────────────────────────
+
 
 def generate_esch_module(
     dim: int,
@@ -335,26 +356,32 @@ def generate_esch_module(
     warnings: List[str] = []
 
     # ── init population size and eval counter ──
-    instructions.extend([
-        _i(_Op.Push, pop_size),
-        _i(_Op.StoreReg, 0),         # r0 = pop_size
-        _i(_Op.Push, maxeval),
-        _i(_Op.StoreReg, 1),         # r1 = remaining evals
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, pop_size),
+            _i(_Op.StoreReg, 0),  # r0 = pop_size
+            _i(_Op.Push, maxeval),
+            _i(_Op.StoreReg, 1),  # r1 = remaining evals
+        ]
+    )
 
     # ── load population member 0 as template via VecLoad ──
     for lo, hi in bounds:
         lo_fp = bridge.encode(lo)
         hi_fp = bridge.encode(hi)
         constants.extend([lo_fp, hi_fp])
-        instructions.extend([
-            _i(_Op.LoadConst, lo_fp),
-            _i(_Op.LoadConst, hi_fp),
-        ])
-    instructions.extend([
-        _i(_Op.Push, dim * 2),
-        _i(_Op.VecLoad),
-    ])
+        instructions.extend(
+            [
+                _i(_Op.LoadConst, lo_fp),
+                _i(_Op.LoadConst, hi_fp),
+            ]
+        )
+    instructions.extend(
+        [
+            _i(_Op.Push, dim * 2),
+            _i(_Op.VecLoad),
+        ]
+    )
 
     # ── Cauchy mutation constants (pre-truncated to [-M, M]) ──
     # Generate a small pool of mutation constants; 99% of Cauchy mass
@@ -370,52 +397,64 @@ def generate_esch_module(
     for val in mutation_constants:
         v_fp = bridge.encode(val)
         constants.append(v_fp)
-        instructions.extend([
-            _i(_Op.LoadConst, v_fp),
-            _i(_Op.Push, dim),
-            _i(_Op.VecStore),
-        ])
+        instructions.extend(
+            [
+                _i(_Op.LoadConst, v_fp),
+                _i(_Op.Push, dim),
+                _i(_Op.VecStore),
+            ]
+        )
 
     # ── mutation: Add + Mul with constant ──
-    instructions.extend([
-        _i(_Op.Push, dim),
-        _i(_Op.VecLoad),             # load current individual
-        _i(_Op.LoadConst, constants[-1] if constants else 0),
-        _i(_Op.Mul),                 # scale by mutation constant
-        _i(_Op.Add),                 # add to current individual
-        _i(_Op.Saturate),            # clamp
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, dim),
+            _i(_Op.VecLoad),  # load current individual
+            _i(_Op.LoadConst, constants[-1] if constants else 0),
+            _i(_Op.Mul),  # scale by mutation constant
+            _i(_Op.Add),  # add to current individual
+            _i(_Op.Saturate),  # clamp
+        ]
+    )
 
     # ── evaluate mutated individual via CallBounded ──
-    instructions.extend([
-        _i(_Op.Push, 0),             # target 0 = objective bridge
-        _i(_Op.Push, maxeval // max(pop_size, 1)),
-        _i(_Op.CallBounded),
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, 0),  # target 0 = objective bridge
+            _i(_Op.Push, maxeval // max(pop_size, 1)),
+            _i(_Op.CallBounded),
+        ]
+    )
 
     # ── selection: Min over fitness ──
-    instructions.extend([
-        _i(_Op.StoreReg, 2),         # r2 = current fitness
-        _i(_Op.LoadReg, 2),
-        _i(_Op.LoadReg, 3),          # r3 = best fitness
-        _i(_Op.Min),
-        _i(_Op.StoreReg, 3),
-    ])
+    instructions.extend(
+        [
+            _i(_Op.StoreReg, 2),  # r2 = current fitness
+            _i(_Op.LoadReg, 2),
+            _i(_Op.LoadReg, 3),  # r3 = best fitness
+            _i(_Op.Min),
+            _i(_Op.StoreReg, 3),
+        ]
+    )
 
     # ── parallel dispatch across population ──
-    instructions.extend([
-        _i(_Op.Push, pop_size),
-        _i(_Op.ParDispatch),         # dispatch population evaluations
-        _i(_Op.ParBarrier),          # wait for all
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, pop_size),
+            _i(_Op.ParDispatch),  # dispatch population evaluations
+            _i(_Op.ParBarrier),  # wait for all
+        ]
+    )
 
     # ── proof certificate ──
     instructions.extend(_proof_tail())
 
-    instructions.extend([
-        _i(_Op.GetResult),
-        _i(_Op.Halt),
-    ])
+    instructions.extend(
+        [
+            _i(_Op.GetResult),
+            _i(_Op.Halt),
+        ]
+    )
 
     constraints = [
         ConstraintDef(
@@ -451,6 +490,7 @@ def generate_esch_module(
 # ────────────────────────────────────────────────────────────
 #  CRS2-LM  (Controlled Random Search)
 # ────────────────────────────────────────────────────────────
+
 
 def generate_crs2lm_module(
     dim: int,
@@ -496,25 +536,31 @@ def generate_crs2lm_module(
 
     # ── init simplex size ──
     simplex_size = max(pop_size, dim * 2)
-    instructions.extend([
-        _i(_Op.Push, simplex_size),
-        _i(_Op.StoreReg, 0),         # r0 = simplex_size
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, simplex_size),
+            _i(_Op.StoreReg, 0),  # r0 = simplex_size
+        ]
+    )
 
     # ── load bounds as vectors ──
     for lo, hi in bounds:
         lo_fp = bridge.encode(lo)
         hi_fp = bridge.encode(hi)
         constants.extend([lo_fp, hi_fp])
-        instructions.extend([
-            _i(_Op.LoadConst, lo_fp),
-            _i(_Op.LoadConst, hi_fp),
-        ])
-    instructions.extend([
-        _i(_Op.Push, dim * 2),
-        _i(_Op.VecLoad),
-        _i(_Op.VecStore),             # store bounds vec for later RangeCheck
-    ])
+        instructions.extend(
+            [
+                _i(_Op.LoadConst, lo_fp),
+                _i(_Op.LoadConst, hi_fp),
+            ]
+        )
+    instructions.extend(
+        [
+            _i(_Op.Push, dim * 2),
+            _i(_Op.VecLoad),
+            _i(_Op.VecStore),  # store bounds vec for later RangeCheck
+        ]
+    )
 
     # ── load simplex points via VecLoad ──
     # Each point has dim coordinates; load one point at a time
@@ -527,11 +573,13 @@ def generate_crs2lm_module(
             val_fp = bridge.encode(val)
             constants.append(val_fp)
             instructions.append(_i(_Op.LoadConst, val_fp))
-        instructions.extend([
-            _i(_Op.Push, dim),
-            _i(_Op.VecLoad),
-            _i(_Op.VecStore),         # store point i
-        ])
+        instructions.extend(
+            [
+                _i(_Op.Push, dim),
+                _i(_Op.VecLoad),
+                _i(_Op.VecStore),  # store point i
+            ]
+        )
 
     if simplex_size > 8:
         warnings.append(
@@ -541,48 +589,58 @@ def generate_crs2lm_module(
 
     # ── centroid via VecReduce (mean) ──
     # Sum all simplex points then divide by simplex_size
-    instructions.extend([
-        _i(_Op.Push, dim),
-        _i(_Op.VecReduce),            # sum → stack
-        _i(_Op.Push, simplex_size),
-        _i(_Op.Div),                  # mean
-        _i(_Op.Saturate),
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, dim),
+            _i(_Op.VecReduce),  # sum → stack
+            _i(_Op.Push, simplex_size),
+            _i(_Op.Div),  # mean
+            _i(_Op.Saturate),
+        ]
+    )
 
     # ── reflection: centroid + alpha*(centroid - worst_point) ──
     # alpha = 1.5 as fixed-point constant
     alpha = 1.5
     alpha_fp = bridge.encode(alpha)
     constants.append(alpha_fp)
-    instructions.extend([
-        _i(_Op.LoadConst, alpha_fp),
-        _i(_Op.Mul),
-        _i(_Op.Add),
-        _i(_Op.Saturate),
-    ])
+    instructions.extend(
+        [
+            _i(_Op.LoadConst, alpha_fp),
+            _i(_Op.Mul),
+            _i(_Op.Add),
+            _i(_Op.Saturate),
+        ]
+    )
 
     # ── RangeCheck reflected point against bounds ──
-    instructions.extend([
-        _i(_Op.Push, dim),
-        _i(_Op.VecRangeCheck),
-        _i(_Op.Validate),
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, dim),
+            _i(_Op.VecRangeCheck),
+            _i(_Op.Validate),
+        ]
+    )
 
     # ── evaluate reflected point via CallBounded ──
-    instructions.extend([
-        _i(_Op.Push, 0),              # target 0 = objective bridge
-        _i(_Op.Push, simplex_size * 10),  # cycle limit
-        _i(_Op.CallBounded),
-        _i(_Op.StoreReg, 1),         # r1 = reflected fitness
-    ])
+    instructions.extend(
+        [
+            _i(_Op.Push, 0),  # target 0 = objective bridge
+            _i(_Op.Push, simplex_size * 10),  # cycle limit
+            _i(_Op.CallBounded),
+            _i(_Op.StoreReg, 1),  # r1 = reflected fitness
+        ]
+    )
 
     # ── proof certificate ──
     instructions.extend(_proof_tail())
 
-    instructions.extend([
-        _i(_Op.GetResult),
-        _i(_Op.Halt),
-    ])
+    instructions.extend(
+        [
+            _i(_Op.GetResult),
+            _i(_Op.Halt),
+        ]
+    )
 
     constraints = [
         ConstraintDef(
@@ -618,6 +676,7 @@ def generate_crs2lm_module(
 # ────────────────────────────────────────────────────────────
 #  Unified codegen class
 # ────────────────────────────────────────────────────────────
+
 
 @dataclass
 class FLUXOptimizerCodegen:

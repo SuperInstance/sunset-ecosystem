@@ -51,12 +51,12 @@ class TestSwarmRunner:
 
     def test_run_backtest_cycle_low_capacity(self):
         runner = SwarmRunner()
-        with patch.object(runner, 'spare_capacity', return_value=0.1):
+        with patch.object(runner, "spare_capacity", return_value=0.1):
             assert runner.run_backtest_cycle() is False
 
     def test_run_backtest_cycle_ok(self):
         runner = SwarmRunner()
-        with patch.object(runner, 'spare_capacity', return_value=0.5):
+        with patch.object(runner, "spare_capacity", return_value=0.5):
             assert runner.run_backtest_cycle() is True
             assert runner._backtests_run == 1
 

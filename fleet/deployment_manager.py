@@ -11,6 +11,7 @@ Usage:
     dm = DeploymentManager(health_checker=check_node)
     dm.deploy(nodes=["n1", "n2", "n3"], batch_size=1, health_wait=30.0)
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Deployment:
     """A deployment record."""
+
     deployment_id: str
     nodes: list[str]
     strategy: str
@@ -43,6 +45,7 @@ class Deployment:
 @dataclass
 class DeploymentStrategy:
     """Deployment strategy configuration."""
+
     batch_size: int = 1
     health_wait: float = 30.0
     max_failures: int = 1
@@ -101,7 +104,7 @@ class DeploymentManager:
         dep.status = "running"
         failures = 0
         for i in range(0, len(dep.nodes), strat.batch_size):
-            batch = dep.nodes[i:i + strat.batch_size]
+            batch = dep.nodes[i : i + strat.batch_size]
             for node in batch:
                 success = self._deploy_node(node, dep, strat)
                 if not success:
@@ -116,8 +119,8 @@ class DeploymentManager:
 
     def _run_canary(self, dep: Deployment, strat: DeploymentStrategy) -> None:
         dep.status = "running"
-        canary_nodes = dep.nodes[:strat.canary_count]
-        rest = dep.nodes[strat.canary_count:]
+        canary_nodes = dep.nodes[: strat.canary_count]
+        rest = dep.nodes[strat.canary_count :]
 
         for node in canary_nodes:
             if not self._deploy_node(node, dep, strat):
@@ -135,7 +138,9 @@ class DeploymentManager:
 
         dep.status = "success"
 
-    def _deploy_node(self, node: str, dep: Deployment, strat: DeploymentStrategy) -> bool:
+    def _deploy_node(
+        self, node: str, dep: Deployment, strat: DeploymentStrategy
+    ) -> bool:
         logger.info(f"Deploying to {node}...")
         try:
             if not self._deploy_fn(node):

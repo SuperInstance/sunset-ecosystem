@@ -20,14 +20,14 @@ Templates are configuration presets for specialized agents. Each template define
 ```python
 @dataclass
 class AgentTemplate:
-    name: str                    # e.g. "mud-expert", "arena-analyst"
-    ethos_bias: float            # starting ethos [0, 1]
-    pathos_bias: float           # starting pathos [0, 1]
-    logos_bias: float            # starting logos [0, 1]
-    input_projection: str        # how to build the 64-dim signal
-    chaos_initial: float         # exploration rate at birth
-    hint_level: int              # 10 = fully hinted, 0 = autonomous
-    tags: list[str]              # for routing queries
+    name: str  # e.g. "mud-expert", "arena-analyst"
+    ethos_bias: float  # starting ethos [0, 1]
+    pathos_bias: float  # starting pathos [0, 1]
+    logos_bias: float  # starting logos [0, 1]
+    input_projection: str  # how to build the 64-dim signal
+    chaos_initial: float  # exploration rate at birth
+    hint_level: int  # 10 = fully hinted, 0 = autonomous
+    tags: list[str]  # for routing queries
 ```
 
 ### Built-in Templates
@@ -53,17 +53,18 @@ def spawn_from_template(grid: JEPAGrid, template: AgentTemplate, room_idx: int) 
     """Spawn an agent from a template into a specific room."""
     # Reset the room
     grid.rebirth(room_idx)
-    
+
     # Override chaos
     grid.chaos[room_idx] = template.chaos_initial
-    
+
     # Bias weights toward template signature
     seed = hash(template.name) % (2**31)
     rng = np.random.RandomState(seed)
     for key, shape in [("w1", (64, 32)), ("w2", (32, 16)), ("w3", (16, 16))]:
         base = grid.w[key][room_idx]
-        bias_scale = np.array([template.ethos_bias, template.pathos_bias, 
-                               template.logos_bias]).mean()
+        bias_scale = np.array(
+            [template.ethos_bias, template.pathos_bias, template.logos_bias]
+        ).mean()
         grid.w[key][room_idx] = base * (0.8 + 0.4 * bias_scale)
 ```
 
@@ -97,53 +98,55 @@ New generation in the grid
 ```python
 class Breeder:
     """Connects tournament breeding to JEPAGrid room management."""
-    
+
     def __init__(self, grid: JEPAGrid, templates: dict[str, AgentTemplate]):
         self.grid = grid
         self.templates = templates
         self.generation = 0
-    
+
     def evolve(self, scores: list[AgentScore]) -> list[dict]:
         """One evolution step: tournament → breed → rebirth."""
         self.generation += 1
-        
+
         # 1. Run tournament
         round = TournamentRound(scores)
         results = round.run()
-        
+
         # 2. Identify sunset candidates (dominated agents)
         dominated = sunset_candidates(scores)
-        
+
         # 3. Breed from winners
         winners = round.pareto_frontier
         if not winners:
             return []
-        
+
         num_children = min(len(dominated), self.grid.n - len(winners))
         children = breed(winners, num_children)
-        
+
         # 4. Place children into sunset rooms
         cold_rooms = self.grid.cold(thresh=1)
         placed = []
-        
+
         for i, child in enumerate(children):
             if i >= len(cold_rooms):
                 break  # thermal budget exhausted
-            
+
             room_idx = cold_rooms[i]
             self.grid.rebirth(room_idx)
-            
+
             # Map child's trinity scores to room behavior
             self.grid.chaos[room_idx] = 0.3  # fresh exploration
-            
-            placed.append({
-                **child,
-                "room": room_idx,
-                "generation": self.generation,
-            })
-        
+
+            placed.append(
+                {
+                    **child,
+                    "room": room_idx,
+                    "generation": self.generation,
+                }
+            )
+
         return placed
-    
+
     def spawn_template(self, template_name: str) -> int | None:
         """Spawn a specific template into the coldest available room."""
         cold = self.grid.cold(thresh=0)  # completely inactive rooms
@@ -153,7 +156,7 @@ class Breeder:
             room_idx = int(np.argmin(activity[activity > 0]))
         else:
             room_idx = cold[0]
-        
+
         template = self.templates[template_name]
         spawn_from_template(self.grid, template, room_idx)
         return room_idx

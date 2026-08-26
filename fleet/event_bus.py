@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class Event:
     """A fleet event."""
+
     event_type: str
     payload: Dict[str, Any]
     timestamp: float
@@ -56,8 +57,9 @@ class EventBus:
             return True
         return False
 
-    def publish(self, event_type: str, payload: Dict[str, Any],
-                source: Optional[str] = None) -> Event:
+    def publish(
+        self, event_type: str, payload: Dict[str, Any], source: Optional[str] = None
+    ) -> Event:
         """Publish an event to all subscribers."""
         event = Event(
             event_type=event_type,
@@ -67,7 +69,7 @@ class EventBus:
         )
         self._history.append(event)
         if len(self._history) > self._max_history:
-            self._history = self._history[-self._max_history:]
+            self._history = self._history[-self._max_history :]
 
         # Notify subscribers
         handlers = self._subscribers.get(event_type, [])
@@ -88,8 +90,9 @@ class EventBus:
 
         return event
 
-    def get_history(self, event_type: Optional[str] = None,
-                    limit: int = 100) -> List[Event]:
+    def get_history(
+        self, event_type: Optional[str] = None, limit: int = 100
+    ) -> List[Event]:
         """Get event history, optionally filtered by type."""
         events = self._history
         if event_type:
@@ -99,19 +102,20 @@ class EventBus:
     def get_stats(self) -> Dict[str, Any]:
         """Get event bus statistics."""
         return {
-            "subscribers": {
-                k: len(v) for k, v in self._subscribers.items()
-            },
+            "subscribers": {k: len(v) for k, v in self._subscribers.items()},
             "history_size": len(self._history),
             "event_types": list(set(e.event_type for e in self._history)),
         }
 
     def export_json(self) -> str:
         """Export event history as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "history": [e.to_dict() for e in self._history[-100:]],
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "history": [e.to_dict() for e in self._history[-100:]],
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

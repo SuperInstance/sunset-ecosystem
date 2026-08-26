@@ -161,7 +161,9 @@ class CudaEinsumKernel:
             self._kernel = cp.RawKernel(_EINSUM_SIMPLE_KERNEL, "einsum_masked_simple")
             log.info("CUDA kernel compiled successfully")
         except Exception as exc:
-            log.warning("CUDA kernel compilation failed (%s) — falling back to NumPy", exc)
+            log.warning(
+                "CUDA kernel compilation failed (%s) — falling back to NumPy", exc
+            )
             self._fallback = True
 
     # ── Tiling math (exposed for testing) ─────────────────────
@@ -201,7 +203,10 @@ class CudaEinsumKernel:
         if self._fallback:
             # Return a no-op callable that raises to avoid silent fallback in benchmark
             def _fallback_callable(*args, **kwargs):
-                raise RuntimeError("CUDA unavailable — compile_kernel called in fallback mode")
+                raise RuntimeError(
+                    "CUDA unavailable — compile_kernel called in fallback mode"
+                )
+
             self._compiled[key] = _fallback_callable
             return _fallback_callable
 
@@ -209,15 +214,30 @@ class CudaEinsumKernel:
         # Threads per block = 256 (tunable)
         threads_per_block = 256
 
-        def _launch(A: cp.ndarray, B: cp.ndarray, mask: cp.ndarray,
-                    selected_idx: cp.ndarray, out: cp.ndarray, n_selected: int):
+        def _launch(
+            A: cp.ndarray,
+            B: cp.ndarray,
+            mask: cp.ndarray,
+            selected_idx: cp.ndarray,
+            out: cp.ndarray,
+            n_selected: int,
+        ):
             total = n_selected * B.shape[0]
             blocks = (total + threads_per_block - 1) // threads_per_block
             self._kernel(
-                (blocks,), (threads_per_block,),
-                (A, B, mask, out,
-                 n_rooms, d_latent, B.shape[0],
-                 selected_idx, n_selected)
+                (blocks,),
+                (threads_per_block,),
+                (
+                    A,
+                    B,
+                    mask,
+                    out,
+                    n_rooms,
+                    d_latent,
+                    B.shape[0],
+                    selected_idx,
+                    n_selected,
+                ),
             )
 
         self._compiled[key] = _launch
@@ -245,8 +265,9 @@ class CudaEinsumKernel:
 
     # ── Signal routing ────────────────────────────────────────
 
-    def route_signals(self, room_vectors: np.ndarray, signal_matrix: np.ndarray,
-                      room_mask: np.ndarray) -> np.ndarray:
+    def route_signals(
+        self, room_vectors: np.ndarray, signal_matrix: np.ndarray, room_mask: np.ndarray
+    ) -> np.ndarray:
         """Execute the CUDA einsum: room_vectors[mask] @ signal_matrix.T
 
         Args:
@@ -261,12 +282,14 @@ class CudaEinsumKernel:
         Target: <3ms for 500 rooms × 128-dim vectors on RTX 4050
         """
         # Validate first — both CUDA and fallback need this
-        room_vectors, signal_matrix, room_mask, n_rooms, d_latent, d_out = \
+        room_vectors, signal_matrix, room_mask, n_rooms, d_latent, d_out = (
             self._validate_inputs(room_vectors, signal_matrix, room_mask)
+        )
 
         if self._fallback:
-            return self._route_signals_numpy(room_vectors, signal_matrix, room_mask,
-                                             n_rooms, d_latent, d_out)
+            return self._route_signals_numpy(
+                room_vectors, signal_matrix, room_mask, n_rooms, d_latent, d_out
+            )
 
         selected_idx = np.where(room_mask)[0].astype(np.int32)
         n_selected = len(selected_idx)
@@ -286,10 +309,15 @@ class CudaEinsumKernel:
 
         return cp.asnumpy(d_out_arr)
 
-    def _route_signals_numpy(self, room_vectors: np.ndarray,
-                             signal_matrix: np.ndarray,
-                             room_mask: np.ndarray,
-                             n_rooms: int, d_latent: int, d_out: int) -> np.ndarray:
+    def _route_signals_numpy(
+        self,
+        room_vectors: np.ndarray,
+        signal_matrix: np.ndarray,
+        room_mask: np.ndarray,
+        n_rooms: int,
+        d_latent: int,
+        d_out: int,
+    ) -> np.ndarray:
         """NumPy fallback: optimized einsum with BLAS dispatch."""
         selected = room_vectors[room_mask]
         if selected.size == 0:
@@ -299,8 +327,7 @@ class CudaEinsumKernel:
 
     # ── Benchmarking ──────────────────────────────────────────
 
-    def benchmark(self, n_rooms: int, d_latent: int,
-                  n_iterations: int = 100) -> dict:
+    def benchmark(self, n_rooms: int, d_latent: int, n_iterations: int = 100) -> dict:
         """Benchmark against numpy baseline. Returns speedup factor and ms per call.
 
         Generates random data of the specified shape and runs the kernel
@@ -343,9 +370,13 @@ class CudaEinsumKernel:
             "speedup": round(speedup, 2),
             "cuda_available": _CUDA_AVAILABLE and not self._fallback,
             "shape_ok": result.shape == baseline.shape,
-            "max_diff": float(np.max(np.abs(result - baseline))) if result.shape == baseline.shape else None,
+            "max_diff": float(np.max(np.abs(result - baseline)))
+            if result.shape == baseline.shape
+            else None,
         }
 
     def __repr__(self) -> str:
-        status = "CUDA" if (_CUDA_AVAILABLE and not self._fallback) else "NumPy-fallback"
+        status = (
+            "CUDA" if (_CUDA_AVAILABLE and not self._fallback) else "NumPy-fallback"
+        )
         return f"CudaEinsumKernel(n_sms={self.n_sms}, shared_mem={self.shared_mem_kb}KB, status={status})"

@@ -71,31 +71,31 @@ MAP-Elites style archive for breeding history.
 
 Add an individual to the archive.
 
-*Source: `fleet/breed_optimizer.py:84`*
+*Source: `fleet/breed_optimizer.py:87`*
 
 #### `_to_indices(behavior)`
 
 Convert behavior coordinates to archive indices.
 
-*Source: `fleet/breed_optimizer.py:92`*
+*Source: `fleet/breed_optimizer.py:95`*
 
 #### `_update_metrics()`
 
 Update coverage and QD-score.
 
-*Source: `fleet/breed_optimizer.py:99`*
+*Source: `fleet/breed_optimizer.py:101`*
 
 #### `get_best_in_cell(indices)`
 
 Get the best individual in a cell.
 
-*Source: `fleet/breed_optimizer.py:108`*
+*Source: `fleet/breed_optimizer.py:113`*
 
 #### `sample_diverse(k)`
 
 Sample k diverse individuals from different cells.
 
-*Source: `fleet/breed_optimizer.py:119`*
+*Source: `fleet/breed_optimizer.py:124`*
 
 ### `class AnomalyResult`
 
@@ -118,7 +118,7 @@ tminus : TMinusBridge | None
 
 #### `__init__(node_id, swarm, cache, tminus)`
 
-*Source: `fleet/breed_optimizer.py:152`*
+*Source: `fleet/breed_optimizer.py:158`*
 
 #### `wasserstein_distance(distribution_a, distribution_b)`
 
@@ -140,7 +140,7 @@ Returns
 float
     Wasserstein distance (0 = identical).
 
-*Source: `fleet/breed_optimizer.py:169`*
+*Source: `fleet/breed_optimizer.py:175`*
 
 #### `diversity_score(agent_a_traits, agent_b_traits)`
 
@@ -149,7 +149,7 @@ Compute diversity score between two agents.
 Combines Wasserstein distance with trait overlap.
 Higher = more diverse (better for breeding).
 
-*Source: `fleet/breed_optimizer.py:211`*
+*Source: `fleet/breed_optimizer.py:217`*
 
 #### `select_parents(pool, k, diversity_weight)`
 
@@ -169,7 +169,7 @@ Returns
 list[ParentPair]
     Sorted by composite score (highest first).
 
-*Source: `fleet/breed_optimizer.py:228`*
+*Source: `fleet/breed_optimizer.py:234`*
 
 #### `_predict_offspring(traits_a, traits_b)`
 
@@ -177,7 +177,7 @@ Predict offspring quality from parent traits.
 
 Simple model: offspring fitness = mean(parent fitnesses) + crossover bonus.
 
-*Source: `fleet/breed_optimizer.py:286`*
+*Source: `fleet/breed_optimizer.py:292`*
 
 #### `detect_anomalies(history, threshold)`
 
@@ -200,8 +200,7 @@ Detect anomalies in breeding history.
         list[AnomalyResult]
             Detected anomalies.
 
-
-*Source: `fleet/breed_optimizer.py:335`*
+*Source: `fleet/breed_optimizer.py:343`*
 
 #### `optimize_archive(archive, iterations)`
 
@@ -219,7 +218,7 @@ Returns
 BreedingArchive
     Optimized archive.
 
-*Source: `fleet/breed_optimizer.py:414`*
+*Source: `fleet/breed_optimizer.py:430`*
 
 #### `distributed_select_parents(pool, k)`
 
@@ -228,7 +227,7 @@ Select parents using distributed swarm search.
 If VectorSwarm is available, distribute the search across nodes.
 Otherwise, falls back to local selection.
 
-*Source: `fleet/breed_optimizer.py:457`*
+*Source: `fleet/breed_optimizer.py:476`*
 
 #### `set_breeding_deadline(parent_deadline, child_budget)`
 
@@ -236,31 +235,31 @@ Set breeding deadline with parent→child inheritance.
 
 Uses TMinusBridge if available, otherwise simple min().
 
-*Source: `fleet/breed_optimizer.py:477`*
+*Source: `fleet/breed_optimizer.py:496`*
 
 #### `record_breeding(parent_a, parent_b, offspring_fitness, diversity, traits)`
 
 Record a breeding event in history.
 
-*Source: `fleet/breed_optimizer.py:492`*
+*Source: `fleet/breed_optimizer.py:511`*
 
 #### `get_history()`
 
 Get breeding history.
 
-*Source: `fleet/breed_optimizer.py:511`*
+*Source: `fleet/breed_optimizer.py:530`*
 
 #### `get_stats()`
 
 Get optimizer statistics.
 
-*Source: `fleet/breed_optimizer.py:515`*
+*Source: `fleet/breed_optimizer.py:534`*
 
 #### `generate_report()`
 
 Generate comprehensive optimizer report.
 
-*Source: `fleet/breed_optimizer.py:541`*
+*Source: `fleet/breed_optimizer.py:560`*
 
 ---
 
@@ -314,13 +313,13 @@ A caslang script is a list of JSONL command objects.
 
 Serialize to caslang JSONL format.
 
-*Source: `fleet/caslang_executor.py:78`*
+*Source: `fleet/caslang_executor.py:80`*
 
 #### `from_jsonl(text)`
 
 Parse from caslang JSONL format.
 
-*Source: `fleet/caslang_executor.py:86`*
+*Source: `fleet/caslang_executor.py:88`*
 
 #### `from_task_graph(graph)`
 
@@ -335,13 +334,13 @@ Task graph format (from autonomous_repo.py):
     "dependencies": [{"from": "t1", "to": "t2"}]
 }
 
-*Source: `fleet/caslang_executor.py:101`*
+*Source: `fleet/caslang_executor.py:103`*
 
 #### `_convert_action(action, params, tid)`
 
 Map a sunset action to a caslang command.
 
-*Source: `fleet/caslang_executor.py:150`*
+*Source: `fleet/caslang_executor.py:154`*
 
 ### `class ExecutionSandbox`
 
@@ -360,7 +359,7 @@ network_enabled : bool
 
 #### `__init__(allowed_paths, allowed_tools, max_file_size, network_enabled)`
 
-*Source: `fleet/caslang_executor.py:196`*
+*Source: `fleet/caslang_executor.py:211`*
 
 #### `validate(script)`
 
@@ -368,13 +367,13 @@ Pre-flight validation: check every command against the sandbox.
 
 Returns a list of warnings/errors.  Empty list means clean.
 
-*Source: `fleet/caslang_executor.py:215`*
+*Source: `fleet/caslang_executor.py:230`*
 
 #### `_is_path_allowed(path)`
 
 Check if a path is within the allowed set.
 
-*Source: `fleet/caslang_executor.py:246`*
+*Source: `fleet/caslang_executor.py:263`*
 
 ### `class CaslangExecutor`
 
@@ -389,13 +388,13 @@ rollback_enabled : bool
 
 #### `__init__(sandbox, rollback_enabled)`
 
-*Source: `fleet/caslang_executor.py:272`*
+*Source: `fleet/caslang_executor.py:289`*
 
 #### `convert_task_graph(graph)`
 
 Convert a JSON task graph to a caslang script.
 
-*Source: `fleet/caslang_executor.py:286`*
+*Source: `fleet/caslang_executor.py:303`*
 
 #### `execute(script)`
 
@@ -403,35 +402,35 @@ Execute a caslang script in the sandbox.
 
 Returns a result dict with status, output, and execution log.
 
-*Source: `fleet/caslang_executor.py:292`*
+*Source: `fleet/caslang_executor.py:309`*
 
 #### `_resolve_value(raw, variables)`
 
 Resolve template references like ${var} or ${data['key']}.
 
-*Source: `fleet/caslang_executor.py:458`*
+*Source: `fleet/caslang_executor.py:486`*
 
 #### `_check_path(path)`
 
 Verify a path is within the sandbox.
 
-*Source: `fleet/caslang_executor.py:479`*
+*Source: `fleet/caslang_executor.py:509`*
 
 #### `_snapshot_state()`
 
 Capture filesystem state for rollback.
 
-*Source: `fleet/caslang_executor.py:484`*
+*Source: `fleet/caslang_executor.py:514`*
 
 #### `_rollback(state)`
 
 Undo filesystem changes from the failed script.
 
-*Source: `fleet/caslang_executor.py:492`*
+*Source: `fleet/caslang_executor.py:522`*
 
 #### `stats()`
 
-*Source: `fleet/caslang_executor.py:506`*
+*Source: `fleet/caslang_executor.py:536`*
 
 ---
 
@@ -501,7 +500,7 @@ Returns
 list[CachePrediction]
     Predicted agent IDs with confidence scores.
 
-*Source: `fleet/cognitive_cache.py:74`*
+*Source: `fleet/cognitive_cache.py:76`*
 
 ### `class CognitiveCache`
 
@@ -518,7 +517,7 @@ engine : PredictionEngine
 
 #### `__init__(storage, tracker, engine)`
 
-*Source: `fleet/cognitive_cache.py:145`*
+*Source: `fleet/cognitive_cache.py:149`*
 
 #### `query(agent_id)`
 
@@ -534,7 +533,7 @@ Returns
 VectorTableEntry | None
     Entry if found.
 
-*Source: `fleet/cognitive_cache.py:160`*
+*Source: `fleet/cognitive_cache.py:164`*
 
 #### `query_similar(vector, k)`
 
@@ -552,25 +551,25 @@ Returns
 list[VectorTableEntry]
     Similar entries.
 
-*Source: `fleet/cognitive_cache.py:200`*
+*Source: `fleet/cognitive_cache.py:205`*
 
 #### `_preload_predictions()`
 
 Preload predicted entries into hot tier.
 
-*Source: `fleet/cognitive_cache.py:233`*
+*Source: `fleet/cognitive_cache.py:239`*
 
 #### `run_maintenance()`
 
 Run maintenance: demote cold entries, rebuild predictions.
 
-*Source: `fleet/cognitive_cache.py:254`*
+*Source: `fleet/cognitive_cache.py:262`*
 
 #### `stats()`
 
 Cache statistics.
 
-*Source: `fleet/cognitive_cache.py:262`*
+*Source: `fleet/cognitive_cache.py:270`*
 
 ---
 
@@ -621,7 +620,7 @@ cache_path : Path | None
 
 #### `__init__(org, cache_path)`
 
-*Source: `fleet/ecosystem_hub.py:90`*
+*Source: `fleet/ecosystem_hub.py:93`*
 
 #### `discover(force_refresh)`
 
@@ -629,23 +628,23 @@ Discover all repos in the organization.
 
 Uses cached results if available and fresh (<24h).
 
-*Source: `fleet/ecosystem_hub.py:104`*
+*Source: `fleet/ecosystem_hub.py:107`*
 
 #### `_auto_tag(card)`
 
 Auto-tag repos based on name/description.
 
-*Source: `fleet/ecosystem_hub.py:159`*
+*Source: `fleet/ecosystem_hub.py:177`*
 
 #### `_save_cache()`
 
 Save discovered repos to cache file.
 
-*Source: `fleet/ecosystem_hub.py:200`*
+*Source: `fleet/ecosystem_hub.py:223`*
 
 #### `_repo_to_dict(card)`
 
-*Source: `fleet/ecosystem_hub.py:209`*
+*Source: `fleet/ecosystem_hub.py:234`*
 
 #### `map_integrations()`
 
@@ -653,25 +652,25 @@ Map discovered repos to sunset-ecosystem integration opportunities.
 
 Uses hard-coded rules based on repo analysis.
 
-*Source: `fleet/ecosystem_hub.py:226`*
+*Source: `fleet/ecosystem_hub.py:251`*
 
 #### `suggest_priority_tasks()`
 
 Generate concrete integration tasks sorted by priority and impact.
 
-*Source: `fleet/ecosystem_hub.py:387`*
+*Source: `fleet/ecosystem_hub.py:412`*
 
 #### `generate_report()`
 
 Generate a comprehensive ecosystem report.
 
-*Source: `fleet/ecosystem_hub.py:438`*
+*Source: `fleet/ecosystem_hub.py:627`*
 
 #### `write_report(path)`
 
 Write the ecosystem report to a markdown file.
 
-*Source: `fleet/ecosystem_hub.py:505`*
+*Source: `fleet/ecosystem_hub.py:700`*
 
 ---
 
@@ -710,57 +709,57 @@ Usage:
 
 ### `health()`
 
-*Source: `fleet/fleet_api.py:91`*
+*Source: `fleet/fleet_api.py:93`*
 
 ### `status()`
 
-*Source: `fleet/fleet_api.py:98`*
+*Source: `fleet/fleet_api.py:101`*
 
 ### `insert_agent(entry)`
 
-*Source: `fleet/fleet_api.py:116`*
+*Source: `fleet/fleet_api.py:120`*
 
 ### `get_agent(agent_id)`
 
-*Source: `fleet/fleet_api.py:134`*
+*Source: `fleet/fleet_api.py:138`*
 
 ### `_brute_force_knn(table, vector, k)`
 
 Brute-force KNN search (fallback when HNSW is unavailable).
 
-*Source: `fleet/fleet_api.py:148`*
+*Source: `fleet/fleet_api.py:152`*
 
 ### `similar_agents(query)`
 
-*Source: `fleet/fleet_api.py:166`*
+*Source: `fleet/fleet_api.py:170`*
 
 ### `memory_write(req)`
 
-*Source: `fleet/fleet_api.py:186`*
+*Source: `fleet/fleet_api.py:191`*
 
 ### `memory_query(req)`
 
-*Source: `fleet/fleet_api.py:194`*
+*Source: `fleet/fleet_api.py:199`*
 
 ### `memory_shards()`
 
-*Source: `fleet/fleet_api.py:225`*
+*Source: `fleet/fleet_api.py:230`*
 
 ### `cache_stats()`
 
-*Source: `fleet/fleet_api.py:233`*
+*Source: `fleet/fleet_api.py:242`*
 
 ### `cache_maintenance()`
 
-*Source: `fleet/fleet_api.py:238`*
+*Source: `fleet/fleet_api.py:247`*
 
 ### `swarm_knn(query)`
 
-*Source: `fleet/fleet_api.py:246`*
+*Source: `fleet/fleet_api.py:256`*
 
 ### `test_inventory()`
 
-*Source: `fleet/fleet_api.py:271`*
+*Source: `fleet/fleet_api.py:282`*
 
 ---
 
@@ -818,33 +817,33 @@ Each shard covers a time range and has its own HNSW index.
 
 #### `__init__(shard_id, start_time, end_time, dim, identity)`
 
-*Source: `fleet/fleet_memory.py:89`*
+*Source: `fleet/fleet_memory.py:91`*
 
 #### `add_memory(entry)`
 
 Add a memory entry to this shard.
 
-*Source: `fleet/fleet_memory.py:130`*
+*Source: `fleet/fleet_memory.py:132`*
 
 #### `query_similar(vector, k, min_fitness)`
 
 Find memories similar to the given vector.
 
-*Source: `fleet/fleet_memory.py:136`*
+*Source: `fleet/fleet_memory.py:138`*
 
 #### `query_by_agent(agent_id)`
 
 Find all memories from a specific agent.
 
-*Source: `fleet/fleet_memory.py:158`*
+*Source: `fleet/fleet_memory.py:161`*
 
 #### `get_stats()`
 
-*Source: `fleet/fleet_memory.py:167`*
+*Source: `fleet/fleet_memory.py:170`*
 
 #### `close()`
 
-*Source: `fleet/fleet_memory.py:176`*
+*Source: `fleet/fleet_memory.py:179`*
 
 ### `class FleetMemory`
 
@@ -865,7 +864,7 @@ identity : AgentIdentity | None
 
 #### `__init__(node_id, dim, shard_duration_seconds, max_active_shards, identity)`
 
-*Source: `fleet/fleet_memory.py:197`*
+*Source: `fleet/fleet_memory.py:200`*
 
 #### `remember(agent_id, vector, timestamp, generation, fitness, context)`
 
@@ -891,7 +890,7 @@ Returns
 bool
     True if stored successfully.
 
-*Source: `fleet/fleet_memory.py:222`*
+*Source: `fleet/fleet_memory.py:225`*
 
 #### `recall(query)`
 
@@ -907,61 +906,61 @@ Returns
 list[MemoryEntry]
     Matching memories sorted by relevance.
 
-*Source: `fleet/fleet_memory.py:275`*
+*Source: `fleet/fleet_memory.py:278`*
 
 #### `recall_similar(vector, k, start_time, end_time, min_fitness)`
 
 Quick recall by vector similarity.
 
-*Source: `fleet/fleet_memory.py:335`*
+*Source: `fleet/fleet_memory.py:339`*
 
 #### `get_memory_stats()`
 
 Return fleet memory statistics.
 
-*Source: `fleet/fleet_memory.py:352`*
+*Source: `fleet/fleet_memory.py:358`*
 
 #### `get_shard_report()`
 
 Return detailed report of all shards.
 
-*Source: `fleet/fleet_memory.py:365`*
+*Source: `fleet/fleet_memory.py:371`*
 
 #### `close()`
 
 Close all shards and release resources.
 
-*Source: `fleet/fleet_memory.py:377`*
+*Source: `fleet/fleet_memory.py:383`*
 
 #### `_timestamp_to_shard_id(timestamp)`
 
 Convert timestamp to shard ID (e.g., '2026-06-08').
 
-*Source: `fleet/fleet_memory.py:387`*
+*Source: `fleet/fleet_memory.py:393`*
 
 #### `_shard_id_to_time_range(shard_id)`
 
 Convert shard ID to time range.
 
-*Source: `fleet/fleet_memory.py:393`*
+*Source: `fleet/fleet_memory.py:400`*
 
 #### `_get_or_create_shard(shard_id)`
 
 Get existing shard or create new one.
 
-*Source: `fleet/fleet_memory.py:402`*
+*Source: `fleet/fleet_memory.py:410`*
 
 #### `_get_shard(shard_id)`
 
 Get shard by ID, loading from disk if needed.
 
-*Source: `fleet/fleet_memory.py:431`*
+*Source: `fleet/fleet_memory.py:439`*
 
 #### `_select_shards(start_time, end_time)`
 
 Select shard IDs that overlap with the time range.
 
-*Source: `fleet/fleet_memory.py:439`*
+*Source: `fleet/fleet_memory.py:447`*
 
 ---
 
@@ -1024,41 +1023,41 @@ Generate fleet-wide health report.
 
 Compute health for a single node.
 
-*Source: `fleet/fleet_monitor.py:144`*
+*Source: `fleet/fleet_monitor.py:146`*
 
 #### `_health_to_dict(health)`
 
-*Source: `fleet/fleet_monitor.py:190`*
+*Source: `fleet/fleet_monitor.py:192`*
 
 #### `check_alerts()`
 
 Check all nodes for alert conditions.
 
-*Source: `fleet/fleet_monitor.py:208`*
+*Source: `fleet/fleet_monitor.py:210`*
 
 #### `_node_alerts(health)`
 
 Generate alerts for a single node.
 
-*Source: `fleet/fleet_monitor.py:216`*
+*Source: `fleet/fleet_monitor.py:218`*
 
 #### `snapshot()`
 
 Take a snapshot of fleet state for persistence.
 
-*Source: `fleet/fleet_monitor.py:290`*
+*Source: `fleet/fleet_monitor.py:307`*
 
 #### `get_history(n)`
 
 Get last n snapshots.
 
-*Source: `fleet/fleet_monitor.py:317`*
+*Source: `fleet/fleet_monitor.py:334`*
 
 #### `get_trends(metric, node_id)`
 
 Get trend for a metric over time.
 
-*Source: `fleet/fleet_monitor.py:321`*
+*Source: `fleet/fleet_monitor.py:338`*
 
 ---
 
@@ -1099,13 +1098,13 @@ auto_rebuild_threshold : float
 
 #### `__init__(base_table, config, auto_rebuild_threshold)`
 
-*Source: `swarm/hnsw_mesh_table.py:62`*
+*Source: `swarm/hnsw_mesh_table.py:64`*
 
 #### `insert(entry)`
 
 Insert into base table + HNSW index.
 
-*Source: `swarm/hnsw_mesh_table.py:86`*
+*Source: `swarm/hnsw_mesh_table.py:88`*
 
 #### `knn_search(query_vector, k, filter_fn)`
 
@@ -1125,44 +1124,44 @@ Returns
 list[tuple[VectorTableEntry, float]]
     Results sorted by distance ascending.
 
-*Source: `swarm/hnsw_mesh_table.py:96`*
+*Source: `swarm/hnsw_mesh_table.py:98`*
 
 #### `range_search(query_vector, radius, max_results)`
 
 Find all entries within *radius* of query_vector.
 
-*Source: `swarm/hnsw_mesh_table.py:162`*
+*Source: `swarm/hnsw_mesh_table.py:160`*
 
 #### `get_novelty_neighbors(entry, k)`
 
 Find the k nearest neighbors of *entry* and return distances.
 Novelty = average distance to neighbors.
 
-*Source: `swarm/hnsw_mesh_table.py:174`*
+*Source: `swarm/hnsw_mesh_table.py:172`*
 
 #### `compute_local_density(entry, k)`
 
 Local density = 1 / (average distance to k nearest neighbors).
 High density = region is crowded. Low density = sparse region.
 
-*Source: `swarm/hnsw_mesh_table.py:186`*
+*Source: `swarm/hnsw_mesh_table.py:184`*
 
 #### `find_sparse_regions(k, n_samples)`
 
 Find entries in sparse (low density) regions.
 Returns (entry, density) sorted by density ascending.
 
-*Source: `swarm/hnsw_mesh_table.py:201`*
+*Source: `swarm/hnsw_mesh_table.py:199`*
 
 #### `stats()`
 
-*Source: `swarm/hnsw_mesh_table.py:227`*
+*Source: `swarm/hnsw_mesh_table.py:225`*
 
 #### `_rebuild_index()`
 
 Rebuild HNSW index from base table.
 
-*Source: `swarm/hnsw_mesh_table.py:240`*
+*Source: `swarm/hnsw_mesh_table.py:238`*
 
 #### `_add_to_hnsw(entry)`
 
@@ -1255,7 +1254,7 @@ Specification for a simulation level.
 
 Convert level rules to a caslang script for deterministic execution.
 
-*Source: `fleet/level_runner.py:136`*
+*Source: `fleet/level_runner.py:140`*
 
 ### `class EventBus`
 
@@ -1263,25 +1262,25 @@ Lightweight event bus for level simulation (xlang-inspired).
 
 #### `__init__()`
 
-*Source: `fleet/level_runner.py:158`*
+*Source: `fleet/level_runner.py:166`*
 
 #### `on(event_name, handler)`
 
 Register an event handler.
 
-*Source: `fleet/level_runner.py:163`*
+*Source: `fleet/level_runner.py:171`*
 
 #### `emit(event_name, payload)`
 
 Emit an event to all registered handlers.
 
-*Source: `fleet/level_runner.py:168`*
+*Source: `fleet/level_runner.py:176`*
 
 #### `clear()`
 
 Remove all handlers.
 
-*Source: `fleet/level_runner.py:179`*
+*Source: `fleet/level_runner.py:187`*
 
 ### `class LevelState`
 
@@ -1289,41 +1288,41 @@ Mutable state container for a running level.
 
 #### `__init__(definition)`
 
-*Source: `fleet/level_runner.py:191`*
+*Source: `fleet/level_runner.py:199`*
 
 #### `add_entity(entity)`
 
 Add an entity to the level.
 
-*Source: `fleet/level_runner.py:200`*
+*Source: `fleet/level_runner.py:208`*
 
 #### `remove_entity(entity_id)`
 
 Remove an entity from the level.
 
-*Source: `fleet/level_runner.py:213`*
+*Source: `fleet/level_runner.py:224`*
 
 #### `get_entities_near(position, radius, entity_type)`
 
 Spatial query: find entities within radius of position.
 
-*Source: `fleet/level_runner.py:222`*
+*Source: `fleet/level_runner.py:233`*
 
 #### `get_entities_by_faction(faction)`
 
 Return all entities belonging to a faction.
 
-*Source: `fleet/level_runner.py:240`*
+*Source: `fleet/level_runner.py:251`*
 
 #### `check_victory()`
 
 Check if any victory condition is met.
 
-*Source: `fleet/level_runner.py:245`*
+*Source: `fleet/level_runner.py:256`*
 
 #### `stats()`
 
-*Source: `fleet/level_runner.py:266`*
+*Source: `fleet/level_runner.py:277`*
 
 ### `class LevelRunner`
 
@@ -1338,95 +1337,95 @@ caslang_executor : CaslangExecutor | None
 
 #### `__init__(quanta_bridge, caslang_executor)`
 
-*Source: `fleet/level_runner.py:290`*
+*Source: `fleet/level_runner.py:301`*
 
 #### `load_level(definition)`
 
 Load a level definition and return a level ID.
 
-*Source: `fleet/level_runner.py:310`*
+*Source: `fleet/level_runner.py:321`*
 
 #### `spawn_entity(level_id, entity_id, entity_type, position, faction, ai_script)`
 
 Spawn an entity into a running level.
 
-*Source: `fleet/level_runner.py:327`*
+*Source: `fleet/level_runner.py:338`*
 
 #### `start_level(level_id)`
 
 Start the tick loop for a level.
 
-*Source: `fleet/level_runner.py:353`*
+*Source: `fleet/level_runner.py:364`*
 
 #### `stop_level(level_id)`
 
 Stop the tick loop for a level.
 
-*Source: `fleet/level_runner.py:378`*
+*Source: `fleet/level_runner.py:391`*
 
 #### `get_level_state(level_id)`
 
 Return the current state of a level.
 
-*Source: `fleet/level_runner.py:390`*
+*Source: `fleet/level_runner.py:403`*
 
 #### `on_tick(level_id, callback)`
 
 Register a callback to run after each tick.
 
-*Source: `fleet/level_runner.py:395`*
+*Source: `fleet/level_runner.py:408`*
 
 #### `_run_tick(level_id)`
 
 Execute one simulation tick.
 
-*Source: `fleet/level_runner.py:402`*
+*Source: `fleet/level_runner.py:415`*
 
 #### `_process_ai(state)`
 
 Run AI scripts for all entities.
 
-*Source: `fleet/level_runner.py:442`*
+*Source: `fleet/level_runner.py:455`*
 
 #### `_update_physics(state)`
 
 Simple Euler physics integration.
 
-*Source: `fleet/level_runner.py:466`*
+*Source: `fleet/level_runner.py:482`*
 
 #### `_check_collisions(state)`
 
 Naive O(n²) collision detection (sufficient for small levels).
 
-*Source: `fleet/level_runner.py:477`*
+*Source: `fleet/level_runner.py:495`*
 
 #### `_handle_collision(payload)`
 
 Default collision handler.
 
-*Source: `fleet/level_runner.py:492`*
+*Source: `fleet/level_runner.py:513`*
 
 #### `_handle_combat(payload)`
 
 Default combat handler.
 
-*Source: `fleet/level_runner.py:496`*
+*Source: `fleet/level_runner.py:519`*
 
 #### `_handle_spawn(payload)`
 
 Default spawn handler.
 
-*Source: `fleet/level_runner.py:503`*
+*Source: `fleet/level_runner.py:528`*
 
 #### `_persist_to_vdb(state)`
 
 Persist entity vectors to Quanta VDB.
 
-*Source: `fleet/level_runner.py:507`*
+*Source: `fleet/level_runner.py:532`*
 
 #### `stats()`
 
-*Source: `fleet/level_runner.py:537`*
+*Source: `fleet/level_runner.py:563`*
 
 ---
 
@@ -1484,7 +1483,7 @@ A discovered group of agents.
 
 #### `to_dict()`
 
-*Source: `swarm/mesh_grouping.py:97`*
+*Source: `swarm/mesh_grouping.py:99`*
 
 ### `class MeshGrouping`
 
@@ -1499,7 +1498,7 @@ config : ClusterConfig
 
 #### `__init__(table, config)`
 
-*Source: `swarm/mesh_grouping.py:123`*
+*Source: `swarm/mesh_grouping.py:125`*
 
 #### `cluster()`
 
@@ -1510,7 +1509,7 @@ Returns
 list[GroupProfile]
     Discovered groups.
 
-*Source: `swarm/mesh_grouping.py:137`*
+*Source: `swarm/mesh_grouping.py:139`*
 
 #### `incremental_update(new_entry)`
 
@@ -1528,13 +1527,13 @@ Returns
 GroupProfile | None
     The group the entry was assigned to, or None if outlier.
 
-*Source: `swarm/mesh_grouping.py:186`*
+*Source: `swarm/mesh_grouping.py:188`*
 
 #### `find_outliers()`
 
 Find agents that don't fit well in any group (low silhouette).
 
-*Source: `swarm/mesh_grouping.py:261`*
+*Source: `swarm/mesh_grouping.py:263`*
 
 #### `find_dense_regions(k)`
 
@@ -1545,7 +1544,7 @@ Returns
 list[tuple[str, float]]
     (group_id, cohesion) sorted descending.
 
-*Source: `swarm/mesh_grouping.py:276`*
+*Source: `swarm/mesh_grouping.py:284`*
 
 #### `find_sparse_regions(k)`
 
@@ -1556,19 +1555,19 @@ Returns
 list[tuple[str, float]]
     (group_id, cohesion) sorted ascending.
 
-*Source: `swarm/mesh_grouping.py:288`*
+*Source: `swarm/mesh_grouping.py:296`*
 
 #### `get_group_members(group_id)`
 
 Get all entries in a group.
 
-*Source: `swarm/mesh_grouping.py:300`*
+*Source: `swarm/mesh_grouping.py:308`*
 
 #### `get_group_centroid(group_id)`
 
 Get the centroid of a group.
 
-*Source: `swarm/mesh_grouping.py:307`*
+*Source: `swarm/mesh_grouping.py:319`*
 
 #### `compute_diversity_index()`
 
@@ -1576,77 +1575,77 @@ Compute a diversity score: number of groups × average separation.
 
 Higher = more diverse fleet.
 
-*Source: `swarm/mesh_grouping.py:314`*
+*Source: `swarm/mesh_grouping.py:326`*
 
 #### `compute_cohesion_map()`
 
 Map group_id -> cohesion score.
 
-*Source: `swarm/mesh_grouping.py:325`*
+*Source: `swarm/mesh_grouping.py:337`*
 
 #### `stats()`
 
-*Source: `swarm/mesh_grouping.py:332`*
+*Source: `swarm/mesh_grouping.py:344`*
 
 #### `_kmeans_cluster(vectors)`
 
 K-means clustering using sklearn or custom fallback.
 
-*Source: `swarm/mesh_grouping.py:346`*
+*Source: `swarm/mesh_grouping.py:360`*
 
 #### `_custom_kmeans(vectors)`
 
 Custom K-means implementation (no sklearn).
 
-*Source: `swarm/mesh_grouping.py:359`*
+*Source: `swarm/mesh_grouping.py:373`*
 
 #### `_hierarchical_cluster(vectors)`
 
 Hierarchical clustering using sklearn or custom fallback.
 
-*Source: `swarm/mesh_grouping.py:388`*
+*Source: `swarm/mesh_grouping.py:404`*
 
 #### `_dbscan_cluster(vectors)`
 
 DBSCAN clustering using sklearn or custom fallback.
 
-*Source: `swarm/mesh_grouping.py:397`*
+*Source: `swarm/mesh_grouping.py:413`*
 
 #### `_single_pass_cluster(vectors)`
 
 Single-pass incremental clustering.
 
-*Source: `swarm/mesh_grouping.py:405`*
+*Source: `swarm/mesh_grouping.py:421`*
 
 #### `_single_element_groups(entries)`
 
 Create one group per entry when too few for clustering.
 
-*Source: `swarm/mesh_grouping.py:430`*
+*Source: `swarm/mesh_grouping.py:446`*
 
 #### `_create_group(group_id, members)`
 
 Create a GroupProfile from members.
 
-*Source: `swarm/mesh_grouping.py:448`*
+*Source: `swarm/mesh_grouping.py:464`*
 
 #### `_compute_quality_metrics(vectors, labels)`
 
 Compute cohesion, separation, and silhouette for groups.
 
-*Source: `swarm/mesh_grouping.py:464`*
+*Source: `swarm/mesh_grouping.py:482`*
 
 #### `_get_group_label(label_idx)`
 
 Map label index to group_id.
 
-*Source: `swarm/mesh_grouping.py:495`*
+*Source: `swarm/mesh_grouping.py:519`*
 
 #### `_cosine_similarity(a, b)`
 
 Compute cosine similarity between two vectors.
 
-*Source: `swarm/mesh_grouping.py:500`*
+*Source: `swarm/mesh_grouping.py:524`*
 
 ---
 
@@ -1695,11 +1694,11 @@ Checkpoint metadata.
 
 #### `to_dict()`
 
-*Source: `swarm/mesh_wal.py:68`*
+*Source: `swarm/mesh_wal.py:69`*
 
 #### `from_dict(d)`
 
-*Source: `swarm/mesh_wal.py:77`*
+*Source: `swarm/mesh_wal.py:78`*
 
 ### `class WALEntry`
 
@@ -1709,13 +1708,13 @@ A single WAL operation record.
 
 Serialize to binary WAL record.
 
-*Source: `swarm/mesh_wal.py:94`*
+*Source: `swarm/mesh_wal.py:96`*
 
 #### `from_bytes(data)`
 
 Deserialize from binary WAL record.
 
-*Source: `swarm/mesh_wal.py:116`*
+*Source: `swarm/mesh_wal.py:118`*
 
 ### `class MeshWAL`
 
@@ -1732,7 +1731,7 @@ checkpoint_interval : float
 
 #### `__init__(wal_dir, max_wal_size, checkpoint_interval)`
 
-*Source: `swarm/mesh_wal.py:165`*
+*Source: `swarm/mesh_wal.py:167`*
 
 #### `append(op, payload)`
 
@@ -1750,25 +1749,25 @@ Returns
 bool
     True if appended successfully.
 
-*Source: `swarm/mesh_wal.py:196`*
+*Source: `swarm/mesh_wal.py:199`*
 
 #### `append_insert(entry_dict)`
 
 Append an insert operation.
 
-*Source: `swarm/mesh_wal.py:236`*
+*Source: `swarm/mesh_wal.py:239`*
 
 #### `append_merge(payload)`
 
 Append a merge operation.
 
-*Source: `swarm/mesh_wal.py:240`*
+*Source: `swarm/mesh_wal.py:243`*
 
 #### `append_delete(agent_id)`
 
 Append a delete operation.
 
-*Source: `swarm/mesh_wal.py:244`*
+*Source: `swarm/mesh_wal.py:247`*
 
 #### `recover(table)`
 
@@ -1784,7 +1783,7 @@ Returns
 dict
     Recovery stats: replayed, errors, last_checkpoint.
 
-*Source: `swarm/mesh_wal.py:250`*
+*Source: `swarm/mesh_wal.py:253`*
 
 #### `checkpoint(table)`
 
@@ -1800,41 +1799,41 @@ Returns
 WALCheckpoint
     The new checkpoint metadata.
 
-*Source: `swarm/mesh_wal.py:361`*
+*Source: `swarm/mesh_wal.py:370`*
 
 #### `stats()`
 
-*Source: `swarm/mesh_wal.py:420`*
+*Source: `swarm/mesh_wal.py:433`*
 
 #### `close()`
 
 Close WAL and stop checkpoint thread.
 
-*Source: `swarm/mesh_wal.py:433`*
+*Source: `swarm/mesh_wal.py:446`*
 
 #### `_load_checkpoint()`
 
 Load last checkpoint from disk.
 
-*Source: `swarm/mesh_wal.py:445`*
+*Source: `swarm/mesh_wal.py:458`*
 
 #### `_open_current_wal()`
 
 Open or create the current WAL file.
 
-*Source: `swarm/mesh_wal.py:456`*
+*Source: `swarm/mesh_wal.py:469`*
 
 #### `_rotate_wal()`
 
 Rotate to a new WAL file.
 
-*Source: `swarm/mesh_wal.py:473`*
+*Source: `swarm/mesh_wal.py:486`*
 
 #### `_checkpoint_loop()`
 
 Background thread for periodic checkpoints.
 
-*Source: `swarm/mesh_wal.py:485`*
+*Source: `swarm/mesh_wal.py:498`*
 
 ---
 
@@ -1892,85 +1891,85 @@ repo_path : Path | str | None
 
 #### `__init__(repo_path)`
 
-*Source: `fleet/pattern_mine.py:176`*
+*Source: `fleet/pattern_mine.py:179`*
 
 #### `load_patterns()`
 
 Load patterns from repo or use defaults.
 
-*Source: `fleet/pattern_mine.py:184`*
+*Source: `fleet/pattern_mine.py:187`*
 
 #### `_load_defaults()`
 
 Load built-in patterns.
 
-*Source: `fleet/pattern_mine.py:192`*
+*Source: `fleet/pattern_mine.py:195`*
 
 #### `_load_from_repo()`
 
 Parse markdown files in agent-operations repo.
 
-*Source: `fleet/pattern_mine.py:198`*
+*Source: `fleet/pattern_mine.py:201`*
 
 #### `_extract_rules(content)`
 
 Extract rule sentences from markdown content.
 
-*Source: `fleet/pattern_mine.py:230`*
+*Source: `fleet/pattern_mine.py:235`*
 
 #### `to_fleet_monitor_rules()`
 
 Convert patterns to FleetMonitor alert rules.
 
-*Source: `fleet/pattern_mine.py:245`*
+*Source: `fleet/pattern_mine.py:267`*
 
 #### `_pattern_to_rule(pattern)`
 
 Convert a single pattern to an alert rule.
 
-*Source: `fleet/pattern_mine.py:258`*
+*Source: `fleet/pattern_mine.py:280`*
 
 #### `to_task_templates()`
 
 Generate task templates from dispatch patterns.
 
-*Source: `fleet/pattern_mine.py:302`*
+*Source: `fleet/pattern_mine.py:326`*
 
 #### `_pattern_to_template(pattern)`
 
 Convert a dispatch pattern to a task template.
 
-*Source: `fleet/pattern_mine.py:316`*
+*Source: `fleet/pattern_mine.py:340`*
 
 #### `get_task_template(name)`
 
 Get a specific task template by name.
 
-*Source: `fleet/pattern_mine.py:342`*
+*Source: `fleet/pattern_mine.py:366`*
 
 #### `generate_report()`
 
 Generate a comprehensive pattern mining report.
 
-*Source: `fleet/pattern_mine.py:353`*
+*Source: `fleet/pattern_mine.py:377`*
 
 #### `_categorize_patterns()`
 
 Count patterns by category.
 
-*Source: `fleet/pattern_mine.py:373`*
+*Source: `fleet/pattern_mine.py:401`*
 
 #### `_top_recommendations()`
 
 Generate top recommendations from patterns.
 
-*Source: `fleet/pattern_mine.py:380`*
+*Source: `fleet/pattern_mine.py:408`*
 
 #### `write_report(path)`
 
 Write pattern mining report to markdown.
 
-*Source: `fleet/pattern_mine.py:390`*
+*Source: `fleet/pattern_mine.py:418`*
 
 #### `apply_to_monitor(monitor)`
 
@@ -1978,7 +1977,7 @@ Apply mined rules to a FleetMonitor instance.
 
 Returns list of rule names that were added.
 
-*Source: `fleet/pattern_mine.py:441`*
+*Source: `fleet/pattern_mine.py:469`*
 
 ---
 
@@ -2058,11 +2057,11 @@ Read records from a JSONL or text file.
 
 #### `__iter__()`
 
-*Source: `fleet/pincher.py:108`*
+*Source: `fleet/pincher.py:110`*
 
 #### `_default_parser(line)`
 
-*Source: `fleet/pincher.py:120`*
+*Source: `fleet/pincher.py:122`*
 
 ### `class QuantaSource`
 
@@ -2070,11 +2069,11 @@ Query records from Quanta VDB as a data source.
 
 #### `__init__(quanta_bridge, query_vector, k, partition)`
 
-*Source: `fleet/pincher.py:127`*
+*Source: `fleet/pincher.py:129`*
 
 #### `__iter__()`
 
-*Source: `fleet/pincher.py:140`*
+*Source: `fleet/pincher.py:142`*
 
 ### `class MemorySource`
 
@@ -2082,11 +2081,11 @@ In-memory data source for testing.
 
 #### `__init__(records)`
 
-*Source: `fleet/pincher.py:157`*
+*Source: `fleet/pincher.py:159`*
 
 #### `__iter__()`
 
-*Source: `fleet/pincher.py:160`*
+*Source: `fleet/pincher.py:162`*
 
 ### `class ExtractionQuery`
 
@@ -2101,7 +2100,7 @@ Specification for a pincher extraction job.
 
 Compile regex patterns for matching.
 
-*Source: `fleet/pincher.py:185`*
+*Source: `fleet/pincher.py:187`*
 
 ### `class Pincher`
 
@@ -2116,7 +2115,7 @@ caslang_executor : CaslangExecutor | None
 
 #### `__init__(quanta_bridge, caslang_executor)`
 
-*Source: `fleet/pincher.py:210`*
+*Source: `fleet/pincher.py:212`*
 
 #### `extract(query, source)`
 
@@ -2128,35 +2127,35 @@ Pipeline:
 3. Constraint validation via caslang sandbox (precise, O(m) per candidate)
 4. Transform and format output
 
-*Source: `fleet/pincher.py:224`*
+*Source: `fleet/pincher.py:226`*
 
 #### `extract_to_vdb(query, source, partition_tag)`
 
 Extract and immediately store results in Quanta VDB.
 
-*Source: `fleet/pincher.py:302`*
+*Source: `fleet/pincher.py:313`*
 
 #### `batch_extract(queries, sources)`
 
 Run multiple extraction queries in parallel over multiple sources.
 
-*Source: `fleet/pincher.py:334`*
+*Source: `fleet/pincher.py:346`*
 
 #### `_apply_transforms(record, transforms)`
 
 Apply field extraction and transformation rules.
 
-*Source: `fleet/pincher.py:349`*
+*Source: `fleet/pincher.py:361`*
 
 #### `_compute_confidence(matched_patterns, extracted_fields)`
 
 Compute extraction confidence score.
 
-*Source: `fleet/pincher.py:398`*
+*Source: `fleet/pincher.py:410`*
 
 #### `stats()`
 
-*Source: `fleet/pincher.py:414`*
+*Source: `fleet/pincher.py:426`*
 
 ---
 
@@ -2219,11 +2218,11 @@ A single query event.
 
 Hash of the query pattern for deduplication.
 
-*Source: `swarm/scene_tracker.py:75`*
+*Source: `swarm/scene_tracker.py:76`*
 
 #### `to_dict()`
 
-*Source: `swarm/scene_tracker.py:80`*
+*Source: `swarm/scene_tracker.py:81`*
 
 ### `class Scene`
 
@@ -2231,7 +2230,7 @@ A temporal cluster of related queries.
 
 #### `to_dict()`
 
-*Source: `swarm/scene_tracker.py:101`*
+*Source: `swarm/scene_tracker.py:103`*
 
 ### `class CacheStrategy`
 
@@ -2250,7 +2249,7 @@ strategy : CacheStrategy
 
 #### `__init__(table, strategy)`
 
-*Source: `swarm/scene_tracker.py:134`*
+*Source: `swarm/scene_tracker.py:137`*
 
 #### `track_query(query_type, filter_type, result_size, latency_ms, query_params)`
 
@@ -2269,7 +2268,7 @@ latency_ms : float
 query_params : dict
     Additional query parameters for pattern analysis.
 
-*Source: `swarm/scene_tracker.py:165`*
+*Source: `swarm/scene_tracker.py:170`*
 
 #### `get_cache_recommendations()`
 
@@ -2280,7 +2279,7 @@ Returns
 list[str]
     Agent IDs to promote.
 
-*Source: `swarm/scene_tracker.py:231`*
+*Source: `swarm/scene_tracker.py:236`*
 
 #### `apply_cache_recommendations(tiered_storage)`
 
@@ -2296,7 +2295,7 @@ Returns
 int
     Number of entries promoted.
 
-*Source: `swarm/scene_tracker.py:256`*
+*Source: `swarm/scene_tracker.py:264`*
 
 #### `detect_scenes(max_scenes)`
 
@@ -2312,13 +2311,13 @@ Returns
 list[Scene]
     Recent scenes, newest first.
 
-*Source: `swarm/scene_tracker.py:286`*
+*Source: `swarm/scene_tracker.py:294`*
 
 #### `get_current_scene()`
 
 Get the currently active scene.
 
-*Source: `swarm/scene_tracker.py:312`*
+*Source: `swarm/scene_tracker.py:323`*
 
 #### `get_latency_stats()`
 
@@ -2329,7 +2328,7 @@ Returns
 dict
     Latency stats per query type and overall.
 
-*Source: `swarm/scene_tracker.py:321`*
+*Source: `swarm/scene_tracker.py:335`*
 
 #### `get_hot_queries(k)`
 
@@ -2340,29 +2339,29 @@ Returns
 list[tuple[str, int]]
     (pattern_hash, frequency) sorted descending.
 
-*Source: `swarm/scene_tracker.py:349`*
+*Source: `swarm/scene_tracker.py:363`*
 
 #### `stats()`
 
-*Source: `swarm/scene_tracker.py:363`*
+*Source: `swarm/scene_tracker.py:379`*
 
 #### `_update_scene(pattern)`
 
 Update the current scene with a new query pattern.
 
-*Source: `swarm/scene_tracker.py:379`*
+*Source: `swarm/scene_tracker.py:399`*
 
 #### `_update_dominant_pattern(scene)`
 
 Recompute the dominant pattern of a scene.
 
-*Source: `swarm/scene_tracker.py:412`*
+*Source: `swarm/scene_tracker.py:435`*
 
 #### `_query_rate()`
 
 Return queries per minute in the current window.
 
-*Source: `swarm/scene_tracker.py:423`*
+*Source: `swarm/scene_tracker.py:446`*
 
 ---
 
@@ -2416,19 +2415,19 @@ binary_path : Path | str | None
 
 #### `__init__(binary_path)`
 
-*Source: `fleet/t_minus_bridge.py:77`*
+*Source: `fleet/t_minus_bridge.py:80`*
 
 #### `_resolve_binary(path)`
 
 Resolve the binary path.
 
-*Source: `fleet/t_minus_bridge.py:81`*
+*Source: `fleet/t_minus_bridge.py:84`*
 
 #### `_call(request)`
 
 Call the binary with a JSON request.
 
-*Source: `fleet/t_minus_bridge.py:107`*
+*Source: `fleet/t_minus_bridge.py:112`*
 
 #### `cron_next(expr, after)`
 
@@ -2446,13 +2445,13 @@ Returns
 int
     Unix timestamp of next fire time.
 
-*Source: `fleet/t_minus_bridge.py:127`*
+*Source: `fleet/t_minus_bridge.py:132`*
 
 #### `cron_schedule(expr)`
 
 Create a CronSchedule with next fire time.
 
-*Source: `fleet/t_minus_bridge.py:151`*
+*Source: `fleet/t_minus_bridge.py:158`*
 
 #### `deadline_remaining(parent_secs, child_secs)`
 
@@ -2473,13 +2472,13 @@ Returns
 float
     Remaining seconds (min of parent and child).
 
-*Source: `fleet/t_minus_bridge.py:158`*
+*Source: `fleet/t_minus_bridge.py:165`*
 
 #### `build_deadline_tree(parent_secs, child_secs)`
 
 Build a deadline tree and compute remaining time.
 
-*Source: `fleet/t_minus_bridge.py:185`*
+*Source: `fleet/t_minus_bridge.py:194`*
 
 #### `token_bucket(burst, rate, acquire)`
 
@@ -2499,7 +2498,7 @@ Returns
 RateLimiter
     Result with acquired flag and remaining tokens.
 
-*Source: `fleet/t_minus_bridge.py:196`*
+*Source: `fleet/t_minus_bridge.py:207`*
 
 #### `check_rate_limit(burst, rate, acquire)`
 
@@ -2510,7 +2509,7 @@ Returns
 bool
     True if tokens were acquired.
 
-*Source: `fleet/t_minus_bridge.py:228`*
+*Source: `fleet/t_minus_bridge.py:241`*
 
 #### `schedule_fleet_beat(interval_mins)`
 
@@ -2526,7 +2525,7 @@ Returns
 int
     Unix timestamp of next beat.
 
-*Source: `fleet/t_minus_bridge.py:241`*
+*Source: `fleet/t_minus_bridge.py:254`*
 
 #### `propagate_deadline(parent_deadline, child_budget)`
 
@@ -2547,7 +2546,7 @@ Returns
 float
     Effective child budget (capped by parent).
 
-*Source: `fleet/t_minus_bridge.py:257`*
+*Source: `fleet/t_minus_bridge.py:270`*
 
 #### `throttle_fleet_operation(ops_per_sec, burst)`
 
@@ -2565,17 +2564,17 @@ Returns
 bool
     True if operation should proceed.
 
-*Source: `fleet/t_minus_bridge.py:277`*
+*Source: `fleet/t_minus_bridge.py:290`*
 
 #### `is_available()`
 
 Check if the binary is available and functional.
 
-*Source: `fleet/t_minus_bridge.py:296`*
+*Source: `fleet/t_minus_bridge.py:309`*
 
 #### `__repr__()`
 
-*Source: `fleet/t_minus_bridge.py:304`*
+*Source: `fleet/t_minus_bridge.py:317`*
 
 ---
 
@@ -2767,49 +2766,49 @@ Shannon entropy of the ternary distribution.
 
 Element-wise AND with another vector.
 
-*Source: `fleet/ternary_types.py:244`*
+*Source: `fleet/ternary_types.py:245`*
 
 #### `or_with(other)`
 
 Element-wise OR with another vector.
 
-*Source: `fleet/ternary_types.py:250`*
+*Source: `fleet/ternary_types.py:253`*
 
 #### `not_()`
 
 Element-wise NOT.
 
-*Source: `fleet/ternary_types.py:256`*
+*Source: `fleet/ternary_types.py:261`*
 
 #### `majority()`
 
 Majority vote across all elements.
 
-*Source: `fleet/ternary_types.py:260`*
+*Source: `fleet/ternary_types.py:265`*
 
 #### `consensus(threshold)`
 
 Consensus vote across all elements.
 
-*Source: `fleet/ternary_types.py:264`*
+*Source: `fleet/ternary_types.py:269`*
 
 #### `to_string()`
 
 Convert to string representation.
 
-*Source: `fleet/ternary_types.py:268`*
+*Source: `fleet/ternary_types.py:273`*
 
 #### `from_floats(floats, threshold)`
 
 Create a TernaryVector from float values.
 
-*Source: `fleet/ternary_types.py:273`*
+*Source: `fleet/ternary_types.py:278`*
 
 #### `from_bools(bools)`
 
 Create a TernaryVector from boolean values.
 
-*Source: `fleet/ternary_types.py:278`*
+*Source: `fleet/ternary_types.py:283`*
 
 ### `class TernaryMap`
 
@@ -2819,7 +2818,7 @@ Map continuous signals to ternary classification.
 
 Classify a single float value.
 
-*Source: `fleet/ternary_types.py:287`*
+*Source: `fleet/ternary_types.py:292`*
 
 #### `classify_with_zscore(value, mean, std, threshold)`
 
@@ -2841,13 +2840,13 @@ Returns
 int
     +1 if z-score > threshold, -1 if z-score < -threshold, 0 otherwise.
 
-*Source: `fleet/ternary_types.py:292`*
+*Source: `fleet/ternary_types.py:297`*
 
 #### `classify_vector(values, threshold)`
 
 Classify a vector of floats.
 
-*Source: `fleet/ternary_types.py:323`*
+*Source: `fleet/ternary_types.py:328`*
 
 #### `classify_percentile(value, percentile_25, percentile_75)`
 
@@ -2855,13 +2854,13 @@ Classify using percentile thresholds.
 
 -1 if value < p25, +1 if value > p75, 0 otherwise.
 
-*Source: `fleet/ternary_types.py:332`*
+*Source: `fleet/ternary_types.py:337`*
 
 #### `window_classify(values, window_size, threshold)`
 
 Classify using rolling window averages.
 
-*Source: `fleet/ternary_types.py:349`*
+*Source: `fleet/ternary_types.py:354`*
 
 ### `class TernaryConsensus`
 
@@ -2883,7 +2882,7 @@ Returns
 dict
     Result with consensus, confidence, and dissenters.
 
-*Source: `fleet/ternary_types.py:370`*
+*Source: `fleet/ternary_types.py:375`*
 
 #### `weighted_vote(votes, threshold)`
 
@@ -2901,7 +2900,7 @@ Returns
 dict
     Result with weighted consensus.
 
-*Source: `fleet/ternary_types.py:432`*
+*Source: `fleet/ternary_types.py:436`*
 
 ### `class TernaryOperator`
 
@@ -2915,25 +2914,25 @@ If condition is POS, return true_val.
 If condition is NEG, return false_val.
 If condition is ZERO, return the more conservative (min) of the two.
 
-*Source: `fleet/ternary_types.py:490`*
+*Source: `fleet/ternary_types.py:493`*
 
 #### `clamp(value, min_val, max_val)`
 
 Clamp a ternary value between min and max.
 
-*Source: `fleet/ternary_types.py:507`*
+*Source: `fleet/ternary_types.py:510`*
 
 #### `switch(value, cases)`
 
 Switch on ternary value.
 
-*Source: `fleet/ternary_types.py:515`*
+*Source: `fleet/ternary_types.py:518`*
 
 #### `cascade(values, default)`
 
 Cascade: return first non-zero value, or default.
 
-*Source: `fleet/ternary_types.py:521`*
+*Source: `fleet/ternary_types.py:524`*
 
 ---
 
@@ -2984,129 +2983,129 @@ policy : PromotionPolicy
 
 #### `__init__(base_table, db_path, cold_path, config, policy)`
 
-*Source: `swarm/tiered_mesh_storage.py:77`*
+*Source: `swarm/tiered_mesh_storage.py:79`*
 
 #### `_init_sqlite()`
 
 Initialize SQLite schema for warm tier.
 
-*Source: `swarm/tiered_mesh_storage.py:111`*
+*Source: `swarm/tiered_mesh_storage.py:114`*
 
 #### `_warm_insert(entry)`
 
 Insert entry into warm SQLite tier.
 
-*Source: `swarm/tiered_mesh_storage.py:139`*
+*Source: `swarm/tiered_mesh_storage.py:142`*
 
 #### `_warm_query(agent_id)`
 
 Query warm tier by agent_id.
 
-*Source: `swarm/tiered_mesh_storage.py:166`*
+*Source: `swarm/tiered_mesh_storage.py:169`*
 
 #### `_warm_query_by_fitness(min_fitness, max_results)`
 
 Query warm tier by fitness threshold.
 
-*Source: `swarm/tiered_mesh_storage.py:180`*
+*Source: `swarm/tiered_mesh_storage.py:183`*
 
 #### `_warm_delete(agent_id)`
 
 Delete from warm tier.
 
-*Source: `swarm/tiered_mesh_storage.py:200`*
+*Source: `swarm/tiered_mesh_storage.py:203`*
 
 #### `_warm_count_entries()`
 
 Count entries in warm tier.
 
-*Source: `swarm/tiered_mesh_storage.py:210`*
+*Source: `swarm/tiered_mesh_storage.py:213`*
 
 #### `_cold_archive(entries)`
 
 Archive entries to a compressed file. Returns filename.
 
-*Source: `swarm/tiered_mesh_storage.py:221`*
+*Source: `swarm/tiered_mesh_storage.py:224`*
 
 #### `_cold_query(agent_id)`
 
 Query cold archives for agent_id. Slow — scans all archives.
 
-*Source: `swarm/tiered_mesh_storage.py:237`*
+*Source: `swarm/tiered_mesh_storage.py:240`*
 
 #### `query(agent_id)`
 
 Query across all tiers: hot -> warm -> cold.
 
-*Source: `swarm/tiered_mesh_storage.py:254`*
+*Source: `swarm/tiered_mesh_storage.py:258`*
 
 #### `insert(entry)`
 
 Insert into appropriate tier based on fitness/age/thermal.
 
-*Source: `swarm/tiered_mesh_storage.py:276`*
+*Source: `swarm/tiered_mesh_storage.py:280`*
 
 #### `query_by_fitness(min_fitness, max_results, include_warm)`
 
 Query across hot and warm tiers by fitness.
 
-*Source: `swarm/tiered_mesh_storage.py:294`*
+*Source: `swarm/tiered_mesh_storage.py:298`*
 
 #### `get_tier_stats()`
 
 Return statistics for each tier.
 
-*Source: `swarm/tiered_mesh_storage.py:315`*
+*Source: `swarm/tiered_mesh_storage.py:319`*
 
 #### `close()`
 
 Stop maintenance thread.
 
-*Source: `swarm/tiered_mesh_storage.py:333`*
+*Source: `swarm/tiered_mesh_storage.py:339`*
 
 #### `_should_be_hot(entry, age)`
 
 Determine if entry should be in hot tier.
 
-*Source: `swarm/tiered_mesh_storage.py:340`*
+*Source: `swarm/tiered_mesh_storage.py:346`*
 
 #### `_maybe_promote(entry)`
 
 Promote warm entry to hot if access threshold met.
 
-*Source: `swarm/tiered_mesh_storage.py:348`*
+*Source: `swarm/tiered_mesh_storage.py:357`*
 
 #### `_demote_oldest_hot()`
 
 Demote oldest/lowest-fitness hot entry to warm.
 
-*Source: `swarm/tiered_mesh_storage.py:360`*
+*Source: `swarm/tiered_mesh_storage.py:373`*
 
 #### `_maintenance_loop()`
 
 Background maintenance: demote old hot entries, archive warm to cold.
 
-*Source: `swarm/tiered_mesh_storage.py:373`*
+*Source: `swarm/tiered_mesh_storage.py:388`*
 
 #### `_run_maintenance()`
 
 Single maintenance pass.
 
-*Source: `swarm/tiered_mesh_storage.py:382`*
+*Source: `swarm/tiered_mesh_storage.py:397`*
 
 #### `_vec_to_b64(vec)`
 
-*Source: `swarm/tiered_mesh_storage.py:422`*
+*Source: `swarm/tiered_mesh_storage.py:447`*
 
 #### `_b64_to_vec(b64, dim)`
 
-*Source: `swarm/tiered_mesh_storage.py:427`*
+*Source: `swarm/tiered_mesh_storage.py:453`*
 
 #### `_row_to_entry(row)`
 
 Convert SQLite row to VectorTableEntry.
 
-*Source: `swarm/tiered_mesh_storage.py:432`*
+*Source: `swarm/tiered_mesh_storage.py:459`*
 
 ---
 
@@ -3166,7 +3165,7 @@ A query plan for distributed search.
 
 #### `required_responses()`
 
-*Source: `swarm/vector_swarm.py:78`*
+*Source: `swarm/vector_swarm.py:79`*
 
 ### `class SwarmResult`
 
@@ -3174,7 +3173,7 @@ Result from a single node/shard.
 
 #### `to_dict()`
 
-*Source: `swarm/vector_swarm.py:98`*
+*Source: `swarm/vector_swarm.py:100`*
 
 ### `class SwarmRouter`
 
@@ -3182,13 +3181,13 @@ Routes queries to appropriate nodes and shards.
 
 #### `__init__()`
 
-*Source: `swarm/vector_swarm.py:112`*
+*Source: `swarm/vector_swarm.py:114`*
 
 #### `register_node(node_id, shard_ids, node_ref)`
 
 Register a node with its shards.
 
-*Source: `swarm/vector_swarm.py:116`*
+*Source: `swarm/vector_swarm.py:118`*
 
 #### `route_query(query_type, params)`
 
@@ -3206,23 +3205,23 @@ Returns
 SwarmQueryPlan
     Query plan with target nodes and shards.
 
-*Source: `swarm/vector_swarm.py:125`*
+*Source: `swarm/vector_swarm.py:127`*
 
 #### `_route_by_hash(key, n)`
 
 Route by consistent hashing of key.
 
-*Source: `swarm/vector_swarm.py:175`*
+*Source: `swarm/vector_swarm.py:177`*
 
 #### `_route_by_time(time_range)`
 
 Route to shards that might contain the time range.
 
-*Source: `swarm/vector_swarm.py:184`*
+*Source: `swarm/vector_swarm.py:190`*
 
 #### `_generate_query_id(query_type, params)`
 
-*Source: `swarm/vector_swarm.py:193`*
+*Source: `swarm/vector_swarm.py:199`*
 
 ### `class VectorSwarm`
 
@@ -3237,7 +3236,7 @@ max_workers : int
 
 #### `__init__(router, max_workers)`
 
-*Source: `swarm/vector_swarm.py:209`*
+*Source: `swarm/vector_swarm.py:215`*
 
 #### `query_by_id(agent_id, consistency)`
 
@@ -3255,7 +3254,7 @@ Returns
 list[SwarmResult]
     Results from each node.
 
-*Source: `swarm/vector_swarm.py:223`*
+*Source: `swarm/vector_swarm.py:229`*
 
 #### `query_similar(vector, k, consistency)`
 
@@ -3275,7 +3274,7 @@ Returns
 list[SwarmResult]
     Results from each node.
 
-*Source: `swarm/vector_swarm.py:242`*
+*Source: `swarm/vector_swarm.py:250`*
 
 #### `query_knn(vector, k, consistency)`
 
@@ -3295,7 +3294,7 @@ Returns
 list[tuple[VectorTableEntry, float]]
     Globally ranked results with distances.
 
-*Source: `swarm/vector_swarm.py:268`*
+*Source: `swarm/vector_swarm.py:278`*
 
 #### `query_fitness_range(min_fitness, max_fitness, consistency)`
 
@@ -3315,7 +3314,7 @@ Returns
 list[SwarmResult]
     Results from each node.
 
-*Source: `swarm/vector_swarm.py:311`*
+*Source: `swarm/vector_swarm.py:321`*
 
 #### `consensus_rank(results, vector)`
 
@@ -3336,29 +3335,29 @@ Returns
 list[tuple[VectorTableEntry, float]]
     Consensus-ranked results.
 
-*Source: `swarm/vector_swarm.py:342`*
+*Source: `swarm/vector_swarm.py:352`*
 
 #### `stats()`
 
-*Source: `swarm/vector_swarm.py:385`*
+*Source: `swarm/vector_swarm.py:397`*
 
 #### `_execute_plan(plan)`
 
 Execute a query plan across target nodes.
 
-*Source: `swarm/vector_swarm.py:400`*
+*Source: `swarm/vector_swarm.py:413`*
 
 #### `_query_node(node_id, node_ref, plan)`
 
 Execute a query on a single node.
 
-*Source: `swarm/vector_swarm.py:452`*
+*Source: `swarm/vector_swarm.py:467`*
 
 #### `_query_shard(node_ref, shard_id, plan)`
 
 Execute a query on a single shard.
 
-*Source: `swarm/vector_swarm.py:486`*
+*Source: `swarm/vector_swarm.py:503`*
 
 ---
 
@@ -3425,13 +3424,13 @@ Bidirectional session memory sync between fleet and xMind.
 
 Serialize fleet context for xMind session binding.
 
-*Source: `fleet/xlang_agent_bridge.py:137`*
+*Source: `fleet/xlang_agent_bridge.py:141`*
 
 #### `from_xmind_payload(payload)`
 
 Update fleet context from xMind session output.
 
-*Source: `fleet/xlang_agent_bridge.py:150`*
+*Source: `fleet/xlang_agent_bridge.py:154`*
 
 ### `class XlangAgentBridge`
 
@@ -3448,70 +3447,70 @@ lrpc_endpoint : str | None
 
 #### `__init__(node_id, xmind_path, lrpc_endpoint)`
 
-*Source: `fleet/xlang_agent_bridge.py:173`*
+*Source: `fleet/xlang_agent_bridge.py:177`*
 
 #### `_load_xlang()`
 
 Lazy-import the xlang C++ runtime.
 
-*Source: `fleet/xlang_agent_bridge.py:196`*
+*Source: `fleet/xlang_agent_bridge.py:200`*
 
 #### `_load_xmind()`
 
 Lazy-import the xMind AgentFlow framework.
 
-*Source: `fleet/xlang_agent_bridge.py:209`*
+*Source: `fleet/xlang_agent_bridge.py:214`*
 
 #### `convert_graph(json_graph, name)`
 
 Convert a JSON agent graph to xMind YAML blueprint.
 
-*Source: `fleet/xlang_agent_bridge.py:229`*
+*Source: `fleet/xlang_agent_bridge.py:234`*
 
 #### `save_blueprint(name, path)`
 
 Save a blueprint to a YAML file.
 
-*Source: `fleet/xlang_agent_bridge.py:236`*
+*Source: `fleet/xlang_agent_bridge.py:243`*
 
 #### `load_blueprint(path)`
 
 Load a blueprint from a YAML file.
 
-*Source: `fleet/xlang_agent_bridge.py:244`*
+*Source: `fleet/xlang_agent_bridge.py:251`*
 
 #### `create_session(session_id, context)`
 
 Create a new session bridge between fleet and xMind.
 
-*Source: `fleet/xlang_agent_bridge.py:259`*
+*Source: `fleet/xlang_agent_bridge.py:266`*
 
 #### `sync_session_to_xmind(session_id)`
 
 Push fleet session state to xMind.
 
-*Source: `fleet/xlang_agent_bridge.py:269`*
+*Source: `fleet/xlang_agent_bridge.py:278`*
 
 #### `sync_session_from_xmind(session_id)`
 
 Pull xMind session state back to fleet.
 
-*Source: `fleet/xlang_agent_bridge.py:291`*
+*Source: `fleet/xlang_agent_bridge.py:303`*
 
 #### `execute_remote(blueprint_name, session_id)`
 
 Execute a blueprint on a remote xlang node via LRPC.
 
-*Source: `fleet/xlang_agent_bridge.py:312`*
+*Source: `fleet/xlang_agent_bridge.py:328`*
 
 #### `execute_local(blueprint_name, session_id, inputs)`
 
 Execute a blueprint locally via Python fallback (no xlang required).
 
-*Source: `fleet/xlang_agent_bridge.py:339`*
+*Source: `fleet/xlang_agent_bridge.py:357`*
 
 #### `stats()`
 
-*Source: `fleet/xlang_agent_bridge.py:399`*
+*Source: `fleet/xlang_agent_bridge.py:426`*
 
 ---

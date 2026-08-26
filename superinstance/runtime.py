@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 # ── plugin interface ──────────────────────────────────────────
 
+
 class Plugin(ABC):
     """Base class for all superinstance-runtime plugins."""
 
@@ -60,6 +61,7 @@ class CompilerPlugin(Plugin):
 
 # ── data structures ───────────────────────────────────────────
 
+
 @dataclass
 class EventResult:
     """Immutable result of running the event bus."""
@@ -75,6 +77,7 @@ class EventResult:
 
 
 # ── event bus ─────────────────────────────────────────────────
+
 
 class EventBus:
     """COLLECT → SELECT → COMPILE event bus.

@@ -27,18 +27,20 @@ from swarm.breeding_kernel import (
 # Landscape type classification
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class LandscapeType(Enum):
     """Classification of fitness landscape characteristics."""
 
-    SMOOTH = auto()       # Low ruggedness, few local optima
-    RUGGED = auto()       # High ruggedness, many local optima
-    MULTIMODAL = auto()   # Multiple distinct optima
-    UNKNOWN = auto()      # Not enough data to classify
+    SMOOTH = auto()  # Low ruggedness, few local optima
+    RUGGED = auto()  # High ruggedness, many local optima
+    MULTIMODAL = auto()  # Multiple distinct optima
+    UNKNOWN = auto()  # Not enough data to classify
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # LandscapeAnalyzer — analyzes fitness history to classify landscape
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class LandscapeAnalyzer:
     """Analyzes fitness and diversity history to classify the current landscape."""
@@ -55,19 +57,25 @@ class LandscapeAnalyzer:
         self.smoothness_threshold = smoothness_threshold
         self.modality_threshold = modality_threshold
 
-    def analyze(self, fitness_history: List[float], diversity_history: List[float]) -> LandscapeType:
+    def analyze(
+        self, fitness_history: List[float], diversity_history: List[float]
+    ) -> LandscapeType:
         """Classify landscape based on fitness and diversity history."""
         if len(fitness_history) < 3:
             return LandscapeType.UNKNOWN
 
         # Use sliding window
-        window = fitness_history[-self.window_size:]
+        window = fitness_history[-self.window_size :]
 
         ruggedness = self._compute_ruggedness(window)
         smoothness = self._compute_smoothness(window)
         modality = self._compute_modality(window)
 
-        if modality > self.modality_threshold and diversity_history and diversity_history[-1] > 0.1:
+        if (
+            modality > self.modality_threshold
+            and diversity_history
+            and diversity_history[-1] > 0.1
+        ):
             return LandscapeType.MULTIMODAL
         if ruggedness > self.ruggedness_threshold:
             return LandscapeType.RUGGED
@@ -89,7 +97,10 @@ class LandscapeAnalyzer:
         """
         if len(fitness_window) < 2:
             return 0.0
-        diffs = [abs(fitness_window[i] - fitness_window[i - 1]) for i in range(1, len(fitness_window))]
+        diffs = [
+            abs(fitness_window[i] - fitness_window[i - 1])
+            for i in range(1, len(fitness_window))
+        ]
         mean_diff = sum(diffs) / len(diffs)
         value_range = max(fitness_window) - min(fitness_window)
         if value_range == 0:
@@ -136,6 +147,7 @@ class LandscapeAnalyzer:
 # MetaBreedingEvent — events with reasoning
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class MetaBreedingEvent:
     """Event emitted by the MetaBreeder with selection reasoning."""
@@ -157,6 +169,7 @@ class MetaBreedingEvent:
 # ═══════════════════════════════════════════════════════════════════════════════
 # BreederPortfolio — manages a collection of breeders with performance history
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class BreederRecord:
@@ -185,7 +198,9 @@ class BreederRecord:
         n = len(self.qd_scores)
         x_mean = (n - 1) / 2
         y_mean = self.avg_qd
-        numerator = sum((i - x_mean) * (qd - y_mean) for i, qd in enumerate(self.qd_scores))
+        numerator = sum(
+            (i - x_mean) * (qd - y_mean) for i, qd in enumerate(self.qd_scores)
+        )
         denominator = sum((i - x_mean) ** 2 for i in range(n))
         if denominator == 0:
             return 0.0
@@ -205,7 +220,9 @@ class BreederPortfolio:
         self.breeders: Dict[str, BreederRecord] = {}
         self._evaluator_wrapper = evaluator
 
-    def add_preset(self, preset: BreedingPreset, name: Optional[str] = None) -> BreedingKernel:
+    def add_preset(
+        self, preset: BreedingPreset, name: Optional[str] = None
+    ) -> BreedingKernel:
         """Add a breeder from a preset with a fresh random population."""
         if name is None:
             name = f"{preset.name.lower()}_{len(self.breeders)}"
@@ -242,7 +259,9 @@ class BreederPortfolio:
         scores: Dict[str, float] = {}
         for name, record in self.breeders.items():
             base_score = record.avg_qd
-            trend_bonus = max(0.0, record.recent_qd_trend * 10)  # Reward improving breeders
+            trend_bonus = max(
+                0.0, record.recent_qd_trend * 10
+            )  # Reward improving breeders
             landscape_bonus = self._landscape_match_bonus(record.preset, landscape)
             # Penalize breeders that have been active too long without improvement
             stall_penalty = record.stall_count * 0.5
@@ -251,7 +270,9 @@ class BreederPortfolio:
         best_name = max(scores, key=scores.get)
         return best_name, self.breeders[best_name]
 
-    def _landscape_match_bonus(self, preset: BreedingPreset, landscape: LandscapeType) -> float:
+    def _landscape_match_bonus(
+        self, preset: BreedingPreset, landscape: LandscapeType
+    ) -> float:
         """Return a bonus for matching preset to landscape."""
         match = {
             BreedingPreset.EXPLOITATION: LandscapeType.SMOOTH,
@@ -265,7 +286,10 @@ class BreederPortfolio:
 
     def _seed_population(self) -> List[Genome]:
         """Generate a random initial population."""
-        return [Genome(genes=[random.uniform(-1, 1) for _ in range(self.gene_dim)]) for _ in range(self.pop_size)]
+        return [
+            Genome(genes=[random.uniform(-1, 1) for _ in range(self.gene_dim)])
+            for _ in range(self.pop_size)
+        ]
 
     def __len__(self) -> int:
         return len(self.breeders)
@@ -277,6 +301,7 @@ class BreederPortfolio:
 # ═══════════════════════════════════════════════════════════════════════════════
 # StallDetector — detects when a breeder has stalled
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class StallDetector:
     """Detects fitness plateaus and diversity collapse."""
@@ -305,7 +330,7 @@ class StallDetector:
 
         # Fitness plateau detection
         if len(fitness_history) >= self.fitness_window:
-            recent = fitness_history[-self.fitness_window:]
+            recent = fitness_history[-self.fitness_window :]
             if max(recent) - min(recent) < self.fitness_tolerance:
                 return True, "fitness_plateau"
 
@@ -315,19 +340,22 @@ class StallDetector:
 
         # Monotonic decline detection
         if len(fitness_history) >= self.fitness_window:
-            recent = fitness_history[-self.fitness_window:]
+            recent = fitness_history[-self.fitness_window :]
             if all(recent[i] <= recent[i - 1] for i in range(1, len(recent))):
                 return True, "monotonic_decline"
 
         return False, "active"
 
     def __repr__(self) -> str:
-        return f"StallDetector(window={self.fitness_window}, tol={self.fitness_tolerance})"
+        return (
+            f"StallDetector(window={self.fitness_window}, tol={self.fitness_tolerance})"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # MetaBreeder — the SDA loop controller
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class MetaBreeder:
     """Adaptive meta-breeder that selects the optimal breeder for the landscape.
@@ -369,7 +397,9 @@ class MetaBreeder:
         if portfolio.breeders:
             self._activate_breeder(next(iter(portfolio.breeders)))
 
-    def _activate_breeder(self, name: str, warm_start_population: Optional[List[Genome]] = None) -> MetaBreedingEvent:
+    def _activate_breeder(
+        self, name: str, warm_start_population: Optional[List[Genome]] = None
+    ) -> MetaBreedingEvent:
         """Activate a breeder by name, optionally warm-starting from a previous population."""
         if name not in self.portfolio.breeders:
             raise ValueError(f"Unknown breeder: {name}")
@@ -389,7 +419,10 @@ class MetaBreeder:
                 n_warm = int(self.pop_size * self.warm_start_ratio)
                 n_random = self.pop_size - n_warm
                 warm = self._select_diverse_subset(warm_start_population, n_warm)
-                random_pop = [Genome(genes=[random.uniform(-1, 1) for _ in range(self.gene_dim)]) for _ in range(n_random)]
+                random_pop = [
+                    Genome(genes=[random.uniform(-1, 1) for _ in range(self.gene_dim)])
+                    for _ in range(n_random)
+                ]
                 self.current_breeder_record.breeder.population = warm + random_pop
 
         self.current_breeder_record.generations_active = 0
@@ -412,7 +445,11 @@ class MetaBreeder:
             return [g.copy() for g in population]
 
         # Start with the best individual
-        sorted_pop = sorted(population, key=lambda g: (g.fitness if g.fitness is not None else -math.inf), reverse=True)
+        sorted_pop = sorted(
+            population,
+            key=lambda g: g.fitness if g.fitness is not None else -math.inf,
+            reverse=True,
+        )
         selected = [sorted_pop[0].copy()]
         remaining = sorted_pop[1:]
 
@@ -444,7 +481,10 @@ class MetaBreeder:
             return name, f"Only one breeder available ({name}), selecting it."
 
         best_name, _ = self.portfolio.get_best_breeder(landscape)
-        return best_name, f"Selected {best_name} for landscape {landscape.name} based on QD-score and landscape match."
+        return (
+            best_name,
+            f"Selected {best_name} for landscape {landscape.name} based on QD-score and landscape match.",
+        )
 
     def _act(self) -> BreedingEvent:
         """ACT phase: run one generation with the current breeder."""
@@ -482,7 +522,10 @@ class MetaBreeder:
                 selected_breeder=self.current_breeder_name,
                 landscape=landscape,
                 reasoning=f"Stall detected ({reason}) but max stall switches ({self.max_stall_switches}) reached. Continuing with current breeder.",
-                payload={"stall_reason": reason, "stall_count": self.current_breeder_record.stall_count},
+                payload={
+                    "stall_reason": reason,
+                    "stall_count": self.current_breeder_record.stall_count,
+                },
             )
             self.events.append(event)
             return event
@@ -493,7 +536,9 @@ class MetaBreeder:
 
         if next_name == self.current_breeder_name:
             # Force switch to a different breeder if possible
-            other_names = [n for n in self.portfolio.breeders if n != self.current_breeder_name]
+            other_names = [
+                n for n in self.portfolio.breeders if n != self.current_breeder_name
+            ]
             if other_names:
                 next_name = random.choice(other_names)
                 select_reason = f"Forced switch to {next_name} because current breeder stalled ({reason})."
@@ -503,7 +548,9 @@ class MetaBreeder:
         event.event_type = "breeder_switched"
         event.landscape = landscape
         event.reasoning = f"Stall detected: {reason}. {select_reason}"
-        event.payload.update({"stall_reason": reason, "switch_count": self.stall_switch_count})
+        event.payload.update(
+            {"stall_reason": reason, "switch_count": self.stall_switch_count}
+        )
         return event
 
     def step(self) -> List[Any]:

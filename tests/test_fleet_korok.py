@@ -8,6 +8,7 @@ Coverage:
 - from_tile_list integration
 - to_dict serialization
 """
+
 import numpy as np
 import pytest
 
@@ -45,7 +46,9 @@ def sample_entries():
 
 @pytest.fixture
 def index():
-    return FleetKorokIndex(FleetKorokConfig(use_bm25=True, use_dense=False, use_reranker=False))
+    return FleetKorokIndex(
+        FleetKorokConfig(use_bm25=True, use_dense=False, use_reranker=False)
+    )
 
 
 # ── Backend ────────────────────────────────────────────────────────────────
@@ -58,7 +61,14 @@ class TestBackend:
         assert inst._korok_module is not None or inst._korok_module is None
 
     def test_fallback_when_korok_missing(self, monkeypatch):
-        monkeypatch.setattr("builtins.__import__", lambda name, *args, **kwargs: __import__(name, *args, **kwargs) if name != "korok" else (_ for _ in ()).throw(ImportError("no korok")))
+        monkeypatch.setattr(
+            "builtins.__import__",
+            lambda name, *args, **kwargs: (
+                __import__(name, *args, **kwargs)
+                if name != "korok"
+                else (_ for _ in ()).throw(ImportError("no korok"))
+            ),
+        )
         # Can't easily monkeypatch __import__ globally. Just verify init works.
         inst = FleetKorokIndex()
         assert inst._korok_module is None or inst._korok_module is not None

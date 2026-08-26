@@ -9,6 +9,7 @@ Usage:
     result = engine.render("Hello {{ name }}!", {"name": "Fleet"})
     # result == "Hello Fleet!"
 """
+
 from __future__ import annotations
 
 import re

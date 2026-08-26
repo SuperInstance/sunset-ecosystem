@@ -4,38 +4,23 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
-          restore-keys: ${{ runner.os }}-pip-
-      - run: pip install -e ".[dev]"
-      - run: python -m pytest tests/ -q --tb=short --cov=sunset --cov-report=term-missing --cov-fail-under=75
-      - run: python -m mypy sunset/ --ignore-missing-imports --warn-unreachable || true
-      - run: python -m ruff check sunset/ || true
+  ci:
+    uses: SuperInstance/agent-operations/.github/workflows/python-ci.yml@master
+    with:
+      min_coverage: 75
+      enable_security: true
+    secrets: inherit
 
   benchmark:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
-          restore-keys: ${{ runner.os }}-pip-
-      - run: pip install -e ".[dev]"
-      - run: python -m pytest tests/benchmarks/ -q --tb=short || true
+      - uses: astral-sh/setup-uv@v4
+      - run: uv python install 3.12
+      - run: uv sync --all-extras --dev
+      - run: uv run pytest tests/benchmarks/ -q --tb=short || true
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
         with:

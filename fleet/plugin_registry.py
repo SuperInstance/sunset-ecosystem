@@ -13,6 +13,7 @@ Usage:
     plugin = registry.get("breeder")
     compatible = registry.resolve(["breeder", "evaluator"])
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -36,6 +37,7 @@ class PluginError(Exception):
 @dataclass
 class PluginInfo:
     """Metadata for a registered plugin."""
+
     name: str
     version: str
     capabilities: list[str]
@@ -97,7 +99,8 @@ class PluginRegistry:
     def find_by_capability(self, capability: str) -> list[str]:
         """Find plugins that provide a capability."""
         return [
-            name for name, info in self._plugins.items()
+            name
+            for name, info in self._plugins.items()
             if capability in info.capabilities
         ]
 
@@ -134,9 +137,11 @@ class PluginRegistry:
         info = self._plugins.get(name)
         if info is None:
             return False
+
         # Simple version comparison: split by dots and compare numerically
         def parse(v: str) -> list[int]:
             return [int(x) for x in v.split(".")]
+
         return parse(info.version) >= parse(min_version)
 
     def reload(self, name: str, new_instance: Any) -> bool:
@@ -172,7 +177,9 @@ class PluginRegistry:
         return {
             "total": len(self._plugins),
             "active": len(self.active_plugins()),
-            "capabilities": sorted({cap for info in self._plugins.values() for cap in info.capabilities}),
+            "capabilities": sorted(
+                {cap for info in self._plugins.values() for cap in info.capabilities}
+            ),
         }
 
     def __repr__(self) -> str:

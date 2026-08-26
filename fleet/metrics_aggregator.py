@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class MetricPoint:
     """A single metric data point."""
+
     metric_name: str
     value: float
     timestamp: float
@@ -39,8 +40,9 @@ class MetricsAggregator:
         self._counters: Dict[str, float] = {}
         self._gauges: Dict[str, float] = {}
 
-    def record(self, metric_name: str, value: float,
-               tags: Optional[Dict[str, str]] = None):
+    def record(
+        self, metric_name: str, value: float, tags: Optional[Dict[str, str]] = None
+    ):
         """Record a metric value."""
         point = MetricPoint(
             metric_name=metric_name,
@@ -53,7 +55,7 @@ class MetricsAggregator:
         self._metrics[metric_name].append(point)
         # Trim buffer
         if len(self._metrics[metric_name]) > self.buffer_size:
-            self._metrics[metric_name] = self._metrics[metric_name][-self.buffer_size:]
+            self._metrics[metric_name] = self._metrics[metric_name][-self.buffer_size :]
 
     def increment(self, counter_name: str, value: float = 1.0):
         """Increment a counter."""
@@ -63,8 +65,9 @@ class MetricsAggregator:
         """Set a gauge value."""
         self._gauges[gauge_name] = value
 
-    def get_series(self, metric_name: str,
-                   since: Optional[float] = None) -> List[MetricPoint]:
+    def get_series(
+        self, metric_name: str, since: Optional[float] = None
+    ) -> List[MetricPoint]:
         """Get metric series, optionally filtered by time."""
         points = self._metrics.get(metric_name, [])
         if since:
@@ -100,12 +103,15 @@ class MetricsAggregator:
 
     def export_json(self) -> str:
         """Export metrics as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "stats": self.get_all_stats(),
-            "counters": self._counters,
-            "gauges": self._gauges,
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "stats": self.get_all_stats(),
+                "counters": self._counters,
+                "gauges": self._gauges,
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

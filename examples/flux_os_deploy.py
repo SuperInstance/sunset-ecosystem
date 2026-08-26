@@ -8,9 +8,11 @@ Usage:
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fleet.flux_os_bridge import FluxOSBridge
+
 
 def main():
     print("🐧 FLUX OS Deployment Demo")
@@ -38,10 +40,7 @@ def main():
     # Deploy to ARM64 (e.g., Raspberry Pi 4)
     print("\n🚀 Deploying to ARM64...")
     deploy_result = bridge.deploy(
-        "breeder_alpha",
-        target="arm64",
-        board="rpi4",
-        strategy="canary"
+        "breeder_alpha", target="arm64", board="rpi4", strategy="canary"
     )
     print(f"  Deployment: {'✅ success' if deploy_result else '❌ failed'}")
 
@@ -71,6 +70,7 @@ def main():
     print(f"  Stop: {'✅ success' if stop_result else '❌ failed'}")
 
     print("\n✅ Demo complete!")
+
 
 if __name__ == "__main__":
     main()

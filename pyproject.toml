@@ -24,6 +24,10 @@ npu = ["onnx", "onnxruntime", "torch", "numpy", "scipy"]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
+    "pytest-json-report",  # required by fleet shared python-ci (--json-report)
+    "fastapi",  # tests/test_fleet_api.py
+    "httpx",  # fastapi TestClient backend
+    "nlopt",  # flux_compat.nlopt_solver tests
     "pytest-asyncio",
     "numpy",
     "cryptography",
@@ -38,7 +42,7 @@ dev = [
     "pyyaml",
     "pillow",
 ]
-perception = ["pillow", "sounddevice", "pyaudio", "opencv-python-headless"]
+perception = ["pillow", "sounddevice", "pyaudio; sys_platform != \"linux\"", "opencv-python-headless"]
 ml = ["transformers", "torchvision", "timm", "clip", "speechbrain", "openai-whisper"]
 vecsearch = ["turbovec>=0.1.0", "numpy"]
 gpu_cuda = ["cupy-cuda12x"]
@@ -60,3 +64,20 @@ include = [
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = ["--ignore=tests/benchmarks"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+# Baseline for the fleet shared python-ci workflow (agent-operations/python-ci.yml
+# runs `ruff check .` + `ruff format --check .`).
+#
+# This repo predates linting: the broader rule sets surface ~8.8k legacy
+# findings (~6.8k mechanical autofixes — UP006/UP045/UP035 typing
+# modernization, F401 unused imports, I001 import sorting; plus ~140
+# E4xx/E7xx style hits that are this repo's idioms: sys.path-bootstrap
+# imports mid-file in tests/scripts, lambda fixtures, single-letter loop
+# vars). Those belong to dedicated cleanup passes, not the CI-migration PR.
+# Baseline below = what actually signals broken code: syntax errors (E9)
+# and assertion mistakes (F63). New code should aim higher.
+select = ["E9", "F63"]

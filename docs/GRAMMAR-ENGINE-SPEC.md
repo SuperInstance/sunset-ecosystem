@@ -107,16 +107,19 @@ The Grammar Engine is a **pure validation layer**. It does not execute rules, do
 @dataclass
 class Production:
     """The actionable payload of a rule."""
-    tagline: str = ""           # Human-readable description (max 256 chars)
-    condition: str = ""         # Boolean expression or SQL fragment (max 1024 chars)
+
+    tagline: str = ""  # Human-readable description (max 256 chars)
+    condition: str = ""  # Boolean expression or SQL fragment (max 1024 chars)
     exec_field: Optional[str] = field(default=None, repr=False)
-                                # Literal data payload ONLY — never executed here
+    # Literal data payload ONLY — never executed here
+
 
 @dataclass
 class Rule:
     """A validated, immutable rule ready for breeder consumption."""
-    name: str                   # Identifier (max 64 chars, alphanumeric + _ -)
-    production: Production      # The rule's payload
+
+    name: str  # Identifier (max 64 chars, alphanumeric + _ -)
+    production: Production  # The rule's payload
 ```
 
 ### 3.2 JSON Serialization
@@ -288,10 +291,10 @@ This blocks type-confusion attacks (e.g., passing a dict where a string is expec
 #### Layer 2: Length Limits
 
 ```python
-RULE_NAME_MAX_LEN    = 64
-TAGLINE_MAX_LEN      = 256
-CONDITION_MAX_LEN    = 1024
-EXEC_MAX_LEN         = 512
+RULE_NAME_MAX_LEN = 64
+TAGLINE_MAX_LEN = 256
+CONDITION_MAX_LEN = 1024
+EXEC_MAX_LEN = 512
 ```
 
 Length limits prevent:
@@ -334,7 +337,7 @@ Taglines are stripped of all HTML tags, then HTML-escaped:
 
 ```python
 tagline = HTML_TAG_PATTERN.sub("", tagline)  # strip tags
-tagline = html.escape(tagline)                # escape ampersands, quotes, etc.
+tagline = html.escape(tagline)  # escape ampersands, quotes, etc.
 ```
 
 This transforms `<script>alert(1)</script>` into `alert(1)` (tags removed), then `&quot;&gt;&lt;img src=x onerror=alert(1)&gt;` (quotes and angle brackets escaped).
@@ -379,14 +382,16 @@ Every rule validation event is logged for forensic analysis:
 ```python
 # Pseudocode — implemented by the Breeder, not the Grammar Engine
 def log_validation_event(rule_name: str, success: bool, error: Optional[str]):
-    audit_log.write({
-        "timestamp": datetime.utcnow().isoformat(),
-        "rule_name": rule_name,
-        "success": success,
-        "error": error,
-        "validator_version": "1.0.0",
-        "source_ip": request.remote_addr,  # if available
-    })
+    audit_log.write(
+        {
+            "timestamp": datetime.utcnow().isoformat(),
+            "rule_name": rule_name,
+            "success": success,
+            "error": error,
+            "validator_version": "1.0.0",
+            "source_ip": request.remote_addr,  # if available
+        }
+    )
 ```
 
 The Grammar Engine raises `ValidationError` with descriptive messages. The caller (HTTP handler or Breeder) is responsible for logging.
@@ -480,6 +485,7 @@ def validate_rule_name(name: str) -> str:
         ValidationError: If the name contains illegal characters or is too long.
     """
 
+
 def validate_tagline(tagline: str) -> str:
     """Sanitize production tagline.
 
@@ -494,6 +500,7 @@ def validate_tagline(tagline: str) -> str:
         ValidationError: If the tagline is too long or not a string.
     """
 
+
 def validate_condition(condition: str) -> str:
     """Sanitize production condition.
 
@@ -506,6 +513,7 @@ def validate_condition(condition: str) -> str:
     Raises:
         ValidationError: If the condition contains blocked SQL injection patterns.
     """
+
 
 def validate_exec_field(exec_code: Optional[str]) -> Optional[str]:
     """Sandbox or disable production.exec entirely.
@@ -695,7 +703,9 @@ def evolve(
 ### 7.7 Batch Operations
 
 ```python
-def batch_create_rules(rule_dicts: list[dict]) -> tuple[list[Rule], list[ValidationError]]:
+def batch_create_rules(
+    rule_dicts: list[dict],
+) -> tuple[list[Rule], list[ValidationError]]:
     """Validate a batch of rule dicts, returning successes and failures separately.
 
     Args:
@@ -830,7 +840,7 @@ rule_dict = {
         "tagline": "A test rule for performance measurement.",
         "condition": "queue_depth > 10 and cpu_idle > 0.3",
         "exec": "[{'action': 'spawn', 'count': 2}]",
-    }
+    },
 }
 
 # Warmup
@@ -891,17 +901,28 @@ def compile_condition(condition: str) -> Callable:
     The callable accepts a dict of metrics and returns bool.
     """
     # Parse condition to AST
-    tree = ast.parse(condition, mode='eval')
+    tree = ast.parse(condition, mode="eval")
 
     # Validate AST — only allow comparison nodes
     for node in ast.walk(tree):
-        if not isinstance(node, (ast.Expression, ast.BinOp, ast.Compare,
-                                  ast.Name, ast.Constant, ast.Load,
-                                  ast.BoolOp, ast.And, ast.Or)):
+        if not isinstance(
+            node,
+            (
+                ast.Expression,
+                ast.BinOp,
+                ast.Compare,
+                ast.Name,
+                ast.Constant,
+                ast.Load,
+                ast.BoolOp,
+                ast.And,
+                ast.Or,
+            ),
+        ):
             raise ValidationError("Condition contains unsupported operators.")
 
     # Compile to bytecode
-    code = compile(tree, '<condition>', 'eval')
+    code = compile(tree, "<condition>", "eval")
     return lambda ctx: eval(code, {"__builtins__": {}}, ctx)
 ```
 
@@ -1011,6 +1032,7 @@ HTML_TAG_PATTERN = re.compile(r"<[^>]*>")
 
 # ── Data Classes ─────────────────────────────────────────────────────
 
+
 @dataclass
 class Production:
     tagline: str = ""
@@ -1026,6 +1048,7 @@ class Rule:
 
 # ── Validation Exceptions ──────────────────────────────────────────
 
+
 class ValidationError(ValueError):
     """Raised when a rule field fails security validation."""
 
@@ -1033,6 +1056,7 @@ class ValidationError(ValueError):
 
 
 # ── Core Validation Functions ──────────────────────────────────────
+
 
 def validate_rule_name(name: str) -> str:
     """Sanitize rule name.
@@ -1047,8 +1071,7 @@ def validate_rule_name(name: str) -> str:
         raise ValidationError(f"Rule name exceeds {RULE_NAME_MAX_LEN} characters.")
     if not RULE_NAME_PATTERN.match(name):
         raise ValidationError(
-            "Rule name contains illegal characters. "
-            "Allowed: a-z, A-Z, 0-9, _, -."
+            "Rule name contains illegal characters. Allowed: a-z, A-Z, 0-9, _, -."
         )
     return name
 
@@ -1115,6 +1138,7 @@ def validate_exec_field(exec_code: Optional[str]) -> Optional[str]:
 
 # ── Rule Creation API ────────────────────────────────────────────────
 
+
 def create_rule(
     name: str,
     tagline: str = "",
@@ -1142,6 +1166,7 @@ def create_rule(
 
 
 # ── Batch / JSON ingestion helper ──────────────────────────────────
+
 
 def create_rule_from_dict(data: dict) -> Rule:
     """Convenience wrapper for JSON/rule-dict ingestion."""
@@ -1175,21 +1200,26 @@ from grammar.core import (
 
 # ── Attack Vector 1: Path Traversal ────────────────────────────────
 
+
 def test_path_traversal_in_rule_name_rejected():
     with pytest.raises(ValidationError):
         validate_rule_name("../../../etc/passwd")
+
 
 def test_double_dot_rule_name_rejected():
     with pytest.raises(ValidationError):
         validate_rule_name("foo..bar")
 
+
 def test_slash_in_rule_name_rejected():
     with pytest.raises(ValidationError):
         validate_rule_name("foo/bar")
 
+
 def test_backslash_in_rule_name_rejected():
     with pytest.raises(ValidationError):
         validate_rule_name("foo\\bar")
+
 
 def test_legal_rule_name_accepted():
     assert validate_rule_name("foo-bar_baz123") == "foo-bar_baz123"
@@ -1197,16 +1227,19 @@ def test_legal_rule_name_accepted():
 
 # ── Attack Vector 2: XSS ───────────────────────────────────────────
 
+
 def test_xss_script_tag_stripped():
     result = validate_tagline("<script>alert(1)</script>")
     assert "<script>" not in result
     # Inner text remains after tag stripping, but is harmless without tags
     assert result == "alert(1)"
 
+
 def test_xss_payload_html_escaped():
     result = validate_tagline('"><img src=x onerror=alert(1)>')
     assert "<img" not in result
     assert "&quot;" in result or "&lt;" in result
+
 
 def test_tagline_max_length_enforced():
     with pytest.raises(ValidationError):
@@ -1215,50 +1248,63 @@ def test_tagline_max_length_enforced():
 
 # ── Attack Vector 3: SQL Injection ─────────────────────────────────
 
+
 def test_sqli_drop_table_rejected():
     with pytest.raises(ValidationError):
         validate_condition("'; DROP TABLE rules; --")
+
 
 def test_sqli_semicolon_rejected():
     with pytest.raises(ValidationError):
         validate_condition("status = 'active'; DELETE FROM rules")
 
+
 def test_sqli_comment_dash_rejected():
     with pytest.raises(ValidationError):
         validate_condition("1 = 1 -- comment")
+
 
 def test_sqli_union_select_rejected():
     with pytest.raises(ValidationError):
         validate_condition("1 UNION SELECT * FROM passwords")
 
+
 def test_legal_condition_accepted():
-    assert validate_condition("status == 'active' and priority > 5") == \
-           "status == 'active' and priority > 5"
+    assert (
+        validate_condition("status == 'active' and priority > 5")
+        == "status == 'active' and priority > 5"
+    )
 
 
 # ── Attack Vector 4: Code Injection ──────────────────────────────────
+
 
 def test_code_injection_in_exec_rejected():
     with pytest.raises(ValidationError):
         validate_exec_field("__import__('os').system('rm -rf /')")
 
+
 def test_exec_eval_rejected():
     with pytest.raises(ValidationError):
         validate_exec_field("eval('2+2')")
+
 
 def test_exec_import_rejected():
     with pytest.raises(ValidationError):
         validate_exec_field("import os; os.system('ls')")
 
+
 def test_safe_literal_accepted():
     """ast.literal_eval should accept safe literals."""
     assert validate_exec_field("[1, 2, 3]") == "[1, 2, 3]"
+
 
 def test_exec_none_accepted():
     assert validate_exec_field(None) is None
 
 
 # ── Integration: create_rule() ─────────────────────────────────────
+
 
 def test_create_rule_blocks_all_four_vectors():
     with pytest.raises(ValidationError):
@@ -1268,6 +1314,7 @@ def test_create_rule_blocks_all_four_vectors():
             condition="'; DROP TABLE rules; --",
             exec_field="__import__('os').system('rm -rf /')",
         )
+
 
 def test_create_rule_accepts_clean_input():
     rule = create_rule(

@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 
 # ── Cell ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class DeckbossCell:
     """A single cell in the orchestrator grid."""
@@ -70,6 +71,7 @@ class DeckbossCell:
 
 # ── Grid ────────────────────────────────────────────────────────────────
 
+
 class DeckbossGrid:
     """Formula grid that evaluates fleet orchestration policies."""
 
@@ -89,7 +91,9 @@ class DeckbossGrid:
         self.lazy_compile = lazy_compile
         self._eval_depth = 0
         self._cycle_guard: set[str] = set()
-        self.command_log: List[Tuple[str, str, Any, float]] = []  # (ref, formula, result, ts)
+        self.command_log: List[
+            Tuple[str, str, Any, float]
+        ] = []  # (ref, formula, result, ts)
         self.compiler.cell_resolver = self._eval_cell_by_ref
         self._build_env_extensions()
 
@@ -301,7 +305,13 @@ class DeckbossGrid:
         mesh_fn: Optional[Callable[..., None]] = None,
     ) -> Dict[str, int]:
         """Execute captured commands. Returns dispatch counters."""
-        counts: Dict[str, int] = {"spawn": 0, "breed": 0, "alert": 0, "mesh": 0, "stop": 0}
+        counts: Dict[str, int] = {
+            "spawn": 0,
+            "breed": 0,
+            "alert": 0,
+            "mesh": 0,
+            "stop": 0,
+        }
         for ref, formula, result, ts in self.command_log:
             if not isinstance(result, str):
                 continue
@@ -333,7 +343,9 @@ class DeckbossGrid:
         return {
             ref: {
                 "formula": cell.formula,
-                "last_result": str(cell.last_result) if cell.last_result is not None else None,
+                "last_result": str(cell.last_result)
+                if cell.last_result is not None
+                else None,
                 "eval_count": cell.eval_count,
                 "error_count": cell.error_count,
             }

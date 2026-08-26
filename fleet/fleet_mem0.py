@@ -6,6 +6,7 @@ SenseDecideAct.
 
 Reference: https://github.com/mem0ai/mem0
 """
+
 from __future__ import annotations
 
 import json
@@ -85,7 +86,9 @@ class FleetMem0Memory:
                 version=self.config.version,
             )
             self._mem0 = Memory(config=mem0_config)
-            log.info("FleetMem0: mem0 backend initialized (%s)", self.config.vector_store)
+            log.info(
+                "FleetMem0: mem0 backend initialized (%s)", self.config.vector_store
+            )
         except Exception as exc:
             log.warning("FleetMem0: mem0 init failed (%s); using fallback", exc)
             self._mem0 = None
@@ -93,7 +96,9 @@ class FleetMem0Memory:
 
     # ── Core API ───────────────────────────────────────────────────────
 
-    def add(self, content: str, metadata: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    def add(
+        self, content: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> Optional[str]:
         """Add a memory. Returns memory_id or None."""
         meta = metadata or {}
         if self._mem0 is not None:
@@ -135,7 +140,11 @@ class FleetMem0Memory:
                         metadata=r.get("metadata", {}),
                         score=r.get("score"),
                     )
-                    for r in (results.get("results", []) if isinstance(results, dict) else results)
+                    for r in (
+                        results.get("results", [])
+                        if isinstance(results, dict)
+                        else results
+                    )
                 ]
             except Exception as exc:
                 log.warning("mem0.search failed: %s", exc)

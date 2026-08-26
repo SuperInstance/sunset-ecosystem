@@ -339,7 +339,10 @@ class SDALoop:
                 results[pipe.name] = None
                 continue
 
-            if pipe.interval_ms > 0.0 and (now - pipe.last_run) * 1000.0 < pipe.interval_ms:
+            if (
+                pipe.interval_ms > 0.0
+                and (now - pipe.last_run) * 1000.0 < pipe.interval_ms
+            ):
                 results[pipe.name] = None
                 continue
 
@@ -396,9 +399,7 @@ class SDALoop:
 
     # ── internal tick ───────────────────────────────────────
 
-    def _tick_pipeline(
-        self, pipe: SDAPipeline, now: float
-    ) -> ActResult | None:
+    def _tick_pipeline(self, pipe: SDAPipeline, now: float) -> ActResult | None:
         """Run sense → decide → act for a single pipeline."""
         start = time.perf_counter()
 
@@ -500,12 +501,8 @@ class TrapSense(Sense):
             )
 
         results = self.registry.run_all()
-        critical_count = sum(
-            1 for r in results if r.severity == TrapSeverity.CRITICAL
-        )
-        warning_count = sum(
-            1 for r in results if r.severity == TrapSeverity.WARNING
-        )
+        critical_count = sum(1 for r in results if r.severity == TrapSeverity.CRITICAL)
+        warning_count = sum(1 for r in results if r.severity == TrapSeverity.WARNING)
 
         severity = "info"
         if critical_count > 0:
@@ -629,7 +626,9 @@ class HebbianMeshSense(Sense):
                 "chaos_factor": diversity,
                 "diversity_score": diversity_score,
             },
-            severity_hint="warning" if diversity is not None and diversity > 0.4 else "info",
+            severity_hint="warning"
+            if diversity is not None and diversity > 0.4
+            else "info",
         )
 
 
@@ -733,8 +732,12 @@ class FluxPresetDecide(Decide):
                 "thermal_headroom": observation.metrics.get("thermal_headroom", 0.5),
                 "chaos": observation.metrics.get("chaos_factor", 0.0),
                 "diversity_score": observation.metrics.get("diversity_score", 1.0),
-                "consecutive_failures": observation.metrics.get("consecutive_failures", 0),
-                "last_heartbeat": observation.metrics.get("last_heartbeat", time.time()),
+                "consecutive_failures": observation.metrics.get(
+                    "consecutive_failures", 0
+                ),
+                "last_heartbeat": observation.metrics.get(
+                    "last_heartbeat", time.time()
+                ),
             }
 
         try:

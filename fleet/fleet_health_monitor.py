@@ -57,7 +57,9 @@ class AlertRule:
 
     rule_id: str
     name: str
-    metric: str  # "health_score", "critical_count", "degraded_count", "test_failure_rate"
+    metric: (
+        str  # "health_score", "critical_count", "degraded_count", "test_failure_rate"
+    )
     operator: str  # "gt", "lt", "gte", "lte", "eq"
     threshold: float
     severity: AlertSeverity
@@ -212,44 +214,52 @@ class FleetHealthMonitor:
 
     def _add_default_rules(self) -> None:
         """Add default alert rules."""
-        self.add_rule(AlertRule(
-            rule_id="critical_modules",
-            name="Critical Modules Detected",
-            metric="critical_count",
-            operator="gt",
-            threshold=0,
-            severity=AlertSeverity.CRITICAL,
-            cooldown_seconds=60,
-            auto_recover=True,
-            recovery_action="beat",
-        ))
-        self.add_rule(AlertRule(
-            rule_id="degraded_threshold",
-            name="Too Many Degraded Modules",
-            metric="degraded_count",
-            operator="gt",
-            threshold=3,
-            severity=AlertSeverity.WARNING,
-            cooldown_seconds=300,
-        ))
-        self.add_rule(AlertRule(
-            rule_id="low_health_score",
-            name="Low Health Score",
-            metric="health_score",
-            operator="lt",
-            threshold=0.7,
-            severity=AlertSeverity.WARNING,
-            cooldown_seconds=300,
-        ))
-        self.add_rule(AlertRule(
-            rule_id="test_failure_rate",
-            name="High Test Failure Rate",
-            metric="test_failure_rate",
-            operator="gt",
-            threshold=0.1,
-            severity=AlertSeverity.CRITICAL,
-            cooldown_seconds=600,
-        ))
+        self.add_rule(
+            AlertRule(
+                rule_id="critical_modules",
+                name="Critical Modules Detected",
+                metric="critical_count",
+                operator="gt",
+                threshold=0,
+                severity=AlertSeverity.CRITICAL,
+                cooldown_seconds=60,
+                auto_recover=True,
+                recovery_action="beat",
+            )
+        )
+        self.add_rule(
+            AlertRule(
+                rule_id="degraded_threshold",
+                name="Too Many Degraded Modules",
+                metric="degraded_count",
+                operator="gt",
+                threshold=3,
+                severity=AlertSeverity.WARNING,
+                cooldown_seconds=300,
+            )
+        )
+        self.add_rule(
+            AlertRule(
+                rule_id="low_health_score",
+                name="Low Health Score",
+                metric="health_score",
+                operator="lt",
+                threshold=0.7,
+                severity=AlertSeverity.WARNING,
+                cooldown_seconds=300,
+            )
+        )
+        self.add_rule(
+            AlertRule(
+                rule_id="test_failure_rate",
+                name="High Test Failure Rate",
+                metric="test_failure_rate",
+                operator="gt",
+                threshold=0.1,
+                severity=AlertSeverity.CRITICAL,
+                cooldown_seconds=600,
+            )
+        )
 
     # ── Rule Management ───────────────────────────────────────
 
@@ -400,6 +410,7 @@ class FleetHealthMonitor:
                         url = config.get("url")
                         if url:
                             import urllib.request
+
                             data = json.dumps(alert.to_dict()).encode()
                             req = urllib.request.Request(
                                 url,
@@ -497,8 +508,12 @@ class FleetHealthMonitor:
         """Get monitor statistics."""
         with self._lock:
             total = len(self._alerts)
-            critical = sum(1 for a in self._alerts if a.severity == AlertSeverity.CRITICAL)
-            warning = sum(1 for a in self._alerts if a.severity == AlertSeverity.WARNING)
+            critical = sum(
+                1 for a in self._alerts if a.severity == AlertSeverity.CRITICAL
+            )
+            warning = sum(
+                1 for a in self._alerts if a.severity == AlertSeverity.WARNING
+            )
             unresolved = sum(1 for a in self._alerts if not a.resolved)
             unacknowledged = sum(1 for a in self._alerts if not a.acknowledged)
 

@@ -107,8 +107,16 @@ class TestPromptHistory:
 
     def test_average_quality_by_application(self):
         h = PromptHistory()
-        h.add(PromptRecord(prompt="a", response="b", quality_score=0.9, application="chat"))
-        h.add(PromptRecord(prompt="c", response="d", quality_score=0.5, application="code"))
+        h.add(
+            PromptRecord(
+                prompt="a", response="b", quality_score=0.9, application="chat"
+            )
+        )
+        h.add(
+            PromptRecord(
+                prompt="c", response="d", quality_score=0.5, application="code"
+            )
+        )
         assert h.average_quality(application="chat") == pytest.approx(0.9)
 
     def test_repr(self):

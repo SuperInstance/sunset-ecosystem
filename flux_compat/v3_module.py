@@ -3,6 +3,7 @@
 Mirrors the Rust v3 structure enough for the compat layer to produce
 a loadable, inspectable module object from legacy v2 bytecode.
 """
+
 from __future__ import annotations
 
 import struct
@@ -13,13 +14,15 @@ from typing import List, Optional, Dict, Any
 @dataclass
 class Instruction:
     """Single v3 instruction with optional immediate operand."""
-    opcode: str          # e.g. "Push", "RangeCheck"
+
+    opcode: str  # e.g. "Push", "RangeCheck"
     operand: Optional[int] = None
     raw_bytes: bytes = field(default=b"", repr=False)
 
     def to_bytes(self) -> bytes:
         """Serialize to v3 raw bytecode (opcode u8 + optional imm)."""
         from .opcode_map import V3_OPCODE_BYTES
+
         op_byte = V3_OPCODE_BYTES.get(self.opcode, 0x00)
         out = bytes([op_byte])
         if self.operand is not None:
@@ -35,13 +38,15 @@ class Instruction:
 @dataclass
 class ConstraintDef:
     """Constraint definition compatible with v3 check.rs presets."""
-    kind: str            # "aviation", "temperature", "custom"
+
+    kind: str  # "aviation", "temperature", "custom"
     params: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class Module:
     """A v3 FLUX module — the canonical format produced by load_v2()."""
+
     version: int = 3
     constants: List[int] = field(default_factory=list)
     instructions: List[Instruction] = field(default_factory=list)

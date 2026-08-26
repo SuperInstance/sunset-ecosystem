@@ -24,6 +24,7 @@ from fleet.worldmodel_bridge import WorldModelBridge, SolverConfig, EnvironmentC
 
 # ──────────────────────────── WorldState ────────────────────────────
 
+
 class TestWorldState:
     def test_basic_creation(self):
         s = WorldState(position=(1.0, 2.0, 3.0))
@@ -75,6 +76,7 @@ class TestWorldState:
 
 # ──────────────────────────── Prediction ────────────────────────────
 
+
 class TestPrediction:
     def test_final_state(self):
         states = [
@@ -86,7 +88,9 @@ class TestPrediction:
         assert p.final_state.position == (2.0, 2.0)
 
     def test_mean_uncertainty(self):
-        p = Prediction(trajectory=[WorldState(position=(0.0,))], uncertainty=[0.1, 0.2, 0.3])
+        p = Prediction(
+            trajectory=[WorldState(position=(0.0,))], uncertainty=[0.1, 0.2, 0.3]
+        )
         assert abs(p.mean_uncertainty - 0.2) < 0.001
 
     def test_empty_uncertainty(self):
@@ -108,6 +112,7 @@ class TestPrediction:
 
 
 # ──────────────────────────── SpatialIndex ────────────────────────────
+
 
 class TestSpatialIndex:
     def test_insert_and_query(self):
@@ -151,8 +156,12 @@ class TestSpatialIndex:
 
     def test_room_filter(self):
         idx = SpatialIndex(dimension=2)
-        idx.insert("p1", WorldState(position=(0.0, 0.0), agent_id="a1", room_id="ethos"))
-        idx.insert("p2", WorldState(position=(1.0, 1.0), agent_id="a2", room_id="pathos"))
+        idx.insert(
+            "p1", WorldState(position=(0.0, 0.0), agent_id="a1", room_id="ethos")
+        )
+        idx.insert(
+            "p2", WorldState(position=(1.0, 1.0), agent_id="a2", room_id="pathos")
+        )
 
         center = WorldState(position=(0.0, 0.0))
         results = idx.query_radius(center, radius=10.0, room_filter="ethos")
@@ -175,6 +184,7 @@ class TestSpatialIndex:
 
 
 # ──────────────────────────── SpatialProjector ────────────────────────────
+
 
 class TestSpatialProjector:
     def test_project_and_query(self):
@@ -209,8 +219,9 @@ class TestSpatialProjector:
 
     def test_predict_trajectory_with_velocity(self):
         proj = SpatialProjector("node-1", dimension=2)
-        proj.project_state("agent-1", "room1",
-                           WorldState(position=(0.0, 0.0), velocity=(1.0, 0.0)))
+        proj.project_state(
+            "agent-1", "room1", WorldState(position=(0.0, 0.0), velocity=(1.0, 0.0))
+        )
 
         pred = proj.predict_trajectory("agent-1", horizon=3)
         assert len(pred.trajectory) == 4  # current + 3 steps
@@ -239,7 +250,9 @@ class TestSpatialProjector:
         # Create a prediction with temperature > 50
         states = [
             WorldState(position=(0.0, 0.0), semantics={"temperature": 30.0}),
-            WorldState(position=(1.0, 0.0), semantics={"temperature": 60.0}),  # Violation!
+            WorldState(
+                position=(1.0, 0.0), semantics={"temperature": 60.0}
+            ),  # Violation!
         ]
         pred = Prediction(trajectory=states)
 
@@ -251,8 +264,12 @@ class TestSpatialProjector:
         proj.add_flux_constraint(create_thermal_constraint(max_temp=50.0, hard=False))
 
         states = [
-            WorldState(position=(0.0, 0.0), semantics={"temperature": 30.0}, confidence=1.0),
-            WorldState(position=(1.0, 0.0), semantics={"temperature": 60.0}, confidence=1.0),
+            WorldState(
+                position=(0.0, 0.0), semantics={"temperature": 30.0}, confidence=1.0
+            ),
+            WorldState(
+                position=(1.0, 0.0), semantics={"temperature": 60.0}, confidence=1.0
+            ),
         ]
         pred = Prediction(trajectory=states)
         result = proj.apply_flux_gate(pred)
@@ -263,7 +280,9 @@ class TestSpatialProjector:
     def test_flux_multiple_constraints(self):
         proj = SpatialProjector("node-1", dimension=2)
         proj.add_flux_constraint(create_thermal_constraint(max_temp=100.0, hard=True))
-        proj.add_flux_constraint(create_uncertainty_constraint(max_uncertainty=0.5, hard=True))
+        proj.add_flux_constraint(
+            create_uncertainty_constraint(max_uncertainty=0.5, hard=True)
+        )
 
         states = [WorldState(position=(0.0, 0.0), semantics={"temperature": 50.0})]
         pred = Prediction(trajectory=states, uncertainty=[0.3])
@@ -337,7 +356,9 @@ class TestSpatialProjector:
 
     def test_prediction_history(self):
         proj = SpatialProjector("node-1", dimension=2)
-        proj.project_state("a1", "room1", WorldState(position=(0.0, 0.0), velocity=(1.0, 0.0)))
+        proj.project_state(
+            "a1", "room1", WorldState(position=(0.0, 0.0), velocity=(1.0, 0.0))
+        )
 
         p1 = proj.predict_trajectory("a1", horizon=2)
         p2 = proj.predict_trajectory("a1", horizon=2)
@@ -347,8 +368,16 @@ class TestSpatialProjector:
 
     def test_semantic_broadcast_filter(self):
         proj = SpatialProjector("node-1", dimension=2)
-        proj.project_state("breeder-1", "ethos", WorldState(position=(0.0, 0.0), semantics={"role": "breeder"}))
-        proj.project_state("solver-1", "pathos", WorldState(position=(10.0, 0.0), semantics={"role": "solver"}))
+        proj.project_state(
+            "breeder-1",
+            "ethos",
+            WorldState(position=(0.0, 0.0), semantics={"role": "breeder"}),
+        )
+        proj.project_state(
+            "solver-1",
+            "pathos",
+            WorldState(position=(10.0, 0.0), semantics={"role": "solver"}),
+        )
 
         breeders = proj.query_semantic("role", "breeder")
         assert len(breeders) == 1
@@ -356,6 +385,7 @@ class TestSpatialProjector:
 
 
 # ──────────────────────────── WorldModelBridge ────────────────────────────
+
 
 class TestWorldModelBridge:
     def test_detect_swm_mock(self):
@@ -429,6 +459,7 @@ class TestWorldModelBridge:
 
 # ──────────────────────────── FluxConstraint Factory ────────────────────────────
 
+
 class TestFluxConstraintFactories:
     def test_thermal_hard_pass(self):
         c = create_thermal_constraint(max_temp=50.0, hard=True)
@@ -458,7 +489,9 @@ class TestFluxConstraintFactories:
         passed, _ = c.evaluate(pred)
         assert passed is True
 
-        pred_bad = Prediction(trajectory=[WorldState(position=(0.0,))], uncertainty=[0.5])
+        pred_bad = Prediction(
+            trajectory=[WorldState(position=(0.0,))], uncertainty=[0.5]
+        )
         passed, _ = c.evaluate(pred_bad)
         assert passed is False
 
@@ -479,6 +512,7 @@ class TestFluxConstraintFactories:
 
 # ──────────────────────────── Integration ────────────────────────────
 
+
 class TestSpatialProjectorIntegration:
     def test_full_pipeline(self):
         """End-to-end: project → predict → flux gate → broadcast."""
@@ -486,9 +520,15 @@ class TestSpatialProjectorIntegration:
         proj.add_flux_constraint(create_thermal_constraint(max_temp=80.0, hard=True))
 
         # Agent projects state
-        proj.project_state("breeder-1", "ethos-thermal",
-                           WorldState(position=(0.0, 0.0), velocity=(1.0, 0.0),
-                                      semantics={"temperature": 65.0}))
+        proj.project_state(
+            "breeder-1",
+            "ethos-thermal",
+            WorldState(
+                position=(0.0, 0.0),
+                velocity=(1.0, 0.0),
+                semantics={"temperature": 65.0},
+            ),
+        )
 
         # Predict trajectory
         pred = proj.predict_trajectory("breeder-1", horizon=5)
@@ -510,19 +550,34 @@ class TestSpatialProjectorIntegration:
         proj = SpatialProjector("node-test", dimension=3)
 
         # Agent in ethos room (thermal management)
-        proj.project_state("breeder-1", "ethos",
-                           WorldState(position=(0.0, 0.0, 0.0),
-                                      semantics={"temperature": 65.0, "role": "breeder"}))
+        proj.project_state(
+            "breeder-1",
+            "ethos",
+            WorldState(
+                position=(0.0, 0.0, 0.0),
+                semantics={"temperature": 65.0, "role": "breeder"},
+            ),
+        )
 
         # Agent in pathos room (human interaction)
-        proj.project_state("solver-1", "pathos",
-                           WorldState(position=(10.0, 0.0, 0.0),
-                                      semantics={"sentiment": 0.8, "role": "solver"}))
+        proj.project_state(
+            "solver-1",
+            "pathos",
+            WorldState(
+                position=(10.0, 0.0, 0.0),
+                semantics={"sentiment": 0.8, "role": "solver"},
+            ),
+        )
 
         # Agent in logos room (code quality)
-        proj.project_state("auditor-1", "logos",
-                           WorldState(position=(20.0, 0.0, 0.0),
-                                      semantics={"complexity": 12.5, "role": "auditor"}))
+        proj.project_state(
+            "auditor-1",
+            "logos",
+            WorldState(
+                position=(20.0, 0.0, 0.0),
+                semantics={"complexity": 12.5, "role": "auditor"},
+            ),
+        )
 
         # Query: who is near breeder-1?
         near = proj.query_neighbors("breeder-1", radius=15.0)
@@ -544,8 +599,9 @@ class TestSpatialProjectorIntegration:
         node_beta = SpatialProjector("node-beta", dimension=2)
 
         # Alpha has an agent
-        node_alpha.project_state("agent-x", "ethos",
-                                 WorldState(position=(5.0, 5.0), semantics={"load": 0.8}))
+        node_alpha.project_state(
+            "agent-x", "ethos", WorldState(position=(5.0, 5.0), semantics={"load": 0.8})
+        )
 
         # Beta ingests alpha's snapshot
         snap = node_alpha.snapshot()
@@ -567,7 +623,9 @@ class TestSpatialProjectorIntegration:
         pred = bridge.predict("agent-1", current, horizon=4)
 
         # FLUX gate via projector
-        proj.add_flux_constraint(create_uncertainty_constraint(max_uncertainty=0.6, hard=False))
+        proj.add_flux_constraint(
+            create_uncertainty_constraint(max_uncertainty=0.6, hard=False)
+        )
         validated = proj.apply_flux_gate(pred)
         assert validated is not None
 

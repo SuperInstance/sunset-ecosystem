@@ -55,8 +55,7 @@ def run_demo(output_dir: str = ".") -> None:
     print(f"  Connections: {len(scene['connections'])}")
 
     overcap = [
-        rid for rid, r in scene["rooms"].items()
-        if r["occupancy"] > r["capacity"]
+        rid for rid, r in scene["rooms"].items() if r["occupancy"] > r["capacity"]
     ]
     if overcap:
         print(f"  ⚠️  Overcapacity rooms: {', '.join(overcap)}")

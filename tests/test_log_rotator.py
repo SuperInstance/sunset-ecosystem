@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_log_rotator.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import os
@@ -38,7 +39,9 @@ class TestLogRotator:
     def test_cleanup_old(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "test.log")
-            rotator = LogRotator(policy=RotationPolicy(max_size=1, max_files=2), compress=False)
+            rotator = LogRotator(
+                policy=RotationPolicy(max_size=1, max_files=2), compress=False
+            )
             for _ in range(4):
                 rotator.write(path, "x")
                 rotator.rotate(path)
@@ -56,7 +59,9 @@ class TestLogRotator:
     def test_compress(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "test.log")
-            rotator = LogRotator(policy=RotationPolicy(max_size=1, max_files=5), compress=True)
+            rotator = LogRotator(
+                policy=RotationPolicy(max_size=1, max_files=5), compress=True
+            )
             rotator.write(path, "x")
             rotated = rotator.rotate(path)
             assert rotated.endswith(".gz")

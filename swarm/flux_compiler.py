@@ -81,6 +81,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 # ── opcode numbers (from flux_compat/opcode_map.py V3_OPCODE_BYTES) ──
 
+
 class FluxOpcode(IntEnum):
     """FLUX VM v3 opcode byte values."""
 
@@ -96,12 +97,12 @@ class FluxOpcode(IntEnum):
 
     # Arithmetic
     Add = 0x09
-    Sub = 0x0a
-    Mul = 0x0b
-    Div = 0x0c
-    Saturate = 0x0d
-    Min = 0x0e
-    Max = 0x0f
+    Sub = 0x0A
+    Mul = 0x0B
+    Div = 0x0C
+    Saturate = 0x0D
+    Min = 0x0E
+    Max = 0x0F
     Abs = 0x10
 
     # Register / Memory
@@ -116,14 +117,14 @@ class FluxOpcode(IntEnum):
     AccumulateMask = 0x17
     ClassifySeverity = 0x18
     Prove = 0x19
-    QueryBackward = 0x1a
-    Simplify = 0x1b
-    Validate = 0x1c
-    HashCommit = 0x1d
-    Seal = 0x1e
+    QueryBackward = 0x1A
+    Simplify = 0x1B
+    Validate = 0x1C
+    HashCommit = 0x1D
+    Seal = 0x1E
 
     # Vector / SIMD
-    VecLoad = 0x1f
+    VecLoad = 0x1F
     VecStore = 0x20
     VecRangeCheck = 0x21
     VecMaskMerge = 0x22
@@ -136,16 +137,16 @@ class FluxOpcode(IntEnum):
     CallBounded = 0x27
     Ret = 0x28
     Halt = 0x29
-    Checkpoint = 0x2a
+    Checkpoint = 0x2A
 
     # Effects
-    SetHandler = 0x2b
-    EmitEvent = 0x2c
-    Rollback = 0x2d
-    GetResult = 0x2e
+    SetHandler = 0x2B
+    EmitEvent = 0x2C
+    Rollback = 0x2D
+    GetResult = 0x2E
 
     # Parallel
-    ParDispatch = 0x2f
+    ParDispatch = 0x2F
     ParMerge = 0x30
     ParBarrier = 0x31
     ParReduce = 0x32
@@ -160,36 +161,59 @@ class FluxOpcode(IntEnum):
     StreamOpen = 0x37
     StreamCheck = 0x38
     StreamBatch = 0x39
-    StreamClose = 0x3a
+    StreamClose = 0x3A
 
 
 # Opcodes that have a Python-safe fallback (from OpcodeCapabilityIndex)
 PYTHON_SAFE_OPCODES: set[str] = {
-    "Push", "Pop", "Dup", "Swap", "Over", "Drop", "LoadConst", "Nop",
-    "Add", "Sub", "Mul", "Div", "Saturate", "Min", "Max", "Abs",
-    "RangeCheck", "ClassifySeverity", "Validate",
-    "FwdJump", "CondJump", "Ret", "Halt",
+    "Push",
+    "Pop",
+    "Dup",
+    "Swap",
+    "Over",
+    "Drop",
+    "LoadConst",
+    "Nop",
+    "Add",
+    "Sub",
+    "Mul",
+    "Div",
+    "Saturate",
+    "Min",
+    "Max",
+    "Abs",
+    "RangeCheck",
+    "ClassifySeverity",
+    "Validate",
+    "FwdJump",
+    "CondJump",
+    "Ret",
+    "Halt",
     "EmitEvent",
 }
 
 
 # ── AST nodes for constraint expressions ──
 
+
 @dataclass(frozen=True)
 class Const:
     """Float constant."""
+
     value: float
 
 
 @dataclass(frozen=True)
 class Var:
     """Named variable (resolved to a constant pool slot at compile time)."""
+
     name: str
 
 
 @dataclass(frozen=True)
 class BinOp:
     """Binary arithmetic operation."""
+
     op: str  # "Add", "Sub", "Mul", "Div", "Min", "Max"
     left: "Expr"
     right: "Expr"
@@ -198,6 +222,7 @@ class BinOp:
 @dataclass(frozen=True)
 class UnaryOp:
     """Unary arithmetic operation."""
+
     op: str  # "Abs"
     operand: "Expr"
 
@@ -205,6 +230,7 @@ class UnaryOp:
 @dataclass(frozen=True)
 class RangeCheckNode:
     """High-level range-check node."""
+
     expr: "Expr"
     lo: float
     hi: float
@@ -213,6 +239,7 @@ class RangeCheckNode:
 @dataclass(frozen=True)
 class IfNode:
     """Conditional branch: if cond then then_expr else else_expr."""
+
     cond: "CmpOp"
     then_expr: "Expr"
     else_expr: "Expr"
@@ -221,6 +248,7 @@ class IfNode:
 @dataclass(frozen=True)
 class CmpOp:
     """Comparison: left op right, where op is one of LT, LE, GT, GE, EQ."""
+
     op: str  # "LT", "LE", "GT", "GE", "EQ"
     left: "Expr"
     right: "Expr"
@@ -230,6 +258,7 @@ Expr = Union[Const, Var, BinOp, UnaryOp, RangeCheckNode, IfNode]
 
 
 # ── BytecodeEmitter ──
+
 
 class BytecodeEmitter:
     """Builds a FLUX bytecode sequence with support for back-patching jumps.
@@ -332,7 +361,9 @@ class BytecodeEmitter:
                     raise ValueError(
                         f"Jump delta {jump_delta} to label '{name}' exceeds u16"
                     )
-                self._code[patch_offset : patch_offset + 2] = struct.pack("<H", jump_delta)
+                self._code[patch_offset : patch_offset + 2] = struct.pack(
+                    "<H", jump_delta
+                )
             else:
                 unresolved.append((lbl, patch_offset))
         self._backpatches = unresolved
@@ -378,7 +409,11 @@ class BytecodeEmitter:
         code = self._code
         while i < len(code):
             op = code[i]
-            name = FluxOpcode(op).name if op in [o.value for o in FluxOpcode] else f"0x{op:02x}"
+            name = (
+                FluxOpcode(op).name
+                if op in [o.value for o in FluxOpcode]
+                else f"0x{op:02x}"
+            )
             if op == FluxOpcode.Push:
                 val = struct.unpack("<f", code[i + 1 : i + 5])[0]
                 out.append(f"{i:04d}  Push    {val}")
@@ -411,6 +446,7 @@ class BytecodeEmitter:
 
 # ── FluxCompiler ──
 
+
 class FluxCompiler:
     """Compile constraint AST expressions into FLUX bytecode.
 
@@ -421,7 +457,11 @@ class FluxCompiler:
             (the low-level Path B pattern).
     """
 
-    def __init__(self, prefer_range_check: bool = True, var_defaults: dict[str, float] | None = None) -> None:
+    def __init__(
+        self,
+        prefer_range_check: bool = True,
+        var_defaults: dict[str, float] | None = None,
+    ) -> None:
         self.prefer_range_check = prefer_range_check
         self.var_defaults = var_defaults or {}
 
@@ -503,7 +543,9 @@ class FluxCompiler:
         emitter.push(1.0)
         emitter.label(end_label)
 
-    def compile_expr(self, expr: Expr, emitter: BytecodeEmitter, with_validate: bool = True) -> None:
+    def compile_expr(
+        self, expr: Expr, emitter: BytecodeEmitter, with_validate: bool = True
+    ) -> None:
         """Compile an expression into *emitter*."""
         if isinstance(expr, Const):
             emitter.push(expr.value)
@@ -537,7 +579,9 @@ class FluxCompiler:
         else:
             raise TypeError(f"Unknown expression type: {type(expr).__name__}")
 
-    def _compile_range_check_arithmetic(self, node: RangeCheckNode, emitter: BytecodeEmitter, with_validate: bool = True) -> None:
+    def _compile_range_check_arithmetic(
+        self, node: RangeCheckNode, emitter: BytecodeEmitter, with_validate: bool = True
+    ) -> None:
         """Compile a range check using only arithmetic + branch opcodes.
 
         Pseudocode::
@@ -561,19 +605,19 @@ class FluxCompiler:
         # Check expr >= lo  →  expr - lo >= 0  →  jump if negative
         self.compile_expr(expr, emitter, with_validate)
         emitter.push(lo)
-        emitter.op(FluxOpcode.Sub)          # TOS = expr - lo
-        emitter.cond_jump("__fail_lo")      # jump if TOS <= 0 (weight < min)
+        emitter.op(FluxOpcode.Sub)  # TOS = expr - lo
+        emitter.cond_jump("__fail_lo")  # jump if TOS <= 0 (weight < min)
 
         # Check expr <= hi  →  expr - hi <= 0  →  jump if positive
         self.compile_expr(expr, emitter, with_validate)
         emitter.push(hi)
-        emitter.op(FluxOpcode.Sub)          # TOS = expr - hi
+        emitter.op(FluxOpcode.Sub)  # TOS = expr - hi
         # For CondJump we need TOS == 0 to jump. To detect "> 0" we
         # need a trick: negate then check.
         emitter.push(0.0)
         emitter.op(FluxOpcode.Swap)
-        emitter.op(FluxOpcode.Sub)          # TOS = 0 - (expr - hi) = hi - expr
-        emitter.cond_jump("__fail_hi")      # jump if hi - expr <= 0 (i.e. expr > hi)
+        emitter.op(FluxOpcode.Sub)  # TOS = 0 - (expr - hi) = hi - expr
+        emitter.cond_jump("__fail_hi")  # jump if hi - expr <= 0 (i.e. expr > hi)
 
         # Pass path
         emitter.push(1.0)
@@ -719,6 +763,7 @@ class FluxCompiler:
 
 # ── Convenience API ──
 
+
 def compile_constraint(
     expr: Expr,
     *,
@@ -736,6 +781,10 @@ def compile_constraint(
             prefer_range_check=False,
         )
     """
-    compiler = FluxCompiler(prefer_range_check=prefer_range_check, var_defaults=var_defaults)
-    emitter = compiler.compile_constraint(expr, with_validate=with_validate, with_halt=with_halt)
+    compiler = FluxCompiler(
+        prefer_range_check=prefer_range_check, var_defaults=var_defaults
+    )
+    emitter = compiler.compile_constraint(
+        expr, with_validate=with_validate, with_halt=with_halt
+    )
     return emitter.to_bytes(), emitter.const_pool, emitter.disassemble()

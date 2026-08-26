@@ -13,6 +13,7 @@ Usage:
     result = filter.process({"content-type": "json", "x-internal-token": "secret"})
     # result: {"content-type": "json", "authorization": "missing"}
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional

@@ -95,8 +95,12 @@ class BenchmarkSuite:
             "suite_name": self.suite_name,
             "benchmark_count": len(self.results),
             "total_duration_ms": self.total_duration_ms,
-            "fastest": min((r.mean_ms, r.name) for r in self.results)[1] if self.results else None,
-            "slowest": max((r.mean_ms, r.name) for r in self.results)[1] if self.results else None,
+            "fastest": min((r.mean_ms, r.name) for r in self.results)[1]
+            if self.results
+            else None,
+            "slowest": max((r.mean_ms, r.name) for r in self.results)[1]
+            if self.results
+            else None,
         }
 
 
@@ -190,7 +194,9 @@ class FleetBenchmark:
             p95_ms=sorted_times[min(p95_idx, iterations - 1)],
             p99_ms=sorted_times[min(p99_idx, iterations - 1)],
             stdev_ms=statistics.stdev(times) if len(times) > 1 else 0.0,
-            throughput_ops_per_sec=(iterations / total_ms) * 1000 if total_ms > 0 else 0.0,
+            throughput_ops_per_sec=(iterations / total_ms) * 1000
+            if total_ms > 0
+            else 0.0,
             memory_peak_mb=peak_mem / (1024 * 1024),
             memory_current_mb=current_mem / (1024 * 1024),
             metadata=metadata or {},
@@ -217,7 +223,10 @@ class FleetBenchmark:
             fn=lambda: self._orchestrator.check_fleet_health(),
             iterations=iterations,
             warmup=5,
-            metadata={"component": "FleetOrchestrator", "operation": "check_fleet_health"},
+            metadata={
+                "component": "FleetOrchestrator",
+                "operation": "check_fleet_health",
+            },
         )
 
     def benchmark_harbor_report(self, iterations: int = 50) -> BenchmarkResult:
@@ -312,30 +321,34 @@ class FleetBenchmark:
                 f"{r.p95_ms:.3f} | {r.p99_ms:.3f} | {r.throughput_ops_per_sec:.1f} | {r.memory_peak_mb:.2f} |"
             )
 
-        lines.extend([
-            "",
-            "## Detailed Results",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Detailed Results",
+                "",
+            ]
+        )
 
         for r in suite.results:
-            lines.extend([
-                f"### {r.name}",
-                "",
-                f"- **Iterations:** {r.iterations}",
-                f"- **Total:** {r.total_ms:.2f} ms",
-                f"- **Min:** {r.min_ms:.3f} ms",
-                f"- **Max:** {r.max_ms:.3f} ms",
-                f"- **Mean:** {r.mean_ms:.3f} ms",
-                f"- **Median:** {r.median_ms:.3f} ms",
-                f"- **p95:** {r.p95_ms:.3f} ms",
-                f"- **p99:** {r.p99_ms:.3f} ms",
-                f"- **StdDev:** {r.stdev_ms:.3f} ms",
-                f"- **Throughput:** {r.throughput_ops_per_sec:.1f} ops/sec",
-                f"- **Peak Memory:** {r.memory_peak_mb:.2f} MB",
-                f"- **Current Memory:** {r.memory_current_mb:.2f} MB",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### {r.name}",
+                    "",
+                    f"- **Iterations:** {r.iterations}",
+                    f"- **Total:** {r.total_ms:.2f} ms",
+                    f"- **Min:** {r.min_ms:.3f} ms",
+                    f"- **Max:** {r.max_ms:.3f} ms",
+                    f"- **Mean:** {r.mean_ms:.3f} ms",
+                    f"- **Median:** {r.median_ms:.3f} ms",
+                    f"- **p95:** {r.p95_ms:.3f} ms",
+                    f"- **p99:** {r.p99_ms:.3f} ms",
+                    f"- **StdDev:** {r.stdev_ms:.3f} ms",
+                    f"- **Throughput:** {r.throughput_ops_per_sec:.1f} ops/sec",
+                    f"- **Peak Memory:** {r.memory_peak_mb:.2f} MB",
+                    f"- **Current Memory:** {r.memory_current_mb:.2f} MB",
+                    "",
+                ]
+            )
 
         content = "\n".join(lines)
         Path(output_path).write_text(content)
@@ -399,7 +412,11 @@ class FleetBenchmark:
 
             baseline_mean = baseline_result["mean_ms"]
             current_mean = result.mean_ms
-            change_pct = ((current_mean - baseline_mean) / baseline_mean) * 100 if baseline_mean > 0 else 0
+            change_pct = (
+                ((current_mean - baseline_mean) / baseline_mean) * 100
+                if baseline_mean > 0
+                else 0
+            )
 
             comp = {
                 "name": result.name,

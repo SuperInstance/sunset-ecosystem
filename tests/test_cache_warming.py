@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_cache_warming.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -49,7 +50,14 @@ class TestCacheWarmer:
     def test_error_not_fatal(self):
         w = CacheWarmer()
         warmed = []
-        w.warm(["a", "b"], lambda key: (_ for _ in ()).throw(ValueError("boom")) if key == "a" else warmed.append(key))
+        w.warm(
+            ["a", "b"],
+            lambda key: (
+                (_ for _ in ()).throw(ValueError("boom"))
+                if key == "a"
+                else warmed.append(key)
+            ),
+        )
         assert warmed == ["b"]
         assert w.stats()["errors"] == 1
 

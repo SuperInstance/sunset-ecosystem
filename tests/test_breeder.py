@@ -38,6 +38,7 @@ def _mock_grid(n=4):
 # LifecycleRecord
 # ---------------------------------------------------------------------------
 
+
 class TestLifecycleRecord:
     def test_init_defaults(self):
         lr = LifecycleRecord(room_id=5)
@@ -67,11 +68,15 @@ class TestLifecycleRecord:
         assert not lr.can_advance()
 
     def test_can_advance_adapting(self):
-        lr = LifecycleRecord(room_id=0, state=AgentLifecycle.ADAPTING, consecutive_wins=3)
+        lr = LifecycleRecord(
+            room_id=0, state=AgentLifecycle.ADAPTING, consecutive_wins=3
+        )
         assert lr.can_advance()
 
     def test_can_advance_adapting_not_enough_wins(self):
-        lr = LifecycleRecord(room_id=0, state=AgentLifecycle.ADAPTING, consecutive_wins=2)
+        lr = LifecycleRecord(
+            room_id=0, state=AgentLifecycle.ADAPTING, consecutive_wins=2
+        )
         assert not lr.can_advance()
 
     def test_can_advance_compiled(self):
@@ -82,6 +87,7 @@ class TestLifecycleRecord:
 # ---------------------------------------------------------------------------
 # spawn_from_template
 # ---------------------------------------------------------------------------
+
 
 class TestSpawnFromTemplate:
     def test_spawns_into_room(self):
@@ -103,6 +109,7 @@ class TestSpawnFromTemplate:
 # Breeder init
 # ---------------------------------------------------------------------------
 
+
 class TestBreederInit:
     def test_default(self):
         grid = _mock_grid(n=8)
@@ -117,6 +124,7 @@ class TestBreederInit:
 # ---------------------------------------------------------------------------
 # Lifecycle management
 # ---------------------------------------------------------------------------
+
 
 class TestLifecycleManagement:
     def test_advance_spawned_to_active(self):
@@ -162,6 +170,7 @@ class TestLifecycleManagement:
 # ---------------------------------------------------------------------------
 # evolve
 # ---------------------------------------------------------------------------
+
 
 class TestEvolve:
     def test_no_winners(self):
@@ -214,6 +223,7 @@ class TestEvolve:
 # spawn_template
 # ---------------------------------------------------------------------------
 
+
 class TestSpawnTemplate:
     def test_spawns_known_template(self):
         grid = _mock_grid(n=4)
@@ -248,6 +258,7 @@ class TestSpawnTemplate:
 # tick_all, sunset, stats
 # ---------------------------------------------------------------------------
 
+
 class TestTickSunsetStats:
     def test_tick_all_advances(self):
         grid = _mock_grid(n=4)
@@ -266,7 +277,9 @@ class TestTickSunsetStats:
         grid = _mock_grid(n=4)
         thermal = MagicMock()
         breeder = Breeder(grid, {}, thermal)
-        breeder._lifecycle[2] = LifecycleRecord(room_id=2, state=AgentLifecycle.COMPILED)
+        breeder._lifecycle[2] = LifecycleRecord(
+            room_id=2, state=AgentLifecycle.COMPILED
+        )
         breeder.sunset_room(2)
         assert 2 not in breeder._lifecycle
         grid.rebirth.assert_called_once_with(2)

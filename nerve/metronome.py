@@ -37,6 +37,7 @@ log = logging.getLogger(__name__)
 
 # ── SignalSource Protocol ─────────────────────────────────
 
+
 class SignalSource(Protocol):
     """Pluggable signal generator for the grid."""
 
@@ -56,6 +57,7 @@ class RandomSignalSource:
 
 # ── A2ASignalSource ─────────────────────────────────────
 
+
 class A2ASignalSource:
     """Fetch input signals from an A2A agent via HTTP.
 
@@ -74,11 +76,13 @@ class A2ASignalSource:
 
     def next_signal(self, beat_number: int) -> np.ndarray:
         """POST to the A2A agent and return the signal vector."""
-        payload = json.dumps({
-            "id": f"signal-beat-{beat_number}",
-            "type": "get_signal",
-            "input": {"beat_number": beat_number, "dimensions": 64},
-        }).encode("utf-8")
+        payload = json.dumps(
+            {
+                "id": f"signal-beat-{beat_number}",
+                "type": "get_signal",
+                "input": {"beat_number": beat_number, "dimensions": 64},
+            }
+        ).encode("utf-8")
 
         req = urllib.request.Request(
             f"{self.endpoint_url}/a2a/tasks/send",
@@ -111,7 +115,7 @@ class A2ASignalSource:
                 if vec.size >= 64:
                     return vec[:64].astype(np.float32)
                 padded = np.zeros(64, dtype=np.float32)
-                padded[:vec.size] = vec
+                padded[: vec.size] = vec
                 return padded
 
         # No signal artefact found — fallback to zeros
@@ -127,6 +131,7 @@ class A2ASignalSource:
 
 
 # ── LocalMetronome ────────────────────────────────────────
+
 
 class LocalMetronome:
     """Per-room sub-oscillator.
@@ -157,6 +162,7 @@ class LocalMetronome:
 
 
 # ── TickAsTask ────────────────────────────────────────────
+
 
 class TickAsTask:
     """Convert each metronome beat into an A2A task payload.
@@ -232,19 +238,25 @@ class TickAsTask:
         while self._pending_task_ids:
             task_id = self._pending_task_ids.popleft()
             # Synthetic completion — real impl would GET /a2a/tasks/{task_id}
-            results.append({
-                "id": task_id,
-                "status": "completed",
-                "artefacts": [{
-                    "type": "TickResult",
-                    "content": {
-                        "beat_number": int(task_id.split("-")[-1]) if "-" in task_id else 0,
-                        "fired_rooms": [],
-                        "fired_count": 0,
-                        "missed_beat": False,
-                    },
-                }],
-            })
+            results.append(
+                {
+                    "id": task_id,
+                    "status": "completed",
+                    "artefacts": [
+                        {
+                            "type": "TickResult",
+                            "content": {
+                                "beat_number": int(task_id.split("-")[-1])
+                                if "-" in task_id
+                                else 0,
+                                "fired_rooms": [],
+                                "fired_count": 0,
+                                "missed_beat": False,
+                            },
+                        }
+                    ],
+                }
+            )
         return results
 
     def __repr__(self) -> str:
@@ -255,6 +267,7 @@ class TickAsTask:
 
 
 # ── MetronomeScheduler ────────────────────────────────────
+
 
 class MetronomeScheduler:
     """Drives the nerve grid on a periodic beat.
@@ -361,8 +374,7 @@ class MetronomeScheduler:
         beat_dur = self.beat_duration
         if elapsed > beat_dur * 0.80:
             log.warning(
-                "Metronome beat exceeded 80%% of beat duration: "
-                "%.3fms / %.3fms",
+                "Metronome beat exceeded 80%% of beat duration: %.3fms / %.3fms",
                 elapsed * 1000,
                 beat_dur * 1000,
             )
@@ -460,9 +472,7 @@ class MetronomeScheduler:
     def _route_phase(self, beat_number: int) -> None:
         """Fire compiled (deterministic) and exploratory routes."""
         # Compiled routes (strength > 0.9) fire every beat
-        compiled = [
-            r for r in self.router.routes.values() if r.strength > 0.9
-        ]
+        compiled = [r for r in self.router.routes.values() if r.strength > 0.9]
         for r in compiled:
             r.fires += 1
             r.last_fired = time.time()
@@ -482,6 +492,7 @@ class MetronomeScheduler:
         if self.grid._flux_checker is not None:
             try:
                 from sunset.flux_integration import apply_constraint_feedback
+
                 apply_constraint_feedback(self.grid, self.grid._flux_checker)
             except Exception:
                 log.exception("FLUX phase failed on beat %d", beat_number)
@@ -499,8 +510,7 @@ class MetronomeScheduler:
                 self._stop_event.wait(sleep_time)
             else:
                 log.warning(
-                    "Metronome missed beat: overload "
-                    "(elapsed %.3fms > beat %.3fms)",
+                    "Metronome missed beat: overload (elapsed %.3fms > beat %.3fms)",
                     elapsed * 1000,
                     beat_dur * 1000,
                 )

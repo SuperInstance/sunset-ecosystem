@@ -63,9 +63,7 @@ class ExponentialBackoffSchedule(HintSchedule):
 
     def __repr__(self) -> str:
         pct = (
-            (1.0 - self._level / self._max_hints) * 100
-            if self._max_hints > 0
-            else 0.0
+            (1.0 - self._level / self._max_hints) * 100 if self._max_hints > 0 else 0.0
         )
         return (
             f"ExponentialBackoffSchedule(level={self._level}/{self._max_hints}, "

@@ -14,13 +14,13 @@ optimal transport theory to measure diversity between agent distributions.
 Usage
 -----
     optimizer = BreedOptimizer(node_id="alpha", swarm=swarm, cache=cache)
-    
+
     # Score parent pairs by diversity + predicted quality
     parents = optimizer.select_parents(pool, k=3)
-    
+
     # Detect anomalies in breeding history
     anomalies = optimizer.detect_anomalies(history)
-    
+
     # Optimize the breeding archive
     optimizer.optimize_archive(archive, iterations=100)
 """
@@ -55,6 +55,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ParentPair:
     """A pair of parent agents for breeding."""
+
     parent_a: str
     parent_b: str
     diversity_score: float
@@ -66,6 +67,7 @@ class ParentPair:
 @dataclass
 class OffspringPrediction:
     """Prediction for offspring quality."""
+
     expected_fitness: float
     confidence: float
     novelty_score: float
@@ -75,6 +77,7 @@ class OffspringPrediction:
 @dataclass
 class BreedingArchive:
     """MAP-Elites style archive for breeding history."""
+
     cells: dict[tuple[int, ...], list[Any]] = field(default_factory=dict)
     dimensions: int = 2
     bins_per_dim: int = 10
@@ -92,16 +95,18 @@ class BreedingArchive:
     def _to_indices(self, behavior: tuple[float, ...]) -> tuple[int, ...]:
         """Convert behavior coordinates to archive indices."""
         return tuple(
-            min(int(b * self.bins_per_dim), self.bins_per_dim - 1)
-            for b in behavior
+            min(int(b * self.bins_per_dim), self.bins_per_dim - 1) for b in behavior
         )
 
     def _update_metrics(self) -> None:
         """Update coverage and QD-score."""
-        total_cells = self.bins_per_dim ** self.dimensions
+        total_cells = self.bins_per_dim**self.dimensions
         self.coverage = len(self.cells) / total_cells
         self.qd_score = sum(
-            max((ind.get("fitness", 0.0) for ind in cell if ind is not None), default=0.0)
+            max(
+                (ind.get("fitness", 0.0) for ind in cell if ind is not None),
+                default=0.0,
+            )
             for cell in self.cells.values()
         )
 
@@ -128,6 +133,7 @@ class BreedingArchive:
 @dataclass
 class AnomalyResult:
     """Result of anomaly detection on breeding history."""
+
     is_anomaly: bool
     anomaly_score: float
     reason: str
@@ -252,7 +258,7 @@ class BreedOptimizer:
 
         pairs: list[ParentPair] = []
         for i, a in enumerate(pool):
-            for b in pool[i + 1:]:
+            for b in pool[i + 1 :]:
                 a_id = a.get("id", str(i))
                 b_id = b.get("id", str(i + 1))
                 a_traits = a.get("traits", [])
@@ -266,8 +272,8 @@ class BreedOptimizer:
                 pred = self._predict_offspring(a_traits, b_traits)
 
                 composite = (
-                    diversity_weight * div_score +
-                    (1 - diversity_weight) * pred.expected_fitness
+                    diversity_weight * div_score
+                    + (1 - diversity_weight) * pred.expected_fitness
                 )
 
                 pair = ParentPair(
@@ -310,7 +316,9 @@ class BreedOptimizer:
         expected = min(expected + bonus, 1.0)
 
         # Confidence: higher for similar-length trait vectors
-        confidence = 1.0 - abs(len(traits_a) - len(traits_b)) / max(len(traits_a), len(traits_b), 1)
+        confidence = 1.0 - abs(len(traits_a) - len(traits_b)) / max(
+            len(traits_a), len(traits_b), 1
+        )
         confidence = max(confidence, 0.3)
 
         # Novelty: proportional to Wasserstein distance
@@ -339,22 +347,22 @@ class BreedOptimizer:
     ) -> list[AnomalyResult]:
         """Detect anomalies in breeding history.
 
-        Uses simple statistical outlier detection:
-        - Z-score > threshold for fitness drop
-- Sudden diversity collapse
-- Repeated parent pairs (inbreeding)
+                Uses simple statistical outlier detection:
+                - Z-score > threshold for fitness drop
+        - Sudden diversity collapse
+        - Repeated parent pairs (inbreeding)
 
-        Parameters
-        ----------
-        history : list[dict] | None
-            Breeding history entries. If None, uses internal history.
-        threshold : float
-            Z-score threshold for anomaly detection.
+                Parameters
+                ----------
+                history : list[dict] | None
+                    Breeding history entries. If None, uses internal history.
+                threshold : float
+                    Z-score threshold for anomaly detection.
 
-        Returns
-        -------
-        list[AnomalyResult]
-            Detected anomalies.
+                Returns
+                -------
+                list[AnomalyResult]
+                    Detected anomalies.
         """
         data = history or self._history
         if len(data) < 5:
@@ -365,17 +373,21 @@ class BreedOptimizer:
         # Fitness anomaly detection
         fitnesses = [h.get("offspring_fitness", 0.0) for h in data]
         mean_fit = sum(fitnesses) / len(fitnesses)
-        std_fit = math.sqrt(sum((f - mean_fit) ** 2 for f in fitnesses) / len(fitnesses))
+        std_fit = math.sqrt(
+            sum((f - mean_fit) ** 2 for f in fitnesses) / len(fitnesses)
+        )
 
         for i, h in enumerate(data):
             fit = h.get("offspring_fitness", 0.0)
             if std_fit > 0 and abs(fit - mean_fit) / std_fit > threshold:
-                anomalies.append(AnomalyResult(
-                    is_anomaly=True,
-                    anomaly_score=abs(fit - mean_fit) / std_fit,
-                    reason=f"Fitness z-score {abs(fit - mean_fit) / std_fit:.1f} exceeds threshold",
-                    affected_parents=[h.get("parent_a", ""), h.get("parent_b", "")],
-                ))
+                anomalies.append(
+                    AnomalyResult(
+                        is_anomaly=True,
+                        anomaly_score=abs(fit - mean_fit) / std_fit,
+                        reason=f"Fitness z-score {abs(fit - mean_fit) / std_fit:.1f} exceeds threshold",
+                        affected_parents=[h.get("parent_a", ""), h.get("parent_b", "")],
+                    )
+                )
 
         # Inbreeding detection: repeated pairs
         pair_counts: dict[tuple[str, str], int] = {}
@@ -385,27 +397,31 @@ class BreedOptimizer:
 
         for pair, count in pair_counts.items():
             if count > len(data) * 0.3:  # Same pair > 30% of history
-                anomalies.append(AnomalyResult(
-                    is_anomaly=True,
-                    anomaly_score=float(count) / len(data),
-                    reason=f"Inbreeding: pair {pair} appears {count}/{len(data)} times",
-                    affected_parents=list(pair),
-                ))
+                anomalies.append(
+                    AnomalyResult(
+                        is_anomaly=True,
+                        anomaly_score=float(count) / len(data),
+                        reason=f"Inbreeding: pair {pair} appears {count}/{len(data)} times",
+                        affected_parents=list(pair),
+                    )
+                )
 
         # Diversity collapse: consecutive low diversity
         diversities = [h.get("diversity", 0.0) for h in data]
         if len(diversities) >= 3:
             for i in range(len(diversities) - 2):
-                if all(d < 0.1 for d in diversities[i:i+3]):
-                    anomalies.append(AnomalyResult(
-                        is_anomaly=True,
-                        anomaly_score=3.0,
-                        reason=f"Diversity collapse at generations {i}-{i+2}",
-                        affected_parents=[
-                            data[i].get("parent_a", ""),
-                            data[i].get("parent_b", ""),
-                        ],
-                    ))
+                if all(d < 0.1 for d in diversities[i : i + 3]):
+                    anomalies.append(
+                        AnomalyResult(
+                            is_anomaly=True,
+                            anomaly_score=3.0,
+                            reason=f"Diversity collapse at generations {i}-{i + 2}",
+                            affected_parents=[
+                                data[i].get("parent_a", ""),
+                                data[i].get("parent_b", ""),
+                            ],
+                        )
+                    )
 
         return anomalies
 
@@ -448,8 +464,11 @@ class BreedOptimizer:
                 behavior = (fitness, sum(traits) / len(traits) if traits else 0.0)
                 target.add(behavior, c)
 
-        logger.info("Archive optimized: coverage=%.2f%%, QD-score=%.1f",
-                    target.coverage * 100, target.qd_score)
+        logger.info(
+            "Archive optimized: coverage=%.2f%%, QD-score=%.1f",
+            target.coverage * 100,
+            target.qd_score,
+        )
         return target
 
     # ── Integration with Swarm ────────────────────────────────

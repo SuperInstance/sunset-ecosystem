@@ -139,7 +139,11 @@ class FleetDoc:
         try:
             tree = ast.parse(content)
         except SyntaxError:
-            return ModuleDoc(name=path.stem, docstring="File has syntax errors", source_file=str(path))
+            return ModuleDoc(
+                name=path.stem,
+                docstring="File has syntax errors",
+                source_file=str(path),
+            )
 
         docstring = ast.get_docstring(tree) or ""
         classes: list[ClassDoc] = []
@@ -177,7 +181,12 @@ class FleetDoc:
             line_number=node.lineno,
         )
 
-    def _parse_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef, source_file: str, is_method: bool) -> FunctionDoc:
+    def _parse_function(
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        source_file: str,
+        is_method: bool,
+    ) -> FunctionDoc:
         docstring = ast.get_docstring(node) or ""
         args = []
         for arg in node.args.args:
@@ -209,11 +218,13 @@ class FleetDoc:
                 self.workspace / "nerve" / f"{mod.name.lower().replace('_', '')}.py",
                 self.workspace / "nexus" / f"{mod.name.lower().replace('_', '')}.py",
             ]
-            
+
             # Also try exact name matches
             for prefix in ["fleet", "swarm", "nerve", "nexus"]:
                 candidates.append(self.workspace / prefix / f"{mod.name.lower()}.py")
-                candidates.append(self.workspace / prefix / f"{mod.name.lower().replace('_', '_')}.py")
+                candidates.append(
+                    self.workspace / prefix / f"{mod.name.lower().replace('_', '_')}.py"
+                )
 
             source_path = None
             for candidate in candidates:
@@ -268,7 +279,7 @@ class FleetDoc:
             doc = self._docs[name]
             lines.append(f"## {name}")
             lines.append("")
-            
+
             if doc.docstring:
                 lines.append(textwrap.dedent(doc.docstring))
                 lines.append("")
@@ -287,14 +298,16 @@ class FleetDoc:
                 if cls.docstring:
                     lines.append(textwrap.dedent(cls.docstring))
                     lines.append("")
-                
+
                 for method in cls.methods:
                     lines.append(f"#### `{method.signature}`")
                     lines.append("")
                     if method.docstring:
                         lines.append(textwrap.dedent(method.docstring))
                         lines.append("")
-                    lines.append(f"*Source: `{method.source_file}:{method.line_number}`*")
+                    lines.append(
+                        f"*Source: `{method.source_file}:{method.line_number}`*"
+                    )
                     lines.append("")
 
             # Functions
@@ -341,7 +354,7 @@ class FleetDoc:
         lines.append("")
         lines.append("```")
         lines.append("")
-        
+
         # Build layer sections
         for layer in self.LAYER_ORDER:
             layer_nodes = [n for n in nodes if n.layer == layer]
@@ -351,11 +364,13 @@ class FleetDoc:
             lines.append(f"┌{'─' * 50}┐")
             lines.append(f"│ {layer:48} │")
             lines.append(f"├{'─' * 50}┤")
-            
+
             for node in layer_nodes:
-                status = node.status[:8] if len(node.status) <= 8 else node.status[:7] + "…"
+                status = (
+                    node.status[:8] if len(node.status) <= 8 else node.status[:7] + "…"
+                )
                 lines.append(f"│ {node.health_emoji} {node.name:30} {status:15} │")
-            
+
             lines.append(f"└{'─' * 50}┘")
             lines.append("")
 
@@ -364,7 +379,9 @@ class FleetDoc:
             lines.append("Integration Flows:")
             lines.append("")
             for edge in edges:
-                lines.append(f"  {edge.source} {edge.direction} {edge.target} [{edge.label}]")
+                lines.append(
+                    f"  {edge.source} {edge.direction} {edge.target} [{edge.label}]"
+                )
             lines.append("")
 
         lines.append("```")
@@ -407,13 +424,15 @@ class FleetDoc:
                 emoji = "🟡"
                 status = "warning"
 
-            nodes.append(ArchitectureNode(
-                name=mod.name,
-                layer=layer,
-                description=mod.description,
-                status=status,
-                health_emoji=emoji,
-            ))
+            nodes.append(
+                ArchitectureNode(
+                    name=mod.name,
+                    layer=layer,
+                    description=mod.description,
+                    status=status,
+                    health_emoji=emoji,
+                )
+            )
 
         return nodes
 
@@ -423,11 +442,13 @@ class FleetDoc:
             return edges
 
         for path in self._harbor.integrations:
-            edges.append(ArchitectureEdge(
-                source=path.source,
-                target=path.target,
-                label=path.status,
-            ))
+            edges.append(
+                ArchitectureEdge(
+                    source=path.source,
+                    target=path.target,
+                    label=path.status,
+                )
+            )
 
         return edges
 
@@ -461,9 +482,15 @@ class FleetDoc:
         lines.append("")
         lines.append("Before adding a new module, ensure:")
         lines.append("")
-        lines.append("1. **Tests**: Every module must have a comprehensive pytest suite")
-        lines.append("2. **Docstrings**: All public classes and functions must have docstrings")
-        lines.append("3. **Integration**: Identify at least one existing module to connect with")
+        lines.append(
+            "1. **Tests**: Every module must have a comprehensive pytest suite"
+        )
+        lines.append(
+            "2. **Docstrings**: All public classes and functions must have docstrings"
+        )
+        lines.append(
+            "3. **Integration**: Identify at least one existing module to connect with"
+        )
         lines.append("4. **Documentation**: Add a description of what the module does")
         lines.append("")
 
@@ -476,14 +503,18 @@ class FleetDoc:
         lines.append("from fleet.harbor import Harbor")
         lines.append("")
         lines.append("harbor = Harbor()")
-        lines.append('harbor.register_module("MyModule", "swarm/my_module.py", ["VectorSwarm"])')
+        lines.append(
+            'harbor.register_module("MyModule", "swarm/my_module.py", ["VectorSwarm"])'
+        )
         lines.append("```")
         lines.append("")
 
         lines.append("### 2. Add Integration Paths")
         lines.append("")
         lines.append("```python")
-        lines.append('harbor.add_integration("MyModule", "VectorSwarm", "MyModule uses VectorSwarm for search")')
+        lines.append(
+            'harbor.add_integration("MyModule", "VectorSwarm", "MyModule uses VectorSwarm for search")'
+        )
         lines.append("```")
         lines.append("")
 
@@ -507,10 +538,10 @@ class FleetDoc:
         lines.append("")
         lines.append("| Source | Target | Pattern |")
         lines.append("|--------|--------|---------|")
-        
+
         for path in self._harbor.integrations:
             lines.append(f"| {path.source} | {path.target} | {path.status} |")
-        
+
         lines.append("")
 
         # Gaps
@@ -545,15 +576,23 @@ class FleetDoc:
         print(" 📚 FLEET DOCUMENTATION SUMMARY")
         print("═" * 60)
         print(f"  Modules documented: {len(self._docs)}")
-        print(f"  Total classes:      {sum(len(d.classes) for d in self._docs.values())}")
-        print(f"  Total functions:    {sum(len(d.functions) for d in self._docs.values())}")
-        print(f"  Total methods:      {sum(sum(len(c.methods) for c in d.classes) for d in self._docs.values())}")
+        print(
+            f"  Total classes:      {sum(len(d.classes) for d in self._docs.values())}"
+        )
+        print(
+            f"  Total functions:    {sum(len(d.functions) for d in self._docs.values())}"
+        )
+        print(
+            f"  Total methods:      {sum(sum(len(c.methods) for c in d.classes) for d in self._docs.values())}"
+        )
         print("═" * 60)
 
         for name, doc in sorted(self._docs.items()):
             cls_count = len(doc.classes)
             func_count = len(doc.functions)
             method_count = sum(len(c.methods) for c in doc.classes)
-            print(f"  {name:25} {cls_count:2d} classes, {func_count:2d} funcs, {method_count:2d} methods")
+            print(
+                f"  {name:25} {cls_count:2d} classes, {func_count:2d} funcs, {method_count:2d} methods"
+            )
 
         print("═" * 60)

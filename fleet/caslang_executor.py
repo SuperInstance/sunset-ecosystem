@@ -56,11 +56,13 @@ logger = logging.getLogger(__name__)
 
 class ValidationError(ValueError):
     """Raised when a caslang script fails pre-execution validation."""
+
     pass
 
 
 class SandboxViolation(RuntimeError):
     """Raised when a command attempts an operation outside the sandbox."""
+
     pass
 
 
@@ -139,15 +141,19 @@ class CaslangScript:
 
         # Add return statement if graph has output
         if graph.get("output"):
-            script.commands.append({
-                "op": "flow.return",
-                "value": graph["output"],
-            })
+            script.commands.append(
+                {
+                    "op": "flow.return",
+                    "value": graph["output"],
+                }
+            )
 
         return script
 
     @staticmethod
-    def _convert_action(action: str, params: dict[str, Any], tid: str) -> dict[str, Any]:
+    def _convert_action(
+        action: str, params: dict[str, Any], tid: str
+    ) -> dict[str, Any]:
         """Map a sunset action to a caslang command."""
         mapping = {
             "read_file": ("fs.read_file", {"path": "path", "as": "as"}),
@@ -156,12 +162,21 @@ class CaslangScript:
             "json_parse": ("json.parse", {"s": "input", "as": "as"}),
             "json_stringify": ("str.json", {"obj": "input", "as": "as"}),
             "set_var": ("flow.set", {"name": "name", "value": "value"}),
-            "http_get": ("tool.call", {"tool_name": "http_get", "url": "url", "as": "as"}),
-            "http_post": ("tool.call", {"tool_name": "http_post", "url": "url", "data": "data", "as": "as"}),
+            "http_get": (
+                "tool.call",
+                {"tool_name": "http_get", "url": "url", "as": "as"},
+            ),
+            "http_post": (
+                "tool.call",
+                {"tool_name": "http_post", "url": "url", "data": "data", "as": "as"},
+            ),
             "print": ("str.print", {"msg": "message"}),
             "loop_start": ("flow.loop_start", {"var": "var", "in": "iterable"}),
             "loop_end": ("flow.loop_end", {}),
-            "condition": ("flow.if", {"cond": "condition", "then": "then_branch", "else": "else_branch"}),
+            "condition": (
+                "flow.if",
+                {"cond": "condition", "then": "then_branch", "else": "else_branch"},
+            ),
         }
 
         if action not in mapping:
@@ -223,20 +238,22 @@ class ExecutionSandbox:
             if op.startswith("fs."):
                 path = cmd.get("path", cmd.get("dir", ""))
                 if not self._is_path_allowed(path):
-                    issues.append(f"Line {i+1}: fs access denied for '{path}'")
+                    issues.append(f"Line {i + 1}: fs access denied for '{path}'")
                 if op == "fs.write_file":
                     data = cmd.get("data", "")
                     if len(data.encode("utf-8")) > self.max_file_size:
-                        issues.append(f"Line {i+1}: write exceeds max_file_size")
+                        issues.append(f"Line {i + 1}: write exceeds max_file_size")
             elif op.startswith("tool.call"):
                 tool = cmd.get("tool_name", "")
                 if tool not in self.allowed_tools:
-                    issues.append(f"Line {i+1}: tool '{tool}' not in whitelist")
+                    issues.append(f"Line {i + 1}: tool '{tool}' not in whitelist")
                 if tool in ("http_get", "http_post") and not self.network_enabled:
-                    issues.append(f"Line {i+1}: network disabled, tool '{tool}' blocked")
+                    issues.append(
+                        f"Line {i + 1}: network disabled, tool '{tool}' blocked"
+                    )
             elif op.startswith("flow."):
                 if op == "flow.loop_end" and not self._loop_stack:
-                    issues.append(f"Line {i+1}: unmatched loop_end")
+                    issues.append(f"Line {i + 1}: unmatched loop_end")
                 if op == "flow.loop_start":
                     self._loop_stack.append("loop")
                 if op == "flow.loop_end":
@@ -340,7 +357,14 @@ class CaslangExecutor:
                     elif op == "flow.loop_start":
                         var = cmd.get("var", "")
                         iterable = self._resolve_value(cmd.get("in", []), variables)
-                        loop_stack.append({"var": var, "iterable": iterable, "idx": 0, "start_line": i})
+                        loop_stack.append(
+                            {
+                                "var": var,
+                                "iterable": iterable,
+                                "idx": 0,
+                                "start_line": i,
+                            }
+                        )
                         loop_vars.append(var)
                         loop_iterables.append(iterable)
                         if not iterable:
@@ -354,7 +378,9 @@ class CaslangExecutor:
                             frame = loop_stack[-1]
                             frame["idx"] += 1
                             if frame["idx"] < len(frame["iterable"]):
-                                variables[frame["var"]] = frame["iterable"][frame["idx"]]
+                                variables[frame["var"]] = frame["iterable"][
+                                    frame["idx"]
+                                ]
                                 i = frame["start_line"]  # jump back to loop_start
                                 step["result"] = f"loop iter {frame['idx']}"
                             else:
@@ -423,7 +449,9 @@ class CaslangExecutor:
                             raise SandboxViolation(f"Tool '{tool_name}' not allowed")
                         as_name = cmd.get("as", "_")
                         variables[as_name] = f"<simulated:{tool_name}>"
-                        self.sandbox._network_calls.append({"tool": tool_name, "params": cmd})
+                        self.sandbox._network_calls.append(
+                            {"tool": tool_name, "params": cmd}
+                        )
                         step["result"] = f"tool {tool_name}"
 
                     else:
@@ -461,6 +489,7 @@ class CaslangExecutor:
             return raw
         # Simple ${var} substitution
         pattern = re.compile(r"\$\{([^}]+)\}")
+
         def replacer(match: re.Match[str]) -> str:
             expr = match.group(1)
             # Direct variable lookup
@@ -474,6 +503,7 @@ class CaslangExecutor:
                 if var_name in variables and isinstance(variables[var_name], dict):
                     return str(variables[var_name].get(key, ""))
             return ""
+
         return pattern.sub(replacer, raw)
 
     def _check_path(self, path: str) -> None:

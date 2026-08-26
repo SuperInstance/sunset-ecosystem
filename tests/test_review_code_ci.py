@@ -23,6 +23,7 @@ from fleet.review_code import ReviewPersona, ReviewFinding
 # Severity rank
 # ---------------------------------------------------------------------------
 
+
 class TestSeverityRank:
     def test_info(self):
         assert severity_rank("info") == 0
@@ -41,25 +42,29 @@ class TestSeverityRank:
 # Git diff helper
 # ---------------------------------------------------------------------------
 
+
 class TestGetChangedFiles:
     def test_git_diff(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         # Initialize git repo
         import subprocess
+
         subprocess.run(["git", "init"], capture_output=True)
-        subprocess.run(["git", "config", "user.email", "test@test.com"], capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"], capture_output=True
+        )
         subprocess.run(["git", "config", "user.name", "Test"], capture_output=True)
-        
+
         # Create a file and commit
         (tmp_path / "foo.py").write_text("x = 1")
         subprocess.run(["git", "add", "."], capture_output=True)
         subprocess.run(["git", "commit", "-m", "first"], capture_output=True)
-        
+
         # Modify file
         (tmp_path / "foo.py").write_text("x = 2")
         subprocess.run(["git", "add", "."], capture_output=True)
         subprocess.run(["git", "commit", "-m", "second"], capture_output=True)
-        
+
         files = get_changed_files("HEAD~1")
         assert "foo.py" in files
 
@@ -72,6 +77,7 @@ class TestGetChangedFiles:
 # ---------------------------------------------------------------------------
 # CI review runner
 # ---------------------------------------------------------------------------
+
 
 class TestRunCIReview:
     def test_empty_files(self):
@@ -129,6 +135,7 @@ class TestRunCIReview:
 # Format output
 # ---------------------------------------------------------------------------
 
+
 class TestFormatOutput:
     def test_format_json(self):
         result = {
@@ -152,7 +159,12 @@ class TestFormatOutput:
             "files": {
                 "test.py": {
                     "findings": [
-                        {"persona": "Security", "severity": "critical", "message": "eval used", "line": 1},
+                        {
+                            "persona": "Security",
+                            "severity": "critical",
+                            "message": "eval used",
+                            "line": 1,
+                        },
                     ],
                     "count": 1,
                     "critical": 1,
@@ -196,31 +208,38 @@ class TestFormatOutput:
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+
 class TestCLI:
     def test_main_files_flag(self, tmp_path, monkeypatch, capsys):
         code = "def foo(a):\n    return a + 1\n"
         path = tmp_path / "clean.py"
         path.write_text(code)
-        
+
         monkeypatch.chdir(tmp_path)
-        with patch.object(sys, "argv", ["review_code_ci", "--files", str(path), "--output", "json"]):
+        with patch.object(
+            sys, "argv", ["review_code_ci", "--files", str(path), "--output", "json"]
+        ):
             from fleet import review_code_ci
+
             with pytest.raises(SystemExit) as exc_info:
                 review_code_ci.main()
             assert exc_info.value.code == 0
-        
+
         captured = capsys.readouterr()
         result = json.loads(captured.out)
         assert result["summary"]["total_files"] == 1
 
     def test_main_pr_files_no_git(self, tmp_path, monkeypatch, capsys):
         monkeypatch.chdir(tmp_path)
-        with patch.object(sys, "argv", ["review_code_ci", "--pr-files", "--output", "json"]):
+        with patch.object(
+            sys, "argv", ["review_code_ci", "--pr-files", "--output", "json"]
+        ):
             from fleet import review_code_ci
+
             with pytest.raises(SystemExit) as exc_info:
                 review_code_ci.main()
             assert exc_info.value.code == 0
-        
+
         captured = capsys.readouterr()
         result = json.loads(captured.out)
         assert result["summary"]["total_files"] == 0
@@ -229,20 +248,28 @@ class TestCLI:
         code = "x = eval('1')\n"
         path = tmp_path / "bad.py"
         path.write_text(code)
-        
+
         monkeypatch.chdir(tmp_path)
         comment_file = tmp_path / "comment.md"
-        with patch.object(sys, "argv", [
-            "review_code_ci",
-            "--files", str(path),
-            "--output", "markdown",
-            "--comment-file", str(comment_file),
-        ]):
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "review_code_ci",
+                "--files",
+                str(path),
+                "--output",
+                "markdown",
+                "--comment-file",
+                str(comment_file),
+            ],
+        ):
             with pytest.raises(SystemExit) as exc_info:
                 from fleet import review_code_ci
+
                 review_code_ci.main()
             assert exc_info.value.code == 1  # critical findings, exit 1
-        
+
         assert comment_file.exists()
         content = comment_file.read_text()
         assert "Fleet Code Review" in content
@@ -250,14 +277,15 @@ class TestCLI:
     def test_main_default_all_files(self, tmp_path, monkeypatch, capsys):
         code = "def foo(a):\n    return a + 1\n"
         (tmp_path / "foo.py").write_text(code)
-        
+
         monkeypatch.chdir(tmp_path)
         with patch.object(sys, "argv", ["review_code_ci", "--output", "json"]):
             from fleet import review_code_ci
+
             with pytest.raises(SystemExit) as exc_info:
                 review_code_ci.main()
             assert exc_info.value.code == 0
-        
+
         captured = capsys.readouterr()
         result = json.loads(captured.out)
         assert result["summary"]["total_files"] >= 1
@@ -266,6 +294,7 @@ class TestCLI:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_severity_order(self):

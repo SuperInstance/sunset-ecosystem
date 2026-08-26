@@ -51,6 +51,7 @@ _memory = FleetMemory(node_id="api")
 
 # ── Models ──────────────────────────────────────────────────
 
+
 class AgentEntry(BaseModel):
     agent_id: str
     vector: list[float]
@@ -87,12 +88,14 @@ class SwarmKnnQuery(BaseModel):
 
 # ── Health ──────────────────────────────────────────────────
 
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {"status": "ok", "timestamp": time.time()}
 
 
 # ── Status ──────────────────────────────────────────────────
+
 
 @app.get("/status")
 def status() -> dict[str, Any]:
@@ -111,6 +114,7 @@ def status() -> dict[str, Any]:
 
 
 # ── Agents ──────────────────────────────────────────────────
+
 
 @app.post("/agents")
 def insert_agent(entry: AgentEntry) -> dict[str, Any]:
@@ -182,6 +186,7 @@ def similar_agents(query: SimilarityQuery) -> dict[str, Any]:
 
 # ── Memory ──────────────────────────────────────────────────
 
+
 @app.post("/memory/write")
 def memory_write(req: MemoryWrite) -> dict[str, Any]:
     vector = np.array(req.vector, dtype=np.float32)
@@ -224,10 +229,14 @@ def memory_query(req: MemoryQuery) -> dict[str, Any]:
 @app.get("/memory/shards")
 def memory_shards() -> dict[str, Any]:
     report = _memory.get_shard_report()
-    return {"shards": report.get("shard_ids", []), "count": len(report.get("shard_ids", []))}
+    return {
+        "shards": report.get("shard_ids", []),
+        "count": len(report.get("shard_ids", [])),
+    }
 
 
 # ── Cache ───────────────────────────────────────────────────
+
 
 @app.get("/cache/stats")
 def cache_stats() -> dict[str, Any]:
@@ -241,6 +250,7 @@ def cache_maintenance() -> dict[str, Any]:
 
 
 # ── Swarm ───────────────────────────────────────────────────
+
 
 @app.post("/swarm/knn")
 def swarm_knn(query: SwarmKnnQuery) -> dict[str, Any]:
@@ -267,6 +277,7 @@ def swarm_knn(query: SwarmKnnQuery) -> dict[str, Any]:
 
 # ── Tests ───────────────────────────────────────────────────
 
+
 @app.get("/tests")
 def test_inventory() -> dict[str, Any]:
     tests_dir = Path(__file__).parent.parent / "tests"
@@ -281,4 +292,5 @@ def test_inventory() -> dict[str, Any]:
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

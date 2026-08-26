@@ -112,8 +112,8 @@ class TestCausalDiscoveryEngine:
 
         # X and Z should not be directly connected (they are independent given Y)
         x_z_edge = any(
-            (e.source == "X" and e.target == "Z") or
-            (e.source == "Z" and e.target == "X")
+            (e.source == "X" and e.target == "Z")
+            or (e.source == "Z" and e.target == "X")
             for e in graph.edges
         )
         assert not x_z_edge
@@ -370,10 +370,7 @@ class TestCausalBreeder:
         breeder = CausalBreeder(population_size=10)
 
         # Initial population
-        population = [
-            ({"gene": float(i)}, float(i * 10))
-            for i in range(10)
-        ]
+        population = [({"gene": float(i)}, float(i * 10)) for i in range(10)]
 
         def task_fn(genome):
             return {"fitness": genome.get("gene", 0.0) * 10}
@@ -387,10 +384,7 @@ class TestCausalBreeder:
     def test_breed_generation_elitism(self):
         breeder = CausalBreeder(population_size=10)
 
-        population = [
-            ({"gene": float(i)}, float(i * 10))
-            for i in range(10)
-        ]
+        population = [({"gene": float(i)}, float(i * 10)) for i in range(10)]
 
         def task_fn(genome):
             return {"fitness": genome.get("gene", 0.0) * 10}
@@ -428,10 +422,7 @@ class TestCausalBreeder:
         random.seed(42)
         np.random.seed(42)
 
-        causal_breeder = CausalBreeder(
-            population_size=20,
-            causal_discovery_interval=5
-        )
+        causal_breeder = CausalBreeder(population_size=20, causal_discovery_interval=5)
 
         # True model: fitness = 2*gene_a + 1*gene_b + noise
         def true_fitness(g):
@@ -439,8 +430,12 @@ class TestCausalBreeder:
 
         # Initialize population
         population = [
-            ({"gene_a": random.gauss(0, 1), "gene_b": random.gauss(0, 1)},
-             true_fitness({"gene_a": random.gauss(0, 1), "gene_b": random.gauss(0, 1)}))
+            (
+                {"gene_a": random.gauss(0, 1), "gene_b": random.gauss(0, 1)},
+                true_fitness(
+                    {"gene_a": random.gauss(0, 1), "gene_b": random.gauss(0, 1)}
+                ),
+            )
             for _ in range(20)
         ]
 
@@ -455,8 +450,12 @@ class TestCausalBreeder:
 
         # Random breeder for comparison
         random_pop = [
-            ({"gene_a": random.gauss(0, 1), "gene_b": random.gauss(0, 1)},
-             true_fitness({"gene_a": random.gauss(0, 1), "gene_b": random.gauss(0, 1)}))
+            (
+                {"gene_a": random.gauss(0, 1), "gene_b": random.gauss(0, 1)},
+                true_fitness(
+                    {"gene_a": random.gauss(0, 1), "gene_b": random.gauss(0, 1)}
+                ),
+            )
             for _ in range(20)
         ]
 
@@ -519,9 +518,7 @@ class TestIntegration:
     def test_full_causal_pipeline(self):
         """End-to-end: data → graph → effects → breeding."""
         breeder = CausalBreeder(
-            population_size=10,
-            causal_discovery_interval=5,
-            history_window=50
+            population_size=10, causal_discovery_interval=5, history_window=50
         )
 
         # True causal model: fitness = 3*gene_a + 2*gene_b + noise
@@ -564,9 +561,7 @@ class TestIntegration:
             return 5.0 * g["gene_a"] + 0.1 * g["gene_b"] + random.gauss(0, 0.1)
 
         causal_breeder = CausalBreeder(
-            population_size=15,
-            causal_discovery_interval=3,
-            history_window=30
+            population_size=15, causal_discovery_interval=3, history_window=30
         )
 
         # Random breeder (no causal knowledge)
@@ -587,8 +582,12 @@ class TestIntegration:
                         if random.random() < 0.5:
                             child[k] = p2[0].get(k, child[k])
                         if random.random() < 0.1:
-                            child[k] *= (1 + random.uniform(-0.1, 0.1))
-                    f = task_fn(child)["fitness"] if isinstance(task_fn(child), dict) else task_fn(child)
+                            child[k] *= 1 + random.uniform(-0.1, 0.1)
+                    f = (
+                        task_fn(child)["fitness"]
+                        if isinstance(task_fn(child), dict)
+                        else task_fn(child)
+                    )
                     new_pop.append((child, f))
                 return new_pop
 

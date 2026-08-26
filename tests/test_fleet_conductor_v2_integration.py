@@ -28,6 +28,7 @@ from nexus.fleet_conductor_v2 import (
 
 # ── fixtures ──────────────────────────────────────────────
 
+
 @pytest.fixture(autouse=True)
 def mock_integration_subsystems(monkeypatch):
     """Mock all heavy subsystem imports for integration tests."""
@@ -36,7 +37,10 @@ def mock_integration_subsystems(monkeypatch):
     mock_nerve.MetronomeBridge = MagicMock()
     mock_nerve.MetronomeBridge.return_value.tick.return_value = 1
     mock_nerve.MetronomeBridge.return_value.sync_with_peers.return_value = []
-    mock_nerve.MetronomeBridge.return_value.maybe_correct_drift.return_value = (False, 120.0)
+    mock_nerve.MetronomeBridge.return_value.maybe_correct_drift.return_value = (
+        False,
+        120.0,
+    )
     mock_nerve.MetronomeBridge.return_value.compute_drift.return_value = 0.0
     mock_nerve.MetronomeBridge.return_value.peers = []
     monkeypatch.setitem(sys.modules, "nerve.distributed_metronome_bridge", mock_nerve)
@@ -67,7 +71,10 @@ def mock_integration_subsystems(monkeypatch):
     # AgentRegistry + AgentIdentity + AgentCard
     mock_logos = MagicMock()
     mock_logos.AgentRegistry = MagicMock()
-    mock_logos.AgentRegistry.return_value.list_agents.return_value = ["agent-a", "agent-b"]
+    mock_logos.AgentRegistry.return_value.list_agents.return_value = [
+        "agent-a",
+        "agent-b",
+    ]
     mock_logos.AgentIdentity = MagicMock()
     mock_logos.AgentCard = MagicMock()
     mock_logos.AgentCard.from_dict = MagicMock(return_value=MagicMock())
@@ -77,14 +84,19 @@ def mock_integration_subsystems(monkeypatch):
     class MockGatewayPacing:
         def __init__(self):
             self._state = "OPEN"
+
         def can_dispatch(self):
             return (True, "OPEN")
+
         def record_timeout(self):
             pass
+
         def record_success(self):
             pass
+
         def record_failure(self):
             pass
+
         def get_status(self):
             return {"state": self._state}
 
@@ -94,6 +106,7 @@ def mock_integration_subsystems(monkeypatch):
 
     # SDALoop + related classes  — keep real dataclasses so helper tests work
     import fleet.sense_decide_act as real_sda
+
     mock_sda = MagicMock()
     mock_sda.SDALoop = MagicMock()
     mock_sda.SDALoop.return_value.tick.return_value = {}
@@ -122,7 +135,9 @@ def mock_integration_subsystems(monkeypatch):
     mock_breeder = MagicMock()
     mock_breeder.BreederDaemonV2 = MagicMock()
     mock_breeder.BreederDaemonV2.return_value.step = MagicMock()
-    mock_breeder.BreederDaemonV2.return_value.get_status.return_value = {"queue_depth": 3}
+    mock_breeder.BreederDaemonV2.return_value.get_status.return_value = {
+        "queue_depth": 3
+    }
     monkeypatch.setitem(sys.modules, "swarm.breeder_daemon_v2", mock_breeder)
 
     # SSEStreamDashboard
@@ -134,7 +149,9 @@ def mock_integration_subsystems(monkeypatch):
     # OpcodeCapabilityIndex
     mock_opcode = MagicMock()
     mock_opcode.OpcodeCapabilityIndex = MagicMock()
-    mock_opcode.OpcodeCapabilityIndex.return_value.get_summary.return_value = {"untested_count": 2}
+    mock_opcode.OpcodeCapabilityIndex.return_value.get_summary.return_value = {
+        "untested_count": 2
+    }
     monkeypatch.setitem(sys.modules, "logos.opcode_capability_index", mock_opcode)
 
     # Decision journal (used by _LoggingAct)
@@ -185,24 +202,33 @@ def test_identity_pipeline_registered(full_conductor: FleetConductorV2):
     assert sda is not None
     # The real SDALoop is mocked, but _wire_default_pipelines still calls
     # loop.register() on the mock. Verify register was called with the right name.
-    register_calls = [call for call in sda.register.call_args_list
-                      if call.kwargs.get("name") == "identity_monitor"]
+    register_calls = [
+        call
+        for call in sda.register.call_args_list
+        if call.kwargs.get("name") == "identity_monitor"
+    ]
     assert len(register_calls) == 1
 
 
 def test_mesh_diversity_pipeline_registered(full_conductor: FleetConductorV2):
     full_conductor.start()
     sda = full_conductor._get_sda()
-    register_calls = [call for call in sda.register.call_args_list
-                      if call.kwargs.get("name") == "mesh_diversity_monitor"]
+    register_calls = [
+        call
+        for call in sda.register.call_args_list
+        if call.kwargs.get("name") == "mesh_diversity_monitor"
+    ]
     assert len(register_calls) == 1
 
 
 def test_opcode_safety_pipeline_registered(full_conductor: FleetConductorV2):
     full_conductor.start()
     sda = full_conductor._get_sda()
-    register_calls = [call for call in sda.register.call_args_list
-                      if call.kwargs.get("name") == "opcode_safety_monitor"]
+    register_calls = [
+        call
+        for call in sda.register.call_args_list
+        if call.kwargs.get("name") == "opcode_safety_monitor"
+    ]
     assert len(register_calls) == 1
 
 
@@ -221,8 +247,11 @@ def test_opcode_pipeline_not_registered_when_disabled():
     c = FleetConductorV2(config=cfg)
     c.start()
     sda = c._get_sda()
-    register_calls = [call for call in sda.register.call_args_list
-                      if call.kwargs.get("name") == "opcode_safety_monitor"]
+    register_calls = [
+        call
+        for call in sda.register.call_args_list
+        if call.kwargs.get("name") == "opcode_safety_monitor"
+    ]
     assert len(register_calls) == 0
 
 

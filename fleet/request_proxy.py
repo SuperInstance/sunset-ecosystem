@@ -9,6 +9,7 @@ Usage:
     proxy.add_backend("api", "http://api-1:8080")
     response = proxy.forward("api", {"path": "/users"})
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional

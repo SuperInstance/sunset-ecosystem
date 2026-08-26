@@ -10,6 +10,7 @@ from fleet.spatial_projector import WorldState, SpatialProjector
 @dataclass
 class RoomTransition:
     """Record of a room transition."""
+
     agent_id: str
     from_room: Optional[str]
     to_room: Optional[str]
@@ -75,7 +76,9 @@ class PlatoRoomSync:
         self._transitions.append(transition)
         self._notify(transition)
 
-    def transition(self, agent_id: str, from_room: str, to_room: str, state: WorldState) -> None:
+    def transition(
+        self, agent_id: str, from_room: str, to_room: str, state: WorldState
+    ) -> None:
         """Atomic room transition: exit old, enter new."""
         self.on_exit(agent_id, from_room, state)
         self.on_enter(agent_id, to_room, state)

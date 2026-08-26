@@ -129,33 +129,39 @@ from enum import Enum, auto
 from typing import Optional
 import numpy as np
 
+
 class LifecycleState(Enum):
-    EGG = auto()       # Vector exists, no room
+    EGG = auto()  # Vector exists, no room
     INCUBATE = auto()  # Room allocated, high chaos
-    COMPETE = auto()   # Active, chaos decaying
-    SURVIVE = auto()   # Pareto winner, stable
-    BREED = auto()     # Actively breeding
-    SUNSET = auto()    # Retired, room freed
+    COMPETE = auto()  # Active, chaos decaying
+    SURVIVE = auto()  # Pareto winner, stable
+    BREED = auto()  # Actively breeding
+    SUNSET = auto()  # Retired, room freed
+
 
 @dataclass(frozen=True)
 class DiversityConfig:
     """How aggressively to pursue genetic diversity."""
-    metric: str = "cosine"          # "cosine" | "hamming" | "l2"
+
+    metric: str = "cosine"  # "cosine" | "hamming" | "l2"
     min_pairwise_dist: float = 0.15  # if avg dist drops below, request mesh breed
-    novelty_weight: float = 0.3      # novelty vs fitness in parent selection
-    max_inbreeding_gen: int = 3      # reject parent pairs sharing grandparent
+    novelty_weight: float = 0.3  # novelty vs fitness in parent selection
+    max_inbreeding_gen: int = 3  # reject parent pairs sharing grandparent
+
 
 @dataclass(frozen=True)
 class ThermalConfig:
     """Thermal-aware scheduling parameters."""
+
     max_agents: int = 65
     hysteresis_ticks: int = 10
     cooling_curve: str = "exponential"  # "exponential" | "linear" | "measured"
-    predictive_spawn: bool = True       # predict next free slot from curve
+    predictive_spawn: bool = True  # predict next free slot from curve
+
 
 class BreederDaemonV2:
     """Persistent, diversity-aware, thermal-scheduled breeding daemon."""
-    
+
     def __init__(
         self,
         grid: RoomGrid,
@@ -165,15 +171,14 @@ class BreederDaemonV2:
         thermal_cfg: ThermalConfig = ThermalConfig(),
         wal_path: str = "breeder.wal.sqlite",
         mesh: Optional[MeshNode] = None,  # from SPEC_MULTI_INSTANCE_MESH
-    ) -> None:
-        ...
-    
+    ) -> None: ...
+
     def start(self) -> None:
         """Replay WAL, start scheduler thread, open mesh client."""
-        
+
     def stop(self) -> None:
         """Flush WAL, stop scheduler, close mesh."""
-        
+
     def queue_breed(
         self,
         parent_a: int,
@@ -182,29 +187,29 @@ class BreederDaemonV2:
         remote: bool = False,
     ) -> int:
         """Add a breeding request to the scheduler queue.
-        
+
         Returns: queue ticket ID.
         """
-        
+
     def select_parents(self, n_children: int) -> list[tuple[int, int]]:
         """Diversity-aware parent selection.
-        
+
         1. Build Pareto frontier from vector table (fitness vs novelty).
         2. For each child, pick parent_a = highest Pareto score.
         3. Search vector table for most *distant* compatible winner = parent_b.
         4. Reject pairs that violate inbreeding rules.
         """
-        
+
     def step(self) -> list[LifecycleTransition]:
         """Run one scheduler tick: dequeue, check thermal, spawn or wait.
-        
+
         Returns: list of state transitions that occurred.
         """
-    
+
     @property
     def state(self) -> dict[int, LifecycleState]:
         """Current lifecycle state of every known agent."""
-        
+
     @property
     def diversity_score(self) -> float:
         """Average pairwise cosine distance in current population.
@@ -220,12 +225,13 @@ def _pareto_novelty_score(
     novelty_weight: float,
 ) -> float:
     """Pareto score = fitness * (1 - novelty_weight) + novelty * novelty_weight.
-    
+
     Novelty = average cosine distance to k nearest neighbors in population.
     """
     fitness = agent.fitness
     novelty = _avg_nearest_neighbor_distance(agent, population, k=3)
     return fitness * (1 - novelty_weight) + novelty * novelty_weight
+
 
 def _select_diverse_pair(
     winners: list[AgentVector],
@@ -234,7 +240,7 @@ def _select_diverse_pair(
 ) -> tuple[AgentVector, AgentVector]:
     """Pick parent_a = highest Pareto-novelty score.
     Pick parent_b = farthest compatible agent from parent_a.
-    
+
     'Compatible' means:
       - capability_mask intersects
       - not same agent

@@ -99,9 +99,9 @@ score = checker.score_for_breeding(
 @dataclass
 class FluxCheckResult:
     passed: bool
-    score: float              # 0.0 = compliant, 1.0 = catastrophic
-    severity: float           # alias for score
-    violations: dict[str, float]   # {'bounds': 0.5, 'l2_norm': 0.2, ...}
+    score: float  # 0.0 = compliant, 1.0 = catastrophic
+    severity: float  # alias for score
+    violations: dict[str, float]  # {'bounds': 0.5, 'l2_norm': 0.2, ...}
 ```
 
 ## Integration Points in BreederDaemonV2
@@ -118,8 +118,8 @@ daemon = BreederDaemonV2(
 ### 2. Attach / Replace Checker
 
 ```python
-daemon.attach_flux_gating()                    # auto-build from config
-daemon.attach_flux_gating(checker=custom)     # inject pre-built instance
+daemon.attach_flux_gating()  # auto-build from config
+daemon.attach_flux_gating(checker=custom)  # inject pre-built instance
 ```
 
 ### 3. Breeding Gate (`step()`)

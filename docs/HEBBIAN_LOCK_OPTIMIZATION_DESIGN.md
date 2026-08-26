@@ -60,10 +60,10 @@ Transform `HebbianMeshLayer` from a **lock-per-read** model to a **lock-free-rea
 #### New Cached Arrays (lock-free read path)
 
 ```python
-self._cached_peer_ids: tuple[str, ...]        # immutable, ordered
-self._cached_weights: np.ndarray[float32]       # aligned with _cached_peer_ids
-self._cached_blacklisted_mask: np.ndarray[bool] # aligned with _cached_peer_ids
-self._cached_valid_mask: np.ndarray[bool]       # weights > 0 and not blacklisted
+self._cached_peer_ids: tuple[str, ...]  # immutable, ordered
+self._cached_weights: np.ndarray[float32]  # aligned with _cached_peer_ids
+self._cached_blacklisted_mask: np.ndarray[bool]  # aligned with _cached_peer_ids
+self._cached_valid_mask: np.ndarray[bool]  # weights > 0 and not blacklisted
 ```
 
 These arrays are **replaced atomically** (pointer swap) after every write. Readers see either the old or new array, never a partially-updated array. No lock needed for reads.
@@ -71,8 +71,8 @@ These arrays are **replaced atomically** (pointer swap) after every write. Reade
 #### Protected by Lock (write path only)
 
 ```python
-self._affinities: dict[str, HebbianAffinity]   # still the source of truth
-self._lock: threading.Lock                      # only held during update_affinity()
+self._affinities: dict[str, HebbianAffinity]  # still the source of truth
+self._lock: threading.Lock  # only held during update_affinity()
 ```
 
 ### 2.3 Method Refactoring
@@ -167,7 +167,9 @@ def route_with_chaos(self, peer_pool: list[str], n_routes: int) -> list[str]:
         if temp_weights.sum() <= 0:
             idx = random.randrange(len(temp_ids))
         else:
-            idx = int(np.random.choice(len(temp_ids), p=temp_weights / temp_weights.sum()))
+            idx = int(
+                np.random.choice(len(temp_ids), p=temp_weights / temp_weights.sum())
+            )
 
         picked = temp_ids.pop(idx)
         temp_weights = np.delete(temp_weights, idx)

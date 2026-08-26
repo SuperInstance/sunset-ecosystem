@@ -211,7 +211,7 @@ def test_three_probe_successes_reopen(mock_time: _MockClock) -> None:
     mock_time.advance(61.0)
     for i in range(3):
         ok, _ = gp.can_dispatch()
-        assert ok is True, f"probe {i+1} should be allowed"
+        assert ok is True, f"probe {i + 1} should be allowed"
         gp.record_success()
         if i < 2:
             mock_time.advance(31.0)  # advance past probe interval

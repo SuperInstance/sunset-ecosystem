@@ -267,7 +267,9 @@ class TestCosineDistance:
 class TestIntegrationWithBreederDaemonV2:
     """End-to-end: LineageSanityChecker works with daemon-step flow."""
 
-    @pytest.mark.skip(reason="Uses fixtures from test_breeder_daemon_v2; run together with that module")
+    @pytest.mark.skip(
+        reason="Uses fixtures from test_breeder_daemon_v2; run together with that module"
+    )
     def test_daemon_integration_invalid_lineage_sunsets_child(
         self, grid, thermal, wal_path, vector_table
     ):
@@ -284,9 +286,7 @@ class TestIntegrationWithBreederDaemonV2:
         daemon.stop()
 
         # At least one agent should have reached EGG
-        spawned = [
-            t for t in transitions if t.to_state == LifecycleState.EGG
-        ]
+        spawned = [t for t in transitions if t.to_state == LifecycleState.EGG]
         assert len(spawned) > 0
 
     def test_orphan_population_scan(self):
@@ -315,5 +315,7 @@ class TestIntegrationWithBreederDaemonV2:
             Agent(id=3, vector=[0.3] * 10, generation=1, parent_a=1),  # should be 3
         ]
         checker = LineageSanityChecker()
-        invalid = [aid for aid in [2, 3] if not checker.verify_lineage(aid, population)[0]]
+        invalid = [
+            aid for aid in [2, 3] if not checker.verify_lineage(aid, population)[0]
+        ]
         assert sorted(invalid) == [2, 3]

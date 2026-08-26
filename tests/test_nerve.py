@@ -61,6 +61,7 @@ class TestEisensteinIntegration:
             text_fingerprint,
             bitvector_similarity,
         )
+
         fp1 = text_fingerprint("deploy", use_stemming=True)
         fp2 = text_fingerprint("deployment", use_stemming=True)
         sim = bitvector_similarity(fp1, fp2)
@@ -82,6 +83,7 @@ class TestDeviceRouterIntegration:
 
     def test_router_singleton(self):
         from nerve.fiber import _get_device_router
+
         r1 = _get_device_router()
         r2 = _get_device_router()
         assert r1 is r2
@@ -96,6 +98,7 @@ class TestTripletMinerIntegration:
 
     def test_triplet_miner_import(self):
         from triplet_miner.git_miner import TripletMiner
+
         miner = TripletMiner()
         assert "TripletMiner" in repr(miner)
 
@@ -109,6 +112,7 @@ class TestTensorSplineIntegration:
 
     def test_spline_linear_import(self):
         from tensor_spline.spline import SplineLinear
+
         # Just verify the import works
         assert SplineLinear is not None
 

@@ -17,7 +17,7 @@ Usage:
     from sunset.compiler import Compiler
     compiler = Compiler()
     compiler.install()
-    
+
     # Run your code... profiler watches
     # After 100+ calls, compiler auto-generates optimized version
 """
@@ -47,11 +47,13 @@ import numpy as np
 
 # ── Data Structures ───────────────────────────────────────
 
+
 @dataclass
 class GeneratedKernel:
     """A compiled kernel ready for validation and deployment."""
+
     name: str
-    source_language: str          # "python", "numba", "rust"
+    source_language: str  # "python", "numba", "rust"
     source_code: str
     compiled: Callable
     compile_time_ms: float
@@ -64,6 +66,7 @@ class GeneratedKernel:
 
 
 # ── AST Analysis ──────────────────────────────────────────
+
 
 class PythonAnalyzer(ast.NodeVisitor):
     """Analyze a Python function to determine compilation strategy."""
@@ -89,7 +92,10 @@ class PythonAnalyzer(ast.NodeVisitor):
 
     def visit_Call(self, node: ast.Call):
         if isinstance(node.func, ast.Attribute):
-            if isinstance(node.func.value, ast.Name) and node.func.value.id in ("np", "numpy"):
+            if isinstance(node.func.value, ast.Name) and node.func.value.id in (
+                "np",
+                "numpy",
+            ):
                 self.has_numpy = True
                 self.array_ops.append(node.func.attr)
             self.calls.append(node.func.attr)
@@ -149,6 +155,7 @@ class PythonAnalyzer(ast.NodeVisitor):
 
 # ── Numba Generator ───────────────────────────────────────
 
+
 class NumbaGenerator:
     """Generate Numba JIT-compiled kernels from Python functions.
 
@@ -160,6 +167,7 @@ class NumbaGenerator:
         self._cache: Dict[str, Callable] = {}
         try:
             import numba
+
             self._numba = numba
             self._available = True
         except ImportError:
@@ -254,6 +262,7 @@ class NumbaGenerator:
 
 # ── Rust Generator ────────────────────────────────────────
 
+
 class RustGenerator:
     """Procedural Rust code generation from Python functions.
 
@@ -298,11 +307,12 @@ class RustGenerator:
             compile_time_ms=(time.perf_counter() - t0) * 1000,
             backend="rust",
             error="Procedural Rust generation v2 not yet implemented. "
-                  "Use manual Rust kernels (see nerve/src/lib.rs).",
+            "Use manual Rust kernels (see nerve/src/lib.rs).",
         )
 
 
 # ── Code Generator Orchestrator ───────────────────────────
+
 
 class CodeGenerator:
     """Orchestrates compilation from Python to accelerated backends.
@@ -333,6 +343,7 @@ class CodeGenerator:
         # Detect already-compiled Numba functions and pass through
         try:
             import numba
+
             if isinstance(func, numba.core.registry.CPUDispatcher):
                 return GeneratedKernel(
                     name=getattr(func, "__qualname__", "unknown"),
@@ -419,20 +430,20 @@ class CodeGenerator:
     @staticmethod
     def _outputs_equal(a: Any, b: Any) -> bool:
         """Check if two outputs are approximately equal.
-        
+
         Handles type differences for numeric scalars (numpy.float64 vs float, etc.)
         """
         # Handle numeric scalars — numpy float vs Python float, etc.
         if hasattr(a, "dtype") and hasattr(b, "dtype"):
             return np.allclose(a, b, rtol=1e-3, atol=1e-5)
-        
+
         # One is numpy scalar, one is Python scalar
         if hasattr(a, "dtype") or hasattr(b, "dtype"):
             try:
                 return abs(float(a) - float(b)) < 1e-5
             except (TypeError, ValueError):
                 return False
-        
+
         if type(a) != type(b):
             return False
         if isinstance(a, np.ndarray):
@@ -448,7 +459,9 @@ class CodeGenerator:
         if not self._deployed:
             lines.append("None deployed yet.")
         else:
-            lines.append(f"{'Function':<40} {'Backend':<10} {'Speedup':>8} {'Status':>10}")
+            lines.append(
+                f"{'Function':<40} {'Backend':<10} {'Speedup':>8} {'Status':>10}"
+            )
             for key, kernel in self._deployed.items():
                 status = "✅" if kernel.ready else "❌"
                 lines.append(
@@ -459,6 +472,7 @@ class CodeGenerator:
 
 
 # ── Convenience Functions ─────────────────────────────────
+
 
 def ast_to_numba(func: Callable, test_args: Optional[Tuple] = None) -> GeneratedKernel:
     """One-shot: analyze + compile a function to Numba."""

@@ -42,14 +42,16 @@ from swarm.constraint_bridge import ConstraintBridge, SnapResult
 @dataclass
 class PythagoreanTriple:
     """Exact Pythagorean triple: a² + b² = c²."""
+
     a: int
     b: int
     c: int
 
     def __post_init__(self):
         # Verify exactness
-        assert self.a * self.a + self.b * self.b == self.c * self.c, \
+        assert self.a * self.a + self.b * self.b == self.c * self.c, (
             f"Not a Pythagorean triple: {self.a}² + {self.b}² ≠ {self.c}²"
+        )
 
     def to_vector(self) -> np.ndarray:
         """Convert to unit vector [a/c, b/c]."""
@@ -74,7 +76,7 @@ class PythagoreanTriple:
                     b = 2 * m * n
                     c = m * m + n * n
                     # Create both orientations
-                    for (aa, bb, cc) in [(a, b, c), (b, a, c)]:
+                    for aa, bb, cc in [(a, b, c), (b, a, c)]:
                         t = PythagoreanTriple(aa, bb, cc)
                         angle_diff = abs(t.angle() - target_angle)
                         # Wrap around for circular angles
@@ -119,6 +121,7 @@ class PythagoreanTriple:
 @dataclass
 class PythagoreanGenome:
     """Genome composed of a sequence of Pythagorean triples."""
+
     triples: List[PythagoreanTriple] = field(default_factory=list)
     fitness: float = 0.0
     age: int = 0
@@ -197,8 +200,9 @@ class LatticeWalkMutation:
 class ExactGeometricCrossover:
     """Exact geometric crossover of two Pythagorean genomes."""
 
-    def crossover(self, parent1: PythagoreanGenome,
-                  parent2: PythagoreanGenome) -> Tuple[PythagoreanGenome, PythagoreanGenome]:
+    def crossover(
+        self, parent1: PythagoreanGenome, parent2: PythagoreanGenome
+    ) -> Tuple[PythagoreanGenome, PythagoreanGenome]:
         """Crossover by taking exact geometric mean of corresponding triples."""
         assert len(parent1.triples) == len(parent2.triples)
 
@@ -214,14 +218,14 @@ class ExactGeometricCrossover:
             # Find triple closest to mean angle
             # Use a small search around the mean
             best_triple = None
-            best_diff = float('inf')
+            best_diff = float("inf")
             for m in range(2, 15):
                 for n in range(1, m):
                     if math.gcd(m, n) == 1 and (m - n) % 2 == 1:
                         a = m * m - n * n
                         b = 2 * m * n
                         c = m * m + n * n
-                        for (aa, bb, cc) in [(a, b, c), (b, a, c)]:
+                        for aa, bb, cc in [(a, b, c), (b, a, c)]:
                             t = PythagoreanTriple(aa, bb, cc)
                             diff = abs(t.angle() - mean_angle)
                             diff = min(diff, 2 * math.pi - diff)
@@ -234,14 +238,14 @@ class ExactGeometricCrossover:
                 # Second child: angle bisector of the other arc
                 other_angle = mean_angle + math.pi / 2
                 best_triple2 = None
-                best_diff2 = float('inf')
+                best_diff2 = float("inf")
                 for m in range(2, 15):
                     for n in range(1, m):
                         if math.gcd(m, n) == 1 and (m - n) % 2 == 1:
                             a = m * m - n * n
                             b = 2 * m * n
                             c = m * m + n * n
-                            for (aa, bb, cc) in [(a, b, c), (b, a, c)]:
+                            for aa, bb, cc in [(a, b, c), (b, a, c)]:
                                 t = PythagoreanTriple(aa, bb, cc)
                                 diff = abs(t.angle() - other_angle)
                                 diff = min(diff, 2 * math.pi - diff)
@@ -261,9 +265,12 @@ class ExactGeometricCrossover:
 class HolonomicFitness:
     """Fitness function rewarding task performance and holonomic consistency."""
 
-    def __init__(self, task_fn: Callable[[np.ndarray], float],
-                 holonomy_weight: float = 0.3,
-                 exactness_weight: float = 0.1):
+    def __init__(
+        self,
+        task_fn: Callable[[np.ndarray], float],
+        holonomy_weight: float = 0.3,
+        exactness_weight: float = 0.1,
+    ):
         self.task_fn = task_fn
         self.holonomy_weight = holonomy_weight
         self.exactness_weight = exactness_weight
@@ -279,7 +286,11 @@ class HolonomicFitness:
         holonomy_bonus = self.holonomy_weight * (1.0 / (1.0 + 10 * holonomy_error))
 
         # Exactness bonus (smaller c values = more compact = bonus)
-        avg_c = sum(t.c for t in genome.triples) / len(genome.triples) if genome.triples else 1
+        avg_c = (
+            sum(t.c for t in genome.triples) / len(genome.triples)
+            if genome.triples
+            else 1
+        )
         exactness_bonus = self.exactness_weight * (1.0 / avg_c)
 
         fitness = task_score + holonomy_bonus + exactness_bonus
@@ -303,14 +314,20 @@ class PythagoreanBreeder:
     best_fitness: float = 0.0
     best_genome: Optional[PythagoreanGenome] = None
 
-    _mutation: LatticeWalkMutation = field(default_factory=lambda: LatticeWalkMutation(), repr=False)
-    _crossover: ExactGeometricCrossover = field(default_factory=ExactGeometricCrossover, repr=False)
+    _mutation: LatticeWalkMutation = field(
+        default_factory=lambda: LatticeWalkMutation(), repr=False
+    )
+    _crossover: ExactGeometricCrossover = field(
+        default_factory=ExactGeometricCrossover, repr=False
+    )
 
     def initialize(self) -> None:
         """Initialize population with random primitive triples."""
         self.population = []
         for _ in range(self.population_size):
-            triples = [PythagoreanTriple.random_primitive() for _ in range(self.genome_length)]
+            triples = [
+                PythagoreanTriple.random_primitive() for _ in range(self.genome_length)
+            ]
             self.population.append(PythagoreanGenome(triples=triples))
         self.generation = 0
         self.best_fitness = 0.0
@@ -332,7 +349,7 @@ class PythagoreanBreeder:
         self.population.sort(key=lambda g: g.fitness, reverse=True)
 
         # Elitism: keep top N
-        new_population = [g.copy() for g in self.population[:self.elitism_count]]
+        new_population = [g.copy() for g in self.population[: self.elitism_count]]
 
         # Fill rest with offspring
         while len(new_population) < self.population_size:
@@ -357,24 +374,32 @@ class PythagoreanBreeder:
         self.population = [g for g in new_population if g.age < self.max_age]
         # Fill back if needed
         while len(self.population) < self.population_size:
-            triples = [PythagoreanTriple.random_primitive() for _ in range(self.genome_length)]
+            triples = [
+                PythagoreanTriple.random_primitive() for _ in range(self.genome_length)
+            ]
             self.population.append(PythagoreanGenome(triples=triples))
 
         self.generation += 1
 
     def _tournament_select(self, tournament_size: int = 3) -> PythagoreanGenome:
         """Tournament selection."""
-        contestants = random.sample(self.population, min(tournament_size, len(self.population)))
+        contestants = random.sample(
+            self.population, min(tournament_size, len(self.population))
+        )
         return max(contestants, key=lambda g: g.fitness)
 
     def get_stats(self) -> dict:
         """Get population statistics."""
         fitnesses = [g.fitness for g in self.population]
-        holonomy_scores = [1.0 / (1.0 + 10 * g.holonomy_error()) for g in self.population]
+        holonomy_scores = [
+            1.0 / (1.0 + 10 * g.holonomy_error()) for g in self.population
+        ]
         return {
             "generation": self.generation,
             "best_fitness": self.best_fitness,
             "mean_fitness": sum(fitnesses) / len(fitnesses) if fitnesses else 0,
-            "mean_holonomy": sum(holonomy_scores) / len(holonomy_scores) if holonomy_scores else 0,
+            "mean_holonomy": sum(holonomy_scores) / len(holonomy_scores)
+            if holonomy_scores
+            else 0,
             "population_size": len(self.population),
         }

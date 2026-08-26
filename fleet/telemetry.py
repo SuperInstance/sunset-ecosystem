@@ -10,6 +10,7 @@ Usage:
     telem.histogram("breed_latency_ms").observe(150)
     print(telem.prometheus_format())
 """
+
 from __future__ import annotations
 
 import logging
@@ -51,7 +52,9 @@ class Gauge:
 class Histogram:
     name: str
     labels: Dict[str, str] = field(default_factory=dict)
-    buckets: List[float] = field(default_factory=lambda: [10, 50, 100, 250, 500, 1000, 2500, 5000])
+    buckets: List[float] = field(
+        default_factory=lambda: [10, 50, 100, 250, 500, 1000, 2500, 5000]
+    )
     _counts: Dict[float, int] = field(default_factory=lambda: defaultdict(int))
     _sum: float = 0.0
     _total: int = 0
@@ -73,7 +76,7 @@ class Histogram:
             cumulative += self._counts.get(b, 0)
             if cumulative >= target:
                 return b
-        return float('inf')
+        return float("inf")
 
 
 class TelemetryRegistry:
@@ -105,11 +108,15 @@ class TelemetryRegistry:
             self._gauges[key] = Gauge(name=name, labels=dict(labels))
         return self._gauges[key]
 
-    def histogram(self, name: str, buckets: Optional[List[float]] = None, **labels: str) -> Histogram:
+    def histogram(
+        self, name: str, buckets: Optional[List[float]] = None, **labels: str
+    ) -> Histogram:
         key = self._key(name, labels)
         if key not in self._histograms:
             self._histograms[key] = Histogram(
-                name=name, labels=dict(labels), buckets=buckets or [10, 50, 100, 250, 500, 1000, 2500, 5000]
+                name=name,
+                labels=dict(labels),
+                buckets=buckets or [10, 50, 100, 250, 500, 1000, 2500, 5000],
             )
         return self._histograms[key]
 
@@ -122,17 +129,27 @@ class TelemetryRegistry:
         lines: List[str] = []
         for key, c in self._counters.items():
             lines.append(f"# TYPE {c.name} counter")
-            lines.append(f"{self._prefix}_{c.name}{self._label_str(c.labels)} {c.value}")
+            lines.append(
+                f"{self._prefix}_{c.name}{self._label_str(c.labels)} {c.value}"
+            )
         for key, g in self._gauges.items():
             lines.append(f"# TYPE {g.name} gauge")
-            lines.append(f"{self._prefix}_{g.name}{self._label_str(g.labels)} {g.value}")
+            lines.append(
+                f"{self._prefix}_{g.name}{self._label_str(g.labels)} {g.value}"
+            )
         for key, h in self._histograms.items():
             lines.append(f"# TYPE {h.name} histogram")
             for b in sorted(h.buckets):
-                le = "+Inf" if b == float('inf') else str(b)
-                lines.append(f"{self._prefix}_{h.name}_bucket{{le=\"{le}\"}}{self._label_str(h.labels, leading_comma=False)} {h._counts.get(b, 0)}")
-            lines.append(f"{self._prefix}_{h.name}_sum{self._label_str(h.labels)} {h._sum}")
-            lines.append(f"{self._prefix}_{h.name}_count{self._label_str(h.labels)} {h._total}")
+                le = "+Inf" if b == float("inf") else str(b)
+                lines.append(
+                    f'{self._prefix}_{h.name}_bucket{{le="{le}"}}{self._label_str(h.labels, leading_comma=False)} {h._counts.get(b, 0)}'
+                )
+            lines.append(
+                f"{self._prefix}_{h.name}_sum{self._label_str(h.labels)} {h._sum}"
+            )
+            lines.append(
+                f"{self._prefix}_{h.name}_count{self._label_str(h.labels)} {h._total}"
+            )
         return "\n".join(lines)
 
     # ------------------------------------------------------------------
@@ -160,14 +177,17 @@ class TelemetryRegistry:
         return {
             "counters": {k: {"value": v.value} for k, v in self._counters.items()},
             "gauges": {k: {"value": v.value} for k, v in self._gauges.items()},
-            "histograms": {k: {"sum": v._sum, "count": v._total} for k, v in self._histograms.items()},
+            "histograms": {
+                k: {"sum": v._sum, "count": v._total}
+                for k, v in self._histograms.items()
+            },
         }
 
     def _key(self, name: str, labels: Dict[str, str]) -> str:
         if not labels:
             return name
         label_str = ",".join(f'{k}="{v}"' for k, v in sorted(labels.items()))
-        return f'{name}{{{label_str}}}'
+        return f"{name}{{{label_str}}}"
 
     def _label_str(self, labels: Dict[str, str], leading_comma: bool = True) -> str:
         if not labels:

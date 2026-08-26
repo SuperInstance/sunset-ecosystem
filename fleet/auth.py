@@ -14,6 +14,7 @@ Usage:
     if auth.has_permission(payload, "breed"):
         run_breeding()
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -40,6 +41,7 @@ class PermissionDenied(Exception):
 @dataclass
 class TokenPayload:
     """Decoded token payload."""
+
     subject: str
     roles: list[str]
     issued_at: float
@@ -113,16 +115,20 @@ class FleetAuth:
         return f"{self._encode_b64(payload_json)}.{sig}"
 
     def _sign_payload(self, payload_json: str) -> str:
-        return hmac.new(self._secret, payload_json.encode(), hashlib.sha256).hexdigest()[:32]
+        return hmac.new(
+            self._secret, payload_json.encode(), hashlib.sha256
+        ).hexdigest()[:32]
 
     @staticmethod
     def _encode_b64(data: str) -> str:
         import base64
+
         return base64.urlsafe_b64encode(data.encode()).decode().rstrip("=")
 
     @staticmethod
     def _decode_b64(data: str) -> str:
         import base64
+
         padding = 4 - len(data) % 4
         if padding != 4:
             data += "=" * padding
@@ -161,7 +167,8 @@ class FleetAuth:
             "roles": payload.roles,
             "issued_at": payload.issued_at,
             "expires_at": payload.expires_at,
-            "is_expired": payload.expires_at is not None and payload.expires_at < time.time(),
+            "is_expired": payload.expires_at is not None
+            and payload.expires_at < time.time(),
         }
 
     def __repr__(self) -> str:

@@ -57,6 +57,7 @@ def benchmark_cuda(n: int, ticks: int = 50) -> dict | None:
     """Benchmark CUDA backend if available."""
     try:
         import ctypes
+
         cuda_lib = ctypes.CDLL(str(PROJECT_ROOT / "nerve" / "libjepa_cuda.so"))
     except OSError:
         print("CUDA library not found. Compile with:")
@@ -94,14 +95,14 @@ def main():
         np_result = benchmark_numpy(n, ticks=ticks)
         print(
             f"  numpy:  {np_result['ms_per_tick']:.2f} ms/tick  "
-            f"({np_result['rooms_per_sec']/1000:.1f}K rooms/sec)"
+            f"({np_result['rooms_per_sec'] / 1000:.1f}K rooms/sec)"
         )
 
         cuda_result = benchmark_cuda(n, ticks=ticks)
         if cuda_result:
             print(
                 f"  cuda:   {cuda_result['ms_per_tick']:.2f} ms/tick  "
-                f"({cuda_result['rooms_per_sec']/1000:.1f}K rooms/sec)"
+                f"({cuda_result['rooms_per_sec'] / 1000:.1f}K rooms/sec)"
             )
             speedup = np_result["ms_per_tick"] / max(cuda_result["ms_per_tick"], 1e-9)
             print(f"  speedup: {speedup:.1f}×")

@@ -40,8 +40,8 @@ score = fci.compute(
     learning_score=0.50,
     meta_score=0.20,
 )
-print(score.fci)        # 0.415
-print(score.level)      # "aware"
+print(score.fci)  # 0.415
+print(score.level)  # "aware"
 print(score.recommendation)
 
 # Or compute from raw fleet metrics
@@ -65,12 +65,14 @@ print(fci.render_oneline(score))
 ## Custom Weights
 
 ```python
-fci = FleetConsciousnessIndex(weights={
-    "room_phi": 0.25,
-    "attention": 0.25,
-    "learning": 0.25,
-    "meta": 0.25,
-})
+fci = FleetConsciousnessIndex(
+    weights={
+        "room_phi": 0.25,
+        "attention": 0.25,
+        "learning": 0.25,
+        "meta": 0.25,
+    }
+)
 ```
 
 ## Integration with SSE Stream Dashboard

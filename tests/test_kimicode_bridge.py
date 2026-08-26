@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_kimicode_bridge.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -129,6 +130,7 @@ class TestKimicodeBridge:
         task = TaskTemplate.review("code")
         result = bridge.execute(task)
         import json
+
         data = json.loads(result)
         assert data["status"] == "dispatched"
         assert data["model"] == "k2p6"

@@ -68,10 +68,10 @@ DIVERSITY_HIGH = 0.60
 class HebbianOutcome(Enum):
     """Result of an interaction with a peer."""
 
-    SUCCESS = auto()   # Gossip round completed, deltas merged
-    TIMEOUT = auto()   # Peer did not respond in time
+    SUCCESS = auto()  # Gossip round completed, deltas merged
+    TIMEOUT = auto()  # Peer did not respond in time
     VIOLATION = auto()  # Peer sent malformed / violating deltas
-    NOVELTY = auto()   # Peer contributed genuinely new information
+    NOVELTY = auto()  # Peer contributed genuinely new information
 
 
 @dataclass
@@ -79,10 +79,10 @@ class HebbianAffinity:
     """Mutable affinity record for a single peer."""
 
     peer_id: str
-    strength: float = 0.50          # 0.0 – 1.0, higher = more trusted
-    last_interaction: float = 0.0   # Unix timestamp
-    trust_score: float = 0.50       # rolling average of recent outcomes
-    interaction_count: int = 0      # number of recorded outcomes
+    strength: float = 0.50  # 0.0 – 1.0, higher = more trusted
+    last_interaction: float = 0.0  # Unix timestamp
+    trust_score: float = 0.50  # rolling average of recent outcomes
+    interaction_count: int = 0  # number of recorded outcomes
     blacklisted: bool = False
 
     def __post_init__(self) -> None:
@@ -93,6 +93,7 @@ class HebbianAffinity:
 
 class DiversityError(Exception):
     """Raised when diversity cannot be computed (empty table, etc.)."""
+
     pass
 
 
@@ -160,7 +161,10 @@ class HebbianMeshLayer:
 
         logger.debug(
             "HebbianMeshLayer initialised (chaos %.2f–%.2f, diversity %.2f–%.2f)",
-            chaos_min, chaos_max, diversity_low, diversity_high,
+            chaos_min,
+            chaos_max,
+            diversity_low,
+            diversity_high,
         )
 
     # ── cache rebuild (write path only) ─────────────────────
@@ -209,7 +213,9 @@ class HebbianMeshLayer:
 
             if aff.blacklisted and outcome != HebbianOutcome.NOVELTY:
                 # Only NOVELTY can un-blacklist a peer (second chance)
-                logger.debug("Peer %s is blacklisted; ignoring %s", peer_id, outcome.name)
+                logger.debug(
+                    "Peer %s is blacklisted; ignoring %s", peer_id, outcome.name
+                )
                 return
 
             if outcome == HebbianOutcome.SUCCESS:
@@ -234,11 +240,16 @@ class HebbianMeshLayer:
             aff.interaction_count += 1
 
             # Blacklist check after VIOLATION
-            if outcome == HebbianOutcome.VIOLATION and aff.strength < BLACKLIST_THRESHOLD:
+            if (
+                outcome == HebbianOutcome.VIOLATION
+                and aff.strength < BLACKLIST_THRESHOLD
+            ):
                 aff.blacklisted = True
                 logger.warning(
                     "Peer %s BLACKLISTED (strength %.2f < %.2f) after VIOLATION",
-                    peer_id, aff.strength, BLACKLIST_THRESHOLD,
+                    peer_id,
+                    aff.strength,
+                    BLACKLIST_THRESHOLD,
                 )
 
             # NOVELTY un-blacklists (graceful recovery)
@@ -251,6 +262,7 @@ class HebbianMeshLayer:
     def get_affinity(self, peer_id: str) -> HebbianAffinity:
         """Return the current affinity record for a peer."""
         import dataclasses
+
         with self._lock:
             aff = self._affinities.get(
                 peer_id,
@@ -346,7 +358,9 @@ class HebbianMeshLayer:
         if diversity >= self._diversity_high:
             return self._chaos_min
         # Linear interpolation between the two thresholds
-        t = (diversity - self._diversity_low) / (self._diversity_high - self._diversity_low)
+        t = (diversity - self._diversity_low) / (
+            self._diversity_high - self._diversity_low
+        )
         return self._chaos_max - t * (self._chaos_max - self._chaos_min)
 
     # ── routing ─────────────────────────────────────────────
@@ -473,8 +487,12 @@ class HebbianMeshLayer:
             avg_strength = 0.0
             avg_trust = 0.0
             if total > 0:
-                avg_strength = sum(a.strength for a in self._affinities.values()) / total
-                avg_trust = sum(a.trust_score for a in self._affinities.values()) / total
+                avg_strength = (
+                    sum(a.strength for a in self._affinities.values()) / total
+                )
+                avg_trust = (
+                    sum(a.trust_score for a in self._affinities.values()) / total
+                )
 
             return {
                 "peer_count": total,
@@ -499,7 +517,9 @@ class HebbianMeshLayer:
 
         Returns the raw ``GossipResult`` dict so callers can inspect details.
         """
-        selected = self.select_peers_for_gossip(peers, k=self.gossip.max_peers_per_round)
+        selected = self.select_peers_for_gossip(
+            peers, k=self.gossip.max_peers_per_round
+        )
         results = self.gossip.gossip_round(selected)
 
         for peer_id, result in results.items():

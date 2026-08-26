@@ -233,8 +233,9 @@ class PlatoBreedingPolicy(Decide):
     def _build_rules(self) -> None:
         # Rule 1: thermal critical
         self._policy.add_rule(
-            condition=lambda obs: obs.metrics.get("max_thermal_cpu", 0)
-            >= self._thermal_cpu_threshold,
+            condition=lambda obs: (
+                obs.metrics.get("max_thermal_cpu", 0) >= self._thermal_cpu_threshold
+            ),
             action_type="sunset",
             confidence=0.9,
             reasoning="Thermal critical: max CPU above threshold, reduce fleet load",
@@ -243,10 +244,8 @@ class PlatoBreedingPolicy(Decide):
         # Rule 2: low diversity + high occupancy → breed
         self._policy.add_rule(
             condition=lambda obs: (
-                obs.metrics.get("mean_diversity", 1.0)
-                < self._diversity_threshold
-                and obs.metrics.get("total_agents", 0)
-                >= self._occupancy_threshold
+                obs.metrics.get("mean_diversity", 1.0) < self._diversity_threshold
+                and obs.metrics.get("total_agents", 0) >= self._occupancy_threshold
             ),
             action_type="breed",
             confidence=0.85,
@@ -471,9 +470,7 @@ class PlatoSignalChain:
 
         self._thread = threading.Thread(target=_run, daemon=True)
         self._thread.start()
-        logger.info(
-            "PlatoSignalChain started (interval=%.0f ms)", loop_interval_ms
-        )
+        logger.info("PlatoSignalChain started (interval=%.0f ms)", loop_interval_ms)
 
     def stop(self) -> None:
         """Stop the background thread."""

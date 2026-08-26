@@ -12,6 +12,7 @@ Usage:
     sd.register("node-1", {"ip": "10.0.0.1", "cpu": 8, "capabilities": ["gpu"]})
     nodes = sd.find_by_capability("gpu")
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class NodeInfo:
     """Information about a fleet node."""
+
     node_id: str
     metadata: dict[str, Any]
     last_heartbeat: float
@@ -95,17 +97,15 @@ class ServiceDiscovery:
         """Find nodes with a specific capability."""
         self._cleanup()
         return [
-            n for n in self._nodes.values()
+            n
+            for n in self._nodes.values()
             if capability in n.metadata.get("capabilities", [])
         ]
 
     def find_by_tag(self, tag: str, value: Any) -> list[NodeInfo]:
         """Find nodes by metadata tag."""
         self._cleanup()
-        return [
-            n for n in self._nodes.values()
-            if n.metadata.get(tag) == value
-        ]
+        return [n for n in self._nodes.values() if n.metadata.get(tag) == value]
 
     def node_count(self) -> int:
         self._cleanup()
@@ -120,7 +120,8 @@ class ServiceDiscovery:
             return
 
         stale = [
-            node_id for node_id, info in self._nodes.items()
+            node_id
+            for node_id, info in self._nodes.items()
             if now - info.last_heartbeat > info.ttl
         ]
         for node_id in stale:

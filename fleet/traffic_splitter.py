@@ -11,6 +11,7 @@ Usage:
     variant = splitter.route(user_id="user-1")
     assert variant in ["control", "treatment"]
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -79,6 +80,7 @@ class TrafficSplitter:
             bucket = hash_val % 100
         else:
             import random
+
             bucket = random.randint(0, 99)
 
         cumulative = 0

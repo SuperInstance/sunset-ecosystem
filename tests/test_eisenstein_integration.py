@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for swarm/eisenstein_integration.py."""
+
 import math
 
 import pytest

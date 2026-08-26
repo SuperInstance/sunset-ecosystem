@@ -1,4 +1,5 @@
 """A2A HTTP Server — lightweight, stdlib-only, thread-safe."""
+
 import json
 import os
 import threading
@@ -55,11 +56,14 @@ class A2AServer:
             def do_GET(self):
                 """Serve static agent cards and health check."""
                 if self.path == "/health":
-                    self._send_json(200, {
-                        "status": "ok",
-                        "service": "a2a-server",
-                        "agents": len(server.agents),
-                    })
+                    self._send_json(
+                        200,
+                        {
+                            "status": "ok",
+                            "service": "a2a-server",
+                            "agents": len(server.agents),
+                        },
+                    )
                     return
                 if not self.path.startswith("/.well-known/agent-"):
                     self._send_json(404, {"error": "Not found"})
@@ -72,17 +76,21 @@ class A2AServer:
                     self._send_json(404, {"error": "Not found"})
                     return
 
-                card_name = filename[len("agent-"): -len(".json")]
+                card_name = filename[len("agent-") : -len(".json")]
 
                 with server._lock:
                     if card_name not in server.agents:
-                        self._send_json(404, {"error": f"Unknown agent card: {card_name}"})
+                        self._send_json(
+                            404, {"error": f"Unknown agent card: {card_name}"}
+                        )
                         return
 
                 # Load the agent card from .well-known directory
                 card_path = os.path.join(server._base_dir, ".well-known", filename)
                 if not os.path.exists(card_path):
-                    self._send_json(404, {"error": f"Agent card file not found: {filename}"})
+                    self._send_json(
+                        404, {"error": f"Agent card file not found: {filename}"}
+                    )
                     return
 
                 try:
@@ -146,16 +154,21 @@ class A2AServer:
                     agent_name = type_to_agent.get(task_type)
 
                 if agent_name is None:
-                    self._send_json(400, {
-                        "error": "Missing 'agent' field and unable to infer from 'type'"
-                    })
+                    self._send_json(
+                        400,
+                        {
+                            "error": "Missing 'agent' field and unable to infer from 'type'"
+                        },
+                    )
                     return
 
                 with server._lock:
                     handler = server.agents.get(agent_name)
 
                 if handler is None:
-                    self._send_json(404, {"error": f"No handler registered for agent: {agent_name}"})
+                    self._send_json(
+                        404, {"error": f"No handler registered for agent: {agent_name}"}
+                    )
                     return
 
                 try:
@@ -193,5 +206,6 @@ class A2AServer:
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     """Thread-per-request HTTP server."""
+
     allow_reuse_address = True
     daemon_threads = True

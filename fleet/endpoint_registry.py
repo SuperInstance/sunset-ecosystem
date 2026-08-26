@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class ServiceEndpoint:
     """A service endpoint in the fleet."""
+
     service_name: str
     host: str
     port: int
@@ -46,8 +47,14 @@ class EndpointRegistry:
         self.fleet_node_id = fleet_node_id
         self._endpoints: Dict[str, ServiceEndpoint] = {}
 
-    def register(self, service_name: str, host: str, port: int,
-                 protocol: str = "http", metadata: Optional[Dict[str, Any]] = None) -> ServiceEndpoint:
+    def register(
+        self,
+        service_name: str,
+        host: str,
+        port: int,
+        protocol: str = "http",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> ServiceEndpoint:
         """Register a service endpoint."""
         endpoint = ServiceEndpoint(
             service_name=service_name,
@@ -106,10 +113,13 @@ class EndpointRegistry:
 
     def export_json(self) -> str:
         """Export registry as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "endpoints": [e.to_dict() for e in self._endpoints.values()],
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "endpoints": [e.to_dict() for e in self._endpoints.values()],
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

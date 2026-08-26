@@ -8,6 +8,7 @@ Usage:
     conn = pool.acquire()
     pool.release(conn)
 """
+
 from __future__ import annotations
 
 import threading
@@ -60,7 +61,10 @@ class ConnectionPool:
                 for i, item in enumerate(self._pool):
                     if item["conn"] in self._in_use:
                         continue
-                    if self._idle_timeout and now - item["last_used"] > self._idle_timeout:
+                    if (
+                        self._idle_timeout
+                        and now - item["last_used"] > self._idle_timeout
+                    ):
                         continue
                     if self._health and not self._health(item["conn"]):
                         continue

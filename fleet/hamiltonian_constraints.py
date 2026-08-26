@@ -9,6 +9,7 @@ drives arbitrary states onto the constraint manifold.
 Reference: constraint-hamiltonian pattern from SuperInstance ecosystem audit
 (May 30, 2026).
 """
+
 from __future__ import annotations
 
 import math
@@ -24,6 +25,7 @@ GradientFn = Callable[[np.ndarray], np.ndarray]
 
 
 # ─── data classes ────────────────────────────────────────────────────────────
+
 
 @dataclass
 class Constraint:
@@ -91,6 +93,7 @@ class SystemState:
 
 # ─── HamiltonianSystem ───────────────────────────────────────────────────────
 
+
 class HamiltonianSystem:
     """Hamiltonian constraint dynamics for agent state validation.
 
@@ -125,11 +128,17 @@ class HamiltonianSystem:
         self.damping = damping
         self.multiplier_update_rate = multiplier_update_rate
 
-        q0 = np.zeros(dim, dtype=float) if state is None else np.asarray(state, dtype=float)
+        q0 = (
+            np.zeros(dim, dtype=float)
+            if state is None
+            else np.asarray(state, dtype=float)
+        )
         if q0.shape != (dim,):
             raise ValueError(f"state shape {q0.shape} != ({dim},)")
 
-        self._state = SystemState(position=q0.copy(), momentum=np.zeros(dim, dtype=float))
+        self._state = SystemState(
+            position=q0.copy(), momentum=np.zeros(dim, dtype=float)
+        )
         self._energy_history: list[AugmentedEnergy] = []
 
     # ── constraint management ───────────────────────────────────────────────
@@ -171,7 +180,9 @@ class HamiltonianSystem:
 
     # ── core dynamics ───────────────────────────────────────────────────────
 
-    def _compute_constraint_forces(self, q: np.ndarray) -> tuple[np.ndarray, float, float]:
+    def _compute_constraint_forces(
+        self, q: np.ndarray
+    ) -> tuple[np.ndarray, float, float]:
         """Compute constraint forces and energy contributions.
 
         Returns:
@@ -378,7 +389,9 @@ class HamiltonianSystem:
         """Return a copy of the current momentum vector."""
         return self._state.momentum.copy()
 
-    def set_state(self, position: np.ndarray, momentum: Optional[np.ndarray] = None) -> None:
+    def set_state(
+        self, position: np.ndarray, momentum: Optional[np.ndarray] = None
+    ) -> None:
         """Set position and optionally momentum."""
         pos = np.asarray(position, dtype=float)
         if pos.shape != (self.dim,):

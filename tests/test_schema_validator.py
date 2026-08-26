@@ -56,22 +56,21 @@ class TestSchemaValidator:
 
     def test_validate_nested_object(self):
         v = SchemaValidator()
-        v.register("test", {
-            "user": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "required": True}
+        v.register(
+            "test",
+            {
+                "user": {
+                    "type": "object",
+                    "properties": {"name": {"type": "string", "required": True}},
                 }
-            }
-        })
+            },
+        )
         errors = v.validate({"user": {"name": "hello"}}, "test")
         assert len(errors) == 0
 
     def test_validate_array_items(self):
         v = SchemaValidator()
-        v.register("test", {
-            "scores": {"type": "array", "items": {"type": "number"}}
-        })
+        v.register("test", {"scores": {"type": "array", "items": {"type": "number"}}})
         errors = v.validate({"scores": [1, 2, "three"]}, "test")
         assert len(errors) == 1
         assert "scores[2]" in errors[0].field

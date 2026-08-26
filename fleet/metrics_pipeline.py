@@ -10,6 +10,7 @@ Usage:
     result = pipe.process({"name": "cpu", "value": 50})
     # result["value"] == 100
 """
+
 from __future__ import annotations
 
 import time
@@ -39,7 +40,9 @@ class MetricsPipeline:
         self._filters.append(fn)
         return self
 
-    def add_transform(self, fn: Callable[[Dict[str, Any]], Dict[str, Any]]) -> "MetricsPipeline":
+    def add_transform(
+        self, fn: Callable[[Dict[str, Any]], Dict[str, Any]]
+    ) -> "MetricsPipeline":
         """Add a transform stage."""
         self._transforms.append(fn)
         return self
@@ -72,9 +75,7 @@ class MetricsPipeline:
         self._processed += 1
         return metric
 
-    def process_batch(
-        self, metrics: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def process_batch(self, metrics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Process a batch of metrics."""
         results: List[Dict[str, Any]] = []
         for m in metrics:

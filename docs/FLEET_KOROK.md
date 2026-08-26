@@ -42,7 +42,7 @@ from fleet.fleet_korok import FleetKorokIndex, FleetKorokConfig, FleetKorokEntry
 
 index = FleetKorokIndex(
     FleetKorokConfig(
-        alpha=0.6,           # 60% dense, 40% sparse
+        alpha=0.6,  # 60% dense, 40% sparse
         use_bm25=True,
         use_dense=True,
         use_reranker=False,

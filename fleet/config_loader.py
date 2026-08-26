@@ -11,6 +11,7 @@ Usage:
     loader.set("db.host", "prod-db")
     assert loader.get("db.host") == "prod-db"
 """
+
 from __future__ import annotations
 
 import os
@@ -84,7 +85,7 @@ class ConfigLoader:
         count = 0
         for key, value in os.environ.items():
             if key.startswith(prefix):
-                config_key = key[len(prefix):].lower().replace("__", ".")
+                config_key = key[len(prefix) :].lower().replace("__", ".")
                 # Try to parse as int, float, bool, or string
                 parsed = self._parse_value(value)
                 self.set(config_key, parsed)
@@ -139,7 +140,11 @@ class ConfigLoader:
     def _deep_update(self, target: Dict, source: Dict) -> None:
         """Deep update target dict with source dict."""
         for key, value in source.items():
-            if key in target and isinstance(target[key], dict) and isinstance(value, dict):
+            if (
+                key in target
+                and isinstance(target[key], dict)
+                and isinstance(value, dict)
+            ):
                 self._deep_update(target[key], value)
             else:
                 target[key] = value

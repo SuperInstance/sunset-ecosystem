@@ -3,6 +3,7 @@
 Most opcodes map 1:1.  The interesting cases (creative translation) are
 marked with comments explaining the semantic gap and how we bridge it.
 """
+
 from __future__ import annotations
 
 from typing import List, Optional, Tuple
@@ -10,22 +11,64 @@ import warnings
 
 # Re-export v3 byte values for serialization
 V3_OPCODE_BYTES: dict[str, int] = {
-    "Push": 0x01, "Pop": 0x02, "Dup": 0x03, "Swap": 0x04, "Over": 0x05,
-    "Drop": 0x06, "LoadConst": 0x07, "Nop": 0x08,
-    "Add": 0x09, "Sub": 0x0a, "Mul": 0x0b, "Div": 0x0c,
-    "Saturate": 0x0d, "Min": 0x0e, "Max": 0x0f, "Abs": 0x10,
-    "LoadReg": 0x11, "StoreReg": 0x12, "LoadRegVec": 0x13, "StoreRegVec": 0x14,
-    "RangeCheck": 0x15, "BatchCheck": 0x16, "AccumulateMask": 0x17,
-    "ClassifySeverity": 0x18, "Prove": 0x19, "QueryBackward": 0x1a,
-    "Simplify": 0x1b, "Validate": 0x1c, "HashCommit": 0x1d, "Seal": 0x1e,
-    "VecLoad": 0x1f, "VecStore": 0x20, "VecRangeCheck": 0x21,
-    "VecMaskMerge": 0x22, "VecReduce": 0x23, "VecGather": 0x24,
-    "FwdJump": 0x25, "CondJump": 0x26, "CallBounded": 0x27,
-    "Ret": 0x28, "Halt": 0x29, "Checkpoint": 0x2a,
-    "SetHandler": 0x2b, "EmitEvent": 0x2c, "Rollback": 0x2d, "GetResult": 0x2e,
-    "ParDispatch": 0x2f, "ParMerge": 0x30, "ParBarrier": 0x31, "ParReduce": 0x32,
-    "SnapRecord": 0x33, "SnapQuery": 0x34, "SnapHash": 0x35, "SnapVerify": 0x36,
-    "StreamOpen": 0x37, "StreamCheck": 0x38, "StreamBatch": 0x39, "StreamClose": 0x3a,
+    "Push": 0x01,
+    "Pop": 0x02,
+    "Dup": 0x03,
+    "Swap": 0x04,
+    "Over": 0x05,
+    "Drop": 0x06,
+    "LoadConst": 0x07,
+    "Nop": 0x08,
+    "Add": 0x09,
+    "Sub": 0x0A,
+    "Mul": 0x0B,
+    "Div": 0x0C,
+    "Saturate": 0x0D,
+    "Min": 0x0E,
+    "Max": 0x0F,
+    "Abs": 0x10,
+    "LoadReg": 0x11,
+    "StoreReg": 0x12,
+    "LoadRegVec": 0x13,
+    "StoreRegVec": 0x14,
+    "RangeCheck": 0x15,
+    "BatchCheck": 0x16,
+    "AccumulateMask": 0x17,
+    "ClassifySeverity": 0x18,
+    "Prove": 0x19,
+    "QueryBackward": 0x1A,
+    "Simplify": 0x1B,
+    "Validate": 0x1C,
+    "HashCommit": 0x1D,
+    "Seal": 0x1E,
+    "VecLoad": 0x1F,
+    "VecStore": 0x20,
+    "VecRangeCheck": 0x21,
+    "VecMaskMerge": 0x22,
+    "VecReduce": 0x23,
+    "VecGather": 0x24,
+    "FwdJump": 0x25,
+    "CondJump": 0x26,
+    "CallBounded": 0x27,
+    "Ret": 0x28,
+    "Halt": 0x29,
+    "Checkpoint": 0x2A,
+    "SetHandler": 0x2B,
+    "EmitEvent": 0x2C,
+    "Rollback": 0x2D,
+    "GetResult": 0x2E,
+    "ParDispatch": 0x2F,
+    "ParMerge": 0x30,
+    "ParBarrier": 0x31,
+    "ParReduce": 0x32,
+    "SnapRecord": 0x33,
+    "SnapQuery": 0x34,
+    "SnapHash": 0x35,
+    "SnapVerify": 0x36,
+    "StreamOpen": 0x37,
+    "StreamCheck": 0x38,
+    "StreamBatch": 0x39,
+    "StreamClose": 0x3A,
 }
 
 # Simple 1:1 mappings
@@ -154,9 +197,7 @@ def map_opcode(
     if v2_name == "Batch":
         out_ops.append("BatchCheck")
         out_imm.append(operand)
-        out_warn.append(
-            "v2 'Batch' → v3 'BatchCheck'; verify batch size ≤ v3 limit"
-        )
+        out_warn.append("v2 'Batch' → v3 'BatchCheck'; verify batch size ≤ v3 limit")
         return out_ops, out_imm, out_warn
 
     if v2_name == "Accumulate":

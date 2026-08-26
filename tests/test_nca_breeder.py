@@ -151,7 +151,7 @@ class TestNCABreeder:
         breeder.initialize()
 
         def task_fn(phenotype):
-            return float(np.sum(phenotype ** 2))
+            return float(np.sum(phenotype**2))
 
         breeder.evaluate(task_fn)
         assert breeder.best_fitness >= 0
@@ -167,7 +167,7 @@ class TestNCABreeder:
         breeder.initialize()
 
         def task_fn(phenotype):
-            return float(np.sum(phenotype ** 2))
+            return float(np.sum(phenotype**2))
 
         breeder.evaluate(task_fn)
         breeder.select_and_breed()
@@ -185,7 +185,7 @@ class TestNCABreeder:
         breeder.initialize()
 
         def task_fn(phenotype):
-            return float(np.sum(phenotype ** 2))
+            return float(np.sum(phenotype**2))
 
         best_history = []
         for gen in range(3):
@@ -213,7 +213,7 @@ class TestNCABreeder:
         breeder.initialize()
 
         def task_fn(phenotype):
-            return float(np.sum(phenotype ** 2))
+            return float(np.sum(phenotype**2))
 
         breeder.evaluate(task_fn)
         best_before = breeder.best_fitness
@@ -231,7 +231,7 @@ class TestNCABreeder:
         breeder.initialize()
 
         def task_fn(phenotype):
-            return float(np.sum(phenotype ** 2))
+            return float(np.sum(phenotype**2))
 
         for _ in range(5):
             breeder.evaluate(task_fn)
@@ -254,4 +254,3 @@ class TestNCABreeder:
         breeder = NCABreeder(population_size=3, n_channels=3, n_steps=4)
         breeder.initialize()
         assert len(breeder.population) == 3
-

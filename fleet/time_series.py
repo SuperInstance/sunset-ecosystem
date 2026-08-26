@@ -10,6 +10,7 @@ Usage:
     ts.push(45.0)
     assert ts.avg() == 43.5
 """
+
 from __future__ import annotations
 
 import time
@@ -121,9 +122,7 @@ class TimeSeries:
             if bucket not in buckets:
                 buckets[bucket] = []
             buckets[bucket].append(s.value)
-        return sorted(
-            (b, sum(v) / len(v)) for b, v in buckets.items()
-        )
+        return sorted((b, sum(v) / len(v)) for b, v in buckets.items())
 
     # ------------------------------------------------------------------
     # Cleanup

@@ -58,7 +58,17 @@ class TestCommitCaster:
 
     def test_receive_good(self):
         cc = CommitCaster("secret")
-        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        payload = json.dumps(
+            {
+                "repo": "r",
+                "commit": "c",
+                "author": "a",
+                "message": "m",
+                "branch": "b",
+                "timestamp": "t",
+                "files": [],
+            }
+        ).encode()
         sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
         ev = cc.receive(payload, sig)
         assert ev is not None
@@ -80,7 +90,17 @@ class TestCommitCaster:
 
     def test_deduplication(self):
         cc = CommitCaster("secret")
-        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        payload = json.dumps(
+            {
+                "repo": "r",
+                "commit": "c",
+                "author": "a",
+                "message": "m",
+                "branch": "b",
+                "timestamp": "t",
+                "files": [],
+            }
+        ).encode()
         sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
         cc.receive(payload, sig)
         ev2 = cc.receive(payload, sig)
@@ -90,7 +110,17 @@ class TestCommitCaster:
 
     def test_deduplication_window_expires(self):
         cc = CommitCaster("secret", window_sec=0.01)
-        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        payload = json.dumps(
+            {
+                "repo": "r",
+                "commit": "c",
+                "author": "a",
+                "message": "m",
+                "branch": "b",
+                "timestamp": "t",
+                "files": [],
+            }
+        ).encode()
         sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
         cc.receive(payload, sig)
         time.sleep(0.02)
@@ -100,14 +130,37 @@ class TestCommitCaster:
     def test_broadcast(self):
         calls = []
         cc = CommitCaster("secret", mesh_broadcast=lambda d: calls.append(d))
-        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        payload = json.dumps(
+            {
+                "repo": "r",
+                "commit": "c",
+                "author": "a",
+                "message": "m",
+                "branch": "b",
+                "timestamp": "t",
+                "files": [],
+            }
+        ).encode()
         sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
         cc.receive(payload, sig)
         assert len(calls) == 1
 
     def test_broadcast_failure_queues(self):
-        cc = CommitCaster("secret", mesh_broadcast=lambda d: (_ for _ in ()).throw(RuntimeError("fail")))
-        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        cc = CommitCaster(
+            "secret",
+            mesh_broadcast=lambda d: (_ for _ in ()).throw(RuntimeError("fail")),
+        )
+        payload = json.dumps(
+            {
+                "repo": "r",
+                "commit": "c",
+                "author": "a",
+                "message": "m",
+                "branch": "b",
+                "timestamp": "t",
+                "files": [],
+            }
+        ).encode()
         sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
         cc.receive(payload, sig)
         assert cc.get_stats()["queued"] == 1
@@ -116,7 +169,17 @@ class TestCommitCaster:
     def test_flush_queue(self):
         calls = []
         cc = CommitCaster("secret")
-        payload = json.dumps({"repo": "r", "commit": "c", "author": "a", "message": "m", "branch": "b", "timestamp": "t", "files": []}).encode()
+        payload = json.dumps(
+            {
+                "repo": "r",
+                "commit": "c",
+                "author": "a",
+                "message": "m",
+                "branch": "b",
+                "timestamp": "t",
+                "files": [],
+            }
+        ).encode()
         sig = "sha256=" + hmac.new(b"secret", payload, hashlib.sha256).hexdigest()
         cc.receive(payload, sig)
         assert len(cc.get_queue()) == 1

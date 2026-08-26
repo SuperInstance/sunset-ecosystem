@@ -13,6 +13,7 @@ Usage:
     errors = validator.validate("user", {"name": "Alice", "age": 30})
     assert errors == []  # Valid
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional

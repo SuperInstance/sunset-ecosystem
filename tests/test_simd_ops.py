@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_simd_ops.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -66,7 +67,9 @@ class TestBlockwiseDistance:
     def test_manhattan_vs_numpy(self):
         a = np.random.randn(100)
         b = np.random.randn(100)
-        assert blockwise_manhattan(a, b) == pytest.approx(np.sum(np.abs(a - b)), rel=1e-10)
+        assert blockwise_manhattan(a, b) == pytest.approx(
+            np.sum(np.abs(a - b)), rel=1e-10
+        )
 
     def test_different_block_sizes(self):
         a = np.random.randn(200)

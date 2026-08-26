@@ -74,7 +74,11 @@ except ImportError:
     EventBus = None  # type: ignore[misc]
 
 try:
-    from superinstance.plugins.constraint import ConstraintCollector, ConstraintSelector, ConstraintCompiler
+    from superinstance.plugins.constraint import (
+        ConstraintCollector,
+        ConstraintSelector,
+        ConstraintCompiler,
+    )
 except ImportError:
     ConstraintCollector = None  # type: ignore[misc]
     ConstraintSelector = None  # type: ignore[misc]
@@ -94,8 +98,15 @@ except ImportError:
 
 # ── helpers ────────────────────────────────────────────────
 
+
 def _load_superinstance_ffi() -> ctypes.CDLL:
-    so_path = Path(__file__).parent.parent / "superinstance-ffi" / "target" / "release" / "libsuperinstance_ffi.so"
+    so_path = (
+        Path(__file__).parent.parent
+        / "superinstance-ffi"
+        / "target"
+        / "release"
+        / "libsuperinstance_ffi.so"
+    )
     lib = ctypes.CDLL(str(so_path))
     lib.laman_is_rigid.argtypes = [ctypes.c_uint, ctypes.c_uint]
     lib.laman_is_rigid.restype = ctypes.c_int
@@ -106,22 +117,37 @@ def _load_superinstance_ffi() -> ctypes.CDLL:
 
 # ── pytest skip helpers ─────────────────────────────────
 
-_skip_no_plato = pytest.mark.skipif(PlatoBridge is None, reason="sunset.plato_bridge not installed")
-_skip_no_tensor_spline = pytest.mark.skipif(SplineLinear is None, reason="tensor_spline not installed")
-_skip_no_holonomy = pytest.mark.skipif(HolonomyBridge is None, reason="nexus.holonomy_bridge not installed")
-_skip_no_sunset_agent = pytest.mark.skipif(Agent is None, reason="sunset.agent not installed")
-_skip_no_constraint_theory = pytest.mark.skipif(check_constraint is None, reason="constraint_theory not installed")
-_skip_no_flux_check = pytest.mark.skipif(ConstraintEngine is None, reason="flux_check not installed")
-_skip_no_seed_bank = pytest.mark.skipif(SeedBank is None, reason="sunset.seed_bank not installed")
+_skip_no_plato = pytest.mark.skipif(
+    PlatoBridge is None, reason="sunset.plato_bridge not installed"
+)
+_skip_no_tensor_spline = pytest.mark.skipif(
+    SplineLinear is None, reason="tensor_spline not installed"
+)
+_skip_no_holonomy = pytest.mark.skipif(
+    HolonomyBridge is None, reason="nexus.holonomy_bridge not installed"
+)
+_skip_no_sunset_agent = pytest.mark.skipif(
+    Agent is None, reason="sunset.agent not installed"
+)
+_skip_no_constraint_theory = pytest.mark.skipif(
+    check_constraint is None, reason="constraint_theory not installed"
+)
+_skip_no_flux_check = pytest.mark.skipif(
+    ConstraintEngine is None, reason="flux_check not installed"
+)
+_skip_no_seed_bank = pytest.mark.skipif(
+    SeedBank is None, reason="sunset.seed_bank not installed"
+)
 _skip_no_zerolang = pytest.mark.skipif(
     not Path("/home/phoenix/.openclaw/workspace/zerolang/bin/zero").exists(),
     reason="zerolang not installed",
 )
-_skip_no_superinstance = pytest.mark.skipif(EventBus is None, reason="superinstance.runtime not installed")
+_skip_no_superinstance = pytest.mark.skipif(
+    EventBus is None, reason="superinstance.runtime not installed"
+)
 
 
 class TestCrossEcosystem:
-
     @_skip_no_plato
     def test_plato_tile_round_trip(self):
         """Write a trinity score tile and read it back intact."""
@@ -137,6 +163,7 @@ class TestCrossEcosystem:
     def test_tensor_spline_compress_decompress(self):
         """SplineLinear should have fewer params than dense and forward pass should work."""
         import torch as _torch
+
         dense = _torch.nn.Linear(64, 64)
         dense_params = sum(p.numel() for p in dense.parameters())
         spline = SplineLinear(64, 64, n_control_points=16)
@@ -198,7 +225,9 @@ class TestCrossEcosystem:
         """SeedBank should store and select across generations."""
         bank = SeedBank()
         for gen in range(3):
-            onboarding = Onboarding(agent_id=f"a{gen}", generation=gen, letter_to_children=f"gen{gen}")
+            onboarding = Onboarding(
+                agent_id=f"a{gen}", generation=gen, letter_to_children=f"gen{gen}"
+            )
             bank.store(onboarding, relevance=0.5 + gen * 0.1, novelty=0.5)
         selected = bank.select(n=2, generation=1)
         assert len(selected) == 1
@@ -223,7 +252,9 @@ class TestCrossEcosystem:
     def test_zerolang_laman_output(self):
         """zerolang laman-rigidity package should print success."""
         zero_bin = Path("/home/phoenix/.openclaw/workspace/zerolang/bin/zero")
-        main_file = Path("/home/phoenix/.openclaw/workspace/zerolang/packages/laman-rigidity/main.0")
+        main_file = Path(
+            "/home/phoenix/.openclaw/workspace/zerolang/packages/laman-rigidity/main.0"
+        )
         result = subprocess.run(
             [str(zero_bin), "run", str(main_file)],
             capture_output=True,

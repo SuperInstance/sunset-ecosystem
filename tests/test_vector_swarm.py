@@ -82,9 +82,7 @@ class TestDistributedQueryById:
         results = swarm.query_by_id("n1_2", consistency="all")
         assert len(results) > 0
         # At least one result should have the entry
-        found = any(
-            e.agent_id == "n1_2" for r in results for e in r.entries
-        )
+        found = any(e.agent_id == "n1_2" for r in results for e in r.entries)
         assert found
 
 
@@ -147,7 +145,9 @@ class TestFitnessRange:
         populate_table(node1, "n1", 5)
         populate_table(node2, "n2", 5)
 
-        results = swarm.query_fitness_range(min_fitness=0.6, max_fitness=0.8, consistency="all")
+        results = swarm.query_fitness_range(
+            min_fitness=0.6, max_fitness=0.8, consistency="all"
+        )
         assert len(results) > 0
         for result in results:
             for entry in result.entries:

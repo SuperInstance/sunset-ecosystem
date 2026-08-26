@@ -150,7 +150,9 @@ class TestHolonomicFitness:
 
         triples = [PythagoreanTriple(3, 4, 5)]
         genome = PythagoreanGenome(triples=triples)
-        fitness_fn = HolonomicFitness(task_fn, holonomy_weight=0.3, exactness_weight=0.1)
+        fitness_fn = HolonomicFitness(
+            task_fn, holonomy_weight=0.3, exactness_weight=0.1
+        )
         score = fitness_fn.evaluate(genome)
         assert score > 0
 
@@ -193,19 +195,20 @@ class TestPythagoreanBreeder:
         assert breeder.generation == 1
 
     def test_full_evolution(self):
-        breeder = PythagoreanBreeder(population_size=20, genome_length=5,
-                                     mutation_rate=0.3, crossover_rate=0.7)
+        breeder = PythagoreanBreeder(
+            population_size=20, genome_length=5, mutation_rate=0.3, crossover_rate=0.7
+        )
         breeder.initialize()
-        
+
         def task_fn(matrix):
             return float(np.sum(matrix))
-        
+
         best_fitness_history = []
         for gen in range(10):
             breeder.evaluate_fitness(task_fn)
             breeder.select_and_breed()
             best_fitness_history.append(breeder.best_fitness)
-        
+
         assert breeder.generation == 10
         assert breeder.best_fitness > 0
 
@@ -217,13 +220,17 @@ class TestPythagoreanBreeder:
         assert stats["population_size"] == 10
 
     def test_elitism(self):
-        breeder = PythagoreanBreeder(population_size=10, genome_length=3, elitism_count=2)
+        breeder = PythagoreanBreeder(
+            population_size=10, genome_length=3, elitism_count=2
+        )
         breeder.initialize()
         breeder.evaluate_fitness(lambda m: float(np.sum(m)))
         best_before = breeder.best_fitness
         breeder.select_and_breed()
         breeder.evaluate_fitness(lambda m: float(np.sum(m)))
-        assert breeder.best_fitness >= best_before * 0.9  # Should not drop too much due to elitism
+        assert (
+            breeder.best_fitness >= best_before * 0.9
+        )  # Should not drop too much due to elitism
 
     def test_age_culling(self):
         breeder = PythagoreanBreeder(population_size=10, genome_length=3, max_age=2)

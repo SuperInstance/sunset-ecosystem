@@ -117,17 +117,13 @@ class FleetDashboard:
         total = stats.get("modules", 0)
         tests = stats.get("tests", 0)
         mean_tests = stats.get("mean_tests_per_module", 0.0)
-        tested_mods = sum(
-            1 for m in self._harbor.modules.values() if m.test_count > 0
-        )
+        tested_mods = sum(1 for m in self._harbor.modules.values() if m.test_count > 0)
 
         healthy = report.get("healthy", 0)
         health_score = healthy / total if total > 0 else 0.0
 
         integrations = len(self._harbor.integrations)
-        tested = sum(
-            1 for p in self._harbor.integrations if p.status == "tested"
-        )
+        tested = sum(1 for p in self._harbor.integrations if p.status == "tested")
 
         return FleetMetrics(
             total_modules=total,
@@ -218,7 +214,9 @@ class FleetDashboard:
         lines: list[str] = []
         lines.append("# 🌅 Sunset Ecosystem Fleet Dashboard")
         lines.append("")
-        lines.append(f"*Generated: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}*")
+        lines.append(
+            f"*Generated: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}*"
+        )
         lines.append("")
 
         # Executive Summary
@@ -227,10 +225,14 @@ class FleetDashboard:
         lines.append(f"| Metric | Value |")
         lines.append(f"|--------|-------|")
         lines.append(f"| **Modules** | {metrics.total_modules} |")
-        lines.append(f"| **Healthy** | {metrics.healthy_modules} ({metrics.health_score*100:.0f}%) |")
+        lines.append(
+            f"| **Healthy** | {metrics.healthy_modules} ({metrics.health_score * 100:.0f}%) |"
+        )
         lines.append(f"| **Total Tests** | {metrics.total_tests} |")
-        lines.append(f"| **Test Coverage** | {metrics.test_coverage_pct*100:.0f}% |")
-        lines.append(f"| **Integrations** | {metrics.tested_integrations}/{metrics.integration_count} tested |")
+        lines.append(f"| **Test Coverage** | {metrics.test_coverage_pct * 100:.0f}% |")
+        lines.append(
+            f"| **Integrations** | {metrics.tested_integrations}/{metrics.integration_count} tested |"
+        )
         lines.append(f"| **Mean Tests/Module** | {metrics.mean_tests_per_module:.1f} |")
         lines.append(f"| **Orphan Modules** | {metrics.orphan_modules} |")
         lines.append(f"| **Hub Modules** | {metrics.hub_modules} |")
@@ -238,17 +240,23 @@ class FleetDashboard:
 
         # Health Score
         health_bar = self._render_progress_bar(metrics.health_score)
-        lines.append(f"### Fleet Health: {health_bar} {metrics.health_score*100:.0f}%")
+        lines.append(
+            f"### Fleet Health: {health_bar} {metrics.health_score * 100:.0f}%"
+        )
         lines.append("")
 
         # Module Cards
         lines.append("## Module Registry")
         lines.append("")
         for card in cards:
-            test_bar = self._render_progress_bar(card.coverage_pct / 100.0 if card.test_count > 0 else 0)
+            test_bar = self._render_progress_bar(
+                card.coverage_pct / 100.0 if card.test_count > 0 else 0
+            )
             lines.append(f"### {card.health_emoji} {card.name}")
             lines.append(f"- **Status:** {card.status}")
-            lines.append(f"- **Tests:** {card.test_passed}/{card.test_count} {test_bar}")
+            lines.append(
+                f"- **Tests:** {card.test_passed}/{card.test_count} {test_bar}"
+            )
             if card.integrations:
                 lines.append(f"- **Integrations:** {', '.join(card.integrations)}")
             lines.append("")
@@ -259,7 +267,9 @@ class FleetDashboard:
         lines.append(f"| Source | Target | Status |")
         lines.append(f"|--------|--------|--------|")
         for edge in edges:
-            lines.append(f"| {edge.source} | {edge.target} | {edge.status_emoji} {edge.status} |")
+            lines.append(
+                f"| {edge.source} | {edge.target} | {edge.status_emoji} {edge.status} |"
+            )
         lines.append("")
 
         # Gaps
@@ -343,9 +353,15 @@ class FleetDashboard:
         print(" 🌅 SUNSET ECOSYSTEM FLEET DASHBOARD")
         print("═" * 50)
         print(f"  Modules:      {metrics.total_modules:3d}")
-        print(f"  Healthy:      {metrics.healthy_modules:3d} ({metrics.health_score*100:5.1f}%)")
-        print(f"  Tests:        {metrics.tests_passed:3d}/{metrics.total_tests:3d} ({metrics.test_coverage_pct*100:5.1f}%)")
-        print(f"  Integrations: {metrics.tested_integrations:3d}/{metrics.integration_count:3d}")
+        print(
+            f"  Healthy:      {metrics.healthy_modules:3d} ({metrics.health_score * 100:5.1f}%)"
+        )
+        print(
+            f"  Tests:        {metrics.tests_passed:3d}/{metrics.total_tests:3d} ({metrics.test_coverage_pct * 100:5.1f}%)"
+        )
+        print(
+            f"  Integrations: {metrics.tested_integrations:3d}/{metrics.integration_count:3d}"
+        )
         print(f"  Mean Tests:   {metrics.mean_tests_per_module:5.1f}/module")
         print(f"  Orphans:      {metrics.orphan_modules:3d}")
         print(f"  Hubs:         {metrics.hub_modules:3d}")
@@ -354,6 +370,6 @@ class FleetDashboard:
         if self._orchestrator:
             stats = self._orchestrator.get_stats()
             print(f"  Beats:        {stats.get('beats', 0):3d}")
-            print(f"  Success Rate: {stats.get('success_rate', 0.0)*100:5.1f}%")
+            print(f"  Success Rate: {stats.get('success_rate', 0.0) * 100:5.1f}%")
             print(f"  Health:       {stats.get('current_health', 'UNKNOWN')}")
             print("═" * 50)

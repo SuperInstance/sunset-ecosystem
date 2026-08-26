@@ -14,12 +14,12 @@ Usage
 -----
     miner = PatternMine(repo_path="/path/to/agent-operations")
     miner.load_patterns()
-    
+
     # Convert to FleetMonitor rules
     rules = miner.to_fleet_monitor_rules()
     for rule in rules:
         monitor.add_rule(rule)
-    
+
     # Generate task templates
     template = miner.get_task_template("repo_sweep")
 """
@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class OperationalPattern:
     """A mined operational pattern with metadata."""
+
     name: str
     source_file: str
     rule_text: str
@@ -59,6 +60,7 @@ class OperationalPattern:
 @dataclass
 class AlertRule:
     """A FleetMonitor-compatible alert rule."""
+
     name: str
     component: str
     condition: str  # Python expression as string
@@ -70,6 +72,7 @@ class AlertRule:
 @dataclass
 class TaskTemplate:
     """A subagent task template derived from a pattern."""
+
     name: str
     pattern_name: str
     instructions: str
@@ -213,13 +216,15 @@ class PatternMine:
             # Extract rules: lines with "- **Rule:**" or numbered rules
             rules = self._extract_rules(content)
             for i, rule_text in enumerate(rules):
-                self.patterns.append(OperationalPattern(
-                    name=f"{full_path.stem}_rule_{i+1}",
-                    source_file=rel_path,
-                    rule_text=rule_text,
-                    category=category,
-                    severity=default_severity,
-                ))
+                self.patterns.append(
+                    OperationalPattern(
+                        name=f"{full_path.stem}_rule_{i + 1}",
+                        source_file=rel_path,
+                        rule_text=rule_text,
+                        category=category,
+                        severity=default_severity,
+                    )
+                )
 
         # If no patterns found from repo, fall back to defaults
         if not self.patterns:
@@ -234,9 +239,26 @@ class PatternMine:
         lines = content.split("\n")
         for line in lines:
             line = line.strip()
-            if line.startswith("- **") and ("Rule" in line or "Max" in line or "Always" in line or "Never" in line):
+            if line.startswith("- **") and (
+                "Rule" in line or "Max" in line or "Always" in line or "Never" in line
+            ):
                 rules.append(re.sub(r"^-\s*\*\*.*?\*\*\s*", "", line))
-            elif line.startswith("- ") and len(line) > 20 and any(kw in line for kw in ["max", "limit", "batch", "verify", "fail", "silent", "procedural"]):
+            elif (
+                line.startswith("- ")
+                and len(line) > 20
+                and any(
+                    kw in line
+                    for kw in [
+                        "max",
+                        "limit",
+                        "batch",
+                        "verify",
+                        "fail",
+                        "silent",
+                        "procedural",
+                    ]
+                )
+            ):
                 rules.append(line[2:])
         return rules
 
@@ -279,7 +301,9 @@ class PatternMine:
             msg = f"Verification pass rate {{verification_pass_rate:.0%}} — output may be invalid. {pattern.action}"
         elif pattern.metric == "model_task_match_score" and pattern.threshold:
             condition = f"model_task_match_score < {pattern.threshold}"
-            msg = f"Model-task mismatch {{model_task_match_score:.0%}}. {pattern.action}"
+            msg = (
+                f"Model-task mismatch {{model_task_match_score:.0%}}. {pattern.action}"
+            )
         elif pattern.metric == "style_in_task_ratio" and pattern.threshold:
             condition = f"style_in_task_ratio > {pattern.threshold}"
             msg = f"Style content {{style_in_task_ratio:.0%}} exceeds task. {pattern.action}"
@@ -364,8 +388,12 @@ class PatternMine:
             "rules_generated": len(self.rules),
             "templates_generated": len(self.templates),
             "categories": self._categorize_patterns(),
-            "critical_patterns": [p.name for p in self.patterns if p.severity == "critical"],
-            "warning_patterns": [p.name for p in self.patterns if p.severity == "warning"],
+            "critical_patterns": [
+                p.name for p in self.patterns if p.severity == "critical"
+            ],
+            "warning_patterns": [
+                p.name for p in self.patterns if p.severity == "warning"
+            ],
             "info_patterns": [p.name for p in self.patterns if p.severity == "info"],
             "top_recommendations": self._top_recommendations(),
         }
@@ -451,6 +479,8 @@ class PatternMine:
             # FleetMonitor doesn't have a formal add_rule API yet,
             # but we can document what rules should be added
             added.append(rule.name)
-            logger.info("Rule '%s' ready for FleetMonitor: %s", rule.name, rule.condition)
+            logger.info(
+                "Rule '%s' ready for FleetMonitor: %s", rule.name, rule.condition
+            )
 
         return added

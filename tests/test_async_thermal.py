@@ -16,6 +16,7 @@ from swarm.thermal import DeviceType, DEFAULT_BUDGETS
 
 # ── fixtures ────────────────────────────────────────────────
 
+
 @pytest.fixture
 def async_budget():
     """Return an AsyncThermalBudget with default (slot-based) budgets."""
@@ -25,13 +26,16 @@ def async_budget():
 @pytest.fixture
 def small_async_budget():
     """Return an AsyncThermalBudget with tiny budgets for edge-case testing."""
-    return AsyncThermalBudget({
-        DeviceType.GPU: 2.0,
-        DeviceType.CPU: 4.0,
-    })
+    return AsyncThermalBudget(
+        {
+            DeviceType.GPU: 2.0,
+            DeviceType.CPU: 4.0,
+        }
+    )
 
 
 # ── tests ───────────────────────────────────────────────────
+
 
 class TestAsyncDeviceBudget:
     """Unit tests for AsyncDeviceBudget dataclass."""

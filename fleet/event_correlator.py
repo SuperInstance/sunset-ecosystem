@@ -12,6 +12,7 @@ Usage:
     matches = corr.matches()
     assert len(matches) == 1
 """
+
 from __future__ import annotations
 
 import time
@@ -63,11 +64,13 @@ class EventCorrelator:
 
     def add_event(self, event_type: str, data: Dict[str, Any]) -> None:
         """Add an event for correlation."""
-        self._events.append({
-            "timestamp": self._clock(),
-            "type": event_type,
-            "data": data,
-        })
+        self._events.append(
+            {
+                "timestamp": self._clock(),
+                "type": event_type,
+                "data": data,
+            }
+        )
         self._check_rules()
 
     # ------------------------------------------------------------------
@@ -83,11 +86,13 @@ class EventCorrelator:
             # Find sequences matching pattern
             matches = self._find_sequences(pattern, window, match_fields)
             for match in matches:
-                self._matches.append({
-                    "rule": rule_name,
-                    "events": match,
-                    "timestamp": self._clock(),
-                })
+                self._matches.append(
+                    {
+                        "rule": rule_name,
+                        "events": match,
+                        "timestamp": self._clock(),
+                    }
+                )
 
     def _find_sequences(
         self,

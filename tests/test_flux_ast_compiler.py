@@ -22,6 +22,7 @@ from swarm.flux_compiler import FluxOpcode
 
 # ── helpers ───────────────────────────────────────────────
 
+
 def decode_push(bc: bytes, offset: int) -> Tuple[float, int]:
     assert bc[offset] == FluxOpcode.Push
     val = struct.unpack("<f", bc[offset + 1 : offset + 5])[0]
@@ -47,6 +48,7 @@ def count_opcodes(bc: bytes, opcode: int) -> int:
 # ═══════════════════════════════════════════════════════════
 # 1. compile_lambda — basic constraints
 # ═══════════════════════════════════════════════════════════
+
 
 class TestCompileLambdaBasic:
     def test_simple_range_check(self):
@@ -110,6 +112,7 @@ class TestCompileLambdaBasic:
 # ═══════════════════════════════════════════════════════════
 # 2. compile_lambda — advanced patterns
 # ═══════════════════════════════════════════════════════════
+
 
 class TestCompileLambdaAdvanced:
     def test_chained_comparison_three(self):
@@ -195,6 +198,7 @@ class TestCompileLambdaAdvanced:
 # 3. compile_function
 # ═══════════════════════════════════════════════════════════
 
+
 class TestCompileFunction:
     def test_simple_function(self):
         def check(x):
@@ -231,6 +235,7 @@ class TestCompileFunction:
 # ═══════════════════════════════════════════════════════════
 # 4. PythonASTAdapter — unit translation tests
 # ═══════════════════════════════════════════════════════════
+
 
 class TestPythonASTAdapter:
     def test_translate_constant_int(self):
@@ -356,6 +361,7 @@ class TestPythonASTAdapter:
         tree = ast.parse("saturate(x, 0, 10)", mode="eval")
         expr = adapter.translate(tree.body)
         from swarm.flux_compiler import RangeCheckNode
+
         assert isinstance(expr, RangeCheckNode)
         assert expr.lo == 0.0
         assert expr.hi == 10.0
@@ -371,9 +377,13 @@ class TestPythonASTAdapter:
         adapter = PythonASTAdapter()
         tree = ast.parse("a and b", mode="eval")
         expr = adapter.translate(tree.body)
-        assert isinstance(expr, type(adapter.translate(ast.parse("x if x > 0 else 0", mode="eval").body)))
+        assert isinstance(
+            expr,
+            type(adapter.translate(ast.parse("x if x > 0 else 0", mode="eval").body)),
+        )
         # Should be IfNode
         from swarm.flux_compiler import IfNode
+
         assert isinstance(expr, IfNode)
 
     def test_translate_boolop_or(self):
@@ -381,6 +391,7 @@ class TestPythonASTAdapter:
         tree = ast.parse("a or b", mode="eval")
         expr = adapter.translate(tree.body)
         from swarm.flux_compiler import IfNode
+
         assert isinstance(expr, IfNode)
 
     def test_translate_ifexp(self):
@@ -388,12 +399,14 @@ class TestPythonASTAdapter:
         tree = ast.parse("x if x > 0 else 0", mode="eval")
         expr = adapter.translate(tree.body)
         from swarm.flux_compiler import IfNode
+
         assert isinstance(expr, IfNode)
 
 
 # ═══════════════════════════════════════════════════════════
 # 5. Error handling
 # ═══════════════════════════════════════════════════════════
+
 
 class TestErrorHandling:
     def test_non_lambda_source_raises(self):
@@ -440,6 +453,7 @@ class TestErrorHandling:
 # ═══════════════════════════════════════════════════════════
 # 6. Bytecode correctness — structural verification
 # ═══════════════════════════════════════════════════════════
+
 
 class TestBytecodeCorrectness:
     def test_simple_constraint_has_halt(self):
@@ -488,6 +502,7 @@ class TestBytecodeCorrectness:
 # 7. var_defaults
 # ═══════════════════════════════════════════════════════════
 
+
 class TestVarDefaults:
     def test_var_defaults_passed_to_adapter(self):
         adapter = PythonASTAdapter(var_defaults={"x": 42.0})
@@ -508,6 +523,7 @@ class TestVarDefaults:
 # ═══════════════════════════════════════════════════════════
 # 8. Integration — run through FluxVMRunner if available
 # ═══════════════════════════════════════════════════════════
+
 
 class TestVMIntegration:
     def test_simple_constraint_runnable(self):

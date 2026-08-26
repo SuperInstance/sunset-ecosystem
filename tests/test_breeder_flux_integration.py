@@ -93,16 +93,20 @@ def vector_table():
     # Seed with 4 agents
     for aid in range(1, 5):
         vec = np.random.randn(64)
-        av = type("AV", (), {
-            "agent_id": aid,
-            "vector": vec.tolist(),
-            "dim": 64,
-            "fitness": float(aid) * 0.25,
-            "generation": 0,
-            "capability_mask": 0xFFFF,
-            "thermal_pressure": 0.0,
-            "extra": {},
-        })()
+        av = type(
+            "AV",
+            (),
+            {
+                "agent_id": aid,
+                "vector": vec.tolist(),
+                "dim": 64,
+                "fitness": float(aid) * 0.25,
+                "generation": 0,
+                "capability_mask": 0xFFFF,
+                "thermal_pressure": 0.0,
+                "extra": {},
+            },
+        )()
         vt.add(av)
     return vt
 
@@ -121,6 +125,7 @@ def daemon(grid, thermal, vector_table, wal_file):
     # Seed vector-table agents as breedable so select_parents() uses
     # diversity-aware paths instead of random room fallback.
     from swarm.lifecycle_fsm import AgentLifecycleFSM, LifecycleState
+
     for aid in range(1, 5):
         d._fsm[aid] = AgentLifecycleFSM(
             agent_id=aid, initial_state=LifecycleState.SURVIVE, strict=False
@@ -132,6 +137,7 @@ def daemon(grid, thermal, vector_table, wal_file):
 # ─────────────────────────────────────────────────────────────
 # 1. Constructor accepts flux_checker
 # ─────────────────────────────────────────────────────────────
+
 
 def test_constructor_accepts_flux_checker(grid, thermal, vector_table, wal_file):
     checker = _ParentBlockingChecker()
@@ -157,6 +163,7 @@ def test_constructor_flux_checker_none_default(grid, thermal, wal_file):
 # ─────────────────────────────────────────────────────────────
 # 2. FLUX gating in select_parents()
 # ─────────────────────────────────────────────────────────────
+
 
 def test_select_parents_blocks_flux_violation(daemon, vector_table):
     """If FLUX blocks the best pair, select_parents should try alternatives."""
@@ -205,6 +212,7 @@ def test_select_parents_no_checker_no_gating(daemon, vector_table):
 # ─────────────────────────────────────────────────────────────
 # 3. FLUX gating in step()
 # ─────────────────────────────────────────────────────────────
+
 
 def test_step_blocks_flux_violation(daemon, thermal, wal_file):
     """FLUX block before room allocation should re-queue the ticket."""
@@ -262,11 +270,10 @@ def test_step_no_checker_no_gating(daemon, thermal, vector_table):
 # 4. Integration with PythonFluxFallback
 # ─────────────────────────────────────────────────────────────
 
+
 def test_python_flux_fallback_blocks_overweight(daemon, vector_table):
     """PythonFluxFallback should block candidates with extreme weights."""
-    checker = PythonFluxFallback(
-        config=FluxGatingConfig(weight_bounds=(0.0, 1.0))
-    )
+    checker = PythonFluxFallback(config=FluxGatingConfig(weight_bounds=(0.0, 1.0)))
     daemon._flux_checker = checker
     daemon._vector_table = vector_table
 
@@ -278,9 +285,7 @@ def test_python_flux_fallback_blocks_overweight(daemon, vector_table):
 
 def test_python_flux_fallback_allows_normal(daemon, vector_table):
     """PythonFluxFallback should pass candidates within bounds."""
-    checker = PythonFluxFallback(
-        config=FluxGatingConfig(weight_bounds=(0.0, 10.0))
-    )
+    checker = PythonFluxFallback(config=FluxGatingConfig(weight_bounds=(0.0, 10.0)))
     daemon._flux_checker = checker
     daemon._vector_table = vector_table
 
@@ -293,6 +298,7 @@ def test_python_flux_fallback_allows_normal(daemon, vector_table):
 # ─────────────────────────────────────────────────────────────
 # 6. attach_flux_vm_gating() wiring
 # ─────────────────────────────────────────────────────────────
+
 
 def test_attach_flux_vm_gating_external_instance(grid, thermal, wal_file):
     """Attach a pre-built FluxVMGatingChecker via attach_flux_vm_gating()."""
@@ -322,18 +328,25 @@ def test_attach_flux_vm_gating_auto_create(grid, thermal, wal_file):
     daemon.attach_flux_vm_gating()
     assert daemon._compiled_checker is not None
     from swarm.flux_vm_gating import FluxVMGatingChecker
+
     assert isinstance(daemon._compiled_checker, FluxVMGatingChecker)
 
 
 class _MockVMChecker:
     """Mock VM checker that blocks parents with extreme weights."""
+
     def __init__(self, blocked_parents: set[int] | None = None) -> None:
         self.blocked = blocked_parents or set()
+
     def check_candidate(self, weights, chaos=0.3, thermal_pressure=0.0):
         if weights.size > 0 and float(np.max(weights)) >= 90.0:
             from swarm.flux_gating import FluxCheckResult
-            return FluxCheckResult(passed=False, score=1.0, violations={"vm_block": 1.0})
+
+            return FluxCheckResult(
+                passed=False, score=1.0, violations={"vm_block": 1.0}
+            )
         from swarm.flux_gating import FluxCheckResult
+
         return FluxCheckResult(passed=True, score=0.0, violations={})
 
 

@@ -37,18 +37,22 @@ They can only choose their operating point on the tradeoff curve.
 import numpy as np
 
 # Verify conservation law numerically
-N = 100      # agents
-K = 16       # states per agent (latent dimension)
+N = 100  # agents
+K = 16  # states per agent (latent dimension)
 
 # Scenario A: high connectivity, low diversity
 connectivity_a = 50  # edges per agent
 diversity_a = np.log2(K) - connectivity_a / N * np.log2(K)
-print(f"High conn: γ={connectivity_a}, H={diversity_a:.3f}, sum={connectivity_a/N + diversity_a:.3f}")
+print(
+    f"High conn: γ={connectivity_a}, H={diversity_a:.3f}, sum={connectivity_a / N + diversity_a:.3f}"
+)
 
 # Scenario B: low connectivity, high diversity
 connectivity_b = 5
 diversity_b = np.log2(K) - connectivity_b / N * np.log2(K)
-print(f"Low conn: γ={connectivity_b}, H={diversity_b:.3f}, sum={connectivity_b/N + diversity_b:.3f}")
+print(
+    f"Low conn: γ={connectivity_b}, H={diversity_b:.3f}, sum={connectivity_b / N + diversity_b:.3f}"
+)
 ```
 
 ## Verification

@@ -19,19 +19,26 @@ import pytest
 # ── Mock cocapn_traps before swarm.breeder_daemon_v2 import ──
 _mock_cocapn_traps = types.ModuleType("cocapn_traps")
 _mock_cocapn_traps_traps = types.ModuleType("cocapn_traps.traps")
-_mock_cocapn_traps_diversity = types.ModuleType("cocapn_traps.traps.diversity_collapse_trap")
+_mock_cocapn_traps_diversity = types.ModuleType(
+    "cocapn_traps.traps.diversity_collapse_trap"
+)
+
 
 class _MockAlert:
     level = "WARNING"
     recommended_action = "mock alert"
 
+
 class _MockDiversityCollapseTrap:
     def __init__(self, bus=None):
         self._history = []
+
     def record(self, value: float) -> None:
         self._history.append(value)
+
     def check(self):
         return None  # no alerts in tests
+
 
 _mock_cocapn_traps_diversity.DiversityCollapseTrap = _MockDiversityCollapseTrap
 _mock_cocapn_traps_diversity.Alert = _MockAlert
@@ -54,6 +61,7 @@ from swarm.vector_table import AgentVector, FluxVectorTable
 
 
 # ── fixtures ────────────────────────────────────────────────
+
 
 @pytest.fixture
 def grid():
@@ -117,6 +125,7 @@ def make_daemon(grid, thermal, wal_path, vector_table=None):
 
 # ── tests ───────────────────────────────────────────────────
 
+
 class TestWALReplay:
     """WAL replay reconstructs state after restart."""
 
@@ -132,8 +141,7 @@ class TestWALReplay:
 
         # Collect agent ID that reached COMPETE
         incubated = [
-            tr.agent_id for tr in transitions
-            if tr.to_state == LifecycleState.COMPETE
+            tr.agent_id for tr in transitions if tr.to_state == LifecycleState.COMPETE
         ]
         assert len(incubated) == 1
         child_id = incubated[0]
@@ -180,10 +188,9 @@ class TestWALReplay:
         daemon.stop()
 
         import sqlite3
+
         conn = sqlite3.connect(wal_path)
-        cur = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        )
+        cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = {r[0] for r in cur.fetchall()}
         conn.close()
 
@@ -262,6 +269,7 @@ class TestLifecycleTransitions:
         daemon.stop()
 
         import sqlite3
+
         conn = sqlite3.connect(wal_path)
         cur = conn.execute("SELECT agent_id, state FROM lifecycle")
         wal_states = {r[0]: r[1] for r in cur.fetchall()}
@@ -360,7 +368,9 @@ class TestDiversityScore:
         rng = np.random.RandomState(77)
         for i in range(5):
             aid = 9000 + i
-            daemon._fsm[aid] = AgentLifecycleFSM(agent_id=aid, initial_state=LifecycleState.COMPETE, strict=False)
+            daemon._fsm[aid] = AgentLifecycleFSM(
+                agent_id=aid, initial_state=LifecycleState.COMPETE, strict=False
+            )
             vec = (rng.randn(256).astype(np.float32) * (1.0 if i < 3 else 0.2)).tolist()
             daemon._vector_table.add(
                 AgentVector(

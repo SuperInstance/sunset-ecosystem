@@ -49,12 +49,16 @@ FleetDiversity wraps **[Pringled/pyversity](https://github.com/Pringled/pyversit
 ### Basic Parent Selection
 
 ```python
-from swarm.fleet_diversity import FleetDiversitySelector, DiversityStrategy, PopulationItem
+from swarm.fleet_diversity import (
+    FleetDiversitySelector,
+    DiversityStrategy,
+    PopulationItem,
+)
 import numpy as np
 
 selector = FleetDiversitySelector(
     strategy=DiversityStrategy.DPP,  # probabilistic repulsion — default
-    diversity=0.6,                    # 0.0 = pure fitness, 1.0 = pure diversity
+    diversity=0.6,  # 0.0 = pure fitness, 1.0 = pure diversity
     default_k=10,
 )
 
@@ -70,7 +74,9 @@ population = [
 
 # Select 10 diverse parents
 parents = selector.select_parents(population, k=10)
-print(f"Selected {len(parents)} parents with mean fitness {np.mean([p.fitness for p in parents]):.2f}")
+print(
+    f"Selected {len(parents)} parents with mean fitness {np.mean([p.fitness for p in parents]):.2f}"
+)
 ```
 
 ### Strategy Comparison
@@ -83,7 +89,9 @@ dpp_parents = selector.select_parents(population, k=10, strategy=DiversityStrate
 mmr_parents = selector.select_parents(population, k=10, strategy=DiversityStrategy.MMR)
 
 # COVER: topic coverage for archive sync
-cover_parents = selector.select_parents(population, k=10, strategy=DiversityStrategy.COVER)
+cover_parents = selector.select_parents(
+    population, k=10, strategy=DiversityStrategy.COVER
+)
 
 # MSD: maximum variety (may sacrifice some relevance)
 msd_parents = selector.select_parents(population, k=10, strategy=DiversityStrategy.MSD)
@@ -163,8 +171,8 @@ class DiversityStats:
     n_items: int
     mean_fitness: float
     mean_pairwise_distance: float
-    ilad: float              # Intra-List Average Distance
-    ilmd: float              # Intra-List Minimum Distance
+    ilad: float  # Intra-List Average Distance
+    ilmd: float  # Intra-List Minimum Distance
     selected_indices: List[int]
     selected_fitness_mean: float
     selected_diversity_mean: float

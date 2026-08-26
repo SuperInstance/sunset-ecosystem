@@ -2,6 +2,7 @@
 
 Wraps the C implementation in nerve/bloom_filter.so.
 """
+
 from __future__ import annotations
 
 __all__ = ["BloomFilter"]
@@ -48,7 +49,9 @@ class BloomFilter:
     False positive rate configurable at creation.
     """
 
-    def __init__(self, expected_items: int = 10_000, false_positive_rate: float = 0.01) -> None:
+    def __init__(
+        self, expected_items: int = 10_000, false_positive_rate: float = 0.01
+    ) -> None:
         self._handle = _bf.bf_create(expected_items, false_positive_rate)
         if not self._handle:
             raise MemoryError("Failed to create bloom filter")

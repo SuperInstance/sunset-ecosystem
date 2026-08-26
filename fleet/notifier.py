@@ -39,7 +39,9 @@ class BreedingAlert:
     severity: str  # info, warning, critical
     category: str  # thermal, flux_gate, breeding, proof, health
     metadata: dict[str, Any] = field(default_factory=dict)
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -64,7 +66,9 @@ class BreedingAlert:
         )
 
     @classmethod
-    def flux_gate_block(cls, candidate_id: str, violations: dict[str, float]) -> "BreedingAlert":
+    def flux_gate_block(
+        cls, candidate_id: str, violations: dict[str, float]
+    ) -> "BreedingAlert":
         vstr = ", ".join(f"{k}={v:.3f}" for k, v in violations.items())
         return cls(
             title="🛡️ FLUX Gate Block",
@@ -75,13 +79,19 @@ class BreedingAlert:
         )
 
     @classmethod
-    def proof_generated(cls, candidate_id: str, proof_hash: str, cycles: int) -> "BreedingAlert":
+    def proof_generated(
+        cls, candidate_id: str, proof_hash: str, cycles: int
+    ) -> "BreedingAlert":
         return cls(
             title="✅ Proof Certificate Generated",
             body=f"Candidate {candidate_id} passed VM gating. Cycles: {cycles}, Hash: {proof_hash[:16]}...",
             severity="info",
             category="proof",
-            metadata={"candidate_id": candidate_id, "proof_hash": proof_hash, "cycles": cycles},
+            metadata={
+                "candidate_id": candidate_id,
+                "proof_hash": proof_hash,
+                "cycles": cycles,
+            },
         )
 
     @classmethod
@@ -109,6 +119,7 @@ class BreedingAlert:
 # Channels
 # ═══════════════════════════════════════════════════════════════
 
+
 class Channel:
     """Base notification channel."""
 
@@ -132,18 +143,20 @@ class DiscordChannel(Channel):
         try:
             color = {
                 "critical": 15158332,  # red
-                "warning": 16776960,   # yellow
-                "info": 3447003,       # blue
+                "warning": 16776960,  # yellow
+                "info": 3447003,  # blue
             }.get(alert.severity, 3447003)
 
             payload = {
-                "embeds": [{
-                    "title": alert.title,
-                    "description": alert.body[:2000],
-                    "color": color,
-                    "timestamp": alert.timestamp,
-                    "footer": {"text": f"Cocapn Fleet | {alert.category}"},
-                }]
+                "embeds": [
+                    {
+                        "title": alert.title,
+                        "description": alert.body[:2000],
+                        "color": color,
+                        "timestamp": alert.timestamp,
+                        "footer": {"text": f"Cocapn Fleet | {alert.category}"},
+                    }
+                ]
             }
             data = json.dumps(payload).encode()
             req = urllib.request.Request(
@@ -171,13 +184,18 @@ class TelegramChannel(Channel):
         if not self.bot_token or not self.chat_id:
             return False
         try:
-            emoji = {"critical": "🔴", "warning": "🟡", "info": "🔵"}.get(alert.severity, "ℹ️")
+            emoji = {"critical": "🔴", "warning": "🟡", "info": "🔵"}.get(
+                alert.severity, "ℹ️"
+            )
             text = f"{emoji} *{alert.title}*\n\n{alert.body[:4000]}"
             url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
             payload = {"chat_id": self.chat_id, "text": text, "parse_mode": "Markdown"}
             data = json.dumps(payload).encode()
             req = urllib.request.Request(
-                url, data=data, headers={"Content-Type": "application/json"}, method="POST"
+                url,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
             )
             resp = urllib.request.urlopen(req, timeout=10)
             return resp.status == 200
@@ -217,7 +235,10 @@ class WebhookChannel(Channel):
         try:
             data = json.dumps(alert.to_dict(), default=str).encode()
             req = urllib.request.Request(
-                self.url, data=data, headers={"Content-Type": "application/json"}, method="POST"
+                self.url,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
             )
             resp = urllib.request.urlopen(req, timeout=10)
             return 200 <= resp.status < 300
@@ -248,6 +269,7 @@ class SSEChannel(Channel):
 # ═══════════════════════════════════════════════════════════════
 # Fleet Notifier — Multi-channel dispatcher
 # ═══════════════════════════════════════════════════════════════
+
 
 class FleetNotifier:
     """Multi-channel notification dispatcher with fleet-specific routing.
@@ -290,7 +312,9 @@ class FleetNotifier:
 
     def send(self, alert: BreedingAlert) -> dict[str, bool]:
         """Send alert to all matching channels. Returns per-channel results."""
-        allowed = self._category_routes.get(alert.category, [c.name for c in self.channels])
+        allowed = self._category_routes.get(
+            alert.category, [c.name for c in self.channels]
+        )
         results = {}
         for channel in self.channels:
             if channel.name not in allowed:
@@ -309,7 +333,9 @@ class FleetNotifier:
         return self.send(BreedingAlert(title, body, severity, category))
 
     @classmethod
-    def from_config(cls, config: dict[str, str], data_dir: Path | None = None) -> "FleetNotifier":
+    def from_config(
+        cls, config: dict[str, str], data_dir: Path | None = None
+    ) -> "FleetNotifier":
         """Create a FleetNotifier from config dict.
 
         Config keys: discord_webhook, telegram_bot_token, telegram_chat_id,
@@ -321,7 +347,9 @@ class FleetNotifier:
             notifier.add_discord(config["discord_webhook"])
 
         if config.get("telegram_bot_token") and config.get("telegram_chat_id"):
-            notifier.add_telegram(config["telegram_bot_token"], config["telegram_chat_id"])
+            notifier.add_telegram(
+                config["telegram_bot_token"], config["telegram_chat_id"]
+            )
 
         if config.get("webhook_url"):
             notifier.add_webhook(config["webhook_url"])

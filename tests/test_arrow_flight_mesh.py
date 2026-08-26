@@ -15,6 +15,7 @@ from swarm.arrow_flight_mesh import ArrowFlightMeshNode, HAS_PYARROW_FLIGHT, Mes
 # Node lifecycle
 # ---------------------------------------------------------------------------
 
+
 class TestNodeLifecycle:
     def test_node_init(self):
         node = ArrowFlightMeshNode(node_id="alpha")
@@ -54,6 +55,7 @@ class TestNodeLifecycle:
 # Peer registration
 # ---------------------------------------------------------------------------
 
+
 class TestPeerRegistration:
     def test_register_peer(self):
         node = ArrowFlightMeshNode(node_id="alpha")
@@ -87,6 +89,7 @@ class TestPeerRegistration:
 # Table storage
 # ---------------------------------------------------------------------------
 
+
 class TestTableStorage:
     def test_store_table(self):
         node = ArrowFlightMeshNode(node_id="alpha")
@@ -114,6 +117,7 @@ class TestTableStorage:
 # ---------------------------------------------------------------------------
 # Push / pull with JSON fallback
 # ---------------------------------------------------------------------------
+
 
 class TestPushPullFallback:
     def test_push_to_unknown_peer(self):
@@ -149,6 +153,7 @@ class TestPushPullFallback:
 # MeshPeer
 # ---------------------------------------------------------------------------
 
+
 class TestMeshPeer:
     def test_peer_location(self):
         peer = MeshPeer("beta", "192.168.1.10", 50051)
@@ -162,6 +167,7 @@ class TestMeshPeer:
 # ---------------------------------------------------------------------------
 # Concurrent access
 # ---------------------------------------------------------------------------
+
 
 class TestConcurrency:
     def test_concurrent_store_and_list(self):

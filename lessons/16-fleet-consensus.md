@@ -40,6 +40,7 @@ patterns = {"alpha": 0, "beta": 0, "gamma": 0}
 for agent in agents:
     # Simplified: each agent picks a random pattern
     import random
+
     p = random.choice(list(patterns.keys()))
     patterns[p] += 1
 

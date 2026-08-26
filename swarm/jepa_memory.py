@@ -146,9 +146,7 @@ class JepaGridMemory:
         last_vec = history[-1][1]
 
         # Extrapolate
-        predicted = [
-            v + avg_delta[i] * ticks_ahead for i, v in enumerate(last_vec)
-        ]
+        predicted = [v + avg_delta[i] * ticks_ahead for i, v in enumerate(last_vec)]
         return predicted
 
     def find_similar_trajectory(

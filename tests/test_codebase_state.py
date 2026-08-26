@@ -23,6 +23,7 @@ from logos.codebase_state import (
 # CodebaseState
 # ---------------------------------------------------------------------------
 
+
 class TestCodebaseState:
     def test_defaults(self):
         cs = CodebaseState(root="/tmp")
@@ -40,6 +41,7 @@ class TestCodebaseState:
 # ---------------------------------------------------------------------------
 # _count_files_and_lines
 # ---------------------------------------------------------------------------
+
 
 class TestCountFilesAndLines:
     def test_empty_dir(self, tmp_path):
@@ -75,6 +77,7 @@ class TestCountFilesAndLines:
 # _detect_patterns
 # ---------------------------------------------------------------------------
 
+
 class TestDetectPatterns:
     def test_module_dirs(self, tmp_path):
         (tmp_path / "foo").mkdir()
@@ -97,6 +100,7 @@ class TestDetectPatterns:
 # ---------------------------------------------------------------------------
 # _scan_debt
 # ---------------------------------------------------------------------------
+
 
 class TestScanDebt:
     def test_todo(self, tmp_path):
@@ -136,6 +140,7 @@ class TestScanDebt:
 # ---------------------------------------------------------------------------
 # survey_codebase
 # ---------------------------------------------------------------------------
+
 
 class TestSurveyCodebase:
     def test_survey_current_repo(self):

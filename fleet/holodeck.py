@@ -47,13 +47,13 @@ logger = logging.getLogger(__name__)
 # ── color palette ─────────────────────────────────────────
 # Moebius-inspired abyssal palette
 _PALETTE = {
-    "abyss_blue": 0x0a1628,
-    "deep_teal": 0x0d3b3b,
-    "biolum_green": 0x39ff14,
-    "amber": 0xffb347,
-    "crimson": 0xdc143c,
-    "shell_white": 0xf0f0e6,
-    "ash_gray": 0x8a8a8a,
+    "abyss_blue": 0x0A1628,
+    "deep_teal": 0x0D3B3B,
+    "biolum_green": 0x39FF14,
+    "amber": 0xFFB347,
+    "crimson": 0xDC143C,
+    "shell_white": 0xF0F0E6,
+    "ash_gray": 0x8A8A8A,
 }
 
 
@@ -81,6 +81,7 @@ def agent_color_for_phase(phase: str) -> int:
 
 
 # ── data structures ─────────────────────────────────────
+
 
 @dataclass
 class AgentAvatar:
@@ -170,6 +171,7 @@ class RoomNode:
 
 # ── Holodeck engine ─────────────────────────────────────
 
+
 class Holodeck:
     """3D spatial model of fleet rooms + agent avatars."""
 
@@ -221,9 +223,7 @@ class Holodeck:
             if room:
                 for aid in list(room.agents):
                     self._agents.pop(aid, None)
-            self._connections = {
-                c for c in self._connections if room_id not in c
-            }
+            self._connections = {c for c in self._connections if room_id not in c}
 
     # ── agent ops ────────────────────────────────────────
 
@@ -555,6 +555,7 @@ window.addEventListener('resize', () => {{
 
 # ── Mock PLATO Source ───────────────────────────────────
 
+
 class MockPlatoSource:
     """Simulates PLATO room state for offline demos / unit tests."""
 
@@ -587,11 +588,13 @@ class MockPlatoSource:
                     positions.append((x * 5.0, y * 5.0, z * 5.0))
         # extras fill outward
         while len(positions) < self.room_count:
-            positions.append((
-                self.rng.uniform(-2, 12),
-                self.rng.uniform(-2, 12),
-                self.rng.uniform(-2, 12),
-            ))
+            positions.append(
+                (
+                    self.rng.uniform(-2, 12),
+                    self.rng.uniform(-2, 12),
+                    self.rng.uniform(-2, 12),
+                )
+            )
 
         for i in range(self.room_count):
             rid = f"room_{i:02d}"
@@ -625,9 +628,13 @@ class MockPlatoSource:
 
         # thermal drift
         for r in self._rooms.values():
-            r["thermal"] = max(0.0, min(1.0, r["thermal"] + self.np_rng.normal(0, 0.02)))
+            r["thermal"] = max(
+                0.0, min(1.0, r["thermal"] + self.np_rng.normal(0, 0.02))
+            )
             # diversity oscillates slowly
-            r["diversity"] = max(0.0, min(1.0, r["diversity"] + self.np_rng.normal(0, 0.01)))
+            r["diversity"] = max(
+                0.0, min(1.0, r["diversity"] + self.np_rng.normal(0, 0.01))
+            )
 
         # agent movement
         for aid, astate in self._agents.items():

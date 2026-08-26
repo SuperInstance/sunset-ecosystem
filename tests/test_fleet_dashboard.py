@@ -194,4 +194,3 @@ class TestFleetDashboard:
         data = json.loads(output.read_text())
         assert "orchestrator" in data
         assert data["orchestrator"]["initialized"] is True
-

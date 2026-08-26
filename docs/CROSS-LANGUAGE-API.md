@@ -67,6 +67,7 @@ class ConstraintArtifact:
     upper_bound: float
     violated: bool
 
+
 # Violation is computed at collection time:
 violated = not (lo <= value <= hi)
 ```
@@ -203,15 +204,16 @@ Cubic spline interpolation between two control points with tangent control.
 ```python
 import numpy as np
 
+
 def cubic_interpolate(p0, p1, m0, m1, t):
     """Cubic Hermite interpolation."""
     t2 = t * t
     t3 = t2 * t
     return (
-        (2*t3 - 3*t2 + 1) * p0 +
-        (t3 - 2*t2 + t) * m0 +
-        (-2*t3 + 3*t2) * p1 +
-        (t3 - t2) * m1
+        (2 * t3 - 3 * t2 + 1) * p0
+        + (t3 - 2 * t2 + t) * m0
+        + (-2 * t3 + 3 * t2) * p1
+        + (t3 - t2) * m1
     )
 ```
 

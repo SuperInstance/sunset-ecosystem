@@ -11,6 +11,7 @@ Usage::
     ffi.eisenstein_norm.restype = c_int
     result = ffi.eisenstein_norm(3, 4)
 """
+
 from __future__ import annotations
 
 import ctypes
@@ -23,6 +24,7 @@ from typing import Any, Callable, List, Tuple
 # ---------------------------------------------------------------------------
 # Header parser
 # ---------------------------------------------------------------------------
+
 
 def _parse_header(path: str) -> List[Tuple[str, str, List[Tuple[str, str]]]]:
     """
@@ -82,6 +84,7 @@ def _parse_header(path: str) -> List[Tuple[str, str, List[Tuple[str, str]]]]:
 # Type helpers — convert ctypes / list inputs to numpy arrays or scalars
 # ---------------------------------------------------------------------------
 
+
 def _to_numpy_array(obj, dtype=np.float64):
     """Convert ctypes array, pointer, list, or numpy array to numpy array."""
     if obj is None:
@@ -119,6 +122,7 @@ def _to_int(val):
 # ---------------------------------------------------------------------------
 # Mock implementations — one per header function
 # ---------------------------------------------------------------------------
+
 
 def _mock_eisenstein_norm(a, b):
     """N(a,b) = a² - a·b + b²"""
@@ -332,6 +336,7 @@ _MOCK_TABLE: dict[str, Callable] = {
 # CDLL-like object
 # ---------------------------------------------------------------------------
 
+
 class _MockFunction:
     """
     Wraps a plain Python callable with ctypes-style ``argtypes`` and ``restype``
@@ -376,6 +381,7 @@ class _MockCDLL:
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def load_mock_ffi(header_path: str | None = None) -> _MockCDLL:
     """
     Return a CDLL-like object backed by numpy mock implementations.
@@ -400,9 +406,7 @@ def load_mock_ffi(header_path: str | None = None) -> _MockCDLL:
     missing_in_header = mock_names - parsed_names
 
     if missing_in_mock:
-        raise RuntimeError(
-            f"Header declares functions not mocked: {missing_in_mock}"
-        )
+        raise RuntimeError(f"Header declares functions not mocked: {missing_in_mock}")
     if missing_in_header:
         # This is a soft warning — the mock may have extras for convenience.
         pass
@@ -413,6 +417,7 @@ def load_mock_ffi(header_path: str | None = None) -> _MockCDLL:
 # ---------------------------------------------------------------------------
 # Sanity-check runner (can be executed directly)
 # ---------------------------------------------------------------------------
+
 
 def _self_test():
     """Quick sanity check for every mock function."""

@@ -11,6 +11,7 @@ from typing import List, Dict, Optional, Callable
 @dataclass
 class CommitEvent:
     """A commit event from any SuperInstance repository."""
+
     repo: str
     commit: str
     author: str
@@ -44,7 +45,12 @@ class CommitEvent:
 class CommitCaster:
     """Receives signed commit webhooks and broadcasts to the fleet."""
 
-    def __init__(self, secret: str, mesh_broadcast: Optional[Callable] = None, window_sec: float = 60.0):
+    def __init__(
+        self,
+        secret: str,
+        mesh_broadcast: Optional[Callable] = None,
+        window_sec: float = 60.0,
+    ):
         self.secret = secret.encode() if isinstance(secret, str) else secret
         self.mesh_broadcast = mesh_broadcast
         self._seen: Dict[str, float] = {}

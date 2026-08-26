@@ -14,6 +14,7 @@ from fleet.formula_compiler import FleetFormulaEnv
 # Cell management
 # ---------------------------------------------------------------------------
 
+
 class TestCellManagement:
     def test_set_and_get_cell(self):
         env = FleetFormulaEnv()
@@ -46,6 +47,7 @@ class TestCellManagement:
 # ---------------------------------------------------------------------------
 # Basic evaluation
 # ---------------------------------------------------------------------------
+
 
 class TestBasicEvaluation:
     def test_eval_number(self):
@@ -99,6 +101,7 @@ class TestBasicEvaluation:
 # Cell references and dependencies
 # ---------------------------------------------------------------------------
 
+
 class TestCellReferences:
     def test_simple_reference(self):
         env = FleetFormulaEnv()
@@ -146,6 +149,7 @@ class TestCellReferences:
 # Topological sort
 # ---------------------------------------------------------------------------
 
+
 class TestTopologicalSort:
     def test_linear_chain(self):
         env = FleetFormulaEnv()
@@ -184,6 +188,7 @@ class TestTopologicalSort:
 # Cycle detection
 # ---------------------------------------------------------------------------
 
+
 class TestCycleDetection:
     def test_self_reference_cycle(self):
         env = FleetFormulaEnv()
@@ -213,6 +218,7 @@ class TestCycleDetection:
 # ---------------------------------------------------------------------------
 # Command capture
 # ---------------------------------------------------------------------------
+
 
 class TestCommandCapture:
     def test_spawn_command_captured(self):
@@ -246,7 +252,7 @@ class TestCommandCapture:
     def test_idle_not_captured(self):
         env = FleetFormulaEnv()
         grid = DeckbossGrid(env)
-        grid.set_cell("A1", '=IDLE()')
+        grid.set_cell("A1", "=IDLE()")
         grid.evaluate_all()
         cmds = grid.get_commands()
         assert len(cmds) == 0
@@ -256,7 +262,7 @@ class TestCommandCapture:
         grid = DeckbossGrid(env)
         grid.set_cell("A1", '=SPAWN("scout")')
         grid.set_cell("A2", '=SPAWN("worker")')
-        grid.set_cell("A3", '=IDLE()')
+        grid.set_cell("A3", "=IDLE()")
         grid.evaluate_all()
         cmds = grid.get_commands()
         assert len(cmds) == 2
@@ -266,6 +272,7 @@ class TestCommandCapture:
 # Command dispatch
 # ---------------------------------------------------------------------------
 
+
 class TestCommandDispatch:
     def test_dispatch_spawn(self):
         env = FleetFormulaEnv()
@@ -274,6 +281,7 @@ class TestCommandDispatch:
         grid.evaluate_all()
 
         spawned = []
+
         def capture_spawn(agent_type, count):
             spawned.append((agent_type, count))
 
@@ -288,6 +296,7 @@ class TestCommandDispatch:
         grid.evaluate_all()
 
         bred = []
+
         def capture_breed(strategy):
             bred.append(strategy)
 
@@ -302,6 +311,7 @@ class TestCommandDispatch:
         grid.evaluate_all()
 
         alerts = []
+
         def capture_alert(channel, message):
             alerts.append((channel, message))
 
@@ -322,6 +332,7 @@ class TestCommandDispatch:
 # Persistence
 # ---------------------------------------------------------------------------
 
+
 class TestPersistence:
     def test_to_dict(self):
         env = FleetFormulaEnv()
@@ -337,9 +348,16 @@ class TestPersistence:
     def test_from_dict(self):
         env = FleetFormulaEnv()
         grid = DeckbossGrid(env)
-        grid.from_dict({
-            "A1": {"formula": "=10", "last_result": "10.0", "eval_count": 5, "error_count": 0},
-        })
+        grid.from_dict(
+            {
+                "A1": {
+                    "formula": "=10",
+                    "last_result": "10.0",
+                    "eval_count": 5,
+                    "error_count": 0,
+                },
+            }
+        )
         assert grid.get_cell("A1").formula == "=10"
         assert grid.get_cell("A1").eval_count == 5
 
@@ -347,6 +365,7 @@ class TestPersistence:
 # ---------------------------------------------------------------------------
 # SDA pipeline helper
 # ---------------------------------------------------------------------------
+
 
 class TestSDAIntegration:
     def test_make_sda_pipeline(self):
@@ -361,6 +380,7 @@ class TestSDAIntegration:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_empty_grid_evaluates(self):
@@ -405,7 +425,7 @@ class TestEdgeCases:
         grid = DeckbossGrid(env)
         grid.set_cell("A1", "=1")
         grid.set_cell("A2", "=2")
-        grid.set_cell("A3", "=AVERAGE(RANGE(\"A1\", \"A2\"))")
+        grid.set_cell("A3", '=AVERAGE(RANGE("A1", "A2"))')
         results = grid.evaluate_all()
         assert results["A3"] == 1.5
 
@@ -426,8 +446,10 @@ class TestEdgeCases:
     def test_complex_policy_example(self):
         env = FleetFormulaEnv()
         grid = DeckbossGrid(env)
-        grid.set_cell("A1", '=IF(FLEET_HEALTH() > 0.5, SPAWN("worker"), ALERT("health", "low"))')
-        grid.set_cell("B1", '=THERMAL_AVG()')
+        grid.set_cell(
+            "A1", '=IF(FLEET_HEALTH() > 0.5, SPAWN("worker"), ALERT("health", "low"))'
+        )
+        grid.set_cell("B1", "=THERMAL_AVG()")
         grid.set_cell("C1", '=IF(B1 > 0.8, ALERT("thermal", "high"), IDLE())')
         results = grid.evaluate_all()
         # With defaults: health=1.0, thermal=0.0

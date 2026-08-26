@@ -150,7 +150,9 @@ class TestFeedbackLoop:
         return UserRanking(
             prompt="test",
             responses=[
-                RankedResponse(response="d", source="distilled_v3", rank=distilled_rank),
+                RankedResponse(
+                    response="d", source="distilled_v3", rank=distilled_rank
+                ),
                 RankedResponse(response="b", source="gpt-4", rank=big_rank),
             ],
             user_notes=notes,

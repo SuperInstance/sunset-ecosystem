@@ -31,7 +31,10 @@ class TestHAVBridge:
         bridge = HAVBridge()
         bridge.teach_agent("breeding", "Evolutionary optimization")
         assert "breeding" in bridge.vocabulary
-        assert bridge.vocabulary["breeding"].human_definition == "Evolutionary optimization"
+        assert (
+            bridge.vocabulary["breeding"].human_definition
+            == "Evolutionary optimization"
+        )
 
     def test_teach_human(self):
         bridge = HAVBridge()
@@ -57,7 +60,10 @@ class TestHAVBridge:
         bridge.teach_agent(
             "breeding",
             "Evolutionary optimization",
-            agent_schema={"type": "object", "properties": {"population_size": {"type": "integer"}}},
+            agent_schema={
+                "type": "object",
+                "properties": {"population_size": {"type": "integer"}},
+            },
         )
         result = bridge.translate("breeding")
         assert result["translation"]["type"] == "object"
@@ -158,7 +164,9 @@ class TestHAVBridge:
 
     def test_generate_agent_schema(self):
         bridge = HAVBridge()
-        bridge.teach_agent("gene", "Unit", agent_schema={"type": "string"}, context="genetics")
+        bridge.teach_agent(
+            "gene", "Unit", agent_schema={"type": "string"}, context="genetics"
+        )
         schema = bridge.generate_agent_schema("genetics")
         assert schema["context"] == "genetics"
         assert "gene" in schema["terms"]

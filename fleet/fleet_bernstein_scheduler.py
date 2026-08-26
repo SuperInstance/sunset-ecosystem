@@ -55,6 +55,7 @@ TRUTHY = frozenset({"1", "true", "yes", "on"})
 
 # ── Exceptions ────────────────────────────────────────────────────
 
+
 class ReplayMissError(RuntimeError):
     """Hermetic replay miss — no recorded response matches.
 
@@ -90,6 +91,7 @@ class PhaseValidationError(RuntimeError):
 
 
 # ── FleetDeterministicReplay ─────────────────────────────────────
+
 
 @dataclass
 class FleetDeterministicReplay:
@@ -186,7 +188,13 @@ class FleetDeterministicReplay:
         """
         if self.replay:
             return
-        key = self._prompt_key(prompt, model, provider=provider, temperature=temperature, max_tokens=max_tokens)
+        key = self._prompt_key(
+            prompt,
+            model,
+            provider=provider,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
         payload = {
             "key": key,
             "model": model,
@@ -229,7 +237,13 @@ class FleetDeterministicReplay:
         """
         if not self.replay:
             return None
-        key = self._prompt_key(prompt, model, provider=provider, temperature=temperature, max_tokens=max_tokens)
+        key = self._prompt_key(
+            prompt,
+            model,
+            provider=provider,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
         queue = self._cache.get(key)
         if queue:
             self._hits += 1
@@ -237,7 +251,9 @@ class FleetDeterministicReplay:
         # Miss
         if self.strict:
             self._strict_violations += 1
-            logger.error("FleetDeterministicReplay: strict miss; %s", self.coverage_line())
+            logger.error(
+                "FleetDeterministicReplay: strict miss; %s", self.coverage_line()
+            )
             raise ReplayMissError(key, model, run_id=self.run_id)
         self._misses += 1
         return None
@@ -277,6 +293,7 @@ class FleetDeterministicReplay:
 
 
 # ── FleetPhasedDispatch ──────────────────────────────────────────
+
 
 class Phase(StrEnum):
     """Discrete phases in the subagent dispatch pipeline."""
@@ -352,7 +369,9 @@ class PhaseArtifact:
         )
 
 
-PhaseExecutor = Callable[[Dict[str, Any], PhaseSpec, PhaseArtifact | None], PhaseArtifact]
+PhaseExecutor = Callable[
+    [Dict[str, Any], PhaseSpec, PhaseArtifact | None], PhaseArtifact
+]
 
 
 @dataclass
@@ -371,7 +390,9 @@ class FleetPhasedDispatch:
 
     executor: PhaseExecutor
     wal: Any | None = None  # Optional SignedWAL for phase audit
-    phases: List[Phase] = field(default_factory=lambda: [Phase.RESEARCH, Phase.PLAN, Phase.IMPLEMENT])
+    phases: List[Phase] = field(
+        default_factory=lambda: [Phase.RESEARCH, Phase.PLAN, Phase.IMPLEMENT]
+    )
     gate_enabled: bool = True
     gate_max_retries: int = 1
 
@@ -423,7 +444,9 @@ class FleetPhasedDispatch:
                 try:
                     artifact = self.executor(task_spec, spec, prior)
                 except Exception as exc:
-                    logger.warning("Phase %s failed (retry %d): %s", phase.value, retry_count, exc)
+                    logger.warning(
+                        "Phase %s failed (retry %d): %s", phase.value, retry_count, exc
+                    )
                     if retry_count >= self.gate_max_retries:
                         return {
                             "success": False,
@@ -437,7 +460,11 @@ class FleetPhasedDispatch:
 
                 # Mechanical gate: validate artefact has required fields
                 if self.gate_enabled and not self._validate_artifact(artifact):
-                    logger.warning("Phase %s artefact failed gate (retry %d)", phase.value, retry_count)
+                    logger.warning(
+                        "Phase %s artefact failed gate (retry %d)",
+                        phase.value,
+                        retry_count,
+                    )
                     if retry_count >= self.gate_max_retries:
                         return {
                             "success": False,
@@ -456,12 +483,14 @@ class FleetPhasedDispatch:
                 if self.wal is not None:
                     self._record_phase_transition(task_spec, phase, artifact, prior)
 
-                results.append({
-                    "phase": phase.value,
-                    "model": spec.model,
-                    "artifact_size": len(artifact.to_json()),
-                    "retry_count": retry_count,
-                })
+                results.append(
+                    {
+                        "phase": phase.value,
+                        "model": spec.model,
+                        "artifact_size": len(artifact.to_json()),
+                        "retry_count": retry_count,
+                    }
+                )
                 prior = artifact
                 break
 
@@ -501,7 +530,9 @@ class FleetPhasedDispatch:
             payload = {
                 "task_id": task_spec.get("task_id", "unknown"),
                 "phase": phase.value,
-                "artifact_hash": hashlib.sha256(artifact.to_json().encode()).hexdigest()[:32],
+                "artifact_hash": hashlib.sha256(
+                    artifact.to_json().encode()
+                ).hexdigest()[:32],
                 "parent_hash": parent_hash,
                 "decisions_count": len(artifact.decisions),
                 "constraints_count": len(artifact.constraints),
@@ -519,6 +550,7 @@ class FleetPhasedDispatch:
 
 
 # ── FleetWorkerIsolation ─────────────────────────────────────────
+
 
 @dataclass
 class FleetWorkerIsolation:
@@ -546,6 +578,7 @@ class FleetWorkerIsolation:
 
     def __post_init__(self) -> None:
         import re
+
         self._session_re = re.compile(r"^[a-zA-Z0-9_.-]+$")
         self.pid_dir.mkdir(parents=True, exist_ok=True)
         self.signals_dir.mkdir(parents=True, exist_ok=True)
@@ -585,14 +618,17 @@ class FleetWorkerIsolation:
         self._set_proctitle(f"fleet: {role} [{session_id}]")
 
         # 2. Write PID metadata
-        pid_file = self._write_pid_file(session_id, {
-            "worker_pid": os.getpid(),
-            "role": role,
-            "session": session_id,
-            "command": command[0] if command else "",
-            "model": model,
-            "started_at": started_at,
-        })
+        pid_file = self._write_pid_file(
+            session_id,
+            {
+                "worker_pid": os.getpid(),
+                "role": role,
+                "session": session_id,
+                "command": command[0] if command else "",
+                "model": model,
+                "started_at": started_at,
+            },
+        )
 
         # 3. Record in WAL
         if wal is not None:
@@ -660,6 +696,7 @@ class FleetWorkerIsolation:
     def _set_proctitle(self, title: str) -> None:
         try:
             import setproctitle
+
             setproctitle.setproctitle(title)
         except ImportError:
             pass
@@ -676,12 +713,16 @@ class FleetWorkerIsolation:
             wal.append(
                 agent_id=hash(session_id) & 0xFFFFFFFF,
                 operation="spawn",
-                vector_hash=json.dumps({
-                    "role": role,
-                    "session_id": session_id,
-                    "command": command[0] if command else "",
-                    "started_at": started_at,
-                }, sort_keys=True, separators=(",", ":")),
+                vector_hash=json.dumps(
+                    {
+                        "role": role,
+                        "session_id": session_id,
+                        "command": command[0] if command else "",
+                        "started_at": started_at,
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
                 parent_ids=[],
                 generation=0,
                 node_id="",
@@ -697,10 +738,14 @@ class FleetWorkerIsolation:
                 wal.append(
                     agent_id=hash(session_id) & 0xFFFFFFFF,
                     operation="sunset",
-                    vector_hash=json.dumps({
-                        "session_id": session_id,
-                        "cleaned_at": time.time(),
-                    }, sort_keys=True, separators=(",", ":")),
+                    vector_hash=json.dumps(
+                        {
+                            "session_id": session_id,
+                            "cleaned_at": time.time(),
+                        },
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
                     parent_ids=[],
                     generation=0,
                     node_id="",
@@ -710,6 +755,7 @@ class FleetWorkerIsolation:
 
 
 # ── FleetBernsteinScheduler ─────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class BernsteinScheduleConfig:
@@ -721,7 +767,9 @@ class BernsteinScheduleConfig:
     enable_phased_dispatch: bool = True
     enable_deterministic_replay: bool = False
     enable_worker_isolation: bool = True
-    default_phases: List[str] = field(default_factory=lambda: ["research", "plan", "implement"])
+    default_phases: List[str] = field(
+        default_factory=lambda: ["research", "plan", "implement"]
+    )
     replay_strict: bool = True
     replay_run_id: str = ""
     wal_path: str = ""
@@ -789,19 +837,26 @@ class FleetBernsteinScheduler:
         """Initialize deterministic replay backed by WAL."""
         try:
             from logos.signed_wal import SignedWAL
-            wal = SignedWAL(log_path=self.config.wal_path or ".fleet/runtime/scheduler.wal")
+
+            wal = SignedWAL(
+                log_path=self.config.wal_path or ".fleet/runtime/scheduler.wal"
+            )
             self._replay = FleetDeterministicReplay(
                 wal=wal,
                 run_id=self.config.replay_run_id,
                 replay=True,
                 strict=self.config.replay_strict,
             )
-            logger.info("Deterministic replay initialized for run_id=%s", self.config.replay_run_id)
+            logger.info(
+                "Deterministic replay initialized for run_id=%s",
+                self.config.replay_run_id,
+            )
         except Exception as exc:
             logger.warning("Failed to initialize deterministic replay: %s", exc)
 
     def _init_phased_dispatch(self) -> None:
         """Initialize phased dispatch with a default executor."""
+
         def _default_executor(
             task_spec: Dict[str, Any],
             spec: PhaseSpec,
@@ -809,7 +864,7 @@ class FleetBernsteinScheduler:
         ) -> PhaseArtifact:
             # Default executor returns a mock artefact for testing.
             # Production wiring replaces this with a real subagent spawner.
-            seed = f"{task_spec.get('task_id','')}-{spec.phase.value}"
+            seed = f"{task_spec.get('task_id', '')}-{spec.phase.value}"
             return PhaseArtifact(
                 summary=f"[{spec.phase.value}] Executed task {seed}",
                 decisions=[f"decision-{spec.phase.value}-1"],
@@ -920,7 +975,9 @@ class FleetBernsteinScheduler:
 
         for schedule in schedules:
             try:
-                schedule_receipts = self._tick_one(schedule, now_epoch, pacing, registry, wal)
+                schedule_receipts = self._tick_one(
+                    schedule, now_epoch, pacing, registry, wal
+                )
                 receipts.extend(schedule_receipts)
                 for r in schedule_receipts:
                     if r.dispatched:
@@ -928,7 +985,9 @@ class FleetBernsteinScheduler:
                     elif r.counterfactual:
                         skipped_count += len(r.skipped_windows)
             except Exception:
-                logger.exception("Scheduler tick failed for schedule %s", schedule["id"])
+                logger.exception(
+                    "Scheduler tick failed for schedule %s", schedule["id"]
+                )
 
         # Persist receipts
         for receipt in receipts:
@@ -940,7 +999,9 @@ class FleetBernsteinScheduler:
             "fires_dispatched": fired_count,
             "windows_skipped": skipped_count,
             "receipts": [self._receipt_to_dict(r) for r in receipts],
-            "replay_coverage": self._replay.coverage_line() if self._replay else "replay_disabled",
+            "replay_coverage": self._replay.coverage_line()
+            if self._replay
+            else "replay_disabled",
         }
 
     def _tick_one(
@@ -953,7 +1014,11 @@ class FleetBernsteinScheduler:
     ) -> List[FireReceipt]:
         """Tick a single schedule. May emit 0..N receipts."""
         cron = schedule["cron"]
-        anchor = int(schedule.get("last_fire_at", 0)) if schedule.get("last_fire_at") else now_epoch - 60
+        anchor = (
+            int(schedule.get("last_fire_at", 0))
+            if schedule.get("last_fire_at")
+            else now_epoch - 60
+        )
         receipts: List[FireReceipt] = []
         skipped_windows: List[int] = []
 
@@ -973,7 +1038,11 @@ class FleetBernsteinScheduler:
                     skipped_windows.append(next_fire)
                     current_anchor = next_fire
                     continue
-                receipts.append(self._fire(schedule, next_fire, pacing, registry, wal, counterfactual=False))
+                receipts.append(
+                    self._fire(
+                        schedule, next_fire, pacing, registry, wal, counterfactual=False
+                    )
+                )
                 fires_dispatched += 1
             else:  # skip policy
                 # Only dispatch the most recent missed instant
@@ -985,13 +1054,19 @@ class FleetBernsteinScheduler:
                     skipped_windows.append(next_fire)
                     current_anchor = next_fire
                     continue
-                receipts.append(self._fire(schedule, next_fire, pacing, registry, wal, counterfactual=False))
+                receipts.append(
+                    self._fire(
+                        schedule, next_fire, pacing, registry, wal, counterfactual=False
+                    )
+                )
                 fires_dispatched += 1
 
             current_anchor = next_fire
 
         if skipped_windows:
-            receipts.append(self._record_counterfactual(schedule, skipped_windows, now_epoch))
+            receipts.append(
+                self._record_counterfactual(schedule, skipped_windows, now_epoch)
+            )
 
         # Update last_fire_at
         with self._lock:
@@ -1033,7 +1108,9 @@ class FleetBernsteinScheduler:
                 ok, reason = pacing.can_dispatch()
                 dispatched = ok
                 if not ok:
-                    logger.info("Schedule %s fire blocked by pacing: %s", schedule["id"], reason)
+                    logger.info(
+                        "Schedule %s fire blocked by pacing: %s", schedule["id"], reason
+                    )
             else:
                 dispatched = True  # No pacing = always dispatch
 
@@ -1045,9 +1122,13 @@ class FleetBernsteinScheduler:
         projection = {
             "schedule_id": schedule["id"],
             "fire_time": fire_epoch,
-            "task_spec_hash": hashlib.sha256(json.dumps(task_spec, sort_keys=True).encode()).hexdigest()[:32],
+            "task_spec_hash": hashlib.sha256(
+                json.dumps(task_spec, sort_keys=True).encode()
+            ).hexdigest()[:32],
         }
-        projection_hash = hashlib.sha256(json.dumps(projection, sort_keys=True).encode()).hexdigest()[:32]
+        projection_hash = hashlib.sha256(
+            json.dumps(projection, sort_keys=True).encode()
+        ).hexdigest()[:32]
 
         receipt = FireReceipt(
             schedule_id=schedule["id"],
@@ -1089,7 +1170,9 @@ class FleetBernsteinScheduler:
             payload = {
                 "schedule_id": schedule["id"],
                 "fire_time": fire_epoch,
-                "task_spec_hash": hashlib.sha256(json.dumps(task_spec, sort_keys=True).encode()).hexdigest()[:32],
+                "task_spec_hash": hashlib.sha256(
+                    json.dumps(task_spec, sort_keys=True).encode()
+                ).hexdigest()[:32],
                 "dispatched": dispatched,
                 "goal": schedule.get("goal", ""),
                 "scenario_id": schedule.get("scenario_id", ""),
@@ -1108,17 +1191,23 @@ class FleetBernsteinScheduler:
     def _persist_receipt(self, receipt: FireReceipt) -> None:
         """Persist receipt to disk for audit replay."""
         try:
-            path = self._receipts_dir / f"{receipt.schedule_id}_{receipt.fire_time}.json"
+            path = (
+                self._receipts_dir / f"{receipt.schedule_id}_{receipt.fire_time}.json"
+            )
             path.write_text(
-                json.dumps({
-                    "schedule_id": receipt.schedule_id,
-                    "fire_time": receipt.fire_time,
-                    "projection_hash": receipt.projection_hash,
-                    "misfire_policy": receipt.misfire_policy,
-                    "dispatched": receipt.dispatched,
-                    "skipped_windows": list(receipt.skipped_windows),
-                    "counterfactual": receipt.counterfactual,
-                }, sort_keys=True, indent=2),
+                json.dumps(
+                    {
+                        "schedule_id": receipt.schedule_id,
+                        "fire_time": receipt.fire_time,
+                        "projection_hash": receipt.projection_hash,
+                        "misfire_policy": receipt.misfire_policy,
+                        "dispatched": receipt.dispatched,
+                        "skipped_windows": list(receipt.skipped_windows),
+                        "counterfactual": receipt.counterfactual,
+                    },
+                    sort_keys=True,
+                    indent=2,
+                ),
                 encoding="utf-8",
             )
         except Exception as exc:

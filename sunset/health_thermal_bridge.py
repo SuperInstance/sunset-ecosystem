@@ -29,6 +29,7 @@ import numpy as np
 # ── Optional nexus event bus ───────────────────────────────────
 try:
     from nexus.fleet_event_bus import FleetEventBus
+
     _HAS_BUS = True
 except Exception:
     FleetEventBus = None  # type: ignore[misc,assignment]
@@ -40,7 +41,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ThermalReading:
     """Normalized thermal reading from any source."""
-    source: str           # "cocapn-health", "roomgrid-profiler", etc.
+
+    source: str  # "cocapn-health", "roomgrid-profiler", etc.
     cpu_percent: float
     gpu_percent: float
     memory_percent: float
@@ -50,12 +52,15 @@ class ThermalReading:
     def pressure_score(self) -> float:
         """0.0 = cool, 1.0 = critical.  Weighted composite."""
         # GPU matters most for breeding (CUDA inference)
-        return min(1.0, (
-            0.4 * (self.gpu_percent / 100.0) +
-            0.3 * (self.cpu_percent / 100.0) +
-            0.2 * (self.memory_percent / 100.0) +
-            0.1 * max(0.0, (self.temperature_c - 70.0) / 30.0)
-        ))
+        return min(
+            1.0,
+            (
+                0.4 * (self.gpu_percent / 100.0)
+                + 0.3 * (self.cpu_percent / 100.0)
+                + 0.2 * (self.memory_percent / 100.0)
+                + 0.1 * max(0.0, (self.temperature_c - 70.0) / 30.0)
+            ),
+        )
 
 
 class HealthThermalBridge:

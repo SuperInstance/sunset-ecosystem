@@ -10,6 +10,7 @@ Coverage targets:
 - Edge cases: empty, single item, k > n, zero embeddings
 - Integration with FleetBreederConsensus
 """
+
 import sys
 from typing import Any, List, Tuple
 
@@ -31,6 +32,7 @@ from swarm.fleet_diversity import (
 @pytest.fixture
 def make_population():
     """Factory for creating populations with controlled diversity."""
+
     def _make(
         n: int = 20,
         dim: int = 8,
@@ -54,6 +56,7 @@ def make_population():
                 )
             )
         return items
+
     return _make
 
 
@@ -102,9 +105,7 @@ class TestMMR:
 
     def test_select_parents(self, selector, make_population):
         pop = make_population(n=20)
-        selected = selector.select_parents(
-            pop, k=5, strategy=DiversityStrategy.MMR
-        )
+        selected = selector.select_parents(pop, k=5, strategy=DiversityStrategy.MMR)
         assert len(selected) == 5
 
     def test_high_diversity_reduces_similarity(self, make_population):
@@ -119,14 +120,20 @@ class TestMMR:
         # High diversity should produce more spread-out selections
         high_emb = np.stack([s.embedding for s in high])
         low_emb = np.stack([s.embedding for s in low])
-        high_dist = np.mean([
-            np.linalg.norm(high_emb[i] - high_emb[j])
-            for i in range(5) for j in range(i + 1, 5)
-        ])
-        low_dist = np.mean([
-            np.linalg.norm(low_emb[i] - low_emb[j])
-            for i in range(5) for j in range(i + 1, 5)
-        ])
+        high_dist = np.mean(
+            [
+                np.linalg.norm(high_emb[i] - high_emb[j])
+                for i in range(5)
+                for j in range(i + 1, 5)
+            ]
+        )
+        low_dist = np.mean(
+            [
+                np.linalg.norm(low_emb[i] - low_emb[j])
+                for i in range(5)
+                for j in range(i + 1, 5)
+            ]
+        )
         assert high_dist >= low_dist * 0.5  # relaxed due to randomness
 
 
@@ -135,9 +142,7 @@ class TestMSD:
 
     def test_select_parents(self, selector, make_population):
         pop = make_population(n=20)
-        selected = selector.select_parents(
-            pop, k=5, strategy=DiversityStrategy.MSD
-        )
+        selected = selector.select_parents(pop, k=5, strategy=DiversityStrategy.MSD)
         assert len(selected) == 5
 
 
@@ -146,9 +151,7 @@ class TestCOVER:
 
     def test_select_parents(self, selector, make_population):
         pop = make_population(n=20)
-        selected = selector.select_parents(
-            pop, k=5, strategy=DiversityStrategy.COVER
-        )
+        selected = selector.select_parents(pop, k=5, strategy=DiversityStrategy.COVER)
         assert len(selected) == 5
 
     def test_archive_coverage(self, selector, make_population):
@@ -166,9 +169,7 @@ class TestSSD:
 
     def test_select_parents(self, selector, make_population):
         pop = make_population(n=20)
-        selected = selector.select_parents(
-            pop, k=5, strategy=DiversityStrategy.SSD
-        )
+        selected = selector.select_parents(pop, k=5, strategy=DiversityStrategy.SSD)
         assert len(selected) == 5
 
 
@@ -196,10 +197,12 @@ class TestArchiveDiversification:
         elites = archive.get_all_elites()
         # Use grid indices as embeddings
         grid_indices = list(archive._grid.keys())
-        embeddings = np.array([
-            np.array([idx / g for idx, g in zip(pos, archive.grid_shape)])
-            for pos in grid_indices
-        ])
+        embeddings = np.array(
+            [
+                np.array([idx / g for idx, g in zip(pos, archive.grid_shape)])
+                for pos in grid_indices
+            ]
+        )
 
         selected = selector.diversify_archive_elites(
             elites, embeddings, k=5, strategy=DiversityStrategy.COVER
@@ -317,30 +320,36 @@ class TestFallback:
         # The fallback is inside _diversify, so we need to test it differently
         # Instead, let's just test the fallback methods directly
         from swarm.fleet_diversity import FleetDiversitySelector, DiversityStrategy
+
         sel = FleetDiversitySelector(strategy=DiversityStrategy.DPP)
         pop = make_population(n=15, seed=111)
         # Manually call fallback
         embeddings = np.stack([p.embedding for p in pop])
         scores = np.array([p.fitness for p in pop])
         indices = sel._fallback_diversify(
-            embeddings, scores, k=5,
-            strategy=DiversityStrategy.DPP, diversity=0.5
+            embeddings, scores, k=5, strategy=DiversityStrategy.DPP, diversity=0.5
         )
         assert len(indices) == 5
         assert len(set(indices)) == 5
 
     def test_fallback_mmr(self, make_population):
         from swarm.fleet_diversity import FleetDiversitySelector, DiversityStrategy
+
         sel = FleetDiversitySelector(strategy=DiversityStrategy.MMR)
         pop = make_population(n=15, seed=222)
         embeddings = np.stack([p.embedding for p in pop])
         scores = np.array([p.fitness for p in pop])
-        indices = sel._fallback_mmr(embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True),
-                                    scores, k=5, diversity=0.5)
+        indices = sel._fallback_mmr(
+            embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True),
+            scores,
+            k=5,
+            diversity=0.5,
+        )
         assert len(indices) == 5
 
     def test_fallback_msd(self, make_population):
         from swarm.fleet_diversity import FleetDiversitySelector, DiversityStrategy
+
         sel = FleetDiversitySelector(strategy=DiversityStrategy.MSD)
         pop = make_population(n=15, seed=333)
         embeddings = np.stack([p.embedding for p in pop])
@@ -351,6 +360,7 @@ class TestFallback:
 
     def test_fallback_cover(self, make_population):
         from swarm.fleet_diversity import FleetDiversitySelector, DiversityStrategy
+
         sel = FleetDiversitySelector(strategy=DiversityStrategy.COVER)
         pop = make_population(n=15, seed=444)
         embeddings = np.stack([p.embedding for p in pop])
@@ -361,6 +371,7 @@ class TestFallback:
 
     def test_fallback_ssd(self, make_population):
         from swarm.fleet_diversity import FleetDiversitySelector, DiversityStrategy
+
         sel = FleetDiversitySelector(strategy=DiversityStrategy.SSD)
         pop = make_population(n=15, seed=555)
         embeddings = np.stack([p.embedding for p in pop])
@@ -419,7 +430,9 @@ class TestEdgeCases:
             pop, k=5, diversity=0.0, strategy=DiversityStrategy.MMR
         )
         # With diversity=0, should pick top 5 by fitness
-        top_5_ids = {p.id for p in sorted(pop, key=lambda x: x.fitness, reverse=True)[:5]}
+        top_5_ids = {
+            p.id for p in sorted(pop, key=lambda x: x.fitness, reverse=True)[:5]
+        }
         selected_ids = {s.id for s in selected}
         assert selected_ids == top_5_ids
 
@@ -460,18 +473,14 @@ class TestParameterOverride:
     def test_override_strategy(self, selector, make_population):
         pop = make_population(n=15)
         # Default is DPP, override to MMR
-        selected = selector.select_parents(
-            pop, k=5, strategy=DiversityStrategy.MMR
-        )
+        selected = selector.select_parents(pop, k=5, strategy=DiversityStrategy.MMR)
         assert len(selected) == 5
         history = selector.get_history()
         assert history[-1][0] == "mmr"
 
     def test_override_diversity(self, selector, make_population):
         pop = make_population(n=15)
-        selected = selector.select_parents(
-            pop, k=5, diversity=0.9
-        )
+        selected = selector.select_parents(pop, k=5, diversity=0.9)
         assert len(selected) == 5
 
     def test_override_k(self, selector, make_population):
@@ -489,6 +498,7 @@ class TestBreederIntegration:
     def test_from_breeder_consensus(self):
         """Factory method creates selector wired to consensus."""
         from swarm.fleet_bft_qd import FleetBreederConsensus
+
         fbc = FleetBreederConsensus(
             node_id="n0",
             all_nodes=["n0", "n1", "n2", "n3"],
@@ -503,6 +513,7 @@ class TestBreederIntegration:
     def test_diversity_before_bft_proposal(self, make_population):
         """Pattern: diversity-select parents, then BFT-propose breeding batch."""
         from swarm.fleet_bft_qd import FleetBreederConsensus
+
         fbc = FleetBreederConsensus(
             node_id="n0",
             all_nodes=["n0", "n1", "n2", "n3"],
@@ -522,6 +533,7 @@ class TestBreederIntegration:
     def test_evaluate_offspring_updates_archive(self, make_population):
         """Pattern: breed → evaluate → archive with diversity stats."""
         from swarm.fleet_bft_qd import FleetBreederConsensus
+
         fbc = FleetBreederConsensus(
             node_id="n0",
             all_nodes=["n0", "n1", "n2", "n3"],
@@ -544,7 +556,9 @@ class TestBreederIntegration:
         assert fbc.archive.qd_score > 0
 
         # Diversity stats on the breeding population
-        stats = sel.compute_diversity_stats(pop, selected_indices=[pop.index(p) for p in parents])
+        stats = sel.compute_diversity_stats(
+            pop, selected_indices=[pop.index(p) for p in parents]
+        )
         assert stats.selected_fitness_mean > 0
         assert stats.ilad >= 0.0
 
@@ -567,6 +581,7 @@ class TestScale:
             for i in range(100)
         ]
         import time
+
         t0 = time.perf_counter()
         selected = selector.select_parents(pop, k=10)
         t1 = time.perf_counter()
@@ -590,6 +605,7 @@ class TestScale:
     def test_3d_archive(self, selector):
         """3D QDArchive should work with wire_to_qd_archive."""
         from swarm.fleet_bft_qd import QDArchive, BehaviorDescriptor
+
         archive = QDArchive(
             grid_shape=(4, 4, 4),
             bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)],

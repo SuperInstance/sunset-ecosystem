@@ -9,6 +9,7 @@ Usage:
     result = runner.run("echo hello", shell=True)
     assert result.stdout == "hello\n"
 """
+
 from __future__ import annotations
 
 import subprocess

@@ -23,6 +23,7 @@ import numpy as np
 
 # ── Eisenstein Integer Class ───────────────────────────────────────────────
 
+
 class EisensteinInteger:
     """An Eisenstein integer: a + b·ω where ω = e^(2πi/3).
 
@@ -96,16 +97,17 @@ class EisensteinInteger:
     def units(cls) -> Tuple["EisensteinInteger", ...]:
         """Return the six units: ±1, ±ω, ±ω²."""
         return (
-            cls(1, 0),   #  1
+            cls(1, 0),  #  1
             cls(-1, 0),  # -1
-            cls(0, 1),   #  ω
+            cls(0, 1),  #  ω
             cls(0, -1),  # -ω
-            cls(-1, -1), #  ω²  (since -1 - ω = ω²)
-            cls(1, 1),   # -ω²
+            cls(-1, -1),  #  ω²  (since -1 - ω = ω²)
+            cls(1, 1),  # -ω²
         )
 
 
 # ── Weight Snap ──────────────────────────────────────────────────────────
+
 
 def snap_weights_to_eisenstein(
     weights: np.ndarray,
@@ -154,6 +156,7 @@ def eisenstein_mutation(
 
 # ── Compression Stats ──────────────────────────────────────────────────
 
+
 def compression_stats(weights: np.ndarray, snapped: np.ndarray) -> dict:
     """Return quantization error and effective compression ratio."""
     unique_before = len(np.unique(weights.round(decimals=6)))
@@ -168,6 +171,7 @@ def compression_stats(weights: np.ndarray, snapped: np.ndarray) -> dict:
 
 
 # ── CLI / Quick Test ───────────────────────────────────────────────────
+
 
 def _demo() -> None:
     rng = np.random.default_rng(42)

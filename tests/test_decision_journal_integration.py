@@ -107,10 +107,13 @@ def make_daemon(grid, thermal, wal_path, vector_table=None, journal_dir=None):
 
 # ── unit tests for standalone journal helpers ───────────────
 
+
 class TestLogSpawn:
     def test_creates_record(self, journal_dir):
         path = str(journal_dir / "2026-05-23.jsonl")
-        record = log_spawn(agent_id=42, parents=(1, 2), generation=3, reason="test", journal_path=path)
+        record = log_spawn(
+            agent_id=42, parents=(1, 2), generation=3, reason="test", journal_path=path
+        )
         assert record["operation"] == "spawn"
         assert record["agent_id"] == 42
         assert record["parents"] == [1, 2]
@@ -130,7 +133,9 @@ class TestLogSpawn:
 class TestLogSunset:
     def test_creates_record_with_reason(self, journal_dir):
         path = str(journal_dir / "2026-05-23.jsonl")
-        record = log_sunset(agent_id=42, reason="thermal_pressure", generation=2, journal_path=path)
+        record = log_sunset(
+            agent_id=42, reason="thermal_pressure", generation=2, journal_path=path
+        )
         assert record["operation"] == "sunset"
         assert record["agent_id"] == 42
         assert record["reason"] == "thermal_pressure"
@@ -140,14 +145,18 @@ class TestLogSunset:
 class TestLogBreed:
     def test_creates_record_with_parents(self, journal_dir):
         path = str(journal_dir / "2026-05-23.jsonl")
-        record = log_breed(parent_a=1, parent_b=2, child_id=99, generation=2, journal_path=path)
+        record = log_breed(
+            parent_a=1, parent_b=2, child_id=99, generation=2, journal_path=path
+        )
         assert record["operation"] == "breed"
         assert record["agent_id"] == 99
         assert record["parents"] == [1, 2]
 
     def test_solo_parent(self, journal_dir):
         path = str(journal_dir / "2026-05-23.jsonl")
-        record = log_breed(parent_a=7, parent_b=None, child_id=88, generation=1, journal_path=path)
+        record = log_breed(
+            parent_a=7, parent_b=None, child_id=88, generation=1, journal_path=path
+        )
         assert record["parents"] == [7]
 
 
@@ -155,12 +164,18 @@ class TestLogHumanCommand:
     def test_creates_record(self, journal_dir):
         path = str(journal_dir / "2026-05-23.jsonl")
         # Mock intent object
-        intent = type("Intent", (), {
-            "raw_command": "sunset all agents",
-            "action": "sunset",
-            "is_destructive": lambda self: True,
-        })()
-        record = log_human_command(intent=intent, confirmed=True, scope="all", journal_path=path)
+        intent = type(
+            "Intent",
+            (),
+            {
+                "raw_command": "sunset all agents",
+                "action": "sunset",
+                "is_destructive": lambda self: True,
+            },
+        )()
+        record = log_human_command(
+            intent=intent, confirmed=True, scope="all", journal_path=path
+        )
         assert record["operation"] == "human_command"
         assert record["why"] == "sunset all agents"
         assert record["actual"] == "confirmed"
@@ -169,12 +184,18 @@ class TestLogHumanCommand:
 
     def test_unconfirmed_record(self, journal_dir):
         path = str(journal_dir / "2026-05-23.jsonl")
-        intent = type("Intent", (), {
-            "raw_command": "breed top 10",
-            "action": "breed",
-            "is_destructive": lambda self: False,
-        })()
-        record = log_human_command(intent=intent, confirmed=False, scope="top:10", journal_path=path)
+        intent = type(
+            "Intent",
+            (),
+            {
+                "raw_command": "breed top 10",
+                "action": "breed",
+                "is_destructive": lambda self: False,
+            },
+        )()
+        record = log_human_command(
+            intent=intent, confirmed=False, scope="top:10", journal_path=path
+        )
         assert record["actual"] == "pending"
         assert record["confidence"] == 0.5
 
@@ -215,6 +236,7 @@ class TestGetDecisionHistory:
 
 # ── integration tests with BreederDaemonV2 ──────────────────
 
+
 class TestDaemonDecisionJournalIntegration:
     """BreederDaemonV2.step() writes to the decision journal."""
 
@@ -231,7 +253,9 @@ class TestDaemonDecisionJournalIntegration:
         child_id = compete_trs[0].agent_id
 
         # Query journal for spawn records
-        records = get_decision_history(agent_id=child_id, operation="spawn", journal_path=str(journal_dir))
+        records = get_decision_history(
+            agent_id=child_id, operation="spawn", journal_path=str(journal_dir)
+        )
         assert len(records) == 1
         assert records[0]["agent_id"] == child_id
         assert records[0]["parents"] == [1, 2]
@@ -248,11 +272,15 @@ class TestDaemonDecisionJournalIntegration:
         assert len(compete_trs) == 1
         child_id = compete_trs[0].agent_id
 
-        records = get_decision_history(agent_id=child_id, operation="breed", journal_path=str(journal_dir))
+        records = get_decision_history(
+            agent_id=child_id, operation="breed", journal_path=str(journal_dir)
+        )
         assert len(records) == 1
         assert records[0]["parents"] == [1, 2]
 
-    def test_sunset_logged_with_reason(self, grid, thermal, wal_path, vector_table, journal_dir):
+    def test_sunset_logged_with_reason(
+        self, grid, thermal, wal_path, vector_table, journal_dir
+    ):
         daemon = make_daemon(grid, thermal, wal_path, vector_table, journal_dir)
         daemon.start()
 
@@ -269,12 +297,15 @@ class TestDaemonDecisionJournalIntegration:
         assert len(sunset_trs) >= 1
         old_agent_id = sunset_trs[0].agent_id
 
-        records = get_decision_history(agent_id=old_agent_id, operation="sunset", journal_path=str(journal_dir))
+        records = get_decision_history(
+            agent_id=old_agent_id, operation="sunset", journal_path=str(journal_dir)
+        )
         assert len(records) >= 1
         assert records[0]["reason"] == "room_reuse"
 
 
 # ── integration tests with IntentConfirmationProtocol ───────
+
 
 class TestIntentProtocolDecisionJournalIntegration:
     """IntentConfirmationProtocol.log_decision writes human_command records."""
@@ -323,6 +354,7 @@ class TestIntentProtocolDecisionJournalIntegration:
 
     def test_legacy_journal_still_works(self, journal_dir):
         from logos.decision_journal import DecisionJournal
+
         state = FleetState(total_agents=10, active_agents=5, rooms=[])
         protocol = IntentConfirmationProtocol(fleet_state=state)
         intent = protocol.parse_intent("optimize agent 42")

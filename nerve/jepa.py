@@ -32,6 +32,7 @@ import torch.nn as nn
 
 # ── Minimal JEPA Model ───────────────────────────────────────
 
+
 class MinimalJEPA(nn.Module):
     """Tiny JEPA-style encoder: input → latent → predicted latent.
 
@@ -47,12 +48,15 @@ class MinimalJEPA(nn.Module):
     def __init__(self, input_dim: int = 64, hidden_dim: int = 32, latent_dim: int = 16):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim), nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim // 2), nn.ReLU(),
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
             nn.Linear(hidden_dim // 2, latent_dim),
         )
         self.predictor = nn.Sequential(
-            nn.Linear(latent_dim, hidden_dim // 2), nn.ReLU(),
+            nn.Linear(latent_dim, hidden_dim // 2),
+            nn.ReLU(),
             nn.Linear(hidden_dim // 2, latent_dim),
         )
 
@@ -75,6 +79,7 @@ class MinimalJEPA(nn.Module):
 
 
 # ── JEPA Nerve Fiber ─────────────────────────────────────────
+
 
 class JEPAFiber:
     """A nerve fiber backed by a tiny JEPA model.
@@ -108,7 +113,9 @@ class JEPAFiber:
         self.latent_dim = latent_dim
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.jepa = MinimalJEPA(input_dim=input_dim, latent_dim=latent_dim).to(self.device)
+        self.jepa = MinimalJEPA(input_dim=input_dim, latent_dim=latent_dim).to(
+            self.device
+        )
         self._signals_processed: int = 0
         self._latent_history: list[torch.Tensor] = []
         self._lock = threading.Lock()
@@ -137,9 +144,9 @@ class JEPAFiber:
             novelty = 0.5
             if self._latent_history:
                 recent = torch.stack(self._latent_history[-5:])
-                distances = torch.stack([
-                    self._jepa_latent_dist(latent, h) for h in recent
-                ])
+                distances = torch.stack(
+                    [self._jepa_latent_dist(latent, h) for h in recent]
+                )
                 novelty = distances.mean().item()
 
             self._latent_history.append(latent)
@@ -177,6 +184,7 @@ class ChaosMessage:
         chaos_path: Which chaos path this traveled.
         hop_count: How many rooms this passed through.
     """
+
     source_fiber: str
     latent: torch.Tensor
     novelty: float
@@ -236,19 +244,25 @@ class ChaosRoom:
             chaos_fire = random.random() < self._chaos_prob
             fires = novelty > 0.3 or chaos_fire
 
-            self._latent_memory.append({
-                "fiber": msg.source_fiber,
-                "latent": msg.latent,
-                "novelty": novelty,
-                "chaos": chaos_fire,
-            })
+            self._latent_memory.append(
+                {
+                    "fiber": msg.source_fiber,
+                    "latent": msg.latent,
+                    "novelty": novelty,
+                    "chaos": chaos_fire,
+                }
+            )
 
             # Strengthen connection to source fiber
             key = msg.source_fiber
-            self._connections[key] = min(1.0, self._connections.get(key, 0.0) + 0.1 * novelty)
+            self._connections[key] = min(
+                1.0, self._connections.get(key, 0.0) + 0.1 * novelty
+            )
 
             # Decay chaos as connections strengthen
-            avg_strength = sum(self._connections.values()) / max(1, len(self._connections))
+            avg_strength = sum(self._connections.values()) / max(
+                1, len(self._connections)
+            )
             self._chaos_prob = max(0.01, 0.3 * (1.0 - avg_strength))
 
             # Trim memory
@@ -280,17 +294,24 @@ class JEPASwarm:
         latent_dim: int = 16,
     ) -> None:
         self.fibers: list[JEPAFiber] = [
-            JEPAFiber(fiber_id=f"jf-{i:02d}", seed=42 + i * 7, input_dim=input_dim, latent_dim=latent_dim)
+            JEPAFiber(
+                fiber_id=f"jf-{i:02d}",
+                seed=42 + i * 7,
+                input_dim=input_dim,
+                latent_dim=latent_dim,
+            )
             for i in range(n_fibers)
         ]
         self.rooms: list[ChaosRoom] = [
             ChaosRoom(room_id=f"cr-{i:02d}", problem_statement=problem)
-            for i, problem in enumerate([
-                "Find patterns in latent space",
-                "Detect novelty vs noise",
-                "Route high-novelty to distiller",
-                "Bridge between fiber types",
-            ][:n_rooms])
+            for i, problem in enumerate(
+                [
+                    "Find patterns in latent space",
+                    "Detect novelty vs noise",
+                    "Route high-novelty to distiller",
+                    "Bridge between fiber types",
+                ][:n_rooms]
+            )
         ]
         self._signal_count: int = 0
         self._locks: dict[str, threading.Lock] = {}
@@ -345,11 +366,13 @@ class JEPASwarm:
                             fired = r.receive(msg)
                             if fired:
                                 results.setdefault(room_id, [])
-                                results[room_id].append({
-                                    "fiber": f.fiber_id,
-                                    "novelty": p["novelty"],
-                                    "chaos": p["chaos_triggered"],
-                                })
+                                results[room_id].append(
+                                    {
+                                        "fiber": f.fiber_id,
+                                        "novelty": p["novelty"],
+                                        "chaos": p["chaos_triggered"],
+                                    }
+                                )
                             break
 
         return results

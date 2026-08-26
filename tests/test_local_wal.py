@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_local_wal.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import os
@@ -30,10 +31,12 @@ class TestLocalWAL:
     def test_append_batch(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             wal = LocalWAL(os.path.join(tmpdir, "wal"))
-            wal.append_batch([
-                {"op": "a"},
-                {"op": "b"},
-            ])
+            wal.append_batch(
+                [
+                    {"op": "a"},
+                    {"op": "b"},
+                ]
+            )
             assert wal.stats()["appended"] == 2
 
     def test_truncate(self):

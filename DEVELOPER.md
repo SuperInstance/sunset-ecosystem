@@ -49,15 +49,16 @@ A "room" is a functional domain inside the RoomGrid. Rooms hold state, receive t
 from dataclasses import dataclass
 from typing import Any
 
+
 @dataclass
 class MyRoom:
     name: str = "my_room"
     activity: list[float] = None
-    
+
     def __post_init__(self):
         if self.activity is None:
             self.activity = [0.0] * 64
-    
+
     def tick(self, signal: np.ndarray) -> dict[str, Any]:
         """Process one tick, return metrics dict."""
         self.activity = self.activity * 0.9 + signal * 0.1
@@ -87,6 +88,7 @@ Create `tests/test_my_room.py`:
 import numpy as np
 from my_domain.rooms.my_room import MyRoom
 
+
 def test_tick_returns_metrics():
     room = MyRoom()
     metrics = room.tick(np.random.randn(64))
@@ -105,17 +107,21 @@ def test_tick_returns_metrics():
 ```python
 # rooms/spells.py (or your own spell module)
 
+
 class Spell:
     """Base class for all spells."""
+
     name: str = "base_spell"
-    
+
     def cast(self, room: Any, **kwargs) -> Any:
         raise NotImplementedError
 
+
 class SummonScout(Spell):
     """Spawn a subagent to explore a domain."""
+
     name = "summon_scout"
-    
+
     def cast(self, room: Any, domain: str = "harbor", query: str = "") -> dict:
         # Implementation
         return {"spawned": True, "domain": domain}
@@ -181,13 +187,15 @@ The swarm scheduler (`sunset/hardware_swarm.py`) allocates agents to devices bas
 ```python
 # sunset/hardware_swarm.py
 
+
 class MyDevice:
     """Custom accelerator."""
+
     device_type = "my_accelerator"
-    
+
     def benchmark(self) -> dict:
         return {"tflops": 10.0, "watts": 50.0, "latency_us": 100}
-    
+
     def allocate(self, agent: Agent) -> bool:
         # Return True if agent fits thermal budget
         return agent.thermal_estimate < self.headroom()
@@ -261,10 +269,12 @@ Every new module must have tests in `tests/`. Use the existing patterns:
 import pytest
 from my_module import MyClass
 
+
 def test_basic_functionality():
     obj = MyClass()
     result = obj.do_thing()
     assert result == expected
+
 
 def test_error_handling():
     obj = MyClass()
@@ -291,6 +301,7 @@ For performance-critical code, add benchmarks in `benchmarks/`:
 ```python
 def test_my_kernel_speed():
     import time
+
     t0 = time.perf_counter()
     for _ in range(1000):
         my_fast_function()
@@ -337,7 +348,7 @@ log_decision(
     action="sunset_agent",
     agent_id="abc",
     reason="thermal_violation",
-    context={"temp_c": 85, "threshold_c": 80}
+    context={"temp_c": 85, "threshold_c": 80},
 )
 ```
 

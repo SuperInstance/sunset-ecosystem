@@ -26,6 +26,7 @@ import numpy as np
 @dataclass
 class DEIndividual:
     """An individual in Differential Evolution."""
+
     genome: np.ndarray
     fitness: float = 0.0
     generation: int = 0
@@ -48,9 +49,14 @@ class DifferentialBreeder:
     - population_size: number of individuals
     """
 
-    def __init__(self, population_size: int = 50, dimensions: int = 10,
-                 F: float = 0.8, CR: float = 0.9,
-                 bounds: Optional[Tuple[float, float]] = None):
+    def __init__(
+        self,
+        population_size: int = 50,
+        dimensions: int = 10,
+        F: float = 0.8,
+        CR: float = 0.9,
+        bounds: Optional[Tuple[float, float]] = None,
+    ):
         self.population_size = population_size
         self.dimensions = dimensions
         self.F = F  # Differential weight
@@ -64,15 +70,13 @@ class DifferentialBreeder:
         """Initialize random population."""
         self.population = []
         for i in range(self.population_size):
-            genome = np.random.uniform(
-                self.bounds[0], self.bounds[1], self.dimensions
-            )
+            genome = np.random.uniform(self.bounds[0], self.bounds[1], self.dimensions)
             individual = DEIndividual(genome=genome, generation=0)
             self.population.append(individual)
 
     def evaluate(self, fitness_fn: callable) -> float:
         """Evaluate entire population with fitness function."""
-        best_fitness = float('-inf')
+        best_fitness = float("-inf")
         for ind in self.population:
             ind.fitness = fitness_fn(ind.genome)
             if ind.fitness > best_fitness:
@@ -138,10 +142,12 @@ class DifferentialBreeder:
                     new_population.append(target)
             else:
                 # No fitness function: keep mutant regardless
-                new_population.append(DEIndividual(
-                    genome=trial_genome,
-                    generation=self.generation + 1,
-                ))
+                new_population.append(
+                    DEIndividual(
+                        genome=trial_genome,
+                        generation=self.generation + 1,
+                    )
+                )
 
         self.population = new_population
         self.generation += 1

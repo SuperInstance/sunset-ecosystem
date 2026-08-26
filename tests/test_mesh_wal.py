@@ -95,15 +95,17 @@ class TestMeshWALRecovery:
             wal = MeshWAL(wal_dir=tmp, max_wal_size=1024 * 1024)
             # Append 5 insert operations
             for i in range(5):
-                wal.append_insert({
-                    "agent_id": f"agent_{i}",
-                    "vector": [float(i), 0.0],
-                    "timestamp": 1000.0 + i,
-                    "node_id": "test",
-                    "generation": i,
-                    "fitness": 0.5,
-                    "signature": f"test_signature_{i}",
-                })
+                wal.append_insert(
+                    {
+                        "agent_id": f"agent_{i}",
+                        "vector": [float(i), 0.0],
+                        "timestamp": 1000.0 + i,
+                        "node_id": "test",
+                        "generation": i,
+                        "fitness": 0.5,
+                        "signature": f"test_signature_{i}",
+                    }
+                )
             wal.close()
 
             # Create new WAL pointing at same dir, recover into fresh table
@@ -123,15 +125,17 @@ class TestMeshWALRecovery:
 
             # Insert 3 entries
             for i in range(3):
-                wal.append_insert({
-                    "agent_id": f"agent_{i}",
-                    "vector": [float(i), 0.0],
-                    "timestamp": 1000.0 + i,
-                    "node_id": "test",
-                    "generation": i,
-                    "fitness": 0.5,
-                    "signature": f"test_signature_{i}",
-                })
+                wal.append_insert(
+                    {
+                        "agent_id": f"agent_{i}",
+                        "vector": [float(i), 0.0],
+                        "timestamp": 1000.0 + i,
+                        "node_id": "test",
+                        "generation": i,
+                        "fitness": 0.5,
+                        "signature": f"test_signature_{i}",
+                    }
+                )
 
             # Checkpoint — this truncates old WAL files
             table = MeshVectorTable(table_id="checkpoint_test")

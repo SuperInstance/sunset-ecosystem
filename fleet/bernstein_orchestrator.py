@@ -184,7 +184,9 @@ class GitWorktreeSpawner:
 
         # Remove worktree
         try:
-            self._git("worktree", "remove", "--force", worktree_path, cwd=str(self.repo_path))
+            self._git(
+                "worktree", "remove", "--force", worktree_path, cwd=str(self.repo_path)
+            )
         except subprocess.CalledProcessError as exc:
             logger.warning("worktree remove failed: %s", exc)
             # Fallback: manual rm
@@ -256,7 +258,9 @@ class DeterministicScheduler:
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as pool:
             futures = {
-                pool.submit(self._run_with_retries, task, worktree_map.get(task.task_id, "")): task.task_id
+                pool.submit(
+                    self._run_with_retries, task, worktree_map.get(task.task_id, "")
+                ): task.task_id
                 for task in tasks
             }
             for future in as_completed(futures):
@@ -275,7 +279,9 @@ class DeterministicScheduler:
 
     # ── Internal ──────────────────────────────────────────────
 
-    def _run_with_retries(self, task: SchedulerTask, worktree_path: str) -> ScheduleResult:
+    def _run_with_retries(
+        self, task: SchedulerTask, worktree_path: str
+    ) -> ScheduleResult:
         """Execute a task with exponential-backoff retry."""
         last_error = ""
         for attempt in range(task.max_retries + 1):
@@ -305,7 +311,7 @@ class DeterministicScheduler:
                 # Retry with backoff unless last attempt
                 if attempt < task.max_retries:
                     backoff = min(
-                        self.base_backoff * (self.backoff_multiplier ** attempt),
+                        self.base_backoff * (self.backoff_multiplier**attempt),
                         self.max_backoff,
                     )
                     time.sleep(backoff)
@@ -728,6 +734,7 @@ class BernsteinOrchestrator:
 
         # Also patch orchestrate() method if it doesn't exist
         if not hasattr(fleet_conductor_v2, "orchestrate"):
+
             def _orchestrate(
                 repo_path: str,
                 tasks: List[SchedulerTask],
@@ -737,7 +744,9 @@ class BernsteinOrchestrator:
 
             object.__setattr__(fleet_conductor_v2, "orchestrate", _orchestrate)
 
-        logger.info("BernsteinOrchestrator attached to %s", type(fleet_conductor_v2).__name__)
+        logger.info(
+            "BernsteinOrchestrator attached to %s", type(fleet_conductor_v2).__name__
+        )
 
     def get_audit_chain(self) -> HMACAuditChain:
         """Return the audit chain (for inspection / export)."""
@@ -773,9 +782,7 @@ class BernsteinOrchestrator:
 
         # Build worktree_map for scheduler results
         worktree_map = {
-            tid: info["worktree"]
-            for tid, info in spawned.items()
-            if "worktree" in info
+            tid: info["worktree"] for tid, info in spawned.items() if "worktree" in info
         }
 
         # 2. Schedule tasks

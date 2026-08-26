@@ -17,6 +17,7 @@ Usage:
     )
     assert result.success is True
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -38,6 +39,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AgentState:
     """Serialized agent state."""
+
     agent_id: str
     node_id: str
     checkpoint_data: dict[str, Any]
@@ -53,6 +55,7 @@ class AgentState:
 @dataclass
 class MigrationResult:
     """Result of a migration attempt."""
+
     success: bool
     agent_id: str
     from_node: str
@@ -164,7 +167,7 @@ class AgentMigrator:
     def _log_result(self, result: MigrationResult) -> None:
         self._history.append(result)
         if len(self._history) > self._max_history:
-            self._history = self._history[-self._max_history:]
+            self._history = self._history[-self._max_history :]
 
     def history(self) -> list[MigrationResult]:
         """Get migration history."""

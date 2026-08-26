@@ -12,11 +12,11 @@ from typing import List, Optional
 class AgentPhase(Enum):
     """Lifecycle phases every agent passes through."""
 
-    INCUBATING = "incubating"   # Just born, reading trinity rooms
-    COMPETING = "competing"     # Finding relevance
-    BREEDING = "breeding"       # Scored high, spawning children
-    SUNSETTING = "sunsetting"   # Writing epilogue
-    ASLEEP = "asleep"           # Archived, searchable
+    INCUBATING = "incubating"  # Just born, reading trinity rooms
+    COMPETING = "competing"  # Finding relevance
+    BREEDING = "breeding"  # Scored high, spawning children
+    SUNSETTING = "sunsetting"  # Writing epilogue
+    ASLEEP = "asleep"  # Archived, searchable
 
 
 @dataclass

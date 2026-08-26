@@ -12,6 +12,7 @@ Provides a unified report() method that returns a snapshot of the
 entire fleet's operational state. Designed to be polled by external
 monitoring and the SSE stream dashboard.
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -29,16 +30,17 @@ logger = logging.getLogger(__name__)
 
 
 class FleetHealthLevel(enum.IntEnum):
-    HEALTHY = 4      # All green, operating normally
-    DEGRADED = 3     # Minor issues, self-healing
-    WARNING = 2      # Significant issues, attention needed
-    CRITICAL = 1     # Multiple failures, manual intervention
-    DOWN = 0         # Complete outage
+    HEALTHY = 4  # All green, operating normally
+    DEGRADED = 3  # Minor issues, self-healing
+    WARNING = 2  # Significant issues, attention needed
+    CRITICAL = 1  # Multiple failures, manual intervention
+    DOWN = 0  # Complete outage
 
 
 @dataclass
 class SubsystemStatus:
     """Status of a single fleet subsystem."""
+
     name: str
     healthy: bool
     metrics: dict[str, Any] = field(default_factory=dict)
@@ -84,6 +86,7 @@ class FleetWorkDashboard:
     def snapshot(self) -> dict[str, Any]:
         """Collect current status from all registered subsystems."""
         import time
+
         result: dict[str, Any] = {"timestamp": time.time(), "subsystems": {}}
 
         for name, report_fn in self._subsystems.items():
@@ -95,7 +98,9 @@ class FleetWorkDashboard:
                     status = SubsystemStatus(
                         name=name,
                         healthy=True,
-                        metrics=metrics if isinstance(metrics, dict) else {"data": metrics},
+                        metrics=metrics
+                        if isinstance(metrics, dict)
+                        else {"data": metrics},
                         last_update=time.time(),
                     )
                 except Exception as e:
@@ -114,9 +119,13 @@ class FleetWorkDashboard:
 
         # Aggregate health
         result["health_level"] = self._compute_health_level(result["subsystems"]).name
-        result["overall_healthy"] = all(s["healthy"] for s in result["subsystems"].values())
+        result["overall_healthy"] = all(
+            s["healthy"] for s in result["subsystems"].values()
+        )
         result["subsystem_count"] = len(result["subsystems"])
-        result["healthy_count"] = sum(1 for s in result["subsystems"].values() if s["healthy"])
+        result["healthy_count"] = sum(
+            1 for s in result["subsystems"].values() if s["healthy"]
+        )
 
         # Store history
         self._history.append(result)
@@ -180,16 +189,19 @@ class FleetWorkDashboard:
     def alerts(self) -> list[dict[str, Any]]:
         """Generate alerts for unhealthy subsystems."""
         import time
+
         snap = self.snapshot()
         alerts = []
         for name, data in snap["subsystems"].items():
             if not data["healthy"]:
-                alerts.append({
-                    "severity": "error",
-                    "subsystem": name,
-                    "message": data.get("error", "Subsystem unhealthy"),
-                    "timestamp": time.time(),
-                })
+                alerts.append(
+                    {
+                        "severity": "error",
+                        "subsystem": name,
+                        "message": data.get("error", "Subsystem unhealthy"),
+                        "timestamp": time.time(),
+                    }
+                )
         return alerts
 
     # ── history ─────────────────────────────────────────

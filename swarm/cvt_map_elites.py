@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 # ── k-means++ initialization ────────────────────────────────
 
+
 def kmeans_plus_plus(
     points: np.ndarray,
     k: int,
@@ -55,10 +56,13 @@ def kmeans_plus_plus(
 
     for i in range(1, k):
         # Squared distances to nearest centroid
-        dists = np.min(
-            np.linalg.norm(points[:, None, :] - centroids[:i][None, :, :], axis=2),
-            axis=1,
-        ) ** 2
+        dists = (
+            np.min(
+                np.linalg.norm(points[:, None, :] - centroids[:i][None, :, :], axis=2),
+                axis=1,
+            )
+            ** 2
+        )
         # Probabilities
         probs = dists / dists.sum()
         idx = rng.choice(n, p=probs)
@@ -68,6 +72,7 @@ def kmeans_plus_plus(
 
 
 # ── Lloyd relaxation ────────────────────────────────────────
+
 
 def lloyd_relaxation(
     points: np.ndarray,
@@ -110,6 +115,7 @@ def lloyd_relaxation(
 
 
 # ── CVT MAP-Elites Archive ──────────────────────────────────
+
 
 @dataclass
 class CVTArchiveEntry:
@@ -277,5 +283,5 @@ class CVTMAPArchive:
             return 0.0
 
         avg_side = np.mean(nn_dists)
-        cell_volume = avg_side ** self.behavior_dims
+        cell_volume = avg_side**self.behavior_dims
         return len(self._archive) * cell_volume

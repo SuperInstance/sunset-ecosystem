@@ -35,7 +35,7 @@ import numpy as np
 
 # One room's weights
 w = make_weights(n=1, d=64, h=32, l=16)
-print(f"w1 shape: {w['w1'].shape}")   # (1, 64, 32)
+print(f"w1 shape: {w['w1'].shape}")  # (1, 64, 32)
 print(f"Total params: {sum(v.size for v in w.values())}")
 
 # Two rooms, same input, different outputs
@@ -43,7 +43,7 @@ g = RoomGrid(n=2)
 out = g._forward(np.random.randn(64))
 print(f"Room 0 latent: {out[0][:4]}")
 print(f"Room 1 latent: {out[1][:4]}")
-print(f"Correlation: {np.corrcoef(out[0], out[1])[0,1]:.3f}")
+print(f"Correlation: {np.corrcoef(out[0], out[1])[0, 1]:.3f}")
 ```
 
 ## Verification

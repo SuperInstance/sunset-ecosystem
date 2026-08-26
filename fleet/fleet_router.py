@@ -10,6 +10,7 @@ Usage:
     router.route("fleet.breed.alpha", {"data": 1})
     # handler called with {"data": 1}
 """
+
 from __future__ import annotations
 
 import fnmatch
@@ -109,7 +110,7 @@ class FleetRouter:
             if p == "#":
                 # # matches zero or more remaining parts
                 # Try matching the rest of the pattern against all suffixes
-                remaining_pattern = pattern_parts[pi + 1:]
+                remaining_pattern = pattern_parts[pi + 1 :]
                 for j in range(ki, len(key_parts) + 1):
                     if FleetRouter._match_words(remaining_pattern, key_parts[j:]):
                         return True

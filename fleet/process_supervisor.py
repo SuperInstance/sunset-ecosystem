@@ -13,6 +13,7 @@ Usage:
     ps.restart("worker-1")
     ps.stop("worker-1")
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -39,6 +40,7 @@ class ProcessNotFound(Exception):
 @dataclass
 class ManagedProcess:
     """A managed process record."""
+
     name: str
     cmd: list[str]
     process: subprocess.Popen | None = None
@@ -173,7 +175,9 @@ class ProcessSupervisor:
         """Start the health monitor thread if not running."""
         if self._monitor_thread is None or not self._monitor_thread.is_alive():
             self._stop_monitor.clear()
-            self._monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
+            self._monitor_thread = threading.Thread(
+                target=self._monitor_loop, daemon=True
+            )
             self._monitor_thread.start()
 
     def _monitor_loop(self) -> None:
@@ -192,7 +196,9 @@ class ProcessSupervisor:
             # Check if process exited
             if proc.process is not None and proc.process.poll() is not None:
                 proc.status = "exited"
-                logger.warning(f"Process '{proc.name}' exited with code {proc.process.returncode}")
+                logger.warning(
+                    f"Process '{proc.name}' exited with code {proc.process.returncode}"
+                )
                 needs_restart = True
 
             # Health check
@@ -214,7 +220,10 @@ class ProcessSupervisor:
             return
 
         # Rate limit restarts
-        if proc.last_restart_time and time.time() - proc.last_restart_time < proc.restart_window:
+        if (
+            proc.last_restart_time
+            and time.time() - proc.last_restart_time < proc.restart_window
+        ):
             if proc.restart_count >= proc.max_restarts:
                 logger.error(f"Max restarts reached for '{proc.name}', giving up")
                 proc.status = "failed"
@@ -238,7 +247,8 @@ class ProcessSupervisor:
         return {
             "total": len(self._processes),
             "running": running,
-            "monitor_active": self._monitor_thread is not None and self._monitor_thread.is_alive(),
+            "monitor_active": self._monitor_thread is not None
+            and self._monitor_thread.is_alive(),
         }
 
     def __repr__(self) -> str:

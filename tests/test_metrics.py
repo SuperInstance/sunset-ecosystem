@@ -15,6 +15,7 @@ from triage.metrics import HealthScore, RepoHealthMetrics, run_health_check
 # HealthScore
 # ---------------------------------------------------------------------------
 
+
 class TestHealthScore:
     def test_total(self):
         h = HealthScore(
@@ -27,21 +28,45 @@ class TestHealthScore:
         assert h.total == 100.0
 
     def test_traffic_light_green(self):
-        h = HealthScore(freshness=30, test_coverage=25, documentation=15, dependency_health=15, issue_hygiene=15)
+        h = HealthScore(
+            freshness=30,
+            test_coverage=25,
+            documentation=15,
+            dependency_health=15,
+            issue_hygiene=15,
+        )
         assert h.traffic_light == "green"
 
     def test_traffic_light_yellow(self):
-        h = HealthScore(freshness=10, test_coverage=10, documentation=10, dependency_health=10, issue_hygiene=10)
+        h = HealthScore(
+            freshness=10,
+            test_coverage=10,
+            documentation=10,
+            dependency_health=10,
+            issue_hygiene=10,
+        )
         assert h.total == 50.0
         assert h.traffic_light == "yellow"
 
     def test_traffic_light_red(self):
-        h = HealthScore(freshness=5, test_coverage=5, documentation=5, dependency_health=5, issue_hygiene=5)
+        h = HealthScore(
+            freshness=5,
+            test_coverage=5,
+            documentation=5,
+            dependency_health=5,
+            issue_hygiene=5,
+        )
         assert h.total == 25.0
         assert h.traffic_light == "red"
 
     def test_to_dict(self):
-        h = HealthScore(freshness=10, test_coverage=10, documentation=10, dependency_health=10, issue_hygiene=10)
+        h = HealthScore(
+            freshness=10,
+            test_coverage=10,
+            documentation=10,
+            dependency_health=10,
+            issue_hygiene=10,
+        )
         d = h.to_dict()
         assert d["total"] == 50.0
         assert d["traffic_light"] == "yellow"
@@ -50,6 +75,7 @@ class TestHealthScore:
 # ---------------------------------------------------------------------------
 # RepoHealthMetrics
 # ---------------------------------------------------------------------------
+
 
 class TestRepoHealthMetricsInit:
     def test_init(self, tmp_path):
@@ -62,8 +88,12 @@ class TestRepoHealthMetricsFreshness:
         # Initialize git repo with a recent commit
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=True)
         (tmp_path / "f").write_text("x")
-        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True, check=True)
-        subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "add", "."], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
         m = RepoHealthMetrics(tmp_path)
         score = m._freshness()
         assert score > 25.0  # very recent
@@ -168,8 +198,12 @@ class TestRepoHealthMetricsRun:
         tests.mkdir()
         (tests / "test_x.py").write_text("def test_x(): pass\n")
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=True)
-        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True, check=True)
-        subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "add", "."], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
         m = RepoHealthMetrics(tmp_path)
         score = m.run()
         assert isinstance(score, HealthScore)
@@ -180,6 +214,7 @@ class TestRepoHealthMetricsRun:
 # ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
+
 
 class TestRunHealthCheck:
     def test_entrypoint(self, tmp_path):

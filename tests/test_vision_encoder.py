@@ -3,6 +3,7 @@
 These tests use the random_projection backend by default so they pass
 without transformers, CLIP, torch, or heavy model downloads.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -12,6 +13,7 @@ from perception import VisionTileEncoder, WebcamCapture, ScreenCapture, EncoderB
 
 
 # ── Fixtures ───────────────────────────────────────────────
+
 
 @pytest.fixture
 def encoder():
@@ -27,6 +29,7 @@ def synthetic_rgb():
 
 
 # ── VisionTileEncoder ──────────────────────────────────────
+
 
 class TestEncodeFrame:
     """Test encode_frame returns a 512-dim normalised embedding."""
@@ -167,6 +170,7 @@ class TestEncoderProperties:
 
 # ── Capture sources (mock, no real webcam needed) ──────────────
 
+
 class TestWebcamCaptureMock:
     """Test WebcamCapture with mock frame (no hardware)."""
 
@@ -201,6 +205,7 @@ class TestScreenCaptureMock:
 
 # ── End-to-end: tile flows into topology signal ──────────────
 
+
 class TestVisionTopologyIntegration:
     """Vision tile → topology signal round-trip."""
 
@@ -216,7 +221,9 @@ class TestVisionTopologyIntegration:
         signal = encoder.to_signal(emb, signal_dim=64)
 
         topo = NerveTopology(n_fibers=2, n_rooms=20, signal_dim=64)
-        result = topo.tick(signals={"fiber-0": signal, "fiber-1": np.zeros(64, dtype=np.float32)})
+        result = topo.tick(
+            signals={"fiber-0": signal, "fiber-1": np.zeros(64, dtype=np.float32)}
+        )
 
         assert result.fibers_perceived == 2
         assert result.tick == 1

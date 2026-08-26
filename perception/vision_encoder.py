@@ -9,6 +9,7 @@ Backends (in order of preference):
 All backends converge to a 512-dim float32 embedding that feeds into
 NerveTopology as a first-class vision tile.
 """
+
 from __future__ import annotations
 
 __all__ = ["VisionTileEncoder", "EncoderBackend"]
@@ -31,6 +32,7 @@ _HAS_TRANSFORMERS = False
 try:
     import transformers
     from transformers import AutoImageProcessor, AutoModel
+
     _HAS_TRANSFORMERS = True
 except Exception:
     pass
@@ -38,6 +40,7 @@ except Exception:
 _HAS_CLIP = False
 try:
     import clip as _clip_module
+
     _HAS_CLIP = True
 except Exception:
     pass
@@ -45,6 +48,7 @@ except Exception:
 _HAS_ONNX = False
 try:
     import onnxruntime as ort
+
     _HAS_ONNX = True
 except Exception:
     pass
@@ -52,6 +56,7 @@ except Exception:
 _HAS_TORCH = False
 try:
     import torch
+
     _HAS_TORCH = True
 except Exception:
     pass
@@ -59,16 +64,18 @@ except Exception:
 
 class EncoderBackend(Enum):
     """Available vision encoder backends, ordered by quality."""
-    SIGLIP = auto()      # transformers AutoModel — best quality
-    CLIP = auto()        # openai-clip — balanced
-    MOBILEVIT = auto()   # lightweight torch CNN
-    ONNX = auto()        # onnxruntime edge inference
+
+    SIGLIP = auto()  # transformers AutoModel — best quality
+    CLIP = auto()  # openai-clip — balanced
+    MOBILEVIT = auto()  # lightweight torch CNN
+    ONNX = auto()  # onnxruntime edge inference
     RANDOM_PROJECTION = auto()  # deterministic fallback, no deps
 
 
 @dataclass(frozen=True)
 class ModelSpec:
     """Specification for a vision model backend."""
+
     name: str
     embedding_dim: int
     input_size: tuple[int, int]  # (H, W)
@@ -141,7 +148,7 @@ class VisionTileEncoder:
         self._backend: EncoderBackend | None = None
         self._processor: Any = None
         self._model: Any = None
-        self._session: Any = None          # ONNX session
+        self._session: Any = None  # ONNX session
         self._projection: np.ndarray | None = None  # for dim-mismatch projection
         self._frame_count = 0
         self._fps_window: list[float] = []
@@ -177,7 +184,9 @@ class VisionTileEncoder:
                 self._backend = backend
                 logger.info(
                     "VisionTileEncoder initialised: backend=%s device=%s dim=%d",
-                    backend.name, self.device, self.target_dim,
+                    backend.name,
+                    self.device,
+                    self.target_dim,
                 )
                 return
             except Exception as exc:
@@ -215,6 +224,7 @@ class VisionTileEncoder:
         self._model.eval()
         if _HAS_TORCH:
             import torch
+
             self._model.to(self.device)
         self._maybe_build_projection(self.spec.embedding_dim)
 
@@ -222,9 +232,8 @@ class VisionTileEncoder:
         if not _HAS_CLIP:
             raise ImportError("clip not installed")
         import clip
-        self._model, self._preprocess = clip.load(
-            self.spec.name, device=self.device
-        )
+
+        self._model, self._preprocess = clip.load(self.spec.name, device=self.device)
         self._model.eval()
         self._processor = self._preprocess
         # CLIP ViT-B/32 already emits 512-dim
@@ -234,9 +243,11 @@ class VisionTileEncoder:
             raise ImportError("torch not installed")
         import torch
         import torchvision.models as models
+
         # Use MobileViT from timm if available, else MobileNetV3 as proxy
         try:
             import timm
+
             self._model = timm.create_model(
                 "mobilevit_s", pretrained=True, num_classes=0
             )
@@ -269,9 +280,7 @@ class VisionTileEncoder:
             prov = ["CUDAExecutionProvider", "CPUExecutionProvider"]
         else:
             prov = ["CPUExecutionProvider"]
-        self._session = ort.InferenceSession(
-            self.spec.name, opts, providers=prov
-        )
+        self._session = ort.InferenceSession(self.spec.name, opts, providers=prov)
         self._input_name = self._session.get_inputs()[0].name
 
     def _setup_random_projection(self) -> None:
@@ -411,6 +420,7 @@ class VisionTileEncoder:
     def _encode_siglip(self, frame: np.ndarray) -> np.ndarray:
         import torch
         from PIL import Image
+
         pil = Image.fromarray(frame).convert("RGB").resize(self.spec.input_size[::-1])
         inputs = self._processor(images=pil, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
@@ -424,6 +434,7 @@ class VisionTileEncoder:
     def _batch_siglip(self, frames: list[np.ndarray]) -> np.ndarray:
         import torch
         from PIL import Image
+
         pils = [
             Image.fromarray(f).convert("RGB").resize(self.spec.input_size[::-1])
             for f in frames
@@ -443,6 +454,7 @@ class VisionTileEncoder:
         import torch
         from PIL import Image
         import clip
+
         pil = Image.fromarray(frame).convert("RGB")
         image = self._preprocess(pil).unsqueeze(0).to(self.device)
         with torch.no_grad():
@@ -452,6 +464,7 @@ class VisionTileEncoder:
     def _batch_clip(self, frames: list[np.ndarray]) -> np.ndarray:
         import torch
         from PIL import Image
+
         pils = [Image.fromarray(f).convert("RGB") for f in frames]
         images = torch.stack([self._preprocess(p) for p in pils]).to(self.device)
         with torch.no_grad():
@@ -463,10 +476,9 @@ class VisionTileEncoder:
     def _encode_mobilevit(self, frame: np.ndarray) -> np.ndarray:
         import torch
         from torchvision import transforms
+
         tensor = transforms.ToTensor()(frame)
-        tensor = transforms.Normalize(
-            mean=self.spec.mean, std=self.spec.std
-        )(tensor)
+        tensor = transforms.Normalize(mean=self.spec.mean, std=self.spec.std)(tensor)
         tensor = tensor.unsqueeze(0).to(self.device)
         with torch.no_grad():
             emb = self._model(tensor).cpu().numpy().flatten()
@@ -477,6 +489,7 @@ class VisionTileEncoder:
     def _batch_torch(self, frames: list[np.ndarray]) -> np.ndarray:
         import torch
         from torchvision import transforms
+
         to_tensor = transforms.ToTensor()
         normalize = transforms.Normalize(mean=self.spec.mean, std=self.spec.std)
         tensors = [normalize(to_tensor(f)) for f in frames]
@@ -499,6 +512,7 @@ class VisionTileEncoder:
     def _preprocess_numpy(self, frame: np.ndarray) -> np.ndarray:
         """Resize, normalise, CHW format."""
         from PIL import Image
+
         pil = Image.fromarray(frame).convert("RGB").resize(self.spec.input_size[::-1])
         arr = np.array(pil).astype(np.float32) / 255.0
         arr = (arr - np.array(self.spec.mean)) / np.array(self.spec.std)
@@ -510,6 +524,7 @@ class VisionTileEncoder:
     def _encode_random_projection(self, frame: np.ndarray) -> np.ndarray:
         """Deterministic random projection of resized frame patches."""
         from PIL import Image
+
         pil = Image.fromarray(frame).convert("RGB").resize((224, 224))
         arr = np.array(pil).astype(np.float32) / 255.0
         flat = arr.flatten()

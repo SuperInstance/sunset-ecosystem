@@ -163,46 +163,56 @@ class TestA2AServer:
     def test_handle_task_status(self) -> None:
         card = A2AAgentCard(name="S", description="D", version="1", url="")
         server = A2AServer(agent_card=card)
-        server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 3,
-            "method": "tasks/send",
-            "params": {"id": "task_1"},
-        })
-        resp = server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 4,
-            "method": "tasks/status",
-            "params": {"id": "task_1"},
-        })
+        server.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tasks/send",
+                "params": {"id": "task_1"},
+            }
+        )
+        resp = server.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tasks/status",
+                "params": {"id": "task_1"},
+            }
+        )
         assert resp["result"]["id"] == "task_1"
 
     def test_handle_task_cancel(self) -> None:
         card = A2AAgentCard(name="S", description="D", version="1", url="")
         server = A2AServer(agent_card=card)
-        server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 5,
-            "method": "tasks/send",
-            "params": {"id": "task_x"},
-        })
-        resp = server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 6,
-            "method": "tasks/cancel",
-            "params": {"id": "task_x"},
-        })
+        server.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "tasks/send",
+                "params": {"id": "task_x"},
+            }
+        )
+        resp = server.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 6,
+                "method": "tasks/cancel",
+                "params": {"id": "task_x"},
+            }
+        )
         assert resp["result"]["status"] == "cancelled"
 
     def test_handle_unknown_method(self) -> None:
         card = A2AAgentCard(name="S", description="D", version="1", url="")
         server = A2AServer(agent_card=card)
-        resp = server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 7,
-            "method": "magic/trick",
-            "params": {},
-        })
+        resp = server.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 7,
+                "method": "magic/trick",
+                "params": {},
+            }
+        )
         assert "error" in resp
         assert resp["error"]["code"] == -32601
 
@@ -215,12 +225,14 @@ class TestA2AServer:
             return task
 
         server = A2AServer(agent_card=card, task_handler=handler)
-        resp = server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 8,
-            "method": "tasks/send",
-            "params": {"id": "th1"},
-        })
+        resp = server.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 8,
+                "method": "tasks/send",
+                "params": {"id": "th1"},
+            }
+        )
         # Handler runs synchronously in this implementation
         assert resp["result"]["status"] == "completed"
         assert resp["result"]["artifact"][0]["result"] == "done"
@@ -232,12 +244,14 @@ class TestA2AServer:
             raise RuntimeError("boom")
 
         server = A2AServer(agent_card=card, task_handler=bad_handler)
-        resp = server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 9,
-            "method": "tasks/send",
-            "params": {"id": "th2"},
-        })
+        resp = server.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 9,
+                "method": "tasks/send",
+                "params": {"id": "th2"},
+            }
+        )
         assert resp["result"]["status"] == "failed"
         assert "boom" in resp["result"]["metadata"]["error"]
 
@@ -246,23 +260,27 @@ class TestA2AServer:
         server = A2AServer(agent_card=card)
         events: list = []
         server.register_sse_listener(lambda et, d: events.append((et, d)))
-        server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 10,
-            "method": "tasks/send",
-            "params": {"id": "sse_t"},
-        })
+        server.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 10,
+                "method": "tasks/send",
+                "params": {"id": "sse_t"},
+            }
+        )
         assert any(et == "task_update" for et, _ in events)
 
     def test_get_and_list_tasks(self) -> None:
         card = A2AAgentCard(name="S", description="D", version="1", url="")
         server = A2AServer(agent_card=card)
-        server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 11,
-            "method": "tasks/send",
-            "params": {"id": "tlist"},
-        })
+        server.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 11,
+                "method": "tasks/send",
+                "params": {"id": "tlist"},
+            }
+        )
         assert server.get_task("tlist") is not None
         assert "tlist" in server.list_tasks()
 
@@ -351,6 +369,7 @@ class TestA2AClient:
 class TestA2AProtocolAdapter:
     def test_register_agent(self) -> None:
         adapter = A2AProtocolAdapter()
+
         class FakeIdentity:
             agent_id = "agent_1"
             card = type(
@@ -366,12 +385,14 @@ class TestA2AProtocolAdapter:
                     "authentication": {},
                 },
             )()
+
         card = adapter.register_agent(FakeIdentity())
         assert card.name == "A1"
         assert "agent_1" in adapter.list_agents()
 
     def test_get_server_routes(self) -> None:
         adapter = A2AProtocolAdapter()
+
         class FakeIdentity:
             agent_id = "agent_1"
             card = type(
@@ -387,6 +408,7 @@ class TestA2AProtocolAdapter:
                     "authentication": {},
                 },
             )()
+
         adapter.register_agent(FakeIdentity())
         routes = adapter.get_server_routes()
         assert "/tasks/send" in routes
@@ -396,6 +418,7 @@ class TestA2AProtocolAdapter:
 
     def test_server_routes_dispatch(self) -> None:
         adapter = A2AProtocolAdapter()
+
         class FakeIdentity:
             agent_id = "agent_1"
             card = type(
@@ -411,9 +434,12 @@ class TestA2AProtocolAdapter:
                     "authentication": {},
                 },
             )()
+
         adapter.register_agent(FakeIdentity())
         routes = adapter.get_server_routes()
-        resp = routes["/tasks/send"]({"agent_id": "agent_1", "id": 1, "params": {"id": "t1"}})
+        resp = routes["/tasks/send"](
+            {"agent_id": "agent_1", "id": 1, "params": {"id": "t1"}}
+        )
         assert resp["result"]["status"] == "working"
 
     def test_server_routes_unknown_agent(self) -> None:
@@ -425,9 +451,11 @@ class TestA2AProtocolAdapter:
 
     def test_attach_to_fleet_conductor(self) -> None:
         adapter = A2AProtocolAdapter()
+
         class FakeConductor:
             def orchestrate(self, repo_path: str, tasks: list) -> Dict[str, Any]:
                 return {"status": "ok"}
+
         adapter.attach_to_fleet_conductor(FakeConductor())
         assert "fleet_conductor" in adapter.list_agents()
         card = adapter.get_agent_card("fleet_conductor")
@@ -437,26 +465,42 @@ class TestA2AProtocolAdapter:
 
     def test_attach_to_sse_dashboard(self, caplog: Any) -> None:
         import logging
+
         with caplog.at_level(logging.INFO):
             adapter = A2AProtocolAdapter()
+
             class FakeIdentity:
                 agent_id = "a1"
-                card = type("Card", (object,), {
-                    "name": "A", "version": "1", "description": "D", "url": "",
-                    "capabilities": {}, "skills": [], "authentication": {},
-                })()
+                card = type(
+                    "Card",
+                    (object,),
+                    {
+                        "name": "A",
+                        "version": "1",
+                        "description": "D",
+                        "url": "",
+                        "capabilities": {},
+                        "skills": [],
+                        "authentication": {},
+                    },
+                )()
+
             adapter.register_agent(FakeIdentity())
+
             class FakeSSE:
                 def publish(self, event_type: str, data: Any) -> None:
                     pass
+
             adapter.attach_to_sse_dashboard(FakeSSE())
             # Should log success
             assert "A2A events wired" in caplog.text
 
     def test_attach_to_sse_dashboard_no_publish(self, caplog: Any) -> None:
         adapter = A2AProtocolAdapter()
+
         class FakeSSE:
             pass
+
         adapter.attach_to_sse_dashboard(FakeSSE())
         assert "no publish() method" in caplog.text
 

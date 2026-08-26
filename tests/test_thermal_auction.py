@@ -17,6 +17,7 @@ from swarm.thermal_auction import Bid, Allocation, VCGAuction
 
 # ── fixtures ──────────────────────────────────────────────────
 
+
 @pytest.fixture
 def small_budget():
     """ThermalBudget with 1 slot per device for scarcity testing."""
@@ -34,6 +35,7 @@ def auction(small_budget):
 
 
 # ── unit tests for VCGAuction ─────────────────────────────────
+
 
 class TestVCGAuctionLogic:
     """Pure auction logic without ThermalBudget integration."""
@@ -65,7 +67,12 @@ class TestVCGAuctionLogic:
     def test_vcg_price_less_than_or_equal_to_bid(self, auction):
         """No winner pays more than their bid (individual rationality)."""
         bids = [
-            Bid(f"agent_{i}", DeviceType.GPU, value=float(i + 1) / 10, fitness=float(i + 1) / 10)
+            Bid(
+                f"agent_{i}",
+                DeviceType.GPU,
+                value=float(i + 1) / 10,
+                fitness=float(i + 1) / 10,
+            )
             for i in range(5)
         ]
         results = auction.run_auction(bids)
@@ -142,7 +149,12 @@ class TestVCGAuctionLogic:
         )
         auction3 = VCGAuction(small_budget)
         bids = [
-            Bid(f"agent_{i}", DeviceType.GPU, value=float(i + 1) * 0.1, fitness=float(i + 1) * 0.1)
+            Bid(
+                f"agent_{i}",
+                DeviceType.GPU,
+                value=float(i + 1) * 0.1,
+                fitness=float(i + 1) * 0.1,
+            )
             for i in range(5)
         ]
         # Values: 0.1, 0.2, 0.3, 0.4, 0.5 → top 3: 0.5, 0.4, 0.3 → pay 0.2
@@ -157,6 +169,7 @@ class TestVCGAuctionLogic:
 
 
 # ── integration tests with ThermalBudget ──────────────────────
+
 
 class TestThermalBudgetAuctionIntegration:
     """Auction mode integrated into ThermalBudget.spawn() and tick()."""
@@ -200,10 +213,20 @@ class TestThermalBudgetAuctionIntegration:
         )
         # Queue 10 bids for GPU (max 2 slots)
         for i in range(10):
-            budget.spawn(f"gpu_{i}", DeviceType.GPU, bid_value=float(i) / 10, fitness=float(i) / 10)
+            budget.spawn(
+                f"gpu_{i}",
+                DeviceType.GPU,
+                bid_value=float(i) / 10,
+                fitness=float(i) / 10,
+            )
         # Queue 10 bids for CPU (max 3 slots)
         for i in range(10):
-            budget.spawn(f"cpu_{i}", DeviceType.CPU, bid_value=float(i) / 10, fitness=float(i) / 10)
+            budget.spawn(
+                f"cpu_{i}",
+                DeviceType.CPU,
+                bid_value=float(i) / 10,
+                fitness=float(i) / 10,
+            )
 
         budget.tick()
 

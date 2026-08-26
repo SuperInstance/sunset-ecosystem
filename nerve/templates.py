@@ -3,6 +3,7 @@
 Each template defines the starting personality (ethos/pathos/logos bias),
 exploration rate, and routing tags for a specific agent type.
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -48,7 +49,9 @@ class AgentTemplate:
             if not (0.0 <= val <= 1.0):
                 raise ValueError(f"{axis} must be in [0, 1], got {val}")
         if not (0.0 <= self.chaos_initial <= 1.0):
-            raise ValueError(f"chaos_initial must be in [0, 1], got {self.chaos_initial}")
+            raise ValueError(
+                f"chaos_initial must be in [0, 1], got {self.chaos_initial}"
+            )
 
     @property
     def trinity_signature(self) -> tuple[float, float, float]:

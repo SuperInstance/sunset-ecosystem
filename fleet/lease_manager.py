@@ -10,6 +10,7 @@ Usage:
     assert leases.is_owner("leader", "node-1")
     leases.renew("leader", ttl_sec=30)
 """
+
 from __future__ import annotations
 
 import time
@@ -127,9 +128,7 @@ class LeaseManager:
     def list_by_owner(self, owner: str) -> List[str]:
         """List all leases held by an owner."""
         self._evict()
-        return [
-            key for key, lease in self._leases.items() if lease.owner == owner
-        ]
+        return [key for key, lease in self._leases.items() if lease.owner == owner]
 
     # ------------------------------------------------------------------
     # Cleanup

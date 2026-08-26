@@ -7,6 +7,7 @@ accelerated path when available.
 
 Reference: experiments/SCOUT-REPORT.md §3 — AVX-512 HDC XOR Judge
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # AVX-512 capability probe
 # ---------------------------------------------------------------------------
+
 
 def _detect_avx512() -> bool:
     """Return True if the runtime CPU supports AVX-512.
@@ -71,8 +73,10 @@ def _detect_avx512() -> bool:
 
     usable = dt_numpy < dt_python * 0.5
     if usable:
-        logger.info("AVX-512 VPOPCNTDQ path enabled (%.2f× faster than Python)",
-                    dt_python / max(dt_numpy, 1e-9))
+        logger.info(
+            "AVX-512 VPOPCNTDQ path enabled (%.2f× faster than Python)",
+            dt_python / max(dt_numpy, 1e-9),
+        )
     else:
         logger.debug("AVX-512 present but np.bitwise_count not faster; using fallback")
     return usable
@@ -84,6 +88,7 @@ HAS_AVX512: bool = _detect_avx512()
 # ---------------------------------------------------------------------------
 # BinaryVectorEncoder
 # ---------------------------------------------------------------------------
+
 
 class BinaryVectorEncoder:
     """Float32 → packed binary hypervector encoder.
@@ -143,9 +148,7 @@ class BinaryVectorEncoder:
         if vec.ndim != 1:
             raise ValueError(f"encode expects 1-D vector, got shape {vec.shape}")
         if vec.shape[0] != self.dim:
-            raise ValueError(
-                f"vector dim {vec.shape[0]} != encoder dim {self.dim}"
-            )
+            raise ValueError(f"vector dim {vec.shape[0]} != encoder dim {self.dim}")
 
         # Binarise: 1 if element > 0 else 0
         bits = (vec > 0).astype(np.uint8)
@@ -181,9 +184,7 @@ class BinaryVectorEncoder:
         if vecs.ndim != 2:
             raise ValueError(f"encode_batch expects 2-D array, got shape {vecs.shape}")
         if vecs.shape[1] != self.dim:
-            raise ValueError(
-                f"vector dim {vecs.shape[1]} != encoder dim {self.dim}"
-            )
+            raise ValueError(f"vector dim {vecs.shape[1]} != encoder dim {self.dim}")
 
         batch = vecs.shape[0]
         bits = (vecs > 0).astype(np.uint8)
@@ -228,6 +229,7 @@ class BinaryVectorEncoder:
 # HDCDiversityScorer
 # ---------------------------------------------------------------------------
 
+
 class HDCDiversityScorer:
     """XOR+POPCNT novelty scorer for binary hypervectors.
 
@@ -256,10 +258,13 @@ class HDCDiversityScorer:
                 return int(
                     np.bitwise_count(words).sum()  # type: ignore[attr-defined]
                 )
+
             return _avx512_popcnt
+
         # Fallback: pure Python per-word popcount (still fast for small dims)
         def _fallback_popcnt(words: np.ndarray) -> int:
             return sum(int(w).bit_count() for w in words.flat)
+
         return _fallback_popcnt
 
     # ---- scoring API -----------------------------------------------------
@@ -393,6 +398,7 @@ class HDCDiversityScorer:
 # ---------------------------------------------------------------------------
 # Top-level convenience function
 # ---------------------------------------------------------------------------
+
 
 def hdc_novelty_score(a: np.ndarray, b: np.ndarray) -> float:
     """Compute HDC binary novelty between two float32 vectors.

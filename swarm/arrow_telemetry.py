@@ -31,6 +31,7 @@ _ARR_ERROR = None
 try:
     import pyarrow as pa
     import pyarrow.parquet as pq
+
     _ARR = pa
 except ImportError as e:  # pragma: no cover
     _ARR_ERROR = e
@@ -47,15 +48,31 @@ def _arrow() -> Any:
 # ---------------------------------------------------------------------------
 
 EVENT_TYPES = [
-    "AGENT_SPAWN", "AGENT_DEATH", "BREED", "MUTATION",
-    "FLUX_GATE", "FLUX_VIOLATION", "THERMAL_RISE", "THERMAL_FALL",
-    "MESH_SYNC", "BEAT_TICK", "ERROR", "INFO",
+    "AGENT_SPAWN",
+    "AGENT_DEATH",
+    "BREED",
+    "MUTATION",
+    "FLUX_GATE",
+    "FLUX_VIOLATION",
+    "THERMAL_RISE",
+    "THERMAL_FALL",
+    "MESH_SYNC",
+    "BEAT_TICK",
+    "ERROR",
+    "INFO",
 ]
 
 PAYLOAD_KEYS = [
-    "agent_id", "parent_ids", "room_id", "generation",
-    "flux_score", "thermal_level", "vector_dim", "confidence",
-    "latency_ms", "payload_json",
+    "agent_id",
+    "parent_ids",
+    "room_id",
+    "generation",
+    "flux_score",
+    "thermal_level",
+    "vector_dim",
+    "confidence",
+    "latency_ms",
+    "payload_json",
 ]
 
 
@@ -63,9 +80,11 @@ PAYLOAD_KEYS = [
 # Telemetry event
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TelemetryEvent:
     """Single PLATO telemetry event."""
+
     timestamp: float
     event_type: str
     agent_id: str
@@ -82,19 +101,22 @@ class TelemetryEvent:
 # Arrow schema builder
 # ---------------------------------------------------------------------------
 
+
 def build_arrow_schema() -> Any:
     """Build the Arrow schema for fleet telemetry."""
     pa = _arrow()
-    return pa.schema([
-        ("timestamp", pa.timestamp("us")),
-        ("event_type", pa.string()),
-        ("agent_id", pa.string()),
-        ("room_id", pa.string()),
-        ("payload_json", pa.string()),
-        ("flux_score", pa.float64()),
-        ("thermal_level", pa.float64()),
-        ("latency_ms", pa.float64()),
-    ])
+    return pa.schema(
+        [
+            ("timestamp", pa.timestamp("us")),
+            ("event_type", pa.string()),
+            ("agent_id", pa.string()),
+            ("room_id", pa.string()),
+            ("payload_json", pa.string()),
+            ("flux_score", pa.float64()),
+            ("thermal_level", pa.float64()),
+            ("latency_ms", pa.float64()),
+        ]
+    )
 
 
 def event_to_arrow_record(event: TelemetryEvent, schema: Any) -> Any:
@@ -125,7 +147,9 @@ def events_to_arrow_record(events: List[TelemetryEvent], schema: Any) -> Any:
         )
     return pa.RecordBatch.from_arrays(
         [
-            pa.array([int(e.timestamp * 1_000_000) for e in events], type=pa.timestamp("us")),
+            pa.array(
+                [int(e.timestamp * 1_000_000) for e in events], type=pa.timestamp("us")
+            ),
             pa.array([e.event_type for e in events]),
             pa.array([e.agent_id for e in events]),
             pa.array([e.room_id for e in events]),
@@ -141,6 +165,7 @@ def events_to_arrow_record(events: List[TelemetryEvent], schema: Any) -> Any:
 # ---------------------------------------------------------------------------
 # Arrow telemetry buffer (ring buffer)
 # ---------------------------------------------------------------------------
+
 
 class ArrowTelemetryBuffer:
     """Ring buffer of Arrow RecordBatches with configurable retention.
@@ -234,6 +259,7 @@ class ArrowTelemetryBuffer:
 # PLATO stream adapter
 # ---------------------------------------------------------------------------
 
+
 class PLATOStreamAdapter:
     """Converts PLATO room events to TelemetryEvents."""
 
@@ -260,7 +286,11 @@ class PLATOStreamAdapter:
         """Convert a PLATO event dict to TelemetryEvent."""
         plato_type = plato_event.get("type", "info")
         event_type = self.PLATO_TO_TELEMETRY.get(plato_type, "INFO")
-        payload = {k: v for k, v in plato_event.items() if k not in ("type", "timestamp", "agent_id")}
+        payload = {
+            k: v
+            for k, v in plato_event.items()
+            if k not in ("type", "timestamp", "agent_id")
+        }
         metrics = {}
         if "flux_score" in plato_event:
             metrics["flux_score"] = float(plato_event["flux_score"])
@@ -284,6 +314,7 @@ class PLATOStreamAdapter:
 # ---------------------------------------------------------------------------
 # Fleet analytics sink
 # ---------------------------------------------------------------------------
+
 
 class FleetAnalyticsSink:
     """Batch exporter for Arrow telemetry data.
@@ -318,11 +349,13 @@ class FleetAnalyticsSink:
         # SSE notification (fire-and-forget)
         for cb in self._sse_callbacks:
             try:
-                cb({
-                    "type": "ARROW_BATCH",
-                    "rows": table.num_rows,
-                    "timestamp": time.time(),
-                })
+                cb(
+                    {
+                        "type": "ARROW_BATCH",
+                        "rows": table.num_rows,
+                        "timestamp": time.time(),
+                    }
+                )
             except Exception:
                 pass
 
@@ -365,6 +398,7 @@ class FleetAnalyticsSink:
 # Integration helpers
 # ---------------------------------------------------------------------------
 
+
 def wire_to_fleet_conductor(conductor: Any, buffer: ArrowTelemetryBuffer) -> None:
     """Wire an ArrowTelemetryBuffer to a FleetConductorV2 instance.
 
@@ -374,13 +408,17 @@ def wire_to_fleet_conductor(conductor: Any, buffer: ArrowTelemetryBuffer) -> Non
 
     def instrumented_beat() -> None:
         original_beat()
-        buffer.append(TelemetryEvent(
-            timestamp=time.time(),
-            event_type="BEAT_TICK",
-            agent_id=conductor.identity.agent_id if hasattr(conductor, "identity") else "conductor",
-            room_id="fleet",
-            metrics={"latency_ms": 0.0},
-        ))
+        buffer.append(
+            TelemetryEvent(
+                timestamp=time.time(),
+                event_type="BEAT_TICK",
+                agent_id=conductor.identity.agent_id
+                if hasattr(conductor, "identity")
+                else "conductor",
+                room_id="fleet",
+                metrics={"latency_ms": 0.0},
+            )
+        )
 
     conductor.beat = instrumented_beat
 
@@ -390,10 +428,14 @@ def wire_to_sse_dashboard(dashboard: Any, sink: FleetAnalyticsSink) -> None:
 
     Serves Arrow-encoded SSE events via the dashboard's event bus.
     """
+
     def on_arrow_batch(event: Dict[str, Any]) -> None:
-        dashboard.publish({
-            "type": "ARROW_BATCH",
-            "rows": event.get("rows", 0),
-            "timestamp": event.get("timestamp", time.time()),
-        })
+        dashboard.publish(
+            {
+                "type": "ARROW_BATCH",
+                "rows": event.get("rows", 0),
+                "timestamp": event.get("timestamp", time.time()),
+            }
+        )
+
     sink.register_sse_callback(on_arrow_batch)

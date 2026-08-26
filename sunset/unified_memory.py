@@ -139,7 +139,9 @@ class UnifiedMemoryPool:
                 return "managed"
             except Exception:
                 try:
-                    probe = _CUPY_MODULE.cuda.host_alloc(1, _CUPY_MODULE.cuda.host_alloc_mapped)
+                    probe = _CUPY_MODULE.cuda.host_alloc(
+                        1, _CUPY_MODULE.cuda.host_alloc_mapped
+                    )
                     _CUPY_MODULE.cuda.free(probe)
                     return "mapped"
                 except Exception:
@@ -272,7 +274,9 @@ class UnifiedMemoryPool:
         if handle.unified:
             # Zero-copy: pointer is valid everywhere.  Just update metadata.
             handle.device = target_device
-            log.debug("Migrate (no-op, unified) %s -> %s", handle.handle_id, target_device)
+            log.debug(
+                "Migrate (no-op, unified) %s -> %s", handle.handle_id, target_device
+            )
             return handle
 
         # ── Fallback copy path ────────────────────────────────
@@ -288,7 +292,9 @@ class UnifiedMemoryPool:
             else:
                 new_arr = _CUPY_MODULE.asarray(old_arr)
             handle._arrays[target_device] = new_arr
-            handle.ptr = int(new_arr.data) if hasattr(new_arr, "data") else new_arr.ctypes.data
+            handle.ptr = (
+                int(new_arr.data) if hasattr(new_arr, "data") else new_arr.ctypes.data
+            )
         else:
             # NumPy fallback: make a copy
             new_arr = np.array(old_arr, copy=True, order="C")
@@ -296,7 +302,9 @@ class UnifiedMemoryPool:
             handle.ptr = new_arr.ctypes.data
 
         handle.device = target_device
-        log.debug("Migrate (copy) %s %s -> %s", handle.handle_id, old_device, target_device)
+        log.debug(
+            "Migrate (copy) %s %s -> %s", handle.handle_id, old_device, target_device
+        )
         return handle
 
     # ── Pointer retrieval ────────────────────────────────────
@@ -327,7 +335,9 @@ class UnifiedMemoryPool:
             log.debug("Double-free of %s — ignored", handle.handle_id)
             return
         if handle.handle_id not in self._handles:
-            log.warning("Free called on handle not owned by this pool: %s", handle.handle_id)
+            log.warning(
+                "Free called on handle not owned by this pool: %s", handle.handle_id
+            )
             return
 
         # Release underlying arrays

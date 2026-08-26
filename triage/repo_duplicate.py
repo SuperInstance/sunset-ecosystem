@@ -9,6 +9,7 @@ SPEC-FLUX-RESOLUTION:
   - AI-Writings in 3 different casings
   - constraint-theory-py as both monorepo and individual crates
 """
+
 from __future__ import annotations
 
 __all__ = ["RepoDuplicateDetector", "find_repo_duplicates"]
@@ -68,7 +69,14 @@ def _hash_repo(repo_path: Path, max_source_files: int = 10) -> Dict[str, str]:
         if child.is_dir() and not child.name.startswith("."):
             for f in sorted(child.iterdir()):
                 if f.is_file() and f.suffix in (
-                    ".py", ".rs", ".go", ".js", ".ts", ".cpp", ".c", ".h"
+                    ".py",
+                    ".rs",
+                    ".go",
+                    ".js",
+                    ".ts",
+                    ".cpp",
+                    ".c",
+                    ".h",
                 ):
                     rel = str(f.relative_to(repo_path))
                     hashes[rel] = _hash_file(f)

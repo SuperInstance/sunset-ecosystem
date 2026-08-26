@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class Snapshot:
     """A snapshot of fleet state."""
+
     snapshot_id: str
     timestamp: float
     data: Dict[str, Any]
@@ -37,7 +38,9 @@ class BackupManager:
         self._snapshots: List[Snapshot] = []
         self._max_snapshots = max_snapshots
 
-    def snapshot(self, data: Dict[str, Any], tags: Optional[Dict[str, str]] = None) -> Snapshot:
+    def snapshot(
+        self, data: Dict[str, Any], tags: Optional[Dict[str, str]] = None
+    ) -> Snapshot:
         """Take a snapshot of fleet state."""
         snap = Snapshot(
             snapshot_id=f"snap_{int(time.time() * 1000000)}",
@@ -47,7 +50,7 @@ class BackupManager:
         )
         self._snapshots.append(snap)
         if len(self._snapshots) > self._max_snapshots:
-            self._snapshots = self._snapshots[-self._max_snapshots:]
+            self._snapshots = self._snapshots[-self._max_snapshots :]
         return snap
 
     def restore(self, snapshot_id: str) -> Optional[Dict[str, Any]]:
@@ -57,8 +60,9 @@ class BackupManager:
                 return snap.data
         return None
 
-    def get_snapshots(self, tag_key: Optional[str] = None,
-                      tag_value: Optional[str] = None) -> List[Snapshot]:
+    def get_snapshots(
+        self, tag_key: Optional[str] = None, tag_value: Optional[str] = None
+    ) -> List[Snapshot]:
         """Get snapshots with optional tag filtering."""
         snapshots = self._snapshots
         if tag_key is not None:
@@ -83,15 +87,20 @@ class BackupManager:
         """Get backup statistics."""
         return {
             "total_snapshots": len(self._snapshots),
-            "latest_timestamp": self._snapshots[-1].timestamp if self._snapshots else None,
+            "latest_timestamp": self._snapshots[-1].timestamp
+            if self._snapshots
+            else None,
         }
 
     def export_json(self) -> str:
         """Export all snapshots as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "snapshots": [s.to_dict() for s in self._snapshots],
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "snapshots": [s.to_dict() for s in self._snapshots],
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

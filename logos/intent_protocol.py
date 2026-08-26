@@ -28,6 +28,7 @@ DESTRUCTIVE_ACTIONS: Set[str] = {
 
 # ── FleetState ──────────────────────────────────────────────
 
+
 @dataclass
 class FleetState:
     """Lightweight snapshot of fleet status for intent disambiguation."""
@@ -50,6 +51,7 @@ class FleetState:
 
 # ── Intent ──────────────────────────────────────────────────
 
+
 @dataclass
 class Intent:
     """Structured human intent parsed from a natural-language command."""
@@ -70,6 +72,7 @@ class Intent:
 
 
 # ── IntentConfirmationProtocol ──────────────────────────────
+
 
 class IntentConfirmationProtocol:
     """Disambiguates human intent before fleet-wide actions.
@@ -104,7 +107,10 @@ class IntentConfirmationProtocol:
         (re.compile(r"\bagent\s+(\d+)\b", re.I), lambda m: f"agent:{m.group(1)}"),
         (re.compile(r"\broom\s+([\w\-]+)\b", re.I), lambda m: f"room:{m.group(1)}"),
         (re.compile(r"\btop\s+(\d+)\b", re.I), lambda m: f"top:{m.group(1)}"),
-        (re.compile(r"\bfitness\s*([><=]+)\s*([\d.]+)\b", re.I), lambda m: f"fitness{m.group(1)}{m.group(2)}"),
+        (
+            re.compile(r"\bfitness\s*([><=]+)\s*([\d.]+)\b", re.I),
+            lambda m: f"fitness{m.group(1)}{m.group(2)}",
+        ),
         (re.compile(r"\ball\b", re.I), lambda _m: "all"),
         (re.compile(r"\bevery\b", re.I), lambda _m: "all"),
         (re.compile(r"\bglobal\b", re.I), lambda _m: "all"),
@@ -249,7 +255,9 @@ class IntentConfirmationProtocol:
         else:
             options.append("(b) Only agents in a specific room")
 
-        above = self.fleet_state.agents_above_fitness(self.fleet_state.top_fitness_threshold)
+        above = self.fleet_state.agents_above_fitness(
+            self.fleet_state.top_fitness_threshold
+        )
         if above > 0:
             options.append(
                 f"(c) Agents with fitness > {self.fleet_state.top_fitness_threshold} "
@@ -309,6 +317,7 @@ class IntentConfirmationProtocol:
             )
         if journal_path is not None:
             from logos.decision_journal import log_human_command
+
             log_human_command(
                 intent=intent,
                 confirmed=confirmed,

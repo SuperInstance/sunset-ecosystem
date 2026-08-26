@@ -48,7 +48,9 @@ class SeedBank:
     def __repr__(self) -> str:
         return f"SeedBank(entries={len(self._entries)})"
 
-    def store(self, onboarding: Onboarding, relevance: float = 0.5, novelty: float = 0.5) -> str:
+    def store(
+        self, onboarding: Onboarding, relevance: float = 0.5, novelty: float = 0.5
+    ) -> str:
         """Store an onboarding document. Returns the entry key."""
         key = f"{onboarding.agent_id}:{onboarding.variant}:{id(onboarding)}"
         entry = SeedEntry(onboarding=onboarding, relevance=relevance, novelty=novelty)
@@ -68,7 +70,10 @@ class SeedBank:
         keys, weights = zip(*((k, e.weight) for k, e in candidates))
         total = sum(weights)
         if total == 0:
-            return [candidates[i][1].onboarding for i in random.sample(range(len(candidates)), min(n, len(candidates)))]
+            return [
+                candidates[i][1].onboarding
+                for i in random.sample(range(len(candidates)), min(n, len(candidates)))
+            ]
 
         probs = [w / total for w in weights]
         chosen_keys = set()
@@ -109,7 +114,9 @@ class SeedBank:
         pick.times_selected += 1
         return pick.onboarding
 
-    def _filtered_entries(self, generation: Optional[int] = None) -> List[Tuple[str, SeedEntry]]:
+    def _filtered_entries(
+        self, generation: Optional[int] = None
+    ) -> List[Tuple[str, SeedEntry]]:
         if generation is None:
             return list(self._entries.items())
         keys = set(self._by_generation.get(generation, []))

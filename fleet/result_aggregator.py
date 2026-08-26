@@ -11,6 +11,7 @@ Usage:
     agg.submit("worker-2", result=43)
     result = agg.result()  # Blocks until all complete
 """
+
 from __future__ import annotations
 
 import time
@@ -55,7 +56,9 @@ class ResultAggregator:
     # Submission
     # ------------------------------------------------------------------
 
-    def submit(self, source: str, result: Any = None, error: Optional[str] = None) -> None:
+    def submit(
+        self, source: str, result: Any = None, error: Optional[str] = None
+    ) -> None:
         """
         Submit a result from a source.
 

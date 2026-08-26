@@ -37,6 +37,7 @@ from superinstance.plugins.plato import (
 # Minimal test plugins
 # ═══════════════════════════════════════════════════════════════
 
+
 class EchoCollector(CollectorPlugin):
     name = "echo-collector"
 
@@ -70,6 +71,7 @@ class BrokenCollector(CollectorPlugin):
 # EventBus registration
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestRegistration:
     def test_register_collector(self):
         bus = EventBus()
@@ -102,6 +104,7 @@ class TestRegistration:
 # Full pipeline
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestPipeline:
     def test_full_pipeline(self):
         bus = EventBus()
@@ -113,7 +116,10 @@ class TestPipeline:
 
         assert result.collected == [1, 5, 10]
         assert result.selected == [5, 10]
-        assert result.compiled == [{"value": 5, "doubled": 10}, {"value": 10, "doubled": 20}]
+        assert result.compiled == [
+            {"value": 5, "doubled": 10},
+            {"value": 10, "doubled": 20},
+        ]
         assert not result.errors
 
     def test_no_selectors_passes_all(self):
@@ -138,6 +144,7 @@ class TestPipeline:
 # ═══════════════════════════════════════════════════════════════
 # Error isolation
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestErrorIsolation:
     def test_broken_collector_does_not_stop_pipeline(self):
@@ -173,12 +180,18 @@ class TestErrorIsolation:
 # Constraint plugin
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestConstraintPlugin:
     def test_collector_extracts_artifacts(self):
         coll = ConstraintCollector()
         ctx = {
             "constraints": [
-                {"field": "chaos", "value": 0.5, "lower_bound": 0.0, "upper_bound": 1.0},
+                {
+                    "field": "chaos",
+                    "value": 0.5,
+                    "lower_bound": 0.0,
+                    "upper_bound": 1.0,
+                },
                 {"field": "temp", "value": 1.2, "lower_bound": 0.0, "upper_bound": 1.0},
             ]
         }
@@ -209,7 +222,12 @@ class TestConstraintPlugin:
         arts = coll.collect(
             {
                 "constraints": [
-                    {"field": "temp", "value": 1.5, "lower_bound": 0, "upper_bound": 1.0},
+                    {
+                        "field": "temp",
+                        "value": 1.5,
+                        "lower_bound": 0,
+                        "upper_bound": 1.0,
+                    },
                 ]
             }
         )
@@ -244,12 +262,19 @@ class TestConstraintPlugin:
 # PLATO plugin
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestPlatoPlugin:
     def test_collector_extracts_tiles(self):
         coll = PlatoCollector()
         ctx = {
             "tiles": [
-                {"tile_id": "t1", "room_id": 0, "content": "hello", "tags": ["greeting"], "entropy": 0.9},
+                {
+                    "tile_id": "t1",
+                    "room_id": 0,
+                    "content": "hello",
+                    "tags": ["greeting"],
+                    "entropy": 0.9,
+                },
             ]
         }
         arts = coll.collect(ctx)
@@ -263,8 +288,20 @@ class TestPlatoPlugin:
         arts = coll.collect(
             {
                 "tiles": [
-                    {"tile_id": "t1", "room_id": 0, "content": "a", "tags": [], "entropy": 0.9},
-                    {"tile_id": "t2", "room_id": 1, "content": "b", "tags": [], "entropy": 0.1},
+                    {
+                        "tile_id": "t1",
+                        "room_id": 0,
+                        "content": "a",
+                        "tags": [],
+                        "entropy": 0.9,
+                    },
+                    {
+                        "tile_id": "t2",
+                        "room_id": 1,
+                        "content": "b",
+                        "tags": [],
+                        "entropy": 0.1,
+                    },
                 ]
             }
         )
@@ -278,7 +315,13 @@ class TestPlatoPlugin:
         arts = coll.collect(
             {
                 "tiles": [
-                    {"tile_id": "t1", "room_id": 0, "content": "hello world", "tags": ["greeting"], "entropy": 0.9},
+                    {
+                        "tile_id": "t1",
+                        "room_id": 0,
+                        "content": "hello world",
+                        "tags": ["greeting"],
+                        "entropy": 0.9,
+                    },
                 ]
             }
         )
@@ -296,8 +339,20 @@ class TestPlatoPlugin:
         result = bus.run(
             {
                 "tiles": [
-                    {"tile_id": "t1", "room_id": 0, "content": "high entropy", "tags": ["a"], "entropy": 0.9},
-                    {"tile_id": "t2", "room_id": 1, "content": "low entropy", "tags": ["b"], "entropy": 0.2},
+                    {
+                        "tile_id": "t1",
+                        "room_id": 0,
+                        "content": "high entropy",
+                        "tags": ["a"],
+                        "entropy": 0.9,
+                    },
+                    {
+                        "tile_id": "t2",
+                        "room_id": 1,
+                        "content": "low entropy",
+                        "tags": ["b"],
+                        "entropy": 0.2,
+                    },
                 ],
                 "entropy_threshold": 0.5,
             }
@@ -314,6 +369,7 @@ class TestPlatoPlugin:
 # Partial phase execution
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestPartialExecution:
     def test_run_collect_only(self):
         bus = EventBus()
@@ -328,4 +384,7 @@ class TestPartialExecution:
     def test_run_compile_only(self):
         bus = EventBus()
         bus.register_compiler(EchoCompiler())
-        assert bus.run_compile([3, 4]) == [{"value": 3, "doubled": 6}, {"value": 4, "doubled": 8}]
+        assert bus.run_compile([3, 4]) == [
+            {"value": 3, "doubled": 6},
+            {"value": 4, "doubled": 8},
+        ]

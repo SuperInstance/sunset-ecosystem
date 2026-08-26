@@ -23,12 +23,14 @@ server = A2AServer(
         authentication={"schemes": ["bearer"]},
     )
 )
-response = server.handle_request({
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tasks/send",
-    "params": {"id": "task_1", "sessionId": "sess_1"},
-})
+response = server.handle_request(
+    {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tasks/send",
+        "params": {"id": "task_1", "sessionId": "sess_1"},
+    }
+)
 ```
 
 ---
@@ -45,8 +47,17 @@ Agent metadata per A2A spec.
 
 Fields:
 ```python
-name, description, version, url,
-capabilities, skills, authentication,
+(
+    name,
+    description,
+    version,
+    url,
+)
+(
+    capabilities,
+    skills,
+    authentication,
+)
 default_input_content_type, default_output_content_type
 ```
 
@@ -129,6 +140,7 @@ Listeners receive `(event_type: str, data: dict)`.
 ### FleetConductorV2
 ```python
 from logos.a2a_protocol import A2AProtocolAdapter
+
 adapter = A2AProtocolAdapter()
 adapter.attach_to_fleet_conductor(conductor)
 ```
@@ -136,6 +148,7 @@ adapter.attach_to_fleet_conductor(conductor)
 ### SSE Stream Dashboard
 ```python
 from fleet.sse_stream_dashboard import SSEStreamDashboard
+
 sse = SSEStreamDashboard()
 adapter.attach_to_sse_dashboard(sse)
 # Now every A2A task event also goes to the SSE stream
@@ -144,6 +157,7 @@ adapter.attach_to_sse_dashboard(sse)
 ### Agent Identity
 ```python
 from logos.agent_identity import AgentIdentity
+
 identity = AgentIdentity(agent_id="scout_1")
 adapter.register_agent(identity)
 ```

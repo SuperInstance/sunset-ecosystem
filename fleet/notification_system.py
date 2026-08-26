@@ -19,6 +19,7 @@ class AlertSeverity(Enum):
 @dataclass
 class Alert:
     """A fleet alert."""
+
     alert_id: str
     title: str
     message: str
@@ -98,18 +99,29 @@ class NotificationSystem:
         """Add a notification channel."""
         self.channels[channel.name] = channel
 
-    def add_rule(self, severity: Optional[str] = None,
-                 source: Optional[str] = None,
-                 channel_name: Optional[str] = None) -> None:
+    def add_rule(
+        self,
+        severity: Optional[str] = None,
+        source: Optional[str] = None,
+        channel_name: Optional[str] = None,
+    ) -> None:
         """Add a routing rule."""
-        self._rules.append({
-            "severity": severity,
-            "source": source,
-            "channel": channel_name,
-        })
+        self._rules.append(
+            {
+                "severity": severity,
+                "source": source,
+                "channel": channel_name,
+            }
+        )
 
-    def send(self, title: str, message: str, severity: AlertSeverity = AlertSeverity.INFO,
-             source: str = "fleet", metadata: Optional[Dict[str, Any]] = None) -> Alert:
+    def send(
+        self,
+        title: str,
+        message: str,
+        severity: AlertSeverity = AlertSeverity.INFO,
+        source: str = "fleet",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Alert:
         """Send an alert."""
         alert = Alert(
             alert_id=f"alert_{int(time.time() * 1000000)}",
@@ -147,8 +159,9 @@ class NotificationSystem:
                 return True
         return False
 
-    def get_alerts(self, severity: Optional[str] = None,
-                   acknowledged: Optional[bool] = None) -> List[Alert]:
+    def get_alerts(
+        self, severity: Optional[str] = None, acknowledged: Optional[bool] = None
+    ) -> List[Alert]:
         """Get alerts with optional filters."""
         alerts = self._alerts
         if severity:
@@ -172,11 +185,14 @@ class NotificationSystem:
 
     def export_json(self) -> str:
         """Export alerts as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "alerts": [a.to_dict() for a in self._alerts[-100:]],
-            "stats": self.get_stats(),
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "alerts": [a.to_dict() for a in self._alerts[-100:]],
+                "stats": self.get_stats(),
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

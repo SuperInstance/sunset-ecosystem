@@ -9,6 +9,7 @@ Usage:
     packed = ser.pack({"x": 1})
     data = ser.unpack(packed)
 """
+
 from __future__ import annotations
 
 import json
@@ -26,7 +27,9 @@ class SerializationHelper:
 
     def __init__(self, format: str = "json"):
         if format not in ("json", "binary"):
-            raise ValueError("format must be 'json' or 'binary'. Pickle is not supported for security.")
+            raise ValueError(
+                "format must be 'json' or 'binary'. Pickle is not supported for security."
+            )
         self._format = format
 
     # ------------------------------------------------------------------
@@ -60,8 +63,7 @@ class SerializationHelper:
         """Simple binary pack for common types."""
         if isinstance(data, dict):
             items = b"".join(
-                self._binary_pack(k) + self._binary_pack(v)
-                for k, v in data.items()
+                self._binary_pack(k) + self._binary_pack(v) for k, v in data.items()
             )
             return b"\x01" + struct.pack(">I", len(data)) + items
         if isinstance(data, list):
@@ -87,7 +89,7 @@ class SerializationHelper:
         tag = data[offset]
         offset += 1
         if tag == 0x01:  # dict
-            count = struct.unpack(">I", data[offset:offset + 4])[0]
+            count = struct.unpack(">I", data[offset : offset + 4])[0]
             offset += 4
             result = {}
             for _ in range(count):
@@ -96,7 +98,7 @@ class SerializationHelper:
                 result[k] = v
             return result, offset
         if tag == 0x02:  # list
-            count = struct.unpack(">I", data[offset:offset + 4])[0]
+            count = struct.unpack(">I", data[offset : offset + 4])[0]
             offset += 4
             result = []
             for _ in range(count):
@@ -104,13 +106,13 @@ class SerializationHelper:
                 result.append(v)
             return result, offset
         if tag == 0x03:  # str
-            length = struct.unpack(">I", data[offset:offset + 4])[0]
+            length = struct.unpack(">I", data[offset : offset + 4])[0]
             offset += 4
-            return data[offset:offset + length].decode("utf-8"), offset + length
+            return data[offset : offset + length].decode("utf-8"), offset + length
         if tag == 0x04:  # int
-            return struct.unpack(">q", data[offset:offset + 8])[0], offset + 8
+            return struct.unpack(">q", data[offset : offset + 8])[0], offset + 8
         if tag == 0x05:  # float
-            return struct.unpack(">d", data[offset:offset + 8])[0], offset + 8
+            return struct.unpack(">d", data[offset : offset + 8])[0], offset + 8
         if tag == 0x06:  # bool
             return data[offset] == 1, offset + 1
         if tag == 0x07:  # None

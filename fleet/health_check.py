@@ -30,6 +30,7 @@ from fleet.config import get_config
 @dataclass
 class ServiceDef:
     """Service definition for health checking."""
+
     name: str
     host: str
     port: int
@@ -44,12 +45,15 @@ class ServiceDef:
 @dataclass
 class CheckResult:
     """Result of a single health check."""
+
     name: str
     ok: bool
     latency_ms: float
     status: str
     details: Dict[str, Any] = field(default_factory=dict)
-    checked_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    checked_at: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
 
     def pressure_penalty(self) -> float:
         """Return 0.0–1.0 penalty based on latency (slow = higher)."""
@@ -104,10 +108,24 @@ class FleetHealthChecker:
                         for key, path in svc.extract.items():
                             val = data
                             for part in path.split("."):
-                                val = val.get(part, {}) if isinstance(val, dict) else None
+                                val = (
+                                    val.get(part, {}) if isinstance(val, dict) else None
+                                )
                             details[key] = val
                     else:
-                        for k in ["rooms", "tiles", "total_rules", "total_matches", "total_players", "uptime_seconds", "total_drills", "streams", "agents", "vectors", "proofs"]:
+                        for k in [
+                            "rooms",
+                            "tiles",
+                            "total_rules",
+                            "total_matches",
+                            "total_players",
+                            "uptime_seconds",
+                            "total_drills",
+                            "streams",
+                            "agents",
+                            "vectors",
+                            "proofs",
+                        ]:
                             if k in data:
                                 details[k] = data[k]
                 except json.JSONDecodeError:
@@ -115,32 +133,46 @@ class FleetHealthChecker:
 
                 if svc.expect_status and status_code != svc.expect_status:
                     return CheckResult(
-                        name=svc.name, ok=False, latency_ms=round(latency, 1),
+                        name=svc.name,
+                        ok=False,
+                        latency_ms=round(latency, 1),
                         status=f"HTTP {status_code} (expected {svc.expect_status})",
                         details=details,
                     )
 
                 return CheckResult(
-                    name=svc.name, ok=True, latency_ms=round(latency, 1),
-                    status=f"UP | HTTP {status_code}", details=details,
+                    name=svc.name,
+                    ok=True,
+                    latency_ms=round(latency, 1),
+                    status=f"UP | HTTP {status_code}",
+                    details=details,
                 )
 
         except urllib.error.HTTPError as e:
             latency = (time.time() - start) * 1000
             if e.code in (404, 400, 401):
                 return CheckResult(
-                    name=svc.name, ok=True, latency_ms=round(latency, 1),
-                    status=f"UP | HTTP {e.code}", details={"status_code": e.code},
+                    name=svc.name,
+                    ok=True,
+                    latency_ms=round(latency, 1),
+                    status=f"UP | HTTP {e.code}",
+                    details={"status_code": e.code},
                 )
             return CheckResult(
-                name=svc.name, ok=False, latency_ms=round(latency, 1),
-                status=f"DOWN | HTTP {e.code}", details={"status_code": e.code, "error": str(e)},
+                name=svc.name,
+                ok=False,
+                latency_ms=round(latency, 1),
+                status=f"DOWN | HTTP {e.code}",
+                details={"status_code": e.code, "error": str(e)},
             )
         except Exception as e:
             latency = (time.time() - start) * 1000
             return CheckResult(
-                name=svc.name, ok=False, latency_ms=round(latency, 1),
-                status=f"DOWN | {type(e).__name__}", details={"error": str(e)},
+                name=svc.name,
+                ok=False,
+                latency_ms=round(latency, 1),
+                status=f"DOWN | {type(e).__name__}",
+                details={"error": str(e)},
             )
 
     def check_all(self) -> List[CheckResult]:
@@ -154,15 +186,24 @@ class FleetHealthChecker:
         down = len(results) - up
 
         if format == "json":
-            return json.dumps({
-                "summary": {"total": len(results), "up": up, "down": down},
-                "checked_at": datetime.now(timezone.utc).isoformat(),
-                "services": [
-                    {"name": r.name, "ok": r.ok, "status": r.status,
-                     "latency_ms": r.latency_ms, "details": r.details}
-                    for r in results
-                ],
-            }, indent=2, default=str)
+            return json.dumps(
+                {
+                    "summary": {"total": len(results), "up": up, "down": down},
+                    "checked_at": datetime.now(timezone.utc).isoformat(),
+                    "services": [
+                        {
+                            "name": r.name,
+                            "ok": r.ok,
+                            "status": r.status,
+                            "latency_ms": r.latency_ms,
+                            "details": r.details,
+                        }
+                        for r in results
+                    ],
+                },
+                indent=2,
+                default=str,
+            )
 
         elif format == "markdown":
             lines = [
@@ -176,7 +217,9 @@ class FleetHealthChecker:
             for r in results:
                 emoji = "🟢" if r.ok else "🔴"
                 details = " | ".join(f"{k}={v}" for k, v in list(r.details.items())[:3])
-                lines.append(f"| {emoji} {r.name} | {r.status} | {r.latency_ms:.0f}ms | {details} |")
+                lines.append(
+                    f"| {emoji} {r.name} | {r.status} | {r.latency_ms:.0f}ms | {details} |"
+                )
             return "\n".join(lines)
 
         elif format == "oneline":
@@ -212,6 +255,7 @@ class HealthStatus(Enum):
 @dataclass
 class HealthCheck:
     """A health check result."""
+
     name: str
     status: HealthStatus
     response_time_ms: float
@@ -243,8 +287,9 @@ class HealthCheckSystem:
         self._dependencies: Dict[str, List[str]] = {}
         self._results: Dict[str, HealthCheck] = {}
 
-    def register(self, name: str, check_func: callable,
-                 dependencies: Optional[List[str]] = None):
+    def register(
+        self, name: str, check_func: callable, dependencies: Optional[List[str]] = None
+    ):
         """Register a health check."""
         self._checks[name] = check_func
         self._dependencies[name] = dependencies or []
@@ -330,17 +375,25 @@ class HealthCheckSystem:
             "healthy": sum(1 for s in statuses if s == HealthStatus.HEALTHY),
             "degraded": sum(1 for s in statuses if s == HealthStatus.DEGRADED),
             "unhealthy": sum(1 for s in statuses if s == HealthStatus.UNHEALTHY),
-            "avg_response_time_ms": sum(r.response_time_ms for r in self._results.values()) / len(self._results.values()) if self._results else 0.0,
+            "avg_response_time_ms": sum(
+                r.response_time_ms for r in self._results.values()
+            )
+            / len(self._results.values())
+            if self._results
+            else 0.0,
         }
 
     def export_json(self) -> str:
         """Export health status as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "overall": self.get_overall_status().value,
-            "checks": {k: v.to_dict() for k, v in self._results.items()},
-            "stats": self.get_stats(),
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "overall": self.get_overall_status().value,
+                "checks": {k: v.to_dict() for k, v in self._results.items()},
+                "stats": self.get_stats(),
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

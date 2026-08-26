@@ -102,6 +102,7 @@ class GossipResult:
 
 class ThermalRoutingError(Exception):
     """Raised when a peer is too hot to accept or send deltas."""
+
     pass
 
 
@@ -169,7 +170,9 @@ class MeshVectorGossip:
         self._delta_queue: list[dict[str, Any]] = []
         self._sequence = 0
         self._version_vector: dict[int, int] = {}  # agent_id -> logical version
-        self._agent_wall_times: dict[int, float] = {}  # agent_id -> last update wall_time
+        self._agent_wall_times: dict[
+            int, float
+        ] = {}  # agent_id -> last update wall_time
 
         # Peer thermal cache (updated externally or during gossip)
         self._peer_thermal: dict[str, float] = {}
@@ -369,7 +372,10 @@ class MeshVectorGossip:
 
         # Flush if batch full
         if len(self._delta_queue) >= self.delta_batch_size:
-            logger.debug("Delta batch filled (%d); queued for next gossip", len(self._delta_queue))
+            logger.debug(
+                "Delta batch filled (%d); queued for next gossip",
+                len(self._delta_queue),
+            )
 
     # ── Digest ────────────────────────────────────────────────
 
@@ -423,7 +429,13 @@ class MeshVectorGossip:
             if max_thermal is not None and thermal > max_thermal:
                 continue
             vec = getattr(self.local_table, "_vectors", {}).get(aid)
-            vec_list = vec.tolist() if hasattr(vec, "tolist") else list(vec) if vec is not None else []
+            vec_list = (
+                vec.tolist()
+                if hasattr(vec, "tolist")
+                else list(vec)
+                if vec is not None
+                else []
+            )
             results.append(
                 {
                     "agent_id": aid,
@@ -494,7 +506,9 @@ class MeshVectorGossip:
         for agent_dict in remote_deltas.get("agents", []):
             aid = agent_dict["agent_id"]
             self._version_vector[aid] = self._version_vector.get(aid, 0) + 1
-            self._agent_wall_times[aid] = float(agent_dict.get("wall_time", time.time()))
+            self._agent_wall_times[aid] = float(
+                agent_dict.get("wall_time", time.time())
+            )
         return merged
 
     def _log_gossip_event(self, peer_id: str, merged: int, pushed: int) -> None:
@@ -509,6 +523,7 @@ class MeshVectorGossip:
         if self._wal is not None:
             try:
                 from logos.signed_wal import WALEntry
+
                 entry = WALEntry(
                     timestamp=meta["timestamp"],
                     agent_id=0,  # system agent

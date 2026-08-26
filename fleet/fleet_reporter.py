@@ -143,7 +143,9 @@ class FleetReporter:
         """
         self._init_subsystems()
         if not self._doc:
-            return ReportResult("api_docs", False, "", 0.0, "Doc generator not available")
+            return ReportResult(
+                "api_docs", False, "", 0.0, "Doc generator not available"
+            )
 
         start = time.time()
         output = Path(path) if path else self.output_dir / "API_INDEX.md"
@@ -170,7 +172,9 @@ class FleetReporter:
         """
         self._init_subsystems()
         if not self._doc:
-            return ReportResult("architecture", False, "", 0.0, "Doc generator not available")
+            return ReportResult(
+                "architecture", False, "", 0.0, "Doc generator not available"
+            )
 
         start = time.time()
         output = Path(path) if path else self.output_dir / "ARCHITECTURE.md"
@@ -182,7 +186,9 @@ class FleetReporter:
             duration = (time.time() - start) * 1000
             return ReportResult("architecture", False, str(output), duration, str(e))
 
-    def generate_integration_guide(self, path: str | Path | None = None) -> ReportResult:
+    def generate_integration_guide(
+        self, path: str | Path | None = None
+    ) -> ReportResult:
         """Generate integration guide.
 
         Parameters
@@ -197,7 +203,9 @@ class FleetReporter:
         """
         self._init_subsystems()
         if not self._doc:
-            return ReportResult("integration_guide", False, "", 0.0, "Doc generator not available")
+            return ReportResult(
+                "integration_guide", False, "", 0.0, "Doc generator not available"
+            )
 
         start = time.time()
         output = Path(path) if path else self.output_dir / "INTEGRATION_GUIDE.md"
@@ -207,7 +215,9 @@ class FleetReporter:
             return ReportResult("integration_guide", True, str(output), duration)
         except Exception as e:
             duration = (time.time() - start) * 1000
-            return ReportResult("integration_guide", False, str(output), duration, str(e))
+            return ReportResult(
+                "integration_guide", False, str(output), duration, str(e)
+            )
 
     def generate_trend_report(self, path: str | Path | None = None) -> ReportResult:
         """Generate metrics trend report.
@@ -224,7 +234,9 @@ class FleetReporter:
         """
         self._init_subsystems()
         if not self._metrics:
-            return ReportResult("trend_report", False, "", 0.0, "Metrics collector not available")
+            return ReportResult(
+                "trend_report", False, "", 0.0, "Metrics collector not available"
+            )
 
         start = time.time()
         output = Path(path) if path else self.output_dir / "TREND_REPORT.md"
@@ -238,7 +250,9 @@ class FleetReporter:
             duration = (time.time() - start) * 1000
             return ReportResult("trend_report", False, str(output), duration, str(e))
 
-    def generate_executive_summary(self, path: str | Path | None = None) -> ReportResult:
+    def generate_executive_summary(
+        self, path: str | Path | None = None
+    ) -> ReportResult:
         """Generate executive summary combining all reports.
 
         Parameters
@@ -259,7 +273,9 @@ class FleetReporter:
             lines: list[str] = []
             lines.append("# 🌅 Sunset Ecosystem Executive Summary")
             lines.append("")
-            lines.append(f"*Generated: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}*")
+            lines.append(
+                f"*Generated: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}*"
+            )
             lines.append("")
 
             # Dashboard metrics
@@ -270,10 +286,14 @@ class FleetReporter:
                 lines.append(f"| Metric | Value |")
                 lines.append(f"|--------|-------|")
                 lines.append(f"| Modules | {metrics.total_modules} |")
-                lines.append(f"| Healthy | {metrics.healthy_modules} ({metrics.health_score*100:.0f}%) |")
+                lines.append(
+                    f"| Healthy | {metrics.healthy_modules} ({metrics.health_score * 100:.0f}%) |"
+                )
                 lines.append(f"| Tests | {metrics.total_tests} |")
-                lines.append(f"| Coverage | {metrics.test_coverage_pct*100:.0f}% |")
-                lines.append(f"| Integrations | {metrics.tested_integrations}/{metrics.integration_count} |")
+                lines.append(f"| Coverage | {metrics.test_coverage_pct * 100:.0f}% |")
+                lines.append(
+                    f"| Integrations | {metrics.tested_integrations}/{metrics.integration_count} |"
+                )
                 lines.append("")
 
             # Trend summary
@@ -284,8 +304,16 @@ class FleetReporter:
                     lines.append("## Trends")
                     lines.append("")
                     for name, trend in trends.items():
-                        emoji = "📈" if trend.direction == "improving" else "📉" if trend.direction == "degrading" else "➡️"
-                        lines.append(f"- {emoji} **{name}**: {trend.direction} ({trend.change_pct:+.1f}%)")
+                        emoji = (
+                            "📈"
+                            if trend.direction == "improving"
+                            else "📉"
+                            if trend.direction == "degrading"
+                            else "➡️"
+                        )
+                        lines.append(
+                            f"- {emoji} **{name}**: {trend.direction} ({trend.change_pct:+.1f}%)"
+                        )
                     lines.append("")
 
             # Alerts
@@ -296,7 +324,9 @@ class FleetReporter:
                 if alerts:
                     for alert in alerts:
                         emoji = "🔴" if alert["level"] == "critical" else "🟡"
-                        lines.append(f"- {emoji} **{alert['level'].upper()}**: {alert['message']}")
+                        lines.append(
+                            f"- {emoji} **{alert['level'].upper()}**: {alert['message']}"
+                        )
                 else:
                     lines.append("✅ No alerts at this time.")
                 lines.append("")
@@ -310,7 +340,9 @@ class FleetReporter:
                         lines.append("")
                         for name, mod_doc in list(all_docs.items())[:5]:
                             health = "🟢" if mod_doc.test_count > 0 else "🟡"
-                            lines.append(f"- {health} **{name}**: {mod_doc.test_count} tests, {len(mod_doc.classes)} classes, {len(mod_doc.functions)} functions")
+                            lines.append(
+                                f"- {health} **{name}**: {mod_doc.test_count} tests, {len(mod_doc.classes)} classes, {len(mod_doc.functions)} functions"
+                            )
                         lines.append("")
                 except Exception:
                     pass
@@ -328,11 +360,15 @@ class FleetReporter:
             return ReportResult("executive_summary", True, str(output), duration)
         except Exception as e:
             duration = (time.time() - start) * 1000
-            return ReportResult("executive_summary", False, str(output), duration, str(e))
+            return ReportResult(
+                "executive_summary", False, str(output), duration, str(e)
+            )
 
     # ── Batch Generation ──────────────────────────────────────
 
-    def generate_all_reports(self, output_dir: str | Path | None = None) -> list[ReportResult]:
+    def generate_all_reports(
+        self, output_dir: str | Path | None = None
+    ) -> list[ReportResult]:
         """Generate all report types.
 
         Parameters
@@ -362,7 +398,9 @@ class FleetReporter:
 
     # ── Scheduling ────────────────────────────────────────────
 
-    def schedule_report(self, name: str, report_type: str, schedule_minutes: int) -> ReportJob:
+    def schedule_report(
+        self, name: str, report_type: str, schedule_minutes: int
+    ) -> ReportJob:
         """Schedule a report to be generated periodically.
 
         Parameters
@@ -428,7 +466,13 @@ class FleetReporter:
         if generator:
             return generator(job.output_path)
 
-        return ReportResult(job.name, False, job.output_path, 0.0, f"Unknown report type: {job.report_type}")
+        return ReportResult(
+            job.name,
+            False,
+            job.output_path,
+            0.0,
+            f"Unknown report type: {job.report_type}",
+        )
 
     # ── Git Publishing ────────────────────────────────────────
 

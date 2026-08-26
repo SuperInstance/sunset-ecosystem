@@ -12,6 +12,7 @@ Usage::
     violations = vm.check_batch(latents, min_bound=-10.0, max_bound=10.0,
                                  max_l2=100.0, max_var=10.0)
 """
+
 from __future__ import annotations
 
 import ctypes
@@ -75,13 +76,13 @@ class FluxVM:
         # void flux_check_batch(float*, int, int, float, float, float, float, unsigned int*)
         self._lib.flux_check_batch.argtypes = [
             ctypes.POINTER(ctypes.c_float),  # latents
-            ctypes.c_int,                     # n_rooms
-            ctypes.c_int,                     # latent_dim
-            ctypes.c_float,                   # min_bound
-            ctypes.c_float,                   # max_bound
-            ctypes.c_float,                   # max_l2
-            ctypes.c_float,                   # max_var
-            ctypes.POINTER(ctypes.c_uint),     # violations
+            ctypes.c_int,  # n_rooms
+            ctypes.c_int,  # latent_dim
+            ctypes.c_float,  # min_bound
+            ctypes.c_float,  # max_bound
+            ctypes.c_float,  # max_l2
+            ctypes.c_float,  # max_var
+            ctypes.POINTER(ctypes.c_uint),  # violations
         ]
         self._lib.flux_check_batch.restype = ctypes.c_int
 

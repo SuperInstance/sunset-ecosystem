@@ -15,7 +15,12 @@ import pytest
 
 from nexus.fleet_event_bus import FleetEventBus
 from nerve.room_grid import RoomGrid
-from swarm.breeder_daemon_v2 import BreederDaemonV2, DiversityConfig, ThermalConfig, LifecycleState
+from swarm.breeder_daemon_v2 import (
+    BreederDaemonV2,
+    DiversityConfig,
+    ThermalConfig,
+    LifecycleState,
+)
 from swarm.breeder_fsm_v2 import BreederFSMV2, LifecycleState as FSMState
 from swarm.daemon_fsm_bridge import FSMBridgedDaemon
 from swarm.thermal import DeviceType, ThermalBudget
@@ -113,6 +118,7 @@ class TestStateCleanup:
 
         # Simulate step noticing the sunset
         from swarm.breeder_daemon_v2 import LifecycleTransition
+
         tr = LifecycleTransition(
             agent_id=999,
             from_state=FSMState.COMPETE,

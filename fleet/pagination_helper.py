@@ -8,6 +8,7 @@ Usage:
     page = pager.page(1)
     assert page.items == [1, 2]
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -67,7 +68,7 @@ class PaginationHelper(Generic[T]):
 
     def slice(self, offset: int, limit: int) -> List[T]:
         """Get a raw slice."""
-        return self._items[offset:offset + limit]
+        return self._items[offset : offset + limit]
 
     def first(self) -> Optional[T]:
         """Get first item."""
@@ -90,4 +91,6 @@ class PaginationHelper(Generic[T]):
         return (len(self._items) + self._page_size - 1) // self._page_size
 
     def __repr__(self) -> str:
-        return f"<PaginationHelper total={len(self._items)} page_size={self._page_size}>"
+        return (
+            f"<PaginationHelper total={len(self._items)} page_size={self._page_size}>"
+        )

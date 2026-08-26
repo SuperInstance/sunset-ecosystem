@@ -10,6 +10,7 @@ Usage:
     id2 = gen.next()
     assert id2 > id1
 """
+
 from __future__ import annotations
 
 import threading

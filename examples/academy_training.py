@@ -9,9 +9,11 @@ Usage:
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fleet.plato_academy_bridge import PlatoAcademyBridge
+
 
 def main():
     print("🎓 Plato Academy Training Pipeline Demo")
@@ -53,7 +55,9 @@ def main():
 
     for module, description in modules:
         result = bridge.run_module("greenhorn_001", module)
-        print(f"  ✅ {module:20s} ({description}) — Score: {result['score']:.0f}, Level: {result['level']}")
+        print(
+            f"  ✅ {module:20s} ({description}) — Score: {result['score']:.0f}, Level: {result['level']}"
+        )
 
     # Check final progression
     print("\n🎖️ Final progression:")
@@ -79,6 +83,7 @@ def main():
     print(f"  Fixes applied: {stats['fixes_applied']}")
 
     print("\n✅ Demo complete!")
+
 
 if __name__ == "__main__":
     main()

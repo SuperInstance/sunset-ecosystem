@@ -18,6 +18,7 @@ Usage:
     bridge.subscribe("breeding.*", handler)
     bridge.connect()
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -37,6 +38,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class WSMessage:
     """WebSocket message."""
+
     type: str
     payload: dict[str, Any]
     timestamp: float = field(default_factory=time.time)
@@ -125,6 +127,7 @@ class WebSocketBridge:
     def _dispatch(self, topic: str, data: dict[str, Any]) -> None:
         """Dispatch event to matching subscribers."""
         import fnmatch
+
         for pattern, handlers in self._subscribers.items():
             if fnmatch.fnmatch(topic, pattern):
                 for handler in handlers:
@@ -171,11 +174,13 @@ class WebSocketBridge:
         if self._connected:
             return True
         delay = min(
-            self._reconnect_delay * (2 ** self._reconnect_attempts),
+            self._reconnect_delay * (2**self._reconnect_attempts),
             self._max_reconnect_delay,
         )
         self._reconnect_attempts += 1
-        logger.info(f"Reconnecting in {delay:.1f}s (attempt {self._reconnect_attempts})")
+        logger.info(
+            f"Reconnecting in {delay:.1f}s (attempt {self._reconnect_attempts})"
+        )
         time.sleep(delay)
         return self.connect()
 

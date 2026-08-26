@@ -13,6 +13,7 @@ Usage:
     job = queue.claim(worker_id="w1")
     queue.complete(job_id, result={"agents": ["a1", "a2"]})
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -41,6 +42,7 @@ class JobStatus:
 @dataclass
 class Job:
     """A job in the queue."""
+
     job_id: str
     payload: dict[str, Any]
     priority: int
@@ -150,7 +152,8 @@ class JobQueue:
     def pending_count(self) -> int:
         """Count pending/retriable jobs."""
         return sum(
-            1 for j in self._jobs.values()
+            1
+            for j in self._jobs.values()
             if j.status in (JobStatus.PENDING, JobStatus.RETRYING)
         )
 

@@ -83,7 +83,9 @@ def main():
     print(f"\n{'SUMMARY (theoretical max per-tick)':30s}: {total:7.3f} ms")
     print(f"{'Actual tick (measured)':30s}: {20.32:7.3f} ms")
     overhead = 20.32 - total
-    print(f"{'Unaccounted overhead':30s}: {overhead:7.3f} ms ({overhead/20.32*100:.0f}%)")
+    print(
+        f"{'Unaccounted overhead':30s}: {overhead:7.3f} ms ({overhead / 20.32 * 100:.0f}%)"
+    )
 
 
 if __name__ == "__main__":

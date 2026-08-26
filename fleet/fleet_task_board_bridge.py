@@ -43,6 +43,7 @@ class TaskStatus(Enum):
 @dataclass
 class Task:
     """A single task on the fleet task board."""
+
     id: str
     title: str
     priority: TaskPriority
@@ -68,7 +69,9 @@ class Task:
             "description": self.description,
             "commit_hash": self.commit_hash,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "blocked_by": self.blocked_by,
         }
 
@@ -156,7 +159,9 @@ class FleetTaskBoard:
             TaskPriority.MEDIUM: 2,
             TaskPriority.LOW: 3,
         }
-        return sorted(self.tasks.values(), key=lambda t: priority_order.get(t.priority, 99))
+        return sorted(
+            self.tasks.values(), key=lambda t: priority_order.get(t.priority, 99)
+        )
 
     def by_owner(self, owner: str) -> list[Task]:
         """Return tasks for a specific owner."""
@@ -165,13 +170,18 @@ class FleetTaskBoard:
     def critical_path(self) -> list[Task]:
         """Return CRITICAL tasks sorted by creation time."""
         return [
-            t for t in self.by_priority()
+            t
+            for t in self.by_priority()
             if t.priority == TaskPriority.CRITICAL and t.status != TaskStatus.DONE
         ]
 
     def ready_tasks(self) -> list[Task]:
         """Return tasks that are not blocked and not done."""
-        return [t for t in self.tasks.values() if t.blocked_by is None and t.status != TaskStatus.DONE]
+        return [
+            t
+            for t in self.tasks.values()
+            if t.blocked_by is None and t.status != TaskStatus.DONE
+        ]
 
     def render_text(self) -> str:
         """Render task board as text."""

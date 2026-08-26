@@ -406,6 +406,7 @@ class TestFleetHealthMonitor:
             timestamp=time.time(),
         )
         from unittest.mock import patch
+
         with patch("builtins.print") as mock_print:
             monitor._send_alert(alert)
             assert mock_print.called

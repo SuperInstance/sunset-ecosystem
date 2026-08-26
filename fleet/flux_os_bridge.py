@@ -107,14 +107,22 @@ class FluxOSBridge:
             logger.info("Compiled %s in %.1fms", agent_name, dt)
             return True
         except subprocess.CalledProcessError as exc:
-            logger.error("FLUX compilation failed: %s", exc.stderr.decode("utf-8", errors="replace"))
+            logger.error(
+                "FLUX compilation failed: %s",
+                exc.stderr.decode("utf-8", errors="replace"),
+            )
             return False
         except Exception as exc:
             logger.error("FLUX compilation error: %s", exc)
             return False
 
-    def deploy(self, agent_name: str, target: str = "native",
-               board: Optional[str] = None, strategy: str = "canary") -> bool:
+    def deploy(
+        self,
+        agent_name: str,
+        target: str = "native",
+        board: Optional[str] = None,
+        strategy: str = "canary",
+    ) -> bool:
         """Deploy a compiled agent to FLUX OS fleet.
 
         Args:
@@ -201,8 +209,8 @@ class FluxOSBridge:
 
 ## Breeding Configuration
 ```yaml
-population_size: {breeding_config.get('population_size', 50)}
-mutation_rate: {breeding_config.get('mutation_rate', 0.1)}
+population_size: {breeding_config.get("population_size", 50)}
+mutation_rate: {breeding_config.get("mutation_rate", 0.1)}
 selection: tournament
 crossover: uniform
 elitism: true
@@ -235,7 +243,10 @@ main:
     def get_agent_logs(self, agent_name: str) -> List[str]:
         """Retrieve logs from deployed agent."""
         if not FLUX_OS_AVAILABLE:
-            return ["mock log: breeding loop started", "mock log: generation 1 complete"]
+            return [
+                "mock log: breeding loop started",
+                "mock log: generation 1 complete",
+            ]
 
         try:
             result = subprocess.run(

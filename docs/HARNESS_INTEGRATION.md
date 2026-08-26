@@ -11,12 +11,12 @@ A Construct is a declarative breeding specification that a harness can spawn and
 ```python
 @dataclass
 class ConstructManifest:
-    name: str                    # Unique identifier
-    breeder_type: str            # "pythagorean" | "spectral" | "adversarial" | "standard"
-    goal: str                  # Human-readable objective
+    name: str  # Unique identifier
+    breeder_type: str  # "pythagorean" | "spectral" | "adversarial" | "standard"
+    goal: str  # Human-readable objective
     population_size: int
     generations: int
-    constraints: List[str]     # FLUX constraint names
+    constraints: List[str]  # FLUX constraint names
     qd_dimensions: List[Tuple[int, int, int]]  # For QD archives
     resources: Dict[str, Any]  # Node count, GPU, etc.
 ```

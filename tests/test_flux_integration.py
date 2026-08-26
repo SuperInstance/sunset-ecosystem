@@ -1,4 +1,5 @@
 """Tests for FLUX constraint checker — Python backend, presets, RoomGrid hook."""
+
 import numpy as np
 import pytest
 
@@ -31,7 +32,9 @@ class TestPythonBackend:
         checker = FluxConstraintChecker(preset="safe_mode")
         latents = np.zeros((10, 16), dtype=np.float32)
         violations = checker.check_batch(latents)
-        assert not violations.any(), f"All-pass failed: {violations.sum()}/{len(violations)}"
+        assert not violations.any(), (
+            f"All-pass failed: {violations.sum()}/{len(violations)}"
+        )
 
 
 class TestPresets:
@@ -109,9 +112,11 @@ class TestDetailedViolations:
 
 # ── New top-level unit tests (Task requirements) ──
 
+
 def test_python_backend_detects_violations():
     """Large latent values are flagged by the Python backend."""
     from sunset.flux_integration import _PythonBackend, PRESETS
+
     backend = _PythonBackend()
     latents = np.zeros((10, 16), dtype=np.float32)
     latents[0, 0] = 15.0  # exceeds safe_mode bound of 5
@@ -132,6 +137,7 @@ def test_safe_mode_stricter():
 def test_room_grid_integration():
     """RoomGrid with attached checker shows increased chaos for violations."""
     from nerve.room_grid import RoomGrid
+
     np.random.seed(42)
     grid = RoomGrid(10)
     x = np.random.randn(64).astype(np.float32)
@@ -150,14 +156,23 @@ def test_room_grid_integration():
 def test_rust_backend_when_available():
     """Use Rust backend if libflux_vm.so is present."""
     import os
+
     so_paths = [
-        os.path.join(os.path.dirname(__file__), "..", "flux-vm-v3-temp", "target", "release", "libflux_vm.so"),
+        os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "flux-vm-v3-temp",
+            "target",
+            "release",
+            "libflux_vm.so",
+        ),
         "/usr/local/lib/libflux_vm.so",
     ]
     found = any(os.path.exists(p) for p in so_paths)
     if not found:
         pytest.skip("libflux_vm.so not available")
     from sunset.flux_integration import _RustBackend
+
     idx = [i for i, p in enumerate(so_paths) if os.path.exists(p)][0]
     backend = _RustBackend(so_paths[idx])
     assert backend.available

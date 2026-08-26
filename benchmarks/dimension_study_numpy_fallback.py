@@ -34,7 +34,7 @@ def brute_search(vectors: np.ndarray, query: np.ndarray, k: int) -> np.ndarray:
 
 
 def benchmark_dim(dim: int) -> dict:
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Dimension: {dim} (numpy brute-force fallback)")
     print("=" * 60)
 
@@ -69,12 +69,16 @@ def benchmark_dim(dim: int) -> dict:
     # Memory
     naive_mb = (POPULATION * dim * 4) / (1024 * 1024)
     # Simulated 4-bit turbovec
-    turbovec_mb = (POPULATION * dim * 0.5) / (1024 * 1024) + (POPULATION * 40) / (1024 * 1024)
+    turbovec_mb = (POPULATION * dim * 0.5) / (1024 * 1024) + (POPULATION * 40) / (
+        1024 * 1024
+    )
 
     print(f"  Avg latency: {avg_ms:.3f}ms")
     print(f"  P99 latency: {p99_ms:.3f}ms")
     print(f"  Naive memory: {naive_mb:.1f}MB")
-    print(f"  Simulated turbovec: {turbovec_mb:.1f}MB ({naive_mb/turbovec_mb:.1f}x compression)")
+    print(
+        f"  Simulated turbovec: {turbovec_mb:.1f}MB ({naive_mb / turbovec_mb:.1f}x compression)"
+    )
 
     return {
         "dim": dim,
@@ -104,7 +108,9 @@ def main() -> None:
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
-    print(f"{'Dim':>6} {'Build':>8} {'Avg ms':>10} {'P99 ms':>10} {'Naive MB':>10} {'TVec MB':>10} {'Compress':>10}")
+    print(
+        f"{'Dim':>6} {'Build':>8} {'Avg ms':>10} {'P99 ms':>10} {'Naive MB':>10} {'TVec MB':>10} {'Compress':>10}"
+    )
     print("-" * 60)
     for r in results:
         print(
@@ -120,10 +126,13 @@ def main() -> None:
     # Recommendation based on memory compression (latency is brute-force)
     if results:
         best = max(results, key=lambda r: r["compression_ratio"])
-        print(f"\n✅ Best compression: dim={best['dim']} ({best['compression_ratio']:.1f}x)")
+        print(
+            f"\n✅ Best compression: dim={best['dim']} ({best['compression_ratio']:.1f}x)"
+        )
         print("⚠️  Latency numbers are NOT turbovec — real SIMD will be 10-100x faster")
 
     import json
+
     out = Path("/tmp/sunset-ecosystem/benchmarks/dimension_study_results.json")
     out.write_text(json.dumps(results, indent=2))
     print(f"\nResults saved to: {out}")

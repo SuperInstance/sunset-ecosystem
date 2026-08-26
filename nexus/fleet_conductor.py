@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 # ── data structures ───────────────────────────────────────────
 
+
 @dataclass(frozen=True, slots=True)
 class BeatState:
     """Immutable beat state for CRDT-style merge.
@@ -60,6 +61,7 @@ class BeatState:
 
 
 # ── FleetConductor ────────────────────────────────────────────
+
 
 class FleetConductor:
     """Distributed metronome sync across fleet nodes.
@@ -201,7 +203,11 @@ class FleetConductor:
         # Determine consensus beat from peers
         consensus_state: BeatState | None = None
         for state in peer_beats.values():
-            consensus_state = state if consensus_state is None else BeatState.merge(consensus_state, state)
+            consensus_state = (
+                state
+                if consensus_state is None
+                else BeatState.merge(consensus_state, state)
+            )
 
         if consensus_state is None or self._local_beat_state is None:
             self._handle_partition()
@@ -212,13 +218,17 @@ class FleetConductor:
         drift_ms = drift_beats * beat_duration
 
         # Also compute wall-time drift for extra signal
-        wall_drift_ms = abs(local.wall_time_ns - consensus_state.wall_time_ns) / 1_000_000.0
+        wall_drift_ms = (
+            abs(local.wall_time_ns - consensus_state.wall_time_ns) / 1_000_000.0
+        )
 
         if drift_ms > self.max_drift_ms or wall_drift_ms > self.max_drift_ms:
             if drift_beats >= 1:
                 self._apply_skip_jump(consensus_state)
             else:
-                self._apply_phase_nudge(consensus_state, max(drift_ms, wall_drift_ms), beat_duration)
+                self._apply_phase_nudge(
+                    consensus_state, max(drift_ms, wall_drift_ms), beat_duration
+                )
 
         self._check_quorum(peer_beats)
 

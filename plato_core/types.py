@@ -3,6 +3,7 @@
 This is a lightweight stand-in for the full plato_core.types module.
 When the real plato_core package is installed, it will take precedence.
 """
+
 from __future__ import annotations
 
 import hashlib

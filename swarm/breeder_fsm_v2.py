@@ -13,6 +13,7 @@ Usage::
     fsm.transition_to(LifecycleState.COMPETE)
     assert fsm.current_state == LifecycleState.COMPETE
 """
+
 from __future__ import annotations
 
 __all__ = ["BreederFSMV2", "LifecycleState", "TransitionError"]
@@ -31,12 +32,14 @@ log = logging.getLogger(__name__)
 
 class TransitionError(ValueError):
     """Raised when an invalid state transition is attempted."""
+
     pass
 
 
 @dataclass
 class StateConfig:
     """Configuration for a lifecycle state."""
+
     timeout_sec: float | None = None
     auto_transition: LifecycleState | None = None
     entry_guard: Callable[[], bool] | None = None
@@ -46,6 +49,7 @@ class StateConfig:
 @dataclass
 class TransitionRecord:
     """Immutable record of a state transition."""
+
     from_state: LifecycleState
     to_state: LifecycleState
     timestamp: float
@@ -86,11 +90,15 @@ class BreederFSMV2:
 
         # Default state configs
         self._configs: dict[LifecycleState, StateConfig] = {
-            LifecycleState.EGG: StateConfig(timeout_sec=30.0, auto_transition=LifecycleState.COMPETE),
+            LifecycleState.EGG: StateConfig(
+                timeout_sec=30.0, auto_transition=LifecycleState.COMPETE
+            ),
             LifecycleState.COMPETE: StateConfig(timeout_sec=300.0),
             LifecycleState.SURVIVE: StateConfig(timeout_sec=60.0),
             LifecycleState.BREED: StateConfig(timeout_sec=30.0),
-            LifecycleState.SUNSET: StateConfig(timeout_sec=10.0, auto_transition=LifecycleState.ARCHIVE),
+            LifecycleState.SUNSET: StateConfig(
+                timeout_sec=10.0, auto_transition=LifecycleState.ARCHIVE
+            ),
             LifecycleState.ARCHIVE: StateConfig(),
         }
         if state_configs:
@@ -125,16 +133,12 @@ class BreederFSMV2:
             # Check exit guard
             config = self._configs.get(current, StateConfig())
             if config.exit_guard and not config.exit_guard():
-                raise TransitionError(
-                    f"Exit guard failed for {current.name}"
-                )
+                raise TransitionError(f"Exit guard failed for {current.name}")
 
             # Check entry guard
             new_config = self._configs.get(new_state, StateConfig())
             if new_config.entry_guard and not new_config.entry_guard():
-                raise TransitionError(
-                    f"Entry guard failed for {new_state.name}"
-                )
+                raise TransitionError(f"Entry guard failed for {new_state.name}")
 
             # Execute transition
             self._state = new_state
@@ -148,7 +152,10 @@ class BreederFSMV2:
             self._history.append(record)
             log.info(
                 "Agent %s: %s → %s (%s)",
-                self.agent_id, current.name, new_state.name, reason,
+                self.agent_id,
+                current.name,
+                new_state.name,
+                reason,
             )
             return record
 
@@ -199,7 +206,9 @@ class BreederFSMV2:
                 "current_state": self._state.name,
                 "time_in_state_sec": self.get_time_in_state(),
                 "timeout_sec": config.timeout_sec,
-                "auto_transition": config.auto_transition.name if config.auto_transition else None,
+                "auto_transition": config.auto_transition.name
+                if config.auto_transition
+                else None,
                 "n_transitions": len(self._history),
                 "is_terminal": self._state == LifecycleState.ARCHIVE,
             }
@@ -212,7 +221,9 @@ class BreederFSMV2:
 
     def win(self) -> TransitionRecord:
         """Transition COMPETE → SURVIVE."""
-        return self.transition_to(LifecycleState.SURVIVE, reason="fitness_threshold_met")
+        return self.transition_to(
+            LifecycleState.SURVIVE, reason="fitness_threshold_met"
+        )
 
     def breed(self) -> TransitionRecord:
         """Transition SURVIVE → BREED."""

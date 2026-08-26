@@ -75,7 +75,11 @@ if "turbovec" not in sys.modules:
     # ── Clear cached downstream modules so re-imports use the mock ──
     # Do NOT delete "turbovec" itself — that would let the real module load.
     for _mod_name in list(sys.modules):
-        if _mod_name in ("swarm.flux_vector_table", "swarm.vector_table", "sunset.turbovec"):
+        if _mod_name in (
+            "swarm.flux_vector_table",
+            "swarm.vector_table",
+            "sunset.turbovec",
+        ):
             del sys.modules[_mod_name]
 
 
@@ -87,7 +91,6 @@ if "turbovec" not in sys.modules:
 if "plato_core" not in sys.modules:
     _mock_plato = types.ModuleType("plato_core")
     _mock_plato_types = types.ModuleType("plato_core.types")
-
 
     class _MockLamportClock:
         def __init__(self, node_id: int = 0) -> None:
@@ -102,7 +105,6 @@ if "plato_core" not in sys.modules:
             self._tick = max(self._tick, other) + 1
             return self._tick
 
-
     class _MockLifecycleEvent:
         def __init__(
             self,
@@ -116,12 +118,10 @@ if "plato_core" not in sys.modules:
             self.reason = reason
             self.lamport = lamport
 
-
     class _MockTileLifecycle:
         ACTIVE = "active"
         SUPERSEDED = "superseded"
         ARCHIVED = "archived"
-
 
     class _MockTileType:
         CHECKPOINT = "checkpoint"
@@ -135,7 +135,6 @@ if "plato_core" not in sys.modules:
         SEED = "seed"
         REFINEMENT = "refinement"
         INTEGRATION = "integration"
-
 
     class _MockTrainingTile:
         def __init__(self, **kwargs) -> None:
@@ -151,11 +150,24 @@ if "plato_core" not in sys.modules:
             self.name = kwargs.get("name", "")
             self._payload = kwargs.get("_payload", {})
             # Store any extra kwargs for round-trip fidelity
-            self._extra = {k: v for k, v in kwargs.items() if k not in {
-                "tile_id", "tile_type", "room", "description", "state",
-                "lamport", "lifecycle_events", "content_hash", "signature",
-                "name", "_payload",
-            }}
+            self._extra = {
+                k: v
+                for k, v in kwargs.items()
+                if k
+                not in {
+                    "tile_id",
+                    "tile_type",
+                    "room",
+                    "description",
+                    "state",
+                    "lamport",
+                    "lifecycle_events",
+                    "content_hash",
+                    "signature",
+                    "name",
+                    "_payload",
+                }
+            }
 
         def is_active(self) -> bool:
             return self.state == _MockTileLifecycle.ACTIVE
@@ -210,13 +222,12 @@ if "plato_core" not in sys.modules:
             kwargs["lifecycle_events"] = events
             return cls(**kwargs)
 
-
     def _mock_content_hash(data: str) -> str:
         import hashlib
+
         if isinstance(data, bytes):
             return hashlib.sha256(data).hexdigest()[:16]
         return hashlib.sha256(data.encode()).hexdigest()[:16]
-
 
     _mock_plato_types.LamportClock = _MockLamportClock
     _mock_plato_types.LifecycleEvent = _MockLifecycleEvent
@@ -227,3 +238,27 @@ if "plato_core" not in sys.modules:
     _mock_plato.types = _mock_plato_types
     sys.modules["plato_core"] = _mock_plato
     sys.modules["plato_core.types"] = _mock_plato_types
+
+# ── CI environment guards (folded forward from #32, adapted for the fleet
+#    shared python-ci workflow which runs plain `pytest`) ──────────────────
+# Main's pre-migration ci.yml ignored these modules via CLI flags; the shared
+# workflow cannot, so replicate the same CI-conditional ignores here:
+#  - test_jepa_ffi.py / test_jepa.py: the Rust FFI .so may SIGILL/segfault on
+#    runners without the required ISA extensions (hard interpreter crash)
+#  - test_performance.py: benchmark-style timing asserts are unreliable on
+#    shared runners
+#  - the rest mirror main's original ignore list (optional heavy deps)
+import os as _os
+
+if _os.environ.get("CI") or _os.environ.get("GITHUB_ACTIONS"):
+    _os.environ.setdefault("NUMBA_LOOP_VECTORIZE", "0")
+    collect_ignore = [
+        "tests/test_jepa_ffi.py",
+        "tests/test_jepa.py",
+        "tests/test_performance.py",
+        "tests/test_npu_router.py",
+        "tests/test_cross_ecosystem_integration.py",
+        "tests/test_tucker_decomp.py",
+        "tests/test_vision_encoder.py",
+        "tests/test_world_model.py",
+    ]

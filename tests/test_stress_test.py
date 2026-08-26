@@ -24,6 +24,7 @@ from ethos.stress_test import (
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 class TestDataclasses:
     def test_matrix_benchmark_repr(self):
         mb = MatrixBenchmark(size=1024, avg_ms=50.0, gflops=100.0)
@@ -39,12 +40,20 @@ class TestDataclasses:
         assert "50.0 GB/s" in repr(mb)
 
     def test_device_benchmark_repr(self):
-        db = DeviceBenchmark(device_name="CPU", device_type="cpu", matrix_benchmarks=[MatrixBenchmark(size=512, avg_ms=10.0, gflops=50.0)])
+        db = DeviceBenchmark(
+            device_name="CPU",
+            device_type="cpu",
+            matrix_benchmarks=[MatrixBenchmark(size=512, avg_ms=10.0, gflops=50.0)],
+        )
         assert "CPU" in repr(db)
         assert "1 mats" in repr(db)
 
     def test_stress_report_repr(self):
-        sr = StressReport(benchmarks=[DeviceBenchmark(device_name="CPU", device_type="cpu")], max_parallel_agents=4, total_duration_s=5.0)
+        sr = StressReport(
+            benchmarks=[DeviceBenchmark(device_name="CPU", device_type="cpu")],
+            max_parallel_agents=4,
+            total_duration_s=5.0,
+        )
         assert "1 devices" in repr(sr)
         assert "max_agents=4" in repr(sr)
 
@@ -53,7 +62,8 @@ class TestDataclasses:
         assert sr.best_gpu_gflops() is None
 
         gpu = DeviceBenchmark(
-            device_name="GPU", device_type="cuda",
+            device_name="GPU",
+            device_type="cuda",
             matrix_benchmarks=[MatrixBenchmark(size=1024, avg_ms=10.0, gflops=200.0)],
         )
         sr2 = StressReport(benchmarks=[gpu])
@@ -61,7 +71,8 @@ class TestDataclasses:
 
     def test_stress_report_cpu_gflops(self):
         cpu = DeviceBenchmark(
-            device_name="CPU", device_type="cpu",
+            device_name="CPU",
+            device_type="cpu",
             matrix_benchmarks=[MatrixBenchmark(size=1024, avg_ms=100.0, gflops=50.0)],
         )
         sr = StressReport(benchmarks=[cpu])
@@ -76,6 +87,7 @@ class TestDataclasses:
 # CPU matrix benchmark
 # ---------------------------------------------------------------------------
 
+
 class TestBenchMatrixCpu:
     def test_small_sizes(self):
         results = _bench_matrix_cpu(sizes=[64, 128], warmup=1, runs=2)
@@ -89,6 +101,7 @@ class TestBenchMatrixCpu:
 # CPU memory bandwidth
 # ---------------------------------------------------------------------------
 
+
 class TestBenchMemoryBandwidth:
     def test_basic(self):
         result = _bench_memory_bandwidth_cpu(size_mb=64.0, runs=2)
@@ -100,6 +113,7 @@ class TestBenchMemoryBandwidth:
 # ---------------------------------------------------------------------------
 # run_stress_test
 # ---------------------------------------------------------------------------
+
 
 class TestRunStressTest:
     def test_runs_quick(self):

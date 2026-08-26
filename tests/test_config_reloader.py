@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_config_reloader.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import os

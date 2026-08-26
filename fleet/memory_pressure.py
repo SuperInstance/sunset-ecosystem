@@ -12,6 +12,7 @@ Usage:
     mp.register_alert("critical", lambda level: print(f"CRITICAL: {level}"))
     mp.check()  # Runs GC, checks thresholds, fires alerts
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MemorySnapshot:
     """A memory usage snapshot."""
+
     rss_mb: float
     vms_mb: float
     percent: float  # Of total system memory
@@ -62,7 +64,9 @@ class MemoryPressure:
         self._max_history = 100
         self._peak_mb = 0.0
 
-    def register_alert(self, level: str, fn: Callable[[str, MemorySnapshot], None]) -> None:
+    def register_alert(
+        self, level: str, fn: Callable[[str, MemorySnapshot], None]
+    ) -> None:
         """Register an alert callback (warn or critical)."""
         if level in self._alerts:
             self._alerts[level].append(fn)
@@ -75,6 +79,7 @@ class MemoryPressure:
         """Take a memory snapshot."""
         try:
             import psutil
+
             process = psutil.Process(os.getpid())
             mem_info = process.memory_info()
             rss_mb = mem_info.rss / (1024 * 1024)
@@ -86,7 +91,9 @@ class MemoryPressure:
             rss_mb = 0.0
             vms_mb = 0.0
             percent = 0.0
-        snap = MemorySnapshot(rss_mb=rss_mb, vms_mb=vms_mb, percent=percent, timestamp=time.time())
+        snap = MemorySnapshot(
+            rss_mb=rss_mb, vms_mb=vms_mb, percent=percent, timestamp=time.time()
+        )
         self._history.append(snap)
         if len(self._history) > self._max_history:
             self._history.pop(0)
@@ -105,7 +112,9 @@ class MemoryPressure:
 
         # Trigger GC if over threshold
         if snap.rss_mb > self._gc_mb:
-            logger.info(f"Memory {snap.rss_mb:.1f}MB > GC threshold {self._gc_mb:.1f}MB, running GC")
+            logger.info(
+                f"Memory {snap.rss_mb:.1f}MB > GC threshold {self._gc_mb:.1f}MB, running GC"
+            )
             gc.collect()
             # Re-measure after GC
             snap = self.snapshot()

@@ -10,6 +10,7 @@ Usage:
     results = index.search("midnight fleet", top_k=2)
     # [("doc-1", 0.85), ...]
 """
+
 from __future__ import annotations
 
 import math

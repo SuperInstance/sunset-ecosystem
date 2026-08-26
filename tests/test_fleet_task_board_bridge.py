@@ -7,7 +7,9 @@ from fleet.fleet_task_board_bridge import FleetTaskBoard, TaskPriority, TaskStat
 class TestFleetTaskBoard:
     def test_add_task(self):
         board = FleetTaskBoard()
-        task = board.add_task("Conformance", TaskPriority.CRITICAL, ["c", "python"], owner="JC1")
+        task = board.add_task(
+            "Conformance", TaskPriority.CRITICAL, ["c", "python"], owner="JC1"
+        )
         assert task.id == "task-1"
         assert task.title == "Conformance"
         assert task.priority == TaskPriority.CRITICAL
@@ -102,7 +104,9 @@ class TestFleetTaskBoard:
 
     def test_render_text(self):
         board = FleetTaskBoard()
-        t = board.add_task("Conformance", TaskPriority.CRITICAL, ["c", "python"], owner="JC1")
+        t = board.add_task(
+            "Conformance", TaskPriority.CRITICAL, ["c", "python"], owner="JC1"
+        )
         board.set_eta(t.id, "T-24h")
         board.add_task("Dashboard", TaskPriority.HIGH, ["infra"], owner="Oracle1")
         text = board.render_text()

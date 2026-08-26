@@ -31,7 +31,7 @@ class TestPolyglotReasoner:
         r.add_tile(1, [1.0, 0.0, 0.0])
         r.add_tile(2, [0.0, 1.0, 0.0])
         r.add_tile(3, [0.5, 0.5, 0.0])
-        
+
         results = r.find_similar([1.0, 0.0, 0.0], top_k=2)
         assert len(results) == 2
         assert results[0][0] == 1  # Most similar
@@ -46,7 +46,7 @@ class TestPolyglotReasoner:
         r = PolyglotReasoner(dim=3, backend="python")
         r.add_tile(1, [1.0, 0.0, 0.0])
         r.add_tile(2, [0.0, 1.0, 0.0])
-        
+
         results = r.find_similar([1.0, 0.0, 0.0])
         assert results[0][0] == 1
         assert results[1][1] < 0.01  # Orthogonal should be ~0

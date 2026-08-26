@@ -11,6 +11,7 @@ import numpy as np
 @dataclass
 class CacheEntry:
     """A cache entry with TTL."""
+
     key: str
     value: Any
     timestamp: float
@@ -100,11 +101,14 @@ class DistributedCache:
 
     def export_json(self) -> str:
         """Export cache as JSON."""
-        return json.dumps({
-            "node": self.fleet_node_id,
-            "keys": list(self._cache.keys()),
-            "stats": self.get_stats(),
-        }, indent=2)
+        return json.dumps(
+            {
+                "node": self.fleet_node_id,
+                "keys": list(self._cache.keys()),
+                "stats": self.get_stats(),
+            },
+            indent=2,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

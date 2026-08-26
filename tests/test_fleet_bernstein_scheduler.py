@@ -44,6 +44,7 @@ from fleet.fleet_bernstein_scheduler import (
 
 # ── Helpers ─────────────────────────────────────────────────────
 
+
 class _FakeWAL:
     """In-memory WAL stub for testing."""
 
@@ -51,7 +52,9 @@ class _FakeWAL:
         self._entries = []
         self._last_hash = ""
 
-    def append(self, *, agent_id, operation, vector_hash, parent_ids, generation, node_id):
+    def append(
+        self, *, agent_id, operation, vector_hash, parent_ids, generation, node_id
+    ):
         entry = {
             "agent_id": agent_id,
             "operation": operation,
@@ -67,16 +70,24 @@ class _FakeWAL:
 
     def _hash(self, entry):
         import hashlib
-        return hashlib.sha256(json.dumps(entry, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+        return hashlib.sha256(
+            json.dumps(entry, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
 
     def entries(self):
         class FakeEntry:
             def __init__(self, data):
                 self._data = data
-                self.entry = type("obj", (), {
-                    "operation": data["operation"],
-                    "vector_hash": data["vector_hash"],
-                })()
+                self.entry = type(
+                    "obj",
+                    (),
+                    {
+                        "operation": data["operation"],
+                        "vector_hash": data["vector_hash"],
+                    },
+                )()
+
         return [FakeEntry(e) for e in self._entries]
 
 
@@ -105,17 +116,22 @@ class _BlockingPacing:
 
 # ── FleetDeterministicReplay ────────────────────────────────────
 
+
 class TestFleetDeterministicReplay:
     def test_record_and_replay_hit(self):
         wal = _FakeWAL()
-        replay = FleetDeterministicReplay(wal=wal, run_id="test-run", replay=False, strict=True)
+        replay = FleetDeterministicReplay(
+            wal=wal, run_id="test-run", replay=False, strict=True
+        )
 
         replay.record("prompt1", "model-a", "response1")
         replay.record("prompt1", "model-a", "response2")
         replay.record("prompt2", "model-b", "response3")
 
         # Switch to replay mode by loading from WAL
-        replay2 = FleetDeterministicReplay(wal=wal, run_id="test-run", replay=True, strict=True)
+        replay2 = FleetDeterministicReplay(
+            wal=wal, run_id="test-run", replay=True, strict=True
+        )
         assert replay2.get_replay("prompt1", "model-a") == "response1"
         assert replay2.get_replay("prompt1", "model-a") == "response2"
         assert replay2.get_replay("prompt2", "model-b") == "response3"
@@ -123,7 +139,9 @@ class TestFleetDeterministicReplay:
 
     def test_replay_miss_strict_raises(self):
         wal = _FakeWAL()
-        replay = FleetDeterministicReplay(wal=wal, run_id="test-run", replay=True, strict=True)
+        replay = FleetDeterministicReplay(
+            wal=wal, run_id="test-run", replay=True, strict=True
+        )
         with pytest.raises(ReplayMissError) as exc_info:
             replay.get_replay("unknown", "model-x")
         assert "Fleet replay miss" in str(exc_info.value)
@@ -131,25 +149,33 @@ class TestFleetDeterministicReplay:
 
     def test_replay_miss_non_strict_returns_none(self):
         wal = _FakeWAL()
-        replay = FleetDeterministicReplay(wal=wal, run_id="test-run", replay=True, strict=False)
+        replay = FleetDeterministicReplay(
+            wal=wal, run_id="test-run", replay=True, strict=False
+        )
         assert replay.get_replay("unknown", "model-x") is None
         assert replay.misses == 1
 
     def test_record_noop_in_replay_mode(self):
         wal = _FakeWAL()
-        replay = FleetDeterministicReplay(wal=wal, run_id="test-run", replay=True, strict=True)
+        replay = FleetDeterministicReplay(
+            wal=wal, run_id="test-run", replay=True, strict=True
+        )
         replay.record("p", "m", "r")  # should be no-op
         assert replay.cached_count == 0
 
     def test_coverage_line(self):
         wal = _FakeWAL()
-        replay = FleetDeterministicReplay(wal=wal, run_id="run-1", replay=True, strict=True)
+        replay = FleetDeterministicReplay(
+            wal=wal, run_id="run-1", replay=True, strict=True
+        )
         line = replay.coverage_line()
         assert "run_id=run-1" in line
         assert "cached=0" in line
 
     def test_set_seed_determinism(self):
-        replay = FleetDeterministicReplay(wal=_FakeWAL(), run_id="seed-test", replay=False)
+        replay = FleetDeterministicReplay(
+            wal=_FakeWAL(), run_id="seed-test", replay=False
+        )
         replay.set_seed(42)
         a = [__import__("random").random() for _ in range(5)]
         replay.set_seed(42)
@@ -159,14 +185,21 @@ class TestFleetDeterministicReplay:
     def test_prompt_key_stability(self):
         wal = _FakeWAL()
         replay = FleetDeterministicReplay(wal=wal, run_id="k", replay=False)
-        k1 = replay._prompt_key("hello", "m", provider="p", temperature=0.7, max_tokens=100)
-        k2 = replay._prompt_key("hello", "m", provider="p", temperature=0.7, max_tokens=100)
-        k3 = replay._prompt_key("hello", "m", provider="p", temperature=0.8, max_tokens=100)
+        k1 = replay._prompt_key(
+            "hello", "m", provider="p", temperature=0.7, max_tokens=100
+        )
+        k2 = replay._prompt_key(
+            "hello", "m", provider="p", temperature=0.7, max_tokens=100
+        )
+        k3 = replay._prompt_key(
+            "hello", "m", provider="p", temperature=0.8, max_tokens=100
+        )
         assert k1 == k2
         assert k1 != k3
 
 
 # ── FleetPhasedDispatch ───────────────────────────────────────
+
 
 class TestFleetPhasedDispatch:
     def test_default_executor(self):
@@ -187,7 +220,9 @@ class TestFleetPhasedDispatch:
 
     def test_pacing_blocks_dispatch(self):
         dp = FleetPhasedDispatch(
-            executor=lambda t, s, p: PhaseArtifact(summary="x", decisions=["d"], constraints=["c"]),
+            executor=lambda t, s, p: PhaseArtifact(
+                summary="x", decisions=["d"], constraints=["c"]
+            ),
             phases=[Phase.IMPLEMENT],
         )
         result = dp.run({"task_id": "t1"}, pacing=_BlockingPacing())
@@ -196,6 +231,7 @@ class TestFleetPhasedDispatch:
 
     def test_gate_failure_retries(self):
         call_count = 0
+
         def flaky_executor(task, spec, prior):
             nonlocal call_count
             call_count += 1
@@ -203,14 +239,18 @@ class TestFleetPhasedDispatch:
                 raise RuntimeError("flaky")
             return PhaseArtifact(summary="ok", decisions=["d"], constraints=["c"])
 
-        dp = FleetPhasedDispatch(executor=flaky_executor, phases=[Phase.IMPLEMENT], gate_max_retries=2)
+        dp = FleetPhasedDispatch(
+            executor=flaky_executor, phases=[Phase.IMPLEMENT], gate_max_retries=2
+        )
         result = dp.run({"task_id": "t1"})
         assert result["success"] is True
         assert call_count == 2
 
     def test_gate_hard_fail(self):
         dp = FleetPhasedDispatch(
-            executor=lambda t, s, p: PhaseArtifact(summary="", decisions=[], constraints=[]),
+            executor=lambda t, s, p: PhaseArtifact(
+                summary="", decisions=[], constraints=[]
+            ),
             phases=[Phase.IMPLEMENT],
             gate_max_retries=0,
         )
@@ -221,7 +261,9 @@ class TestFleetPhasedDispatch:
     def test_wal_integration(self):
         wal = _FakeWAL()
         dp = FleetPhasedDispatch(
-            executor=lambda t, s, p: PhaseArtifact(summary="ok", decisions=["d"], constraints=["c"]),
+            executor=lambda t, s, p: PhaseArtifact(
+                summary="ok", decisions=["d"], constraints=["c"]
+            ),
             phases=[Phase.RESEARCH],
             wal=wal,
         )
@@ -233,13 +275,19 @@ class TestFleetPhasedDispatch:
 
     def test_phase_spec_override(self):
         dp = FleetPhasedDispatch(
-            executor=lambda t, s, p: PhaseArtifact(summary="ok", decisions=["d"], constraints=["c"]),
+            executor=lambda t, s, p: PhaseArtifact(
+                summary="ok", decisions=["d"], constraints=["c"]
+            ),
             phases=[Phase.RESEARCH],
         )
         task = {
             "task_id": "t1",
             "phases": {
-                "research": {"model": "custom-model", "effort": "low", "max_tokens": 1000},
+                "research": {
+                    "model": "custom-model",
+                    "effort": "low",
+                    "max_tokens": 1000,
+                },
             },
         }
         # We can't easily observe the spec from outside, but we can run it
@@ -249,9 +297,12 @@ class TestFleetPhasedDispatch:
 
 # ── FleetWorkerIsolation ──────────────────────────────────────
 
+
 class TestFleetWorkerIsolation:
     def test_spawn_echo_command(self, tmp_path):
-        wi = FleetWorkerIsolation(pid_dir=tmp_path / "pids", signals_dir=tmp_path / "signals")
+        wi = FleetWorkerIsolation(
+            pid_dir=tmp_path / "pids", signals_dir=tmp_path / "signals"
+        )
         result = wi.spawn(
             role="test",
             session_id="session_001",
@@ -263,6 +314,7 @@ class TestFleetWorkerIsolation:
         assert "child_pid" in result
         # Wait for child
         import subprocess
+
         proc = subprocess.Popen(["echo", "hello"])
         # Cleanup
         wi.cleanup_session("session_001")
@@ -270,25 +322,37 @@ class TestFleetWorkerIsolation:
         assert not pid_file.exists()
 
     def test_invalid_session_id(self, tmp_path):
-        wi = FleetWorkerIsolation(pid_dir=tmp_path / "pids", signals_dir=tmp_path / "signals")
+        wi = FleetWorkerIsolation(
+            pid_dir=tmp_path / "pids", signals_dir=tmp_path / "signals"
+        )
         with pytest.raises(ValueError, match="Invalid session_id"):
             wi.spawn(role="test", session_id="../bad", command=["echo", "hi"])
 
     def test_cleanup_records_sunset(self, tmp_path):
         wal = _FakeWAL()
-        wi = FleetWorkerIsolation(pid_dir=tmp_path / "pids", signals_dir=tmp_path / "signals")
+        wi = FleetWorkerIsolation(
+            pid_dir=tmp_path / "pids", signals_dir=tmp_path / "signals"
+        )
         # Just cleanup directly
         wi.cleanup_session("session_002", wal=wal)
         ops = [e["operation"] for e in wal._entries]
         assert "sunset" in ops
 
     def test_command_not_found(self, tmp_path):
-        wi = FleetWorkerIsolation(pid_dir=tmp_path / "pids", signals_dir=tmp_path / "signals")
+        wi = FleetWorkerIsolation(
+            pid_dir=tmp_path / "pids", signals_dir=tmp_path / "signals"
+        )
         with pytest.raises(RuntimeError, match="Command not found"):
-            wi.spawn(role="test", session_id="session_003", command=["nonexistent_binary_12345"])
+            wi.spawn(
+                role="test",
+                session_id="session_003",
+                command=["nonexistent_binary_12345"],
+            )
 
     def test_pid_file_written(self, tmp_path):
-        wi = FleetWorkerIsolation(pid_dir=tmp_path / "pids", signals_dir=tmp_path / "signals")
+        wi = FleetWorkerIsolation(
+            pid_dir=tmp_path / "pids", signals_dir=tmp_path / "signals"
+        )
         result = wi.spawn(
             role="auditor",
             session_id="session_004",
@@ -305,6 +369,7 @@ class TestFleetWorkerIsolation:
 
 
 # ── FleetBernsteinScheduler ───────────────────────────────────
+
 
 class TestFleetBernsteinScheduler:
     def test_register_and_list(self):
@@ -348,7 +413,9 @@ class TestFleetBernsteinScheduler:
 
     def test_skip_misfire_policy(self):
         sched = FleetBernsteinScheduler(BernsteinScheduleConfig(catch_up_limit=2))
-        sched.register_schedule("s1", "* * * * *", {"task_id": "t1"}, misfire_policy="skip")
+        sched.register_schedule(
+            "s1", "* * * * *", {"task_id": "t1"}, misfire_policy="skip"
+        )
 
         # Anchor last_fire_at far in the past so multiple windows are missed
         with sched._lock:
@@ -360,8 +427,12 @@ class TestFleetBernsteinScheduler:
         assert result["fires_dispatched"] == 1
 
     def test_catch_up_misfire_policy(self):
-        sched = FleetBernsteinScheduler(BernsteinScheduleConfig(catch_up_limit=3, node_id="n1"))
-        sched.register_schedule("s1", "* * * * *", {"task_id": "t1"}, misfire_policy="catch_up")
+        sched = FleetBernsteinScheduler(
+            BernsteinScheduleConfig(catch_up_limit=3, node_id="n1")
+        )
+        sched.register_schedule(
+            "s1", "* * * * *", {"task_id": "t1"}, misfire_policy="catch_up"
+        )
 
         with sched._lock:
             sched._schedules["s1"]["last_fire_at"] = time.time() - 300
@@ -374,7 +445,9 @@ class TestFleetBernsteinScheduler:
 
     def test_counterfactual_receipt(self):
         sched = FleetBernsteinScheduler(BernsteinScheduleConfig(catch_up_limit=1))
-        sched.register_schedule("s1", "* * * * *", {"task_id": "t1"}, misfire_policy="catch_up")
+        sched.register_schedule(
+            "s1", "* * * * *", {"task_id": "t1"}, misfire_policy="catch_up"
+        )
 
         with sched._lock:
             sched._schedules["s1"]["last_fire_at"] = time.time() - 180
@@ -451,7 +524,9 @@ class TestFleetBernsteinScheduler:
         def register_many():
             try:
                 for i in range(10):
-                    sched.register_schedule(f"sched-{i}", f"{i % 60} * * * *", {"task_id": f"t{i}"})
+                    sched.register_schedule(
+                        f"sched-{i}", f"{i % 60} * * * *", {"task_id": f"t{i}"}
+                    )
             except Exception as exc:
                 errors.append(exc)
 
@@ -547,10 +622,15 @@ class TestFleetBernsteinScheduler:
 
 # ── Integration with FleetConductorV2 ─────────────────────────
 
+
 class TestFleetConductorV2Integration:
     def test_subsystem_wrapper_initialization(self):
         """Verify scheduler can be wrapped as a FleetConductorV2 subsystem."""
-        from nexus.fleet_conductor_v2 import ConductorConfig, FleetConductorV2, SubsystemWrapper
+        from nexus.fleet_conductor_v2 import (
+            ConductorConfig,
+            FleetConductorV2,
+            SubsystemWrapper,
+        )
 
         config = ConductorConfig(
             node_id="test-node",
@@ -617,14 +697,18 @@ class TestFleetConductorV2Integration:
 
 # ── Property-based cron tests ────────────────────────────────────
 
-@pytest.mark.parametrize("cron,expected_minutes", [
-    ("0 * * * *", {0}),
-    ("*/15 * * * *", {0, 15, 30, 45}),
-    ("1,2,3 * * * *", {1, 2, 3}),
-    ("0 0 * * *", {0}),
-    ("0 0 1 * *", {0}),
-    ("0 0 * * 1", {0}),
-])
+
+@pytest.mark.parametrize(
+    "cron,expected_minutes",
+    [
+        ("0 * * * *", {0}),
+        ("*/15 * * * *", {0, 15, 30, 45}),
+        ("1,2,3 * * * *", {1, 2, 3}),
+        ("0 0 * * *", {0}),
+        ("0 0 1 * *", {0}),
+        ("0 0 * * 1", {0}),
+    ],
+)
 def test_cron_parsing(cron, expected_minutes):
     sched = FleetBernsteinScheduler()
     parsed = sched._parse_cron(cron)
@@ -632,6 +716,7 @@ def test_cron_parsing(cron, expected_minutes):
 
 
 # ── Edge cases ────────────────────────────────────────────────
+
 
 def test_next_fire_after_utc_only():
     sched = FleetBernsteinScheduler()

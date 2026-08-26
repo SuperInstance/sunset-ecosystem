@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 class LineageSanityError(ValueError):
     """Raised when a remote agent fails lineage sanity checks."""
+
     pass
 
 
@@ -54,12 +55,14 @@ class Agent:
         if self.generation < 0:
             raise ValueError(f"generation must be >= 0, got {self.generation}")
         # Derive all_parents from parent_a/parent_b if not explicitly set
-        if not self.all_parents and (self.parent_a is not None or self.parent_b is not None):
+        if not self.all_parents and (
+            self.parent_a is not None or self.parent_b is not None
+        ):
             parents: list[int] = []
             for p in (self.parent_a, self.parent_b):
                 if p is not None and p not in parents:
                     parents.append(p)
-            object.__setattr__(self, 'all_parents', parents)
+            object.__setattr__(self, "all_parents", parents)
 
 
 @dataclass
@@ -85,9 +88,7 @@ class CRDTMergeEngine:
 
     # ── public API ──────────────────────────────────────────
 
-    def merge_populations(
-        self, local: list[Agent], remote: list[Agent]
-    ) -> list[Agent]:
+    def merge_populations(self, local: list[Agent], remote: list[Agent]) -> list[Agent]:
         """Merge two divergent populations.
 
         Strategy:
@@ -130,9 +131,7 @@ class CRDTMergeEngine:
             if agent.vector:
                 self._upsert_vector(agent)
 
-        logger.info(
-            "Merged %d agents (%d rejected)", len(merged), len(rejected)
-        )
+        logger.info("Merged %d agents (%d rejected)", len(merged), len(rejected))
         return list(merged.values())
 
     def detect_divergence(
@@ -313,9 +312,7 @@ class CRDTMergeEngine:
                 f"seed agent (no parents) has non-zero generation {agent.generation}"
             )
 
-    def _merge_lineages(
-        self, local_agent: Agent, remote_agent: Agent
-    ) -> list[int]:
+    def _merge_lineages(self, local_agent: Agent, remote_agent: Agent) -> list[int]:
         """Combine parent records from both copies into a single list.
 
         Preserves order: local parents first, then remote parents that

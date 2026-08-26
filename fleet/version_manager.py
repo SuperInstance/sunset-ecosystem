@@ -10,6 +10,7 @@ Usage:
     assert vm.is_compatible("breeder", ">=1.0.0")
     assert vm.feature_enabled("breeder", "flux-gating", since="1.2.0")
 """
+
 from __future__ import annotations
 
 import logging
@@ -53,8 +54,16 @@ class SemVer:
         return s
 
     def __lt__(self, other: "SemVer") -> bool:
-        if (self.major, self.minor, self.patch) != (other.major, other.minor, other.patch):
-            return (self.major, self.minor, self.patch) < (other.major, other.minor, other.patch)
+        if (self.major, self.minor, self.patch) != (
+            other.major,
+            other.minor,
+            other.patch,
+        ):
+            return (self.major, self.minor, self.patch) < (
+                other.major,
+                other.minor,
+                other.patch,
+            )
         # Pre-release versions are lower than release versions
         if self.prerelease and not other.prerelease:
             return True
@@ -183,7 +192,7 @@ _OPS = {
 def _check_constraint(ver: SemVer, constraint: str) -> bool:
     for op, fn in _OPS.items():
         if constraint.startswith(op):
-            target = SemVer.parse(constraint[len(op):].strip())
+            target = SemVer.parse(constraint[len(op) :].strip())
             return fn(ver, target)
     # No operator — exact match
     return ver == SemVer.parse(constraint)

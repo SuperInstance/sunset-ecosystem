@@ -37,14 +37,18 @@ class TestDiscovery:
 
     def test_auto_tagging(self) -> None:
         hub = EcosystemHub(org="test-org")
-        card = RepoCard(name="band-midi-rs", url="u", description="MIDI", primary_language="Rust")
+        card = RepoCard(
+            name="band-midi-rs", url="u", description="MIDI", primary_language="Rust"
+        )
         hub._auto_tag(card)
         assert "music" in card.tags
         assert "rust" in card.tags
 
     def test_auto_tagging_breeding(self) -> None:
         hub = EcosystemHub(org="test-org")
-        card = RepoCard(name="evolution-breeder", url="u", description="genetic algorithms")
+        card = RepoCard(
+            name="evolution-breeder", url="u", description="genetic algorithms"
+        )
         hub._auto_tag(card)
         assert "breeding" in card.tags
 
@@ -72,8 +76,12 @@ class TestDiscovery:
 class TestIntegrationMapping:
     def test_map_integrations(self) -> None:
         hub = EcosystemHub(org="test-org")
-        hub.repos["cuda-oxide"] = RepoCard(name="cuda-oxide", url="u", tags=["rust", "gpu"])
-        hub.repos["agent-operations"] = RepoCard(name="agent-operations", url="u", tags=["python", "agentic"])
+        hub.repos["cuda-oxide"] = RepoCard(
+            name="cuda-oxide", url="u", tags=["rust", "gpu"]
+        )
+        hub.repos["agent-operations"] = RepoCard(
+            name="agent-operations", url="u", tags=["python", "agentic"]
+        )
         hub.repos["t-minus-rs"] = RepoCard(name="t-minus-rs", url="u", tags=["rust"])
 
         maps = hub.map_integrations()
@@ -104,7 +112,9 @@ class TestPriorityTasks:
         hub.repos["agent-operations"] = RepoCard(name="agent-operations", url="u")
         hub.repos["t-minus-rs"] = RepoCard(name="t-minus-rs", url="u")
         hub.repos["NEXAH"] = RepoCard(name="NEXAH", url="u")
-        hub.repos["optimal-transport-rs"] = RepoCard(name="optimal-transport-rs", url="u")
+        hub.repos["optimal-transport-rs"] = RepoCard(
+            name="optimal-transport-rs", url="u"
+        )
         hub.repos["market-manifold"] = RepoCard(name="market-manifold", url="u")
 
         tasks = hub.suggest_priority_tasks()
@@ -139,10 +149,21 @@ class TestPriorityTasks:
 class TestReport:
     def test_generate_report(self) -> None:
         hub = EcosystemHub(org="test-org")
-        hub.repos["cuda-oxide"] = RepoCard(name="cuda-oxide", url="u", tags=["rust", "gpu"])
-        hub.repos["sunset-ecosystem"] = RepoCard(name="sunset-ecosystem", url="u", primary_language="Python", tags=["python", "agentic"])
-        hub.repos["c-ternary"] = RepoCard(name="c-ternary", url="u", primary_language="C", tags=["c"])
-        hub.repos["aider"] = RepoCard(name="aider", url="u", is_fork=True, tags=["fork", "python"])
+        hub.repos["cuda-oxide"] = RepoCard(
+            name="cuda-oxide", url="u", tags=["rust", "gpu"]
+        )
+        hub.repos["sunset-ecosystem"] = RepoCard(
+            name="sunset-ecosystem",
+            url="u",
+            primary_language="Python",
+            tags=["python", "agentic"],
+        )
+        hub.repos["c-ternary"] = RepoCard(
+            name="c-ternary", url="u", primary_language="C", tags=["c"]
+        )
+        hub.repos["aider"] = RepoCard(
+            name="aider", url="u", is_fork=True, tags=["fork", "python"]
+        )
 
         report = hub.generate_report()
         assert report["total_repos"] == 4
@@ -156,7 +177,9 @@ class TestReport:
 
     def test_write_report(self, tmp_path: Path) -> None:
         hub = EcosystemHub(org="test-org")
-        hub.repos["cuda-oxide"] = RepoCard(name="cuda-oxide", url="u", tags=["rust", "gpu"])
+        hub.repos["cuda-oxide"] = RepoCard(
+            name="cuda-oxide", url="u", tags=["rust", "gpu"]
+        )
         hub.map_integrations()
         hub.suggest_priority_tasks()
 
@@ -170,9 +193,15 @@ class TestReport:
 
     def test_report_python_bridge_gaps(self) -> None:
         hub = EcosystemHub(org="test-org")
-        hub.repos["rust-1"] = RepoCard(name="rust-1", url="u", tags=["rust"], has_python_bridge=False)
-        hub.repos["rust-2"] = RepoCard(name="rust-2", url="u", tags=["rust"], has_python_bridge=False)
-        hub.repos["python-1"] = RepoCard(name="python-1", url="u", tags=["python"], has_python_bridge=True)
+        hub.repos["rust-1"] = RepoCard(
+            name="rust-1", url="u", tags=["rust"], has_python_bridge=False
+        )
+        hub.repos["rust-2"] = RepoCard(
+            name="rust-2", url="u", tags=["rust"], has_python_bridge=False
+        )
+        hub.repos["python-1"] = RepoCard(
+            name="python-1", url="u", tags=["python"], has_python_bridge=True
+        )
 
         report = hub.generate_report()
         assert report["python_bridge_gaps"] == 2

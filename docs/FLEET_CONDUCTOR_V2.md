@@ -51,8 +51,8 @@ This keeps startup overhead minimal and prevents import storms in environments w
 
 ```python
 cfg = ConductorConfig(
-    enable_mesh=False,      # never starts FleetVectorIndex
-    enable_traps=False,     # never starts TrapRegistry
+    enable_mesh=False,  # never starts FleetVectorIndex
+    enable_traps=False,  # never starts TrapRegistry
     enable_metronome=True,  # starts on first beat
 )
 ```
@@ -80,12 +80,14 @@ The wrapper uses `threading.RLock` so restart (which calls destroy internally) d
 ## Dispatch: `spawn_agent()`
 
 ```python
-result = conductor.spawn_agent({
-    "description": "Research frontier hardware trends",
-    "fn": my_research_function,
-    "args": [3, 5],
-    "kwargs": {"depth": "deep"},
-})
+result = conductor.spawn_agent(
+    {
+        "description": "Research frontier hardware trends",
+        "fn": my_research_function,
+        "args": [3, 5],
+        "kwargs": {"depth": "deep"},
+    }
+)
 ```
 
 Flow:
@@ -136,7 +138,7 @@ cfg = ConductorConfig(
     enable_identity=True,
     enable_gateway_pacing=True,
     enable_sda_loop=True,
-    enable_breeding=False,       # set True to wire BreederDaemonV2
+    enable_breeding=False,  # set True to wire BreederDaemonV2
     sda_interval_ms=1000.0,
     max_drift_ms=10.0,
     auto_restart=True,

@@ -9,6 +9,7 @@ Usage:
     grads = {"lr": -0.02, "temp": 0.01}
     params = opt.step(params, grads)
 """
+
 from __future__ import annotations
 
 import math
@@ -18,7 +19,9 @@ from typing import Dict, Any, Callable, Optional
 class Optimizer:
     """Base class for parameter optimizers."""
 
-    def step(self, params: Dict[str, float], grads: Dict[str, float]) -> Dict[str, float]:
+    def step(
+        self, params: Dict[str, float], grads: Dict[str, float]
+    ) -> Dict[str, float]:
         raise NotImplementedError
 
 
@@ -35,7 +38,9 @@ class SGDOptimizer(Optimizer):
         self.momentum = momentum
         self._velocity: Dict[str, float] = {}
 
-    def step(self, params: Dict[str, float], grads: Dict[str, float]) -> Dict[str, float]:
+    def step(
+        self, params: Dict[str, float], grads: Dict[str, float]
+    ) -> Dict[str, float]:
         result: Dict[str, float] = {}
         for key, val in params.items():
             grad = grads.get(key, 0.0)
@@ -71,17 +76,19 @@ class AdamOptimizer(Optimizer):
         self._m: Dict[str, float] = {}
         self._v: Dict[str, float] = {}
 
-    def step(self, params: Dict[str, float], grads: Dict[str, float]) -> Dict[str, float]:
+    def step(
+        self, params: Dict[str, float], grads: Dict[str, float]
+    ) -> Dict[str, float]:
         self._t += 1
         result: Dict[str, float] = {}
         for key, val in params.items():
             grad = grads.get(key, 0.0)
             m = self.beta1 * self._m.get(key, 0.0) + (1 - self.beta1) * grad
-            v = self.beta2 * self._v.get(key, 0.0) + (1 - self.beta2) * (grad ** 2)
+            v = self.beta2 * self._v.get(key, 0.0) + (1 - self.beta2) * (grad**2)
             self._m[key] = m
             self._v[key] = v
-            m_hat = m / (1 - self.beta1 ** self._t)
-            v_hat = v / (1 - self.beta2 ** self._t)
+            m_hat = m / (1 - self.beta1**self._t)
+            v_hat = v / (1 - self.beta2**self._t)
             result[key] = val - self.lr * m_hat / (math.sqrt(v_hat) + self.eps)
         return result
 
@@ -104,11 +111,15 @@ class RMSPropOptimizer(Optimizer):
         self.eps = eps
         self._cache: Dict[str, float] = {}
 
-    def step(self, params: Dict[str, float], grads: Dict[str, float]) -> Dict[str, float]:
+    def step(
+        self, params: Dict[str, float], grads: Dict[str, float]
+    ) -> Dict[str, float]:
         result: Dict[str, float] = {}
         for key, val in params.items():
             grad = grads.get(key, 0.0)
-            cache = self.alpha * self._cache.get(key, 0.0) + (1 - self.alpha) * (grad ** 2)
+            cache = self.alpha * self._cache.get(key, 0.0) + (1 - self.alpha) * (
+                grad**2
+            )
             self._cache[key] = cache
             result[key] = val - self.lr * grad / (math.sqrt(cache) + self.eps)
         return result

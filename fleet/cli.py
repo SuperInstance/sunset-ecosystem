@@ -26,7 +26,10 @@ from fleet.health_check import FleetHealthChecker, ServiceDef
 
 def cmd_status(args):
     cfg = get_config()
-    services = [ServiceDef(s["name"], s["host"], s["port"], s.get("path", "/status")) for s in cfg.health_services()]
+    services = [
+        ServiceDef(s["name"], s["host"], s["port"], s.get("path", "/status"))
+        for s in cfg.health_services()
+    ]
 
     # Host override
     host = args.host or os.environ.get("SUNSET_HOST")
@@ -45,6 +48,7 @@ def cmd_status(args):
 
 def cmd_test(args):
     import subprocess
+
     cmd = ["python3", "-m", "pytest", "tests/", "-v"]
     if args.tb:
         cmd += [f"--tb={args.tb}"]
@@ -80,10 +84,14 @@ def cmd_breed(args):
         flux_config=flux_cfg,
     )
 
-    print(f"Breeding {breeder.population_size} agents, {cfg.generation_limit} generations...")
+    print(
+        f"Breeding {breeder.population_size} agents, {cfg.generation_limit} generations..."
+    )
     for gen in range(args.generations or cfg.generation_limit):
         results = breeder.cycle()
-        print(f"Gen {gen}: {len(results)} candidates, top={max((r.fitness for r in results), default=0):.3f}")
+        print(
+            f"Gen {gen}: {len(results)} candidates, top={max((r.fitness for r in results), default=0):.3f}"
+        )
         if args.watch and gen < (args.generations or cfg.generation_limit) - 1:
             time.sleep(args.watch)
 
@@ -134,15 +142,24 @@ def cmd_report(args):
 
 def main():
     parser = argparse.ArgumentParser(prog="sunset", description="Sunset Ecosystem CLI")
-    parser.add_argument("--format", choices=["json", "md", "oneline"], default="md", help="Output format")
-    parser.add_argument("--host", default=None, help="Override service host (env: SUNSET_HOST)")
+    parser.add_argument(
+        "--format",
+        choices=["json", "md", "oneline"],
+        default="md",
+        help="Output format",
+    )
+    parser.add_argument(
+        "--host", default=None, help="Override service host (env: SUNSET_HOST)"
+    )
     parser.add_argument("--config", default=None, help="Path to config YAML")
 
     sub = parser.add_subparsers(dest="command", help="Commands")
 
     # status
     p_status = sub.add_parser("status", help="Check fleet health")
-    p_status.add_argument("--fail", action="store_true", help="Exit with error if any service down")
+    p_status.add_argument(
+        "--fail", action="store_true", help="Exit with error if any service down"
+    )
     p_status.set_defaults(func=cmd_status)
 
     # test
@@ -156,13 +173,22 @@ def main():
     p_breed = sub.add_parser("breed", help="Trigger breeding cycle")
     p_breed.add_argument("--pool", type=int, help="Population size")
     p_breed.add_argument("--generations", type=int, help="Generation limit")
-    p_breed.add_argument("--watch", type=int, help="Sleep N seconds between generations")
+    p_breed.add_argument(
+        "--watch", type=int, help="Sleep N seconds between generations"
+    )
     p_breed.set_defaults(func=cmd_breed)
 
     # report
     p_report = sub.add_parser("report", help="Generate deck report")
-    p_report.add_argument("--type", choices=["breeding", "status", "flux"], default="breeding", help="Report type")
-    p_report.add_argument("--output", default=None, help="Output file (default: stdout)")
+    p_report.add_argument(
+        "--type",
+        choices=["breeding", "status", "flux"],
+        default="breeding",
+        help="Report type",
+    )
+    p_report.add_argument(
+        "--output", default=None, help="Output file (default: stdout)"
+    )
     p_report.add_argument("--generation", type=int, help="Generation number")
     p_report.add_argument("--pass-rate", type=float, help="Pass rate")
     p_report.add_argument("--top-score", type=float, help="Top score")

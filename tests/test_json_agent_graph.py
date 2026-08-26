@@ -1,4 +1,5 @@
 """Tests for fleet/json_agent_graph.py."""
+
 import pytest
 import asyncio
 from fleet.json_agent_graph import JsonAgentGraphExecutor, GraphNode, GraphResult
@@ -25,7 +26,12 @@ class TestJsonAgentGraphExecutor:
             "graph": {
                 "nodes": [
                     {"id": "start", "type": "input", "next": "router"},
-                    {"id": "router", "type": "router", "prompt": "Route", "next": {"a": "agent_a", "b": "agent_b"}},
+                    {
+                        "id": "router",
+                        "type": "router",
+                        "prompt": "Route",
+                        "next": {"a": "agent_a", "b": "agent_b"},
+                    },
                     {"id": "agent_a", "type": "agent", "tool": "tool_a", "next": "end"},
                     {"id": "agent_b", "type": "agent", "tool": "tool_b", "next": "end"},
                     {"id": "end", "type": "output"},
@@ -81,10 +87,20 @@ class TestJsonAgentGraphExecutor:
             "graph": {
                 "nodes": [
                     {"id": "start", "type": "input", "next": "router"},
-                    {"id": "router", "type": "router", "parallel": True, "next": {"a": "agent_a", "b": "agent_b", "__merge__": "merge"}},
+                    {
+                        "id": "router",
+                        "type": "router",
+                        "parallel": True,
+                        "next": {"a": "agent_a", "b": "agent_b", "__merge__": "merge"},
+                    },
                     {"id": "agent_a", "type": "agent", "tool": "tool_a"},
                     {"id": "agent_b", "type": "agent", "tool": "tool_b"},
-                    {"id": "merge", "type": "aggregator", "prompt": "Merge", "next": "end"},
+                    {
+                        "id": "merge",
+                        "type": "aggregator",
+                        "prompt": "Merge",
+                        "next": "end",
+                    },
                     {"id": "end", "type": "output"},
                 ]
             }
@@ -96,6 +112,7 @@ class TestJsonAgentGraphExecutor:
     @pytest.mark.asyncio
     async def test_judge_loop(self):
         call_count = 0
+
         async def mock_llm(prompt, state):
             nonlocal call_count
             call_count += 1
@@ -108,7 +125,14 @@ class TestJsonAgentGraphExecutor:
                 "nodes": [
                     {"id": "start", "type": "input", "next": "planner"},
                     {"id": "planner", "type": "llm", "prompt": "Plan", "next": "judge"},
-                    {"id": "judge", "type": "judge", "prompt": "Evaluate", "max_iterations": 2, "threshold": 0.8, "next": "end"},
+                    {
+                        "id": "judge",
+                        "type": "judge",
+                        "prompt": "Evaluate",
+                        "max_iterations": 2,
+                        "threshold": 0.8,
+                        "next": "end",
+                    },
                     {"id": "end", "type": "output"},
                 ]
             }
@@ -120,6 +144,7 @@ class TestJsonAgentGraphExecutor:
     @pytest.mark.asyncio
     async def test_judge_reject_and_refine(self):
         call_count = 0
+
         async def mock_llm(prompt, state):
             nonlocal call_count
             call_count += 1
@@ -134,7 +159,14 @@ class TestJsonAgentGraphExecutor:
                 "nodes": [
                     {"id": "start", "type": "input", "next": "planner"},
                     {"id": "planner", "type": "llm", "prompt": "Plan", "next": "judge"},
-                    {"id": "judge", "type": "judge", "prompt": "Evaluate", "max_iterations": 3, "threshold": 0.8, "next": "end"},
+                    {
+                        "id": "judge",
+                        "type": "judge",
+                        "prompt": "Evaluate",
+                        "max_iterations": 3,
+                        "threshold": 0.8,
+                        "next": "end",
+                    },
                     {"id": "end", "type": "output"},
                 ]
             }
@@ -170,7 +202,12 @@ class TestJsonAgentGraphExecutor:
             "graph": {
                 "nodes": [
                     {"id": "start", "type": "input", "next": "router"},
-                    {"id": "router", "type": "router", "prompt": "Route", "next": {"a": "agent_a", "b": "agent_b"}},
+                    {
+                        "id": "router",
+                        "type": "router",
+                        "prompt": "Route",
+                        "next": {"a": "agent_a", "b": "agent_b"},
+                    },
                     {"id": "agent_a", "type": "agent", "tool": "tool_a", "next": "end"},
                     {"id": "agent_b", "type": "agent", "tool": "tool_b", "next": "end"},
                     {"id": "end", "type": "output"},

@@ -11,6 +11,7 @@ Usage:
     assert len(buf) == 2
     assert buf[0] == "event-1"
 """
+
 from __future__ import annotations
 
 from collections import deque

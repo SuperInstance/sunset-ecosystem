@@ -25,6 +25,7 @@ import numpy as np
 @dataclass
 class ModelArtifact:
     """A versioned model artifact."""
+
     name: str
     version: str
     data: Any
@@ -56,7 +57,9 @@ class ModelRegistry:
 
     def __init__(self, fleet_node_id: str = "default"):
         self.fleet_node_id = fleet_node_id
-        self.artifacts: Dict[str, Dict[str, ModelArtifact]] = {}  # name -> {version -> artifact}
+        self.artifacts: Dict[
+            str, Dict[str, ModelArtifact]
+        ] = {}  # name -> {version -> artifact}
         self.tags_index: Dict[str, List[str]] = {}  # tag -> [name:version]
 
     def _compute_checksum(self, data: Any) -> str:
@@ -64,10 +67,14 @@ class ModelRegistry:
         content = json.dumps(data, sort_keys=True, default=str)
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
-    def publish(self, name: str, data: Any,
-                tags: Optional[Dict[str, str]] = None,
-                metadata: Optional[Dict[str, Any]] = None,
-                version: Optional[str] = None) -> ModelArtifact:
+    def publish(
+        self,
+        name: str,
+        data: Any,
+        tags: Optional[Dict[str, str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        version: Optional[str] = None,
+    ) -> ModelArtifact:
         """Publish a model artifact."""
         version = version or f"v{len(self.artifacts.get(name, {})) + 1}"
         checksum = self._compute_checksum(data)
@@ -107,7 +114,9 @@ class ModelRegistry:
         artifact = self.artifacts[name].get(version)
         return artifact.data if artifact else None
 
-    def get_metadata(self, name: str, version: str = "latest") -> Optional[Dict[str, Any]]:
+    def get_metadata(
+        self, name: str, version: str = "latest"
+    ) -> Optional[Dict[str, Any]]:
         """Get metadata for an artifact."""
         if name not in self.artifacts:
             return None

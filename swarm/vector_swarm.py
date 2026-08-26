@@ -66,6 +66,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SwarmQueryPlan:
     """A query plan for distributed search."""
+
     query_id: str
     query_type: str  # "knn", "similarity", "temporal", "fitness", "id"
     target_nodes: list[str] = field(default_factory=list)
@@ -88,6 +89,7 @@ class SwarmQueryPlan:
 @dataclass
 class SwarmResult:
     """Result from a single node/shard."""
+
     query_id: str
     source: str
     entries: list[VectorTableEntry]
@@ -179,7 +181,11 @@ class SwarmRouter:
             return []
         hash_val = int(hashlib.sha256(key.encode()).hexdigest(), 16)
         idx = hash_val % len(nodes)
-        return [nodes[idx]] if n == 1 else [nodes[(idx + i) % len(nodes)] for i in range(min(n, len(nodes)))]
+        return (
+            [nodes[idx]]
+            if n == 1
+            else [nodes[(idx + i) % len(nodes)] for i in range(min(n, len(nodes)))]
+        )
 
     def _route_by_time(self, time_range: tuple[float, float]) -> list[str]:
         """Route to shards that might contain the time range."""
@@ -220,7 +226,9 @@ class VectorSwarm:
 
     # ── distributed queries ─────────────────────────────────────
 
-    def query_by_id(self, agent_id: str, consistency: str = "quorum") -> list[SwarmResult]:
+    def query_by_id(
+        self, agent_id: str, consistency: str = "quorum"
+    ) -> list[SwarmResult]:
         """Query an agent by ID across the fleet.
 
         Parameters
@@ -261,7 +269,9 @@ class VectorSwarm:
         list[SwarmResult]
             Results from each node.
         """
-        plan = self.router.route_query("similarity", {"vector": vector.tolist(), "k": k})
+        plan = self.router.route_query(
+            "similarity", {"vector": vector.tolist(), "k": k}
+        )
         plan.consistency = consistency
         return self._execute_plan(plan)
 
@@ -371,7 +381,9 @@ class VectorSwarm:
 
         # Rank by vote count, then by distance
         ranked = []
-        for agent_id, votes in sorted(vote_counts.items(), key=lambda x: x[1], reverse=True):
+        for agent_id, votes in sorted(
+            vote_counts.items(), key=lambda x: x[1], reverse=True
+        ):
             entry = entry_map[agent_id]
             dist = float(np.linalg.norm(entry.vector - vector))
             ranked.append((entry, dist, votes))
@@ -389,7 +401,8 @@ class VectorSwarm:
             "failure_count": self._failure_count,
             "mean_latency_ms": (
                 self._total_latency_ms / self._query_count
-                if self._query_count > 0 else 0.0
+                if self._query_count > 0
+                else 0.0
             ),
             "node_count": len(self.router._node_index),
             "shard_count": len(self.router._shard_index),
@@ -428,13 +441,15 @@ class VectorSwarm:
                 except Exception as exc:
                     logger.warning("Query failed for node %s: %s", node_id, exc)
                     self._failure_count += 1
-                    results.append(SwarmResult(
-                        query_id=plan.query_id,
-                        source=node_id,
-                        entries=[],
-                        latency_ms=(time.time() - start_time) * 1000,
-                        error=str(exc),
-                    ))
+                    results.append(
+                        SwarmResult(
+                            query_id=plan.query_id,
+                            source=node_id,
+                            entries=[],
+                            latency_ms=(time.time() - start_time) * 1000,
+                            error=str(exc),
+                        )
+                    )
 
                 # Early exit if we have enough responses
                 if completed >= plan.required_responses:
@@ -449,7 +464,9 @@ class VectorSwarm:
 
         return results
 
-    def _query_node(self, node_id: str, node_ref: Any, plan: SwarmQueryPlan) -> SwarmResult:
+    def _query_node(
+        self, node_id: str, node_ref: Any, plan: SwarmQueryPlan
+    ) -> SwarmResult:
         """Execute a query on a single node."""
         start_time = time.time()
 
@@ -483,7 +500,9 @@ class VectorSwarm:
                 error=str(exc),
             )
 
-    def _query_shard(self, node_ref: Any, shard_id: str, plan: SwarmQueryPlan) -> list[VectorTableEntry]:
+    def _query_shard(
+        self, node_ref: Any, shard_id: str, plan: SwarmQueryPlan
+    ) -> list[VectorTableEntry]:
         """Execute a query on a single shard."""
         # In production, this would call the node's shard API
         # For simulation, we check if node_ref has the shard method
@@ -505,7 +524,9 @@ class VectorSwarm:
             elif hasattr(node_ref, "all_entries"):
                 entries = list(node_ref.all_entries())
                 # Sort by distance
-                distances = [(float(np.linalg.norm(e.vector - vector)), e) for e in entries]
+                distances = [
+                    (float(np.linalg.norm(e.vector - vector)), e) for e in entries
+                ]
                 sorted_entries = [e for _, e in sorted(distances, key=lambda x: x[0])]
                 return sorted_entries[:k]
 
@@ -515,7 +536,9 @@ class VectorSwarm:
             if hasattr(node_ref, "query_by_fitness"):
                 return node_ref.query_by_fitness(min_f, max_f)
             elif hasattr(node_ref, "all_entries"):
-                return [e for e in node_ref.all_entries() if min_f <= e.fitness <= max_f]
+                return [
+                    e for e in node_ref.all_entries() if min_f <= e.fitness <= max_f
+                ]
 
         elif plan.query_type == "knn":
             vector = np.array(plan.params.get("vector", []), dtype=np.float32)
@@ -524,7 +547,9 @@ class VectorSwarm:
                 return node_ref.query_similar(vector, k)
             elif hasattr(node_ref, "all_entries"):
                 entries = list(node_ref.all_entries())
-                distances = [(float(np.linalg.norm(e.vector - vector)), e) for e in entries]
+                distances = [
+                    (float(np.linalg.norm(e.vector - vector)), e) for e in entries
+                ]
                 sorted_entries = [e for _, e in sorted(distances, key=lambda x: x[0])]
                 return sorted_entries[:k]
 

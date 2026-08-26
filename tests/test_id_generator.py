@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_id_generator.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -50,6 +51,7 @@ class TestIDGenerator:
     def test_time_ordering(self):
         gen = IDGenerator(node_id=1)
         import time
+
         id1 = gen.next()
         time.sleep(0.01)
         id2 = gen.next()

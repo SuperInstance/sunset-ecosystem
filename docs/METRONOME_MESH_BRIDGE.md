@@ -18,11 +18,13 @@ over the mesh gossip protocol. This means **one gossip channel handles both**:
 ```python
 from nerve.metronome_mesh_bridge import MetronomeGossipBridge, BridgeConfig
 
-bridge = MetronomeGossipBridge(BridgeConfig(
-    enable_beat_gossip=True,
-    enable_drift_gossip=True,
-    enable_vector_passthrough=True,
-))
+bridge = MetronomeGossipBridge(
+    BridgeConfig(
+        enable_beat_gossip=True,
+        enable_drift_gossip=True,
+        enable_vector_passthrough=True,
+    )
+)
 
 bridge.attach_metronome(metronome)
 bridge.attach_gossip(gossip)
@@ -62,11 +64,11 @@ prevents delayed beat corrections from causing oscillations.
 
 ```python
 BridgeConfig(
-    enable_drift_gossip=True,      # forward drift corrections
-    enable_beat_gossip=True,       # forward beat ticks
-    enable_vector_passthrough=True, # forward vector updates
-    max_gossip_age_sec=30.0,       # drop stale messages
-    dedup_window_sec=60.0,          # deduplication window
+    enable_drift_gossip=True,  # forward drift corrections
+    enable_beat_gossip=True,  # forward beat ticks
+    enable_vector_passthrough=True,  # forward vector updates
+    max_gossip_age_sec=30.0,  # drop stale messages
+    dedup_window_sec=60.0,  # deduplication window
 )
 ```
 

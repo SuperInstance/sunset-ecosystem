@@ -12,6 +12,7 @@ Usage:
     })
     ok, errors = validator.validate("service", {"name": "api", "port": 8080})
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional
@@ -77,9 +78,12 @@ class ConfigValidator:
 
             # Regex (for strings)
             import re
+
             if "regex" in rules:
                 if not re.match(rules["regex"], str(value)):
-                    errors.append(f"{field_name}: does not match pattern {rules['regex']}")
+                    errors.append(
+                        f"{field_name}: does not match pattern {rules['regex']}"
+                    )
 
             # Custom validator
             custom = rules.get("custom")

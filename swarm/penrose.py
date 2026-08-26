@@ -30,6 +30,7 @@ class PenrosePosition:
         ring: Which ring of the spiral (0 = center).
         angle: Angle from the positive x-axis (radians).
     """
+
     agent_id: str
     x: float
     y: float
@@ -71,13 +72,15 @@ def assign_positions(agent_ids: list[str]) -> list[PenrosePosition]:
         x = r * math.cos(angle)
         y = r * math.sin(angle)
 
-        positions.append(PenrosePosition(
-            agent_id=agent_id,
-            x=x,
-            y=y,
-            ring=ring,
-            angle=angle % (2 * math.pi),
-        ))
+        positions.append(
+            PenrosePosition(
+                agent_id=agent_id,
+                x=x,
+                y=y,
+                ring=ring,
+                angle=angle % (2 * math.pi),
+            )
+        )
 
     return positions
 

@@ -11,6 +11,7 @@ Usage:
     toggles.set_enabled("new-ui", True)
     assert toggles.is_enabled("new-ui")  # Now enabled for all
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -24,7 +25,9 @@ class FeatureToggles:
 
     def __init__(self):
         self._features: Dict[str, Dict[str, Any]] = {}
-        self._user_overrides: Dict[str, Dict[str, bool]] = {}  # feature -> {user_id: enabled}
+        self._user_overrides: Dict[
+            str, Dict[str, bool]
+        ] = {}  # feature -> {user_id: enabled}
 
     # ------------------------------------------------------------------
     # Registration
@@ -159,7 +162,9 @@ class FeatureToggles:
 
     def stats(self) -> Dict[str, Any]:
         enabled = sum(1 for f in self._features.values() if f["enabled"])
-        rollout = sum(1 for f in self._features.values() if f["rollout"] > 0 and not f["enabled"])
+        rollout = sum(
+            1 for f in self._features.values() if f["rollout"] > 0 and not f["enabled"]
+        )
         return {
             "features": len(self._features),
             "enabled": enabled,

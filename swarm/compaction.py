@@ -106,7 +106,9 @@ class CompactionManager:
     def archive_sunset(self, agent_id: int) -> None:
         """Mark an agent as archived (sunset, no longer breeding)."""
         self._archived.add(agent_id)
-        logger.debug("Archived agent %d (gen %d)", agent_id, self._generations.get(agent_id, -1))
+        logger.debug(
+            "Archived agent %d (gen %d)", agent_id, self._generations.get(agent_id, -1)
+        )
 
     # ── compaction triggers ───────────────────────────────
 
@@ -125,7 +127,10 @@ class CompactionManager:
         # Check generation gap
         if self._generations:
             max_gen = max(self._generations.values())
-            if max_gen - self._last_compact_generation >= self.policy.max_generations_without_compact:
+            if (
+                max_gen - self._last_compact_generation
+                >= self.policy.max_generations_without_compact
+            ):
                 return True
 
         return False
@@ -160,8 +165,11 @@ class CompactionManager:
                 to_compact.append(aid)
 
         if len(to_compact) < self.policy.min_archive_for_summary:
-            logger.info("Compaction skipped: only %d agents eligible (< %d)",
-                        len(to_compact), self.policy.min_archive_for_summary)
+            logger.info(
+                "Compaction skipped: only %d agents eligible (< %d)",
+                len(to_compact),
+                self.policy.min_archive_for_summary,
+            )
             return None
 
         logger.info("Compacting %d archived agents...", len(to_compact))
@@ -185,7 +193,9 @@ class CompactionManager:
             generations.append(self._generations.get(aid, 0))
 
         if not vectors:
-            logger.warning("No vectors found for %d agents — compaction aborted", len(to_compact))
+            logger.warning(
+                "No vectors found for %d agents — compaction aborted", len(to_compact)
+            )
             return None
 
         stack = np.stack(vectors)

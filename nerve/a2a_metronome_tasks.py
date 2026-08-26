@@ -36,11 +36,12 @@ logger = logging.getLogger(__name__)
 
 # ── Result wrapper ─────────────────────────────────────────
 
+
 @dataclass(frozen=True, slots=True)
 class A2AMetronomeResult:
     """Outcome of executing an A2A metronome task on a RoomGrid."""
 
-    status: str                     # "completed" | "failed" | "rejected"
+    status: str  # "completed" | "failed" | "rejected"
     task_type: str
     beat_number: int = 0
     payload: dict = field(default_factory=dict)
@@ -67,6 +68,7 @@ class A2AMetronomeResult:
 
 
 # ── Base A2A Task Protocol ─────────────────────────────────
+
 
 class A2AMetronomeTask:
     """Base class for all A2A metronome tasks.
@@ -98,8 +100,9 @@ class A2AMetronomeTask:
 
 # ── BeatSyncTask ───────────────────────────────────────────
 
+
 class BeatSyncTask(A2AMetronomeTask):
-    """"Sync to my beat N at timestamp T."
+    """ "Sync to my beat N at timestamp T."
 
     A peer node announces its current beat number and the wall-clock
     time when that beat occurred.  The receiver should align its own
@@ -179,8 +182,9 @@ class BeatSyncTask(A2AMetronomeTask):
 
 # ── BPMNegotiationTask ─────────────────────────────────────
 
+
 class BPMNegotiationTask(A2AMetronomeTask):
-    """"Propose BPM=X, respond with accept/counter."
+    """ "Propose BPM=X, respond with accept/counter."
 
     One node proposes a new fleet-wide BPM.  The receiver can:
       - accept  → returns status="completed" with accepted_bpm
@@ -313,8 +317,9 @@ class BPMNegotiationTask(A2AMetronomeTask):
 
 # ── DriftAlertTask ─────────────────────────────────────────
 
+
 class DriftAlertTask(A2AMetronomeTask):
-    """"My drift exceeds threshold, request partition or nudge."
+    """ "My drift exceeds threshold, request partition or nudge."
 
     A node reports that its measured drift relative to the fleet
     consensus has crossed a threshold.  The conductor decides which
@@ -419,6 +424,7 @@ class DriftAlertTask(A2AMetronomeTask):
 
 # ── TickAsTask ─────────────────────────────────────────────
 
+
 class TickAsTask(A2AMetronomeTask):
     """Wrap a single tick computation as an A2A task for remote execution.
 
@@ -504,10 +510,7 @@ class TickAsTask(A2AMetronomeTask):
             # Subset tick — tick the grid but mask to requested rooms
             # RoomGrid.tick() always processes all rooms; we report subset
             tick_result = grid.tick(signal)
-            fired_subset = [
-                r for r in tick_result.get("ids", [])
-                if r in self.room_ids
-            ]
+            fired_subset = [r for r in tick_result.get("ids", []) if r in self.room_ids]
             tick_result = {
                 "fired": len(fired_subset),
                 "ids": fired_subset,

@@ -8,6 +8,7 @@ Usage:
     watcher.watch("config.yaml", lambda path: reload_config(path))
     watcher.check()  # call periodically
 """
+
 from __future__ import annotations
 
 import logging

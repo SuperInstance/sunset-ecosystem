@@ -27,6 +27,7 @@ import numpy as np
 @dataclass
 class ModuleDoc:
     """Documentation for a single module."""
+
     name: str
     path: str
     docstring: str = ""
@@ -101,12 +102,15 @@ class DocGenerator:
                     "name": node.name,
                     "docstring": ast.get_docstring(node) or "",
                     "methods": [
-                        n.name for n in node.body
+                        n.name
+                        for n in node.body
                         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
                     ],
                 }
                 module_doc.classes.append(class_info)
-            elif isinstance(node, ast.FunctionDef) and not isinstance(node, ast.ClassDef):
+            elif isinstance(node, ast.FunctionDef) and not isinstance(
+                node, ast.ClassDef
+            ):
                 func_info = {
                     "name": node.name,
                     "docstring": ast.get_docstring(node) or "",
@@ -172,16 +176,16 @@ class DocGenerator:
 
             for cls in mod.classes:
                 lines.append(f"### class {cls['name']}")
-                if cls['docstring']:
-                    lines.append(cls['docstring'])
-                if cls['methods']:
+                if cls["docstring"]:
+                    lines.append(cls["docstring"])
+                if cls["methods"]:
                     lines.append(f"**Methods:** {', '.join(cls['methods'])}")
                 lines.append("")
 
             for func in mod.functions:
                 lines.append(f"### {func['name']}({', '.join(func['args'])})")
-                if func['docstring']:
-                    lines.append(func['docstring'])
+                if func["docstring"]:
+                    lines.append(func["docstring"])
                 lines.append("")
 
         return "\n".join(lines)

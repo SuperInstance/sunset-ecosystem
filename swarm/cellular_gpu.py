@@ -45,13 +45,17 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from swarm.cellular_numba import NumbaCellularEngine, rule_survival as numba_rule_survival
+from swarm.cellular_numba import (
+    NumbaCellularEngine,
+    rule_survival as numba_rule_survival,
+)
 
 logger = logging.getLogger(__name__)
 
 # GPU availability
 try:
     from numba import cuda
+
     HAS_CUDA = cuda.is_available()
 except ImportError:
     HAS_CUDA = False
@@ -64,6 +68,7 @@ GPURule = Callable[[float, float, List[float]], Tuple[Optional[float], Optional[
 
 
 # ── Engine ─────────────────────────────────────────────────────────────
+
 
 @dataclass
 class GPUCellularEngine:
@@ -98,14 +103,18 @@ class GPUCellularEngine:
 
     # ── Seeding ───────────────────────────────────────────────────
 
-    def seed(self, positions: List[Tuple[int, int]], energy: float = 1.0, state: float = 1.0) -> None:
+    def seed(
+        self, positions: List[Tuple[int, int]], energy: float = 1.0, state: float = 1.0
+    ) -> None:
         for i, j in positions:
             if 0 <= i < self.grid_size[0] and 0 <= j < self.grid_size[1]:
                 self._energies[i, j] = energy
                 self._states[i, j] = state
         self._sync_to_cpu()
 
-    def seed_random(self, count: int, energy_range: Tuple[float, float] = (0.5, 1.0)) -> None:
+    def seed_random(
+        self, count: int, energy_range: Tuple[float, float] = (0.5, 1.0)
+    ) -> None:
         rows, cols = self.grid_size
         indices = np.random.choice(rows * cols, size=count, replace=False)
         self._energies.flat[indices] = np.random.uniform(*energy_range, size=count)
@@ -119,11 +128,15 @@ class GPUCellularEngine:
 
     # ── Rules ─────────────────────────────────────────────────────
 
-    def register_rule(self, rule: GPURule, params: Optional[List[float]] = None) -> None:
+    def register_rule(
+        self, rule: GPURule, params: Optional[List[float]] = None
+    ) -> None:
         self.rules.append(rule)
         # Also register with CPU engine for fallback
         if params:
-            self._cpu_engine.register_rule(numba_rule_survival, params=np.array(params, dtype=np.float32))
+            self._cpu_engine.register_rule(
+                numba_rule_survival, params=np.array(params, dtype=np.float32)
+            )
 
     # ── Tick ──────────────────────────────────────────────────────
 
@@ -146,7 +159,10 @@ class GPUCellularEngine:
             (self.grid_size[1] + threads_per_block[1] - 1) // threads_per_block[1],
         )
         _gpu_decay_kernel[blocks_per_grid, threads_per_block, self._stream](
-            self._d_energies, self._d_states, self._d_output_energies, self._d_output_states
+            self._d_energies,
+            self._d_states,
+            self._d_output_energies,
+            self._d_output_states,
         )
 
         # Copy back
@@ -244,6 +260,7 @@ class GPUCellularEngine:
 # ── CUDA kernel (compiled only if CUDA available) ──────────────────────
 
 if HAS_CUDA:
+
     @cuda.jit
     def _gpu_decay_kernel(energies, states, out_energies, out_states):
         """Simple GPU decay kernel (placeholder for full rules)."""

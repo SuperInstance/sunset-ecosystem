@@ -9,6 +9,7 @@ HIGH findings are discovered.
 
 Reference: https://github.com/Pringled/agentcheck
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -280,19 +281,23 @@ class FleetSecurityScanner:
         out: List[Finding] = []
         for key, val in os.environ.items():
             if self._HIGH_RISK_ENV.match(key):
-                out.append(Finding(
-                    scanner="env_keys",
-                    resource=key,
-                    severity=Severity.HIGH,
-                    description=f"High-risk API key found in environment: {key}",
-                ))
+                out.append(
+                    Finding(
+                        scanner="env_keys",
+                        resource=key,
+                        severity=Severity.HIGH,
+                        description=f"High-risk API key found in environment: {key}",
+                    )
+                )
             elif any(k.lower() in key.lower() for k in self.extra_env_keys):
-                out.append(Finding(
-                    scanner="env_keys",
-                    resource=key,
-                    severity=Severity.HIGH,
-                    description=f"Custom high-risk env key found: {key}",
-                ))
+                out.append(
+                    Finding(
+                        scanner="env_keys",
+                        resource=key,
+                        severity=Severity.HIGH,
+                        description=f"Custom high-risk env key found: {key}",
+                    )
+                )
         return out
 
     _CREDENTIAL_PATHS = [
@@ -312,12 +317,14 @@ class FleetSecurityScanner:
         for p in self._CREDENTIAL_PATHS + (self.extra_credential_files or []):
             path = Path(p).expanduser()
             if path.exists():
-                out.append(Finding(
-                    scanner="credential_files",
-                    resource=str(path),
-                    severity=Severity.MODERATE,
-                    description=f"Credential file exists: {path}",
-                ))
+                out.append(
+                    Finding(
+                        scanner="credential_files",
+                        resource=str(path),
+                        severity=Severity.MODERATE,
+                        description=f"Credential file exists: {path}",
+                    )
+                )
         return out
 
     def _scan_kubernetes(self) -> List[Finding]:
@@ -325,25 +332,30 @@ class FleetSecurityScanner:
         kubeconfig = os.environ.get("KUBECONFIG", "~/.kube/config")
         path = Path(kubeconfig).expanduser()
         if path.exists():
-            out.append(Finding(
-                scanner="kubernetes",
-                resource=str(path),
-                severity=Severity.MODERATE,
-                description="Kubernetes config file found",
-            ))
+            out.append(
+                Finding(
+                    scanner="kubernetes",
+                    resource=str(path),
+                    severity=Severity.MODERATE,
+                    description="Kubernetes config file found",
+                )
+            )
             # Check if current context points to prod
             try:
                 import yaml
+
                 with open(path) as f:
                     cfg = yaml.safe_load(f)
                 ctx = cfg.get("current-context", "")
                 if "prod" in ctx.lower() or "production" in ctx.lower():
-                    out.append(Finding(
-                        scanner="kubernetes",
-                        resource=ctx,
-                        severity=Severity.CRITICAL,
-                        description=f"kubectl context points to production cluster: {ctx}",
-                    ))
+                    out.append(
+                        Finding(
+                            scanner="kubernetes",
+                            resource=ctx,
+                            severity=Severity.CRITICAL,
+                            description=f"kubectl context points to production cluster: {ctx}",
+                        )
+                    )
             except Exception:
                 pass
         return out
@@ -351,12 +363,14 @@ class FleetSecurityScanner:
     def _scan_docker(self) -> List[Finding]:
         out: List[Finding] = []
         if Path("/var/run/docker.sock").exists():
-            out.append(Finding(
-                scanner="docker",
-                resource="/var/run/docker.sock",
-                severity=Severity.MODERATE,
-                description="Docker socket accessible — potential container escape",
-            ))
+            out.append(
+                Finding(
+                    scanner="docker",
+                    resource="/var/run/docker.sock",
+                    severity=Severity.MODERATE,
+                    description="Docker socket accessible — potential container escape",
+                )
+            )
         return out
 
     def _scan_ssh_keys(self) -> List[Finding]:
@@ -364,34 +378,40 @@ class FleetSecurityScanner:
         ssh_dir = Path("~/.ssh").expanduser()
         if ssh_dir.exists():
             for key_file in ssh_dir.glob("id_*"):
-                out.append(Finding(
-                    scanner="ssh_keys",
-                    resource=str(key_file),
-                    severity=Severity.MODERATE,
-                    description=f"SSH key found: {key_file.name}",
-                ))
+                out.append(
+                    Finding(
+                        scanner="ssh_keys",
+                        resource=str(key_file),
+                        severity=Severity.MODERATE,
+                        description=f"SSH key found: {key_file.name}",
+                    )
+                )
         return out
 
     def _scan_terraform(self) -> List[Finding]:
         out: List[Finding] = []
         for tfstate in Path(".").rglob("*.tfstate"):
-            out.append(Finding(
-                scanner="terraform",
-                resource=str(tfstate),
-                severity=Severity.HIGH,
-                description=f"Terraform state file found (may contain secrets): {tfstate}",
-            ))
+            out.append(
+                Finding(
+                    scanner="terraform",
+                    resource=str(tfstate),
+                    severity=Severity.HIGH,
+                    description=f"Terraform state file found (may contain secrets): {tfstate}",
+                )
+            )
         return out
 
     def _scan_env_files(self) -> List[Finding]:
         out: List[Finding] = []
         for envfile in Path(".").rglob(".env"):
-            out.append(Finding(
-                scanner="env_files",
-                resource=str(envfile),
-                severity=Severity.MODERATE,
-                description=f".env file found: {envfile}",
-            ))
+            out.append(
+                Finding(
+                    scanner="env_files",
+                    resource=str(envfile),
+                    severity=Severity.MODERATE,
+                    description=f".env file found: {envfile}",
+                )
+            )
         return out
 
     def _scan_fleet_specific(self) -> List[Finding]:
@@ -407,22 +427,26 @@ class FleetSecurityScanner:
         for p in fleet_keys:
             path = Path(p).expanduser()
             if path.exists():
-                out.append(Finding(
-                    scanner="fleet_specific",
-                    resource=str(path),
-                    severity=Severity.HIGH,
-                    description=f"Fleet secret file found without encryption check: {path}",
-                ))
+                out.append(
+                    Finding(
+                        scanner="fleet_specific",
+                        resource=str(path),
+                        severity=Severity.HIGH,
+                        description=f"Fleet secret file found without encryption check: {path}",
+                    )
+                )
 
         # Check for exposed PLATO tokens
         for key in os.environ:
             if "PLATO" in key and "TOKEN" in key:
-                out.append(Finding(
-                    scanner="fleet_specific",
-                    resource=key,
-                    severity=Severity.CRITICAL,
-                    description=f"PLATO token exposed in environment: {key}",
-                ))
+                out.append(
+                    Finding(
+                        scanner="fleet_specific",
+                        resource=key,
+                        severity=Severity.CRITICAL,
+                        description=f"PLATO token exposed in environment: {key}",
+                    )
+                )
 
         # Check for hardcoded credentials in sunset-ecosystem code
         sunset_dir = Path(__file__).parent.parent
@@ -430,13 +454,17 @@ class FleetSecurityScanner:
             for pyfile in sunset_dir.rglob("*.py"):
                 try:
                     content = pyfile.read_text(errors="ignore")
-                    if re.search(r'password\s*=\s*["\'][^"\']+["\']', content, re.IGNORECASE):
-                        out.append(Finding(
-                            scanner="fleet_specific",
-                            resource=str(pyfile),
-                            severity=Severity.HIGH,
-                            description=f"Possible hardcoded password in {pyfile.name}",
-                        ))
+                    if re.search(
+                        r'password\s*=\s*["\'][^"\']+["\']', content, re.IGNORECASE
+                    ):
+                        out.append(
+                            Finding(
+                                scanner="fleet_specific",
+                                resource=str(pyfile),
+                                severity=Severity.HIGH,
+                                description=f"Possible hardcoded password in {pyfile.name}",
+                            )
+                        )
                 except Exception:
                     pass
 
@@ -470,7 +498,9 @@ class FleetSecurityScanner:
         high = report.findings_above(Severity.HIGH)
         return {
             "trap_type": "security_scan",
-            "severity": Severity.CRITICAL if critical else (Severity.HIGH if high else Severity.LOW),
+            "severity": Severity.CRITICAL
+            if critical
+            else (Severity.HIGH if high else Severity.LOW),
             "details": {
                 "critical_count": report.summary.critical,
                 "high_count": report.summary.high,

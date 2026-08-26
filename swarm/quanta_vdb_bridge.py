@@ -78,11 +78,11 @@ class QuantaTableEntry:
 
     def __post_init__(self) -> None:
         if not isinstance(self.vector, np.ndarray):
-            object.__setattr__(
-                self, "vector", np.array(self.vector, dtype=np.float32)
-            )
+            object.__setattr__(self, "vector", np.array(self.vector, dtype=np.float32))
         else:
-            object.__setattr__(self, "vector", self.vector.astype(np.float32, copy=False))
+            object.__setattr__(
+                self, "vector", self.vector.astype(np.float32, copy=False)
+            )
 
     @property
     def dim(self) -> int:
@@ -196,7 +196,7 @@ class QuantaVdbBridge:
 
         self._lock = threading.RLock()
         self._quanta: Any | None = None  # lazy-loaded C++ module
-        self._vdb: Any | None = None    # lazy-loaded PartitionedVdb handle
+        self._vdb: Any | None = None  # lazy-loaded PartitionedVdb handle
 
         # SQLite CRDT manifest
         self._manifest_path = self.data_path / f"{prefix}_crdt_manifest.db"
@@ -219,6 +219,7 @@ class QuantaVdbBridge:
             return self._quanta
         try:
             import xlang  # type: ignore[import-untyped]
+
             self._quanta = xlang.importModule("quanta", fromPath="Quanta")
             logger.info("Quanta C++ module loaded via xlang interop")
         except Exception as exc:
@@ -244,7 +245,9 @@ class QuantaVdbBridge:
             )
             logger.info(
                 "PartitionedVdb created: prefix=%s dim=%d granularity=%s",
-                self.prefix, self.dim, self.granularity,
+                self.prefix,
+                self.dim,
+                self.granularity,
             )
         except Exception as exc:
             logger.error("Failed to create PartitionedVdb: %s", exc)
@@ -377,9 +380,9 @@ class QuantaVdbBridge:
     def _manifest_stats(self) -> dict[str, Any]:
         conn = sqlite3.connect(str(self._manifest_path))
         count = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
-        avg_fitness = conn.execute(
-            "SELECT AVG(fitness) FROM entries"
-        ).fetchone()[0] or 0.0
+        avg_fitness = (
+            conn.execute("SELECT AVG(fitness) FROM entries").fetchone()[0] or 0.0
+        )
         node_breakdown = {
             row[0]: row[1]
             for row in conn.execute(
@@ -423,7 +426,9 @@ class QuantaVdbBridge:
             self._hot_cache[entry.agent_id] = entry
             if len(self._hot_cache) > self._hot_cache_max:
                 # Evict oldest by timestamp
-                oldest = min(self._hot_cache, key=lambda k: self._hot_cache[k].timestamp)
+                oldest = min(
+                    self._hot_cache, key=lambda k: self._hot_cache[k].timestamp
+                )
                 del self._hot_cache[oldest]
 
             # 2. SQLite CRDT manifest (deterministic merge)
@@ -440,7 +445,8 @@ class QuantaVdbBridge:
                 try:
                     now_ms = int(entry.timestamp * 1000)
                     vdb.AddVectors(
-                        int(hashlib.sha256(entry.agent_id.encode()).hexdigest(), 16) % (2**63),
+                        int(hashlib.sha256(entry.agent_id.encode()).hexdigest(), 16)
+                        % (2**63),
                         entry.vector,
                         timestamp=now_ms,
                         partition=entry.partition_tag,
@@ -475,7 +481,8 @@ class QuantaVdbBridge:
                     start_ms = int(ts_start * 1000) if ts_start else now_ms - 86400000
                     end_ms = int(ts_end * 1000) if ts_end else now_ms
                     results = vdb.Lookup(
-                        vec, k,
+                        vec,
+                        k,
                         partition=partition or "default",
                         ts_start=start_ms,
                         ts_end=end_ms,
@@ -579,10 +586,7 @@ class QuantaVdbBridge:
     ) -> list[QuantaTableEntry]:
         """Return cross-node parent candidates."""
         entries = self._manifest_query_by_fitness(min_fitness, max_results * 2)
-        return [
-            e for e in entries
-            if e.thermal_pressure <= max_thermal
-        ][:max_results]
+        return [e for e in entries if e.thermal_pressure <= max_thermal][:max_results]
 
     def get_population_summary(self) -> dict[str, Any]:
         """Return fleet-wide population snapshot."""
@@ -609,7 +613,9 @@ class QuantaVdbBridge:
 
     # ── internal helpers ──────────────────────────────────────────
 
-    def _crdt_winner(self, a: QuantaTableEntry, b: QuantaTableEntry) -> QuantaTableEntry:
+    def _crdt_winner(
+        self, a: QuantaTableEntry, b: QuantaTableEntry
+    ) -> QuantaTableEntry:
         """Higher timestamp wins; equal timestamp → lower signature hash wins."""
         if b.timestamp > a.timestamp:
             return b

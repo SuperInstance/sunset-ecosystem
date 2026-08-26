@@ -23,6 +23,7 @@ class DeltaSnapshot:
         hint_level: Hint level used during this generation.
         timestamp: When this snapshot was recorded.
     """
+
     generation: int
     avg_quality: float
     hint_level: int
@@ -59,7 +60,9 @@ class DeltaTracker:
             f"latest_quality={latest.avg_quality:.3f})"
         )
 
-    def record(self, generation: int, avg_quality: float, hint_level: int) -> DeltaSnapshot:
+    def record(
+        self, generation: int, avg_quality: float, hint_level: int
+    ) -> DeltaSnapshot:
         """Record a quality snapshot for a generation.
 
         Args:

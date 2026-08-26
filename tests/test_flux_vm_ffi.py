@@ -3,6 +3,7 @@
 Requires libflux_vm.so built via cargo build --release.
 Run: pytest tests/test_flux_vm_ffi.py -v
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -30,28 +31,37 @@ class TestFluxVMAvailability:
 class TestCheckBatch:
     def test_all_pass(self, vm):
         latents = np.zeros((2, 4), dtype=np.float32)
-        vio = vm.check_batch(latents, min_bound=-10.0, max_bound=10.0,
-                             max_l2=100.0, max_var=10.0)
+        vio = vm.check_batch(
+            latents, min_bound=-10.0, max_bound=10.0, max_l2=100.0, max_var=10.0
+        )
         assert vio.shape == (2,)
         assert np.all(vio == 0)
 
     def test_bounds_violation(self, vm):
-        latents = np.array([
-            [0.0, 0.0, 0.0, 0.0],
-            [20.0, 0.0, 0.0, 0.0],
-        ], dtype=np.float32)
-        vio = vm.check_batch(latents, min_bound=-10.0, max_bound=10.0,
-                             max_l2=100.0, max_var=10.0)
+        latents = np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0],
+                [20.0, 0.0, 0.0, 0.0],
+            ],
+            dtype=np.float32,
+        )
+        vio = vm.check_batch(
+            latents, min_bound=-10.0, max_bound=10.0, max_l2=100.0, max_var=10.0
+        )
         assert vio[0] == 0
         assert vio[1] == 1
 
     def test_l2_violation(self, vm):
-        latents = np.array([
-            [0.0, 0.0, 0.0, 0.0],
-            [10.0, 10.0, 10.0, 10.0],
-        ], dtype=np.float32)
-        vio = vm.check_batch(latents, min_bound=-50.0, max_bound=50.0,
-                             max_l2=15.0, max_var=100.0)
+        latents = np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0],
+                [10.0, 10.0, 10.0, 10.0],
+            ],
+            dtype=np.float32,
+        )
+        vio = vm.check_batch(
+            latents, min_bound=-50.0, max_bound=50.0, max_l2=15.0, max_var=100.0
+        )
         assert vio[0] == 0
         assert vio[1] == 1
 

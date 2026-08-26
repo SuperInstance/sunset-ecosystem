@@ -13,6 +13,7 @@ from nexus.holonomy_bridge import BridgeReport, HolonomyBridge
 # Graph construction
 # ---------------------------------------------------------------------------
 
+
 class TestGraphConstruction:
     def test_empty(self):
         bridge = HolonomyBridge()
@@ -65,6 +66,7 @@ class TestGraphConstruction:
 # Cycle verification
 # ---------------------------------------------------------------------------
 
+
 class TestVerifyCycle:
     def test_consistent(self):
         bridge = HolonomyBridge()
@@ -91,6 +93,7 @@ class TestVerifyCycle:
 # ---------------------------------------------------------------------------
 # H¹ snapshot & emergence
 # ---------------------------------------------------------------------------
+
 
 class TestH1AndEmergence:
     def test_snapshot(self):
@@ -124,6 +127,7 @@ class TestH1AndEmergence:
 # Unified check
 # ---------------------------------------------------------------------------
 
+
 class TestCheck:
     def test_empty(self):
         bridge = HolonomyBridge()
@@ -152,8 +156,12 @@ class TestCheck:
 
     def test_bridge_report_errors_default(self):
         report = BridgeReport(
-            node_count=0, edge_count=0, betti_1=0,
-            cycles_verified=0, cycles_consistent=0, emergence_detected=False,
+            node_count=0,
+            edge_count=0,
+            betti_1=0,
+            cycles_verified=0,
+            cycles_consistent=0,
+            emergence_detected=False,
         )
         assert report.errors == []
 
@@ -161,6 +169,7 @@ class TestCheck:
 # ---------------------------------------------------------------------------
 # from_fleet_edges factory
 # ---------------------------------------------------------------------------
+
 
 class TestFromFleetEdges:
     def test_basic(self):

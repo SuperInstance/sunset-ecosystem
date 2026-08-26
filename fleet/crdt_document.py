@@ -11,6 +11,7 @@ Usage:
     remote.merge(doc)
     assert remote.get("key") == "value"
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional, Tuple
@@ -103,7 +104,9 @@ class CRDTDocument:
         return dict(self._data)
 
     @classmethod
-    def from_dict(cls, node_id: str, data: Dict[str, Tuple[Any, str, float]]) -> "CRDTDocument":
+    def from_dict(
+        cls, node_id: str, data: Dict[str, Tuple[Any, str, float]]
+    ) -> "CRDTDocument":
         """Restore from serialized dict."""
         doc = cls(node_id)
         doc._data = dict(data)

@@ -68,12 +68,16 @@ class ConstraintSelector(SelectorPlugin):
         context: dict[str, Any],
     ) -> list[ConstraintArtifact]:
         """Filter to violated constraints, sorted by severity."""
-        violated = [a for a in artifacts if isinstance(a, ConstraintArtifact) and a.violated]
+        violated = [
+            a for a in artifacts if isinstance(a, ConstraintArtifact) and a.violated
+        ]
+
         # Severity = distance from nearest bound
         def severity(a: ConstraintArtifact) -> float:
             if a.value < a.lower_bound:
                 return abs(a.lower_bound - a.value)
             return abs(a.value - a.upper_bound)
+
         return sorted(violated, key=severity, reverse=True)
 
 

@@ -10,6 +10,7 @@ Run with::
 
     pytest tests/test_agentic_compiler_bridge.py -v
 """
+
 from __future__ import annotations
 
 import sys
@@ -31,6 +32,7 @@ from compiler.hot_swap_integration import (
 
 
 # ──────────────────────────── Helpers ────────────────────────────
+
 
 class MockGrid:
     """Minimal grid stand-in."""
@@ -67,6 +69,7 @@ class BrokenAgenticCompiler:
 
 # ──────────────────────────── Fixtures ────────────────────────────
 
+
 @pytest.fixture
 def grid() -> MockGrid:
     return MockGrid(n=10)
@@ -75,6 +78,7 @@ def grid() -> MockGrid:
 # ═══════════════════════════════════════════════════════════════════
 # 1. Source code generation from grid state
 # ═══════════════════════════════════════════════════════════════════
+
 
 def test_generate_grid_source(grid: MockGrid) -> None:
     """_generate_grid_source produces valid Python with grid params."""
@@ -109,6 +113,7 @@ def test_generate_grid_source_different_config() -> None:
 # 2. Source-to-function compilation
 # ═══════════════════════════════════════════════════════════════════
 
+
 def test_compile_source_to_function() -> None:
     """_compile_source_to_function turns a source string into a callable."""
     swap = CompilerHotSwap(MockGrid())
@@ -116,6 +121,7 @@ def test_compile_source_to_function() -> None:
     assert callable(func)
     assert func(5) == 10
     import os
+
     os.unlink(path)
     sys.modules.pop("__compiler_generated__", None)
 
@@ -130,6 +136,7 @@ def test_compile_source_to_function_no_callable_raises() -> None:
 # ═══════════════════════════════════════════════════════════════════
 # 3. Successful compilation with real compiler
 # ═══════════════════════════════════════════════════════════════════
+
 
 def test_compile_with_real_agentic_compiler(grid: MockGrid) -> None:
     """When _HAS_AGENTIC_COMPILER is True and compiler matches, bridge works.
@@ -185,9 +192,12 @@ def test_compile_with_fake_agentic_compiler(grid: MockGrid) -> None:
 # 4. Fallback when agentic-compiler not installed
 # ═══════════════════════════════════════════════════════════════════
 
+
 def test_fallback_when_agentic_compiler_missing(grid: MockGrid) -> None:
     """If _HAS_AGENTIC_COMPILER is False, falls back to no-op path."""
-    fake_compiler = FakeAgenticCompiler()  # would match if _HAS_AGENTIC_COMPILER were True
+    fake_compiler = (
+        FakeAgenticCompiler()
+    )  # would match if _HAS_AGENTIC_COMPILER were True
 
     with patch.object(
         sys.modules["compiler.hot_swap_integration"],
@@ -220,6 +230,7 @@ def test_fallback_with_traditional_compiler(grid: MockGrid) -> None:
 # ═══════════════════════════════════════════════════════════════════
 # 5. Compilation failure handling (non-fatal)
 # ═══════════════════════════════════════════════════════════════════
+
 
 def test_compilation_failure_non_fatal(grid: MockGrid) -> None:
     """If the agentic compiler raises, _compile returns error gracefully."""
@@ -259,6 +270,7 @@ def test_traditional_compiler_failure_non_fatal(grid: MockGrid) -> None:
 # 6. End-to-end hot-swap cycle with agentic compiler
 # ═══════════════════════════════════════════════════════════════════
 
+
 def test_hot_swap_cycle_with_agentic_compiler(grid: MockGrid) -> None:
     """Full hot_swap() works: compile → A/B test → commit."""
     fake = FakeAgenticCompiler()
@@ -285,6 +297,7 @@ def test_hot_swap_cycle_with_agentic_compiler(grid: MockGrid) -> None:
 # ═══════════════════════════════════════════════════════════════════
 # 7. API compatibility guard
 # ═══════════════════════════════════════════════════════════════════
+
 
 def test_api_not_broken() -> None:
     """All public methods and attributes remain intact after bridge addition."""

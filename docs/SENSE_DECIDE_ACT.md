@@ -42,10 +42,10 @@ Collects raw state and packages it as an `Observation`.
 ```python
 @dataclass(frozen=True)
 class Observation:
-    timestamp: float           # Unix time
-    source: str                # "thermal_trap", "hebbian_mesh", etc.
-    metrics: dict[str, Any]    # Arbitrary measurements
-    severity_hint: str         # "info" | "warning" | "critical"
+    timestamp: float  # Unix time
+    source: str  # "thermal_trap", "hebbian_mesh", etc.
+    metrics: dict[str, Any]  # Arbitrary measurements
+    severity_hint: str  # "info" | "warning" | "critical"
 ```
 
 The `severity_hint` is advisory only. The `Decide` stage may override based on policy.
@@ -70,10 +70,10 @@ Applies policy or rules to an `Observation` and returns a `Decision`.
 ```python
 @dataclass(frozen=True)
 class Decision:
-    action_type: str           # "escalate", "route", "gossip", "noop", ...
-    confidence: float          # 0.0–1.0
-    payload: dict[str, Any]    # Action parameters
-    reasoning: str             # Human-readable justification
+    action_type: str  # "escalate", "route", "gossip", "noop", ...
+    confidence: float  # 0.0–1.0
+    payload: dict[str, Any]  # Action parameters
+    reasoning: str  # Human-readable justification
 ```
 
 ### `Act`

@@ -41,6 +41,7 @@ from swarm.constraint_bridge import ConstraintBridge
 @dataclass
 class PythagoreanQDIndex:
     """Index into QD archive using Pythagorean triples as dimensions."""
+
     triples: List[PythagoreanTriple]
     resolution: int = 5
 
@@ -59,7 +60,9 @@ class PythagoreanQDIndex:
     def index(self, behavior_vector: List[float]) -> Tuple[int, ...]:
         """Map behavior vector to exact Pythagorean bin indices."""
         if len(behavior_vector) != len(self.triples):
-            raise ValueError(f"Behavior vector dim {len(behavior_vector)} != triples {len(self.triples)}")
+            raise ValueError(
+                f"Behavior vector dim {len(behavior_vector)} != triples {len(self.triples)}"
+            )
 
         indices = []
         for i, triple in enumerate(self.triples):
@@ -67,7 +70,13 @@ class PythagoreanQDIndex:
             if len(behavior_vector) == 1:
                 target_angle = behavior_vector[0]
             else:
-                target_angle = math.atan2(behavior_vector[1], behavior_vector[0]) if i < 2 else behavior_vector[i] if i < len(behavior_vector) else 0.0
+                target_angle = (
+                    math.atan2(behavior_vector[1], behavior_vector[0])
+                    if i < 2
+                    else behavior_vector[i]
+                    if i < len(behavior_vector)
+                    else 0.0
+                )
             # Find bin
             edges = self._bin_edges[(triple.a, triple.b, triple.c)]
             for j in range(len(edges) - 1):
@@ -86,12 +95,13 @@ class PythagoreanQDIndex:
             idx = min(indices[i], len(edges) - 2)
             center_angle = (edges[idx] + edges[idx + 1]) / 2
             centers.extend([math.cos(center_angle), math.sin(center_angle)])
-        return centers[:len(self.triples)]
+        return centers[: len(self.triples)]
 
 
 @dataclass
 class ExactQDArchive:
     """MAP-Elites archive with Pythagorean lattice dimensions."""
+
     dimensions: List[Tuple[int, int, int]]  # Pythagorean triples as axes
     resolution: int = 5
     max_genomes_per_bin: int = 1
@@ -109,8 +119,9 @@ class ExactQDArchive:
         triples = [PythagoreanTriple(a, b, c) for a, b, c in self.dimensions]
         self._index = PythagoreanQDIndex(triples=triples, resolution=self.resolution)
 
-    def add(self, genome: PythagoreanGenome, behavior: List[float],
-            fitness: float) -> bool:
+    def add(
+        self, genome: PythagoreanGenome, behavior: List[float], fitness: float
+    ) -> bool:
         """Add a genome to the archive."""
         idx = self._index.index(behavior)
         if idx not in self._archive:
@@ -124,8 +135,8 @@ class ExactQDArchive:
         # Sort by fitness and keep top N
         combined = list(zip(self._fitnesses[idx], self._archive[idx]))
         combined.sort(reverse=True)
-        self._fitnesses[idx] = [f for f, _ in combined[:self.max_genomes_per_bin]]
-        self._archive[idx] = [g for _, g in combined[:self.max_genomes_per_bin]]
+        self._fitnesses[idx] = [f for f, _ in combined[: self.max_genomes_per_bin]]
+        self._archive[idx] = [g for _, g in combined[: self.max_genomes_per_bin]]
 
         self._total_added += 1
         return True

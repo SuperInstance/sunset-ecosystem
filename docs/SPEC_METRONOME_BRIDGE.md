@@ -61,7 +61,7 @@ Current `RoomGrid.tick(x)`:
 ```python
 def tick(self, x):
     self.ticks += 1
-    latents = self._forward(x)          # 1. GPU/CPU compute
+    latents = self._forward(x)  # 1. GPU/CPU compute
     # ... novelty, chaos, firing ...     # 2. Gating
     # ... FLUX feedback ...              # 3. Constraint check
     return {"fired": N, "ids": [...], "tick": self.ticks}
@@ -101,10 +101,11 @@ Implementation: a room's `chaos` parameter already controls firing probability. 
 ```python
 class LocalMetronome:
     """Per-room sub-oscillator."""
+
     def __init__(self, global_bpm: float, divider: int = 1, phase: float = 0.0):
-        self.global_bpm = global_bpm      # master clock
-        self.divider = divider            # 1 = every beat, 8 = every 8th beat
-        self.phase = phase                # 0.0-1.0, offsets the beat within the cycle
+        self.global_bpm = global_bpm  # master clock
+        self.divider = divider  # 1 = every beat, 8 = every 8th beat
+        self.phase = phase  # 0.0-1.0, offsets the beat within the cycle
         self.local_bpm = global_bpm / divider
 
     def should_fire(self, beat_number: int) -> bool:
@@ -233,13 +234,13 @@ scheduler = MetronomeScheduler(
     grid=grid,
     router=router,
     breeder=breeder,
-    bpm=120.0,                    # 500ms/beat = 2 beats/sec
-    breeding_harmonic=4,          # breed every 4 beats = every 2 seconds
-    flux_harmonic=16,             # FLUX audit every 16 beats = every 8 seconds
+    bpm=120.0,  # 500ms/beat = 2 beats/sec
+    breeding_harmonic=4,  # breed every 4 beats = every 2 seconds
+    flux_harmonic=16,  # FLUX audit every 16 beats = every 8 seconds
     signal_source=RandomSignalSource(seed=42),
 )
 
-scheduler.start()   # background thread / asyncio task
+scheduler.start()  # background thread / asyncio task
 # ... fleet runs ...
 scheduler.stop()
 
@@ -337,6 +338,7 @@ def _run_loop(self):
     while not self._stop_event.is_set():
         self.auto_breed()
         self._stop_event.wait(self.interval)
+
 
 # New (beat-synchronized)
 def on_harmonic_beat(self, beat_number: int, scheduler: MetronomeScheduler):

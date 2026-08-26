@@ -37,8 +37,10 @@ def benchmark():
     batch_rate = 1.0 / batch_dur
 
     print(f"PythonFluxFallback benchmark")
-    print(f"  Single check: {single_dur*1e3:.3f} ms  ({single_rate:.0f} checks/sec)")
-    print(f"  Per-check (batch): {batch_dur*1e3:.3f} ms  ({batch_rate:.0f} checks/sec)")
+    print(f"  Single check: {single_dur * 1e3:.3f} ms  ({single_rate:.0f} checks/sec)")
+    print(
+        f"  Per-check (batch): {batch_dur * 1e3:.3f} ms  ({batch_rate:.0f} checks/sec)"
+    )
 
 
 if __name__ == "__main__":

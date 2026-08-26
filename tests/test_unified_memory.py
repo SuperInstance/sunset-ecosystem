@@ -22,6 +22,7 @@ def _is_valid_handle(handle):
 
 # ── Allocation tests ────────────────────────────────────────
 
+
 class TestAllocate:
     """allocate() must return a valid handle with a usable pointer."""
 
@@ -32,7 +33,9 @@ class TestAllocate:
 
         assert _is_valid_handle(handle)
         assert handle.size_bytes == 1 * 1024 * 1024
-        assert handle.device == "cpu" or handle.unified  # jetson/managed report differently
+        assert (
+            handle.device == "cpu" or handle.unified
+        )  # jetson/managed report differently
         assert handle.ptr > 0
         assert pool.used_bytes >= handle.size_bytes
 
@@ -54,6 +57,7 @@ class TestAllocate:
 
 
 # ── Migrate tests ───────────────────────────────────────────
+
 
 class TestMigrate:
     """migrate() moves data between devices (or no-ops for unified memory)."""
@@ -95,6 +99,7 @@ class TestMigrate:
 
 # ── Free tests ──────────────────────────────────────────────
 
+
 class TestFree:
     """free() releases memory and invalidates the handle."""
 
@@ -129,6 +134,7 @@ class TestFree:
 
 # ── Capacity tests ──────────────────────────────────────────
 
+
 class TestCapacity:
     """Pool must enforce capacity limits."""
 
@@ -157,6 +163,7 @@ class TestCapacity:
 
 
 # ── Jetson / unified path tests ─────────────────────────────
+
 
 class TestJetsonPath:
     """On Jetson (or any unified memory) migrate is a no-op and pointer is stable."""
@@ -199,6 +206,7 @@ class TestJetsonPath:
 
 # ── Pointer retrieval tests ─────────────────────────────────
 
+
 class TestGetPointer:
     """get_pointer() returns usable addresses and triggers migrate if needed."""
 
@@ -218,6 +226,7 @@ class TestGetPointer:
 
 
 # ── Pool repr ───────────────────────────────────────────────
+
 
 class TestPoolRepr:
     def test_repr_contains_mode(self):

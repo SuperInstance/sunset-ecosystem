@@ -29,6 +29,7 @@ try:
     )
     from cryptography.hazmat.primitives import serialization
     from cryptography.exceptions import InvalidSignature
+
     _HAS_CRYPTO = True
 except Exception:  # pragma: no cover
     _HAS_CRYPTO = False
@@ -48,6 +49,7 @@ __all__ = [
 
 # ── exceptions ──────────────────────────────────────────────
 
+
 class ValidationError(ValueError):
     """Raised when an agent card fails schema validation."""
 
@@ -58,8 +60,10 @@ class NegotiationError(RuntimeError):
 
 # ── Task state ──────────────────────────────────────────────
 
+
 class TaskState(Enum):
     """Lifecycle states for an in-flight A2A task."""
+
     PENDING = auto()
     SUBMITTED = auto()
     STREAMING = auto()
@@ -68,6 +72,7 @@ class TaskState(Enum):
 
 
 # ── AgentCard ───────────────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class AgentCard:
@@ -89,9 +94,21 @@ class AgentCard:
     # ── validation ────────────────────────────────────────
 
     # Class-level validation constants (excluded from dataclass fields)
-    _REQUIRED_TOP_LEVEL: ClassVar[set] = {"name", "version", "description", "capabilities", "skills"}
+    _REQUIRED_TOP_LEVEL: ClassVar[set] = {
+        "name",
+        "version",
+        "description",
+        "capabilities",
+        "skills",
+    }
     _REQUIRED_CAPABILITY_BOOLS: ClassVar[set] = {"streaming", "pushNotifications"}
-    _REQUIRED_SKILL_FIELDS: ClassVar[set] = {"id", "name", "description", "tags", "examples"}
+    _REQUIRED_SKILL_FIELDS: ClassVar[set] = {
+        "id",
+        "name",
+        "description",
+        "tags",
+        "examples",
+    }
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AgentCard":
@@ -138,7 +155,9 @@ class AgentCard:
     def _validate_top_level(cls, data: Dict[str, Any]) -> None:
         missing = cls._REQUIRED_TOP_LEVEL - set(data.keys())
         if missing:
-            raise ValidationError(f"Missing required top-level fields: {sorted(missing)}")
+            raise ValidationError(
+                f"Missing required top-level fields: {sorted(missing)}"
+            )
 
     @classmethod
     def _validate_capabilities(cls, caps: Dict[str, Any]) -> None:
@@ -146,7 +165,9 @@ class AgentCard:
             raise ValidationError("'capabilities' must be an object")
         missing = cls._REQUIRED_CAPABILITY_BOOLS - set(caps.keys())
         if missing:
-            raise ValidationError(f"Missing required capability fields: {sorted(missing)}")
+            raise ValidationError(
+                f"Missing required capability fields: {sorted(missing)}"
+            )
         for key in cls._REQUIRED_CAPABILITY_BOOLS:
             if not isinstance(caps[key], bool):
                 raise ValidationError(f"Capability '{key}' must be a boolean")
@@ -166,7 +187,9 @@ class AgentCard:
             if not isinstance(skill.get("tags"), list):
                 raise ValidationError(f"Skill at index {idx}: 'tags' must be an array")
             if not isinstance(skill.get("examples"), list):
-                raise ValidationError(f"Skill at index {idx}: 'examples' must be an array")
+                raise ValidationError(
+                    f"Skill at index {idx}: 'examples' must be an array"
+                )
 
     @classmethod
     def _validate_authentication(cls, auth: Dict[str, Any]) -> None:
@@ -207,6 +230,7 @@ class AgentCard:
 
 # ── TaskHandle ──────────────────────────────────────────────
 
+
 @dataclass
 class TaskHandle:
     """Async handle for an in-flight A2A task.
@@ -243,7 +267,9 @@ class TaskHandle:
         if self._loop is not None:
             self._loop.call_soon_threadsafe(self._chunk_event.set)
 
-    async def next_chunk(self, timeout: float | None = None) -> Optional[Dict[str, Any]]:
+    async def next_chunk(
+        self, timeout: float | None = None
+    ) -> Optional[Dict[str, Any]]:
         """Wait for and return the next chunk, or None on timeout."""
         if not self.chunks:
             try:
@@ -255,6 +281,7 @@ class TaskHandle:
 
 
 # ── AgentRegistry ───────────────────────────────────────────
+
 
 class AgentRegistry:
     """In-memory registry of known agents (local + remote).
@@ -323,7 +350,9 @@ class AgentRegistry:
                 self.register(agent_id, card)
             return [c for _, c in cards]
         except NegotiationError as exc:
-            logger.warning("Nexus discovery failed (%s); falling back to local cards", exc)
+            logger.warning(
+                "Nexus discovery failed (%s); falling back to local cards", exc
+            )
             # Fallback: return any previously loaded local cards
             fallback = list(self._fallback_local_cards.values())
             if fallback:
@@ -338,7 +367,9 @@ class AgentRegistry:
         Here we provide an async hook that tests may patch.
         """
         # Placeholder: subclasses or monkey-patching in tests should override
-        raise NegotiationError("No HTTP client configured; override _http_get_agent_cards")
+        raise NegotiationError(
+            "No HTTP client configured; override _http_get_agent_cards"
+        )
 
     # ── task negotiation ────────────────────────────────────
 
@@ -376,7 +407,9 @@ class AgentRegistry:
         )
         self._pending_tasks[handle.task_id] = handle
         handle.set_state(TaskState.PENDING)
-        logger.debug("Created task handle %s for %s:%s", handle.task_id, agent_id, task_type)
+        logger.debug(
+            "Created task handle %s for %s:%s", handle.task_id, agent_id, task_type
+        )
         return handle
 
     async def submit_task(
@@ -443,6 +476,7 @@ class AgentRegistry:
 
 # ── AgentIdentity ───────────────────────────────────────────
 
+
 class AgentIdentity:
     """Persistent Ed25519 identity for an A2A agent.
 
@@ -491,7 +525,9 @@ class AgentIdentity:
         if not _HAS_CRYPTO:
             return
         with open(pem_path, "rb") as fh:
-            self._private_key = serialization.load_pem_private_key(fh.read(), password=None)
+            self._private_key = serialization.load_pem_private_key(
+                fh.read(), password=None
+            )
         with open(pub_path, "rb") as fh:
             self._public_key = serialization.load_pem_public_key(fh.read())
 
@@ -529,12 +565,16 @@ class AgentIdentity:
         if _HAS_CRYPTO and self._private_key is not None:
             sig = self._private_key.sign(message)
             import base64
+
             return base64.b64encode(sig).decode("ascii")
         # Fallback no-op signature when cryptography is unavailable
         import hashlib
+
         return hashlib.sha256(message).hexdigest()[:64]
 
-    def verify_task(self, payload: Dict[str, Any], signature: str, public_key_pem: str | None = None) -> bool:
+    def verify_task(
+        self, payload: Dict[str, Any], signature: str, public_key_pem: str | None = None
+    ) -> bool:
         """Verify a task signature.
 
         If ``public_key_pem`` is provided, the signature is checked against
@@ -547,6 +587,7 @@ class AgentIdentity:
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         message = canonical.encode("utf-8")
         import base64
+
         try:
             sig_bytes = base64.b64decode(signature)
         except Exception:

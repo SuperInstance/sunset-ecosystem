@@ -12,6 +12,7 @@ Usage:
     node = lb.pick(strategy="least_connections")
     lb.record_result(node, success=True)
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class NodeStats:
     """Statistics for a backend node."""
+
     node_id: str
     weight: float = 1.0
     connections: int = 0
@@ -94,6 +96,7 @@ class LoadBalancer:
 
     def _pick_weighted(self, nodes: list[NodeStats]) -> str:
         import random
+
         total_weight = sum(n.weight for n in nodes)
         if total_weight <= 0:
             return self._pick_round_robin(nodes)
@@ -147,10 +150,7 @@ class LoadBalancer:
         if not healthy:
             return None
         total = {n.node_id: n.successes + n.failures for n in healthy}
-        rates = {
-            n.node_id: (n.successes / max(total[n.node_id], 1))
-            for n in healthy
-        }
+        rates = {n.node_id: (n.successes / max(total[n.node_id], 1)) for n in healthy}
         return max(rates, key=rates.get)
 
     def __repr__(self) -> str:

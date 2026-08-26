@@ -164,8 +164,12 @@ class TestMetronomeBridgePerformance:
             bridge.adjust_bpm(factor)
             iterations += 1
 
-        print(f"\n  PID convergence: {iterations} iterations (final drift {drift_ms:.2f} ms)")
-        assert iterations < 40, f"PID took too long to converge: {iterations} iterations"
+        print(
+            f"\n  PID convergence: {iterations} iterations (final drift {drift_ms:.2f} ms)"
+        )
+        assert iterations < 40, (
+            f"PID took too long to converge: {iterations} iterations"
+        )
 
 
 # ── MeshVectorTables / FleetVectorIndex benchmarks ────────────
@@ -190,8 +194,7 @@ class TestFleetVectorIndexPerformance:
 
         # Pre-build entries
         entries = [
-            _make_dummy_entry(f"agent_{i:04d}", dim, seed=i)
-            for i in range(agent_count)
+            _make_dummy_entry(f"agent_{i:04d}", dim, seed=i) for i in range(agent_count)
         ]
 
         # Warm-up
@@ -238,17 +241,24 @@ class TestFleetConductorV2Performance:
         mock_nerve.MetronomeBridge = MagicMock()
         mock_nerve.MetronomeBridge.return_value.tick.return_value = 1
         mock_nerve.MetronomeBridge.return_value.sync_with_peers.return_value = []
-        mock_nerve.MetronomeBridge.return_value.maybe_correct_drift.return_value = (False, 120.0)
+        mock_nerve.MetronomeBridge.return_value.maybe_correct_drift.return_value = (
+            False,
+            120.0,
+        )
         mock_nerve.MetronomeBridge.return_value.compute_drift.return_value = 0.0
         mock_nerve.MetronomeBridge.return_value.peers = []
-        monkeypatch.setitem(sys.modules, "nerve.distributed_metronome_bridge", mock_nerve)
+        monkeypatch.setitem(
+            sys.modules, "nerve.distributed_metronome_bridge", mock_nerve
+        )
 
         mock_swarm = MagicMock()
         mock_swarm.FleetVectorIndex = MagicMock()
         mock_table = MagicMock()
         mock_table.insert_signed.return_value = None
         mock_swarm.FleetVectorIndex.return_value.get_gen_table.return_value = mock_table
-        mock_swarm.FleetVectorIndex.return_value.get_fleet_sync_payload.return_value = b"{}"
+        mock_swarm.FleetVectorIndex.return_value.get_fleet_sync_payload.return_value = (
+            b"{}"
+        )
         mock_swarm.FleetVectorIndex.return_value.stats = {"total_entries": 0}
         monkeypatch.setitem(sys.modules, "swarm.mesh_vector_tables", mock_swarm)
 
@@ -391,8 +401,8 @@ class TestHebbianMeshLayerPerformance:
         dim = 64
         rng = np.random.RandomState(42)
         for i in range(100):
-            mock_gossip.local_table._vectors[f"agent_{i:03d}"] = (
-                rng.randn(dim).astype(np.float32)
+            mock_gossip.local_table._vectors[f"agent_{i:03d}"] = rng.randn(dim).astype(
+                np.float32
             )
 
         iterations = 100

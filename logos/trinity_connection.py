@@ -61,7 +61,9 @@ def _score_codebase_understanding(
         score += 0.15
     elif lang_count >= 1:
         score += 0.08
-    details["languages"] = f"{lang_count} language(s): {', '.join(state.language_breakdown.keys())}"
+    details["languages"] = (
+        f"{lang_count} language(s): {', '.join(state.language_breakdown.keys())}"
+    )
 
     # Architecture patterns detected
     mod_count = len(state.architecture_patterns.get("module_dirs", []))
@@ -230,12 +232,16 @@ def _generate_recommendations(
         if not state.recent_commits:
             recs.append("Initialize git to track codebase history")
         if not state.architecture_patterns.get("module_dirs"):
-            recs.append("Add module structure (__init__.py) for better architecture detection")
+            recs.append(
+                "Add module structure (__init__.py) for better architecture detection"
+            )
 
     if integration < 0.5:
         total_debt = sum(len(v) for v in state.technical_debt.values())
         if total_debt > 20:
-            recs.append(f"Address {total_debt} technical debt markers before major changes")
+            recs.append(
+                f"Address {total_debt} technical debt markers before major changes"
+            )
 
     if maintainability < 0.5:
         if state.test_count == 0:

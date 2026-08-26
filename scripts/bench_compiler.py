@@ -122,6 +122,7 @@ def bench_tile_cache():
 
     # Create a tile
     from nerve.fiber import SensoryTile, FiberState
+
     tile = SensoryTile(
         pattern_id="test-pattern",
         features={"mean": 0.5, "std": 0.1},
@@ -130,7 +131,7 @@ def bench_tile_cache():
     )
 
     # Uncached: clear cache
-    if hasattr(topo, '_tile_cache'):
+    if hasattr(topo, "_tile_cache"):
         topo._tile_cache.clear()
 
     t0 = time.perf_counter()

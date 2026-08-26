@@ -94,7 +94,18 @@ def _count_files_and_lines(root: Path) -> tuple:
     lang_lines: Dict[str, int] = {}
 
     # dirs to skip
-    skip = {".git", "__pycache__", "node_modules", ".venv", "venv", ".mypy_cache", ".tox", "dist", "build", ".egg-info"}
+    skip = {
+        ".git",
+        "__pycache__",
+        "node_modules",
+        ".venv",
+        "venv",
+        ".mypy_cache",
+        ".tox",
+        "dist",
+        "build",
+        ".egg-info",
+    }
 
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in skip]
@@ -154,7 +165,16 @@ def _detect_patterns(root: Path) -> Dict[str, List[str]]:
     patterns["imported_packages"] = sorted(imports, key=imports.get, reverse=True)[:15]  # type: ignore[arg-type]
 
     # Entry points (main.py, app.py, manage.py, etc.)
-    entry_names = {"main.py", "app.py", "manage.py", "cli.py", "server.py", "run.py", "wsgi.py", "asgi.py"}
+    entry_names = {
+        "main.py",
+        "app.py",
+        "manage.py",
+        "cli.py",
+        "server.py",
+        "run.py",
+        "wsgi.py",
+        "asgi.py",
+    }
     for name in entry_names:
         if (root / name).exists():
             patterns["entry_points"].append(name)
@@ -171,7 +191,11 @@ def _scan_debt(root: Path) -> Dict[str, List[str]]:
         dirnames[:] = [d for d in dirnames if d not in skip]
         for fname in filenames:
             ext = Path(fname).suffix.lower()
-            if ext not in _LANG_MAP and fname not in ("Makefile", "Dockerfile", "Cargo.toml"):
+            if ext not in _LANG_MAP and fname not in (
+                "Makefile",
+                "Dockerfile",
+                "Cargo.toml",
+            ):
                 continue
             fpath = Path(dirpath) / fname
             try:
@@ -197,10 +221,14 @@ def _get_recent_commits(root: str) -> List[str]:
 
 def _get_test_info(root: str) -> tuple:
     """Try to collect tests via pytest --co."""
-    out = _run(["python3", "-m", "pytest", "--co", "-q", "--no-header"], root, timeout=60)
+    out = _run(
+        ["python3", "-m", "pytest", "--co", "-q", "--no-header"], root, timeout=60
+    )
     if out is None:
         return 0, []
-    tests = [l.strip() for l in out.strip().splitlines() if l.strip() and "test" in l.lower()]
+    tests = [
+        l.strip() for l in out.strip().splitlines() if l.strip() and "test" in l.lower()
+    ]
     return len(tests), tests
 
 

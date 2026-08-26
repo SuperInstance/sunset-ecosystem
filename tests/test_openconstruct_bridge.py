@@ -83,25 +83,33 @@ class TestConstructManifest:
 
 class TestBreederFactory:
     def test_pythagorean_creation(self):
-        m = ConstructManifest(name="p", breeder_type="pythagorean", goal="g", population_size=5)
+        m = ConstructManifest(
+            name="p", breeder_type="pythagorean", goal="g", population_size=5
+        )
         breeder = BreederFactory.create(m)
         assert breeder is not None
         assert hasattr(breeder, "population_size")
 
     def test_spectral_creation(self):
-        m = ConstructManifest(name="s", breeder_type="spectral", goal="g", population_size=5)
+        m = ConstructManifest(
+            name="s", breeder_type="spectral", goal="g", population_size=5
+        )
         breeder = BreederFactory.create(m)
         assert breeder is not None
         assert hasattr(breeder, "spectrum_size")
 
     def test_adversarial_creation(self):
-        m = ConstructManifest(name="a", breeder_type="adversarial", goal="g", population_size=5)
+        m = ConstructManifest(
+            name="a", breeder_type="adversarial", goal="g", population_size=5
+        )
         breeder = BreederFactory.create(m)
         assert breeder is not None
         assert hasattr(breeder, "tester_pop_size")
 
     def test_standard_creation(self):
-        m = ConstructManifest(name="st", breeder_type="standard", goal="g", population_size=5)
+        m = ConstructManifest(
+            name="st", breeder_type="standard", goal="g", population_size=5
+        )
         breeder = BreederFactory.create(m)
         assert breeder is not None
 
@@ -113,6 +121,7 @@ class TestBreederFactory:
     def test_register_custom(self):
         def custom_builder(manifest):
             return {"custom": True, "name": manifest.name}
+
         BreederFactory.register("custom", custom_builder)
         m = ConstructManifest(name="c", breeder_type="custom", goal="g")
         result = BreederFactory.create(m)
@@ -129,11 +138,13 @@ class TestValidationGate:
     def test_exact_arithmetic_fail(self):
         # Create a genome and manually invalidate one triple
         genome = PythagoreanGenome([PythagoreanTriple(3, 4, 5)])
+
         # Manually create an invalid triple-like object
         class FakeTriple:
             a = 3
             b = 4
             c = 6
+
         genome.triples.append(FakeTriple())
         ok, msg = exact_arithmetic_gate(genome)
         assert ok is False
@@ -197,8 +208,10 @@ class TestProgressStreamer:
 
     def test_callback(self):
         received: List[BreedingEvent] = []
+
         def callback(e):
             received.append(e)
+
         streamer = ProgressStreamer([callback])
         event = BreedingEvent(
             event_type=BreedingEventType.GENERATION_END,
@@ -225,16 +238,20 @@ class TestProgressStreamer:
     def test_filter_history(self):
         streamer = ProgressStreamer()
         for i in range(3):
-            streamer.emit(BreedingEvent(
-                event_type=BreedingEventType.GENERATION_START,
-                generation=i,
+            streamer.emit(
+                BreedingEvent(
+                    event_type=BreedingEventType.GENERATION_START,
+                    generation=i,
+                    timestamp=time.time(),
+                )
+            )
+        streamer.emit(
+            BreedingEvent(
+                event_type=BreedingEventType.BREED_COMPLETE,
+                generation=3,
                 timestamp=time.time(),
-            ))
-        streamer.emit(BreedingEvent(
-            event_type=BreedingEventType.BREED_COMPLETE,
-            generation=3,
-            timestamp=time.time(),
-        ))
+            )
+        )
         start_events = streamer.get_history(BreedingEventType.GENERATION_START)
         assert len(start_events) == 3
 
@@ -374,9 +391,11 @@ class TestHarnessAdapter:
             population_size=5,
         )
         adapter = HarnessAdapter(m)
+
         # Run a quick breeding to populate history
         def task_fn(matrix):
             return float(np.sum(matrix))
+
         list(adapter.run_breeding(task_fn, generations=1))
 
         exported = adapter.export_manifest()
@@ -414,8 +433,10 @@ class TestHarnessAdapter:
                 def task_fn(solver_vec, tester_vec):
                     return 1.0, 0.5
             else:
+
                 def task_fn(genome_or_matrix):
                     return 1.0
+
             # Standard breeder (BreederDaemonV2) has a different API and needs
             # RoomGrid + ThermalBudget; skip runtime for it, just verify creation
             if btype == "standard":
@@ -447,16 +468,24 @@ class TestIntegrationFlow:
         events = list(adapter.run_breeding(task_fn, generations=3))
 
         # Verify event flow
-        start_events = [e for e in events if e.event_type == BreedingEventType.GENERATION_START]
-        end_events = [e for e in events if e.event_type == BreedingEventType.GENERATION_END]
-        complete_events = [e for e in events if e.event_type == BreedingEventType.BREED_COMPLETE]
+        start_events = [
+            e for e in events if e.event_type == BreedingEventType.GENERATION_START
+        ]
+        end_events = [
+            e for e in events if e.event_type == BreedingEventType.GENERATION_END
+        ]
+        complete_events = [
+            e for e in events if e.event_type == BreedingEventType.BREED_COMPLETE
+        ]
 
         assert len(start_events) == 3
         assert len(end_events) == 3
         assert len(complete_events) == 1
 
         # Verify fitness progression
-        best_fitnesses = [e.best_fitness for e in end_events if e.best_fitness is not None]
+        best_fitnesses = [
+            e.best_fitness for e in end_events if e.best_fitness is not None
+        ]
         assert len(best_fitnesses) == 3
         assert all(f >= 0 for f in best_fitnesses)
 
@@ -489,7 +518,9 @@ class TestIntegrationFlow:
         events = list(adapter.run_breeding(task_fn, generations=2))
         assert len(events) > 0
         # Should have consensus information
-        end_events = [e for e in events if e.event_type == BreedingEventType.GENERATION_END]
+        end_events = [
+            e for e in events if e.event_type == BreedingEventType.GENERATION_END
+        ]
         assert len(end_events) == 2
         assert end_events[0].nodes_agreed is not None
         assert end_events[0].total_nodes is not None

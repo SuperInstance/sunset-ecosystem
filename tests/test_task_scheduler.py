@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_task_scheduler.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import time
@@ -55,9 +56,11 @@ class TestTaskScheduler:
     def test_overlap_prevention(self):
         ts = TaskScheduler()
         executed = []
+
         def slow_task():
             executed.append(1)
             time.sleep(0.2)
+
         ts.schedule("test", slow_task, interval=0.1)
         # Simulate task already running
         ts._tasks["test"].running = True
@@ -71,7 +74,9 @@ class TestTaskScheduler:
 
     def test_task_error(self):
         ts = TaskScheduler()
-        ts.schedule("bad", lambda: (_ for _ in ()).throw(ValueError("boom")), interval=0.1)
+        ts.schedule(
+            "bad", lambda: (_ for _ in ()).throw(ValueError("boom")), interval=0.1
+        )
         time.sleep(0.15)
         ts.run_once()
         execs = ts.executions("bad")
@@ -82,10 +87,12 @@ class TestTaskScheduler:
     def test_success_rate(self):
         ts = TaskScheduler()
         count = [0]
+
         def maybe_fail():
             count[0] += 1
             if count[0] == 1:
                 raise ValueError("fail")
+
         ts.schedule("test", maybe_fail, interval=0.1)
         time.sleep(0.15)
         ts.run_once()

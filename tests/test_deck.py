@@ -1,6 +1,14 @@
 """Tests for fleet.deck — Presentation deck generation."""
 
-from fleet.deck import Slide, Deck, breeding_report, fleet_status, flux_gate_decision, architecture_decision, research_summary
+from fleet.deck import (
+    Slide,
+    Deck,
+    breeding_report,
+    fleet_status,
+    flux_gate_decision,
+    architecture_decision,
+    research_summary,
+)
 
 
 class TestSlide:

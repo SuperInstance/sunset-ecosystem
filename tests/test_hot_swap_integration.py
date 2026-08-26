@@ -1,4 +1,5 @@
 """Tests for CompilerHotSwap integration."""
+
 from __future__ import annotations
 
 import time
@@ -10,6 +11,7 @@ from compiler.hot_swap_integration import CompilerHotSwap, CompileResult
 
 class MockGrid:
     """Mock RoomGrid for testing."""
+
     def __init__(self, n: int = 10) -> None:
         self.n = n
         self.ticks = 0
@@ -30,6 +32,7 @@ class MockGrid:
 
 class MockCompiler:
     """Mock compiler that returns a faster tick function."""
+
     def __init__(self, succeed: bool = True, fast: bool = True) -> None:
         self.succeed = succeed
         self.fast = fast
@@ -42,6 +45,7 @@ class MockCompiler:
 
 class MockCompiledGrid:
     """Mock compiled grid — may be faster or slower."""
+
     def __init__(self, grid: Any, fast: bool = True) -> None:
         self._grid = grid
         self.fast = fast

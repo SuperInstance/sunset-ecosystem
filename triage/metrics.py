@@ -3,6 +3,7 @@
 Computes the five-component health score:
   Freshness 30 | Test Coverage 25 | Documentation 15 | Dependency Health 15 | Issue Hygiene 15
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -24,7 +25,7 @@ from typing import Optional
 class HealthScore:
     """Five-component health score with total and traffic-light."""
 
-    freshness: float      # 30 points max
+    freshness: float  # 30 points max
     test_coverage: float  # 25 points max
     documentation: float  # 15 points max
     dependency_health: float  # 15 points max
@@ -107,7 +108,9 @@ class RepoHealthMetrics:
             return 0.0
 
         # Count test files
-        test_files = list(test_dir.rglob("test_*.py")) + list(test_dir.rglob("*_test.py"))
+        test_files = list(test_dir.rglob("test_*.py")) + list(
+            test_dir.rglob("*_test.py")
+        )
         if not test_files:
             return 0.0
 
@@ -197,11 +200,16 @@ class RepoHealthMetrics:
             score += 2.0
 
         # Check for lock file (more reproducible)
-        if any((self.root / f).exists() for f in ("poetry.lock", "Pipfile.lock", "Cargo.lock")):
+        if any(
+            (self.root / f).exists()
+            for f in ("poetry.lock", "Pipfile.lock", "Cargo.lock")
+        ):
             score += 3.0
 
         # Check for security scan results
-        if (self.root / "security-audit.txt").exists() or (self.root / ".github" / "dependabot.yml").exists():
+        if (self.root / "security-audit.txt").exists() or (
+            self.root / ".github" / "dependabot.yml"
+        ).exists():
             score += 5.0
 
         return min(score, 15.0)

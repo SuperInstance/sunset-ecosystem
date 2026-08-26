@@ -4,6 +4,7 @@ Writes progress to stdout for monitoring."""
 
 import sys
 import time
+
 sys.path.insert(0, "/tmp/sunset-ecosystem")
 
 import numpy as np
@@ -43,30 +44,42 @@ for dim in DIMS:
         latencies.append(time.perf_counter() - t0)
 
     avg_ms = sum(latencies) / len(latencies) * 1000
-    p99_ms = sorted(latencies)[int(len(latencies)*0.99)] * 1000
-    mem_mb = (POP * dim * 0.5 + POP * 40) / (1024*1024)
-    naive_mb = (POP * dim * 4) / (1024*1024)
+    p99_ms = sorted(latencies)[int(len(latencies) * 0.99)] * 1000
+    mem_mb = (POP * dim * 0.5 + POP * 40) / (1024 * 1024)
+    naive_mb = (POP * dim * 4) / (1024 * 1024)
 
-    print(f"[dim={dim}] Avg={avg_ms:.3f}ms P99={p99_ms:.3f}ms Mem={mem_mb:.1f}MB ({naive_mb/mem_mb:.1f}x)", flush=True)
+    print(
+        f"[dim={dim}] Avg={avg_ms:.3f}ms P99={p99_ms:.3f}ms Mem={mem_mb:.1f}MB ({naive_mb / mem_mb:.1f}x)",
+        flush=True,
+    )
 
-    results.append({
-        "dim": dim,
-        "build_s": build,
-        "avg_ms": avg_ms,
-        "p99_ms": p99_ms,
-        "mem_mb": mem_mb,
-        "compress": naive_mb / mem_mb,
-    })
+    results.append(
+        {
+            "dim": dim,
+            "build_s": build,
+            "avg_ms": avg_ms,
+            "p99_ms": p99_ms,
+            "mem_mb": mem_mb,
+            "compress": naive_mb / mem_mb,
+        }
+    )
 
 print("\n=== SUMMARY ===")
-print(f"{'Dim':>5} {'Build':>7} {'Avg ms':>8} {'P99 ms':>8} {'Mem MB':>8} {'Compress':>8}")
+print(
+    f"{'Dim':>5} {'Build':>7} {'Avg ms':>8} {'P99 ms':>8} {'Mem MB':>8} {'Compress':>8}"
+)
 for r in results:
-    print(f"{r['dim']:>5} {r['build_s']:>6.1f}s {r['avg_ms']:>7.2f} {r['p99_ms']:>7.2f} {r['mem_mb']:>7.1f} {r['compress']:>7.1f}x")
+    print(
+        f"{r['dim']:>5} {r['build_s']:>6.1f}s {r['avg_ms']:>7.2f} {r['p99_ms']:>7.2f} {r['mem_mb']:>7.1f} {r['compress']:>7.1f}x"
+    )
 
-best = min(results, key=lambda r: r['avg_ms'] + r['mem_mb'] * 0.1)
+best = min(results, key=lambda r: r["avg_ms"] + r["mem_mb"] * 0.1)
 print(f"\nRecommended: dim={best['dim']}")
 
 import json
 from pathlib import Path
-Path("/tmp/sunset-ecosystem/benchmarks/turbovec_real_results.json").write_text(json.dumps(results, indent=2))
+
+Path("/tmp/sunset-ecosystem/benchmarks/turbovec_real_results.json").write_text(
+    json.dumps(results, indent=2)
+)
 print("Saved to benchmarks/turbovec_real_results.json")

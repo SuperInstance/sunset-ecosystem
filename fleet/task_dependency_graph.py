@@ -11,6 +11,7 @@ Usage:
     g.add_task("deploy", deps=["test"])
     order = g.execution_order()
 """
+
 from __future__ import annotations
 
 from collections import defaultdict, deque
@@ -19,6 +20,7 @@ from typing import Dict, List, Optional, Set
 
 class CycleError(Exception):
     """Raised when a cycle is detected in the dependency graph."""
+
     pass
 
 
@@ -147,6 +149,7 @@ class TaskDependencyGraph:
         """DFS cycle detection."""
         visited: Set[str] = set()
         stack: Set[str] = set()
+
         def visit(node: str) -> bool:
             if node in stack:
                 return True
@@ -159,6 +162,7 @@ class TaskDependencyGraph:
                     return True
             stack.discard(node)
             return False
+
         return visit(start)
 
     def __repr__(self) -> str:

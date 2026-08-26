@@ -54,9 +54,7 @@ from swarm.fleet_turbovec import FleetTurboVecIndex, TurboVecConfig, TurboVecEnt
 import numpy as np
 
 # Create index with 4-bit quantization (2-bit and 8-bit also available)
-index = FleetTurboVecIndex(
-    TurboVecConfig(dim=256, bit_width=4, diversity_rerank=True)
-)
+index = FleetTurboVecIndex(TurboVecConfig(dim=256, bit_width=4, diversity_rerank=True))
 
 # Ingest agent embeddings
 entries = [
@@ -88,6 +86,7 @@ for r in results:
 def my_filter(entry: TurboVecEntry) -> bool:
     return entry.node_id == "Oracle1" and entry.fitness > 0.8
 
+
 results = index.search(query, k=5, filter_fn=my_filter)
 ```
 
@@ -100,7 +99,7 @@ index = FleetTurboVecIndex(
         dim=256,
         bit_width=4,
         diversity_rerank=True,
-        diversity_k=20,      # Rerank top-20 NN candidates
+        diversity_k=20,  # Rerank top-20 NN candidates
         diversity_strategy="dpp",
         diversity_lambda=0.7,
     )
@@ -121,8 +120,7 @@ fvi = FleetVectorIndex(node_id="n0", identity=agent_identity)
 
 # Migrate to TurboVec backend
 tv = FleetTurboVecIndex.from_fleet_vector_index(
-    fvi,
-    TurboVecConfig(dim=256, bit_width=4)
+    fvi, TurboVecConfig(dim=256, bit_width=4)
 )
 
 # Export back to fleet entries when needed
@@ -172,7 +170,7 @@ print(f"Restored {len(loaded)} entries")
 @dataclass
 class TurboVecEntry:
     agent_id: str
-    vector: np.ndarray        # float32
+    vector: np.ndarray  # float32
     fitness: float = 0.0
     generation: int = 0
     node_id: str = ""

@@ -58,12 +58,22 @@ _DEFAULT_CONFIG = {
             "alert_file": "",
         },
         "services": [
-            {"name": "PLATO Gate", "host": "<BOAT_IP>", "port": 8847, "path": "/status"},
+            {
+                "name": "PLATO Gate",
+                "host": "<BOAT_IP>",
+                "port": 8847,
+                "path": "/status",
+            },
             {"name": "PLATO Shell", "host": "<BOAT_IP>", "port": 8848, "path": "/"},
             {"name": "MUD", "host": "<BOAT_IP>", "port": 4042, "path": "/status"},
             {"name": "Arena", "host": "<BOAT_IP>", "port": 4044, "path": "/status"},
             {"name": "Grammar", "host": "<BOAT_IP>", "port": 4045, "path": "/status"},
-            {"name": "Skill Forge", "host": "<BOAT_IP>", "port": 4057, "path": "/status"},
+            {
+                "name": "Skill Forge",
+                "host": "<BOAT_IP>",
+                "port": 4057,
+                "path": "/status",
+            },
         ],
         "api": {
             "host": "0.0.0.0",
@@ -82,9 +92,11 @@ _ENV_PATTERN = re.compile(r"\$\{([^}]+)\}")
 
 def _resolve_env_vars(value: str) -> str:
     """Replace ${VAR} patterns with environment variable values."""
+
     def _replace(match):
         var_name = match.group(1)
         return os.environ.get(var_name, "")
+
     return _ENV_PATTERN.sub(_replace, value)
 
 

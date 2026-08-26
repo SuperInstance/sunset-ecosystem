@@ -10,6 +10,7 @@ Usage:
     result = probe.check("api")
     assert result.healthy is True
 """
+
 from __future__ import annotations
 
 import logging
@@ -56,7 +57,9 @@ class HealthProbe:
             "timeout": timeout or self._default_timeout,
         }
 
-    def add_tcp(self, name: str, host: str, port: int, timeout: Optional[float] = None) -> None:
+    def add_tcp(
+        self, name: str, host: str, port: int, timeout: Optional[float] = None
+    ) -> None:
         """Register a TCP connect probe."""
         self._probes[name] = {
             "type": "tcp",

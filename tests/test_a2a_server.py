@@ -1,4 +1,5 @@
 """Tests for the A2A HTTP server and task dispatch."""
+
 import json
 import urllib.request
 
@@ -14,6 +15,7 @@ from a2a.handlers import (
 
 
 # ── Fixtures ──
+
 
 @pytest.fixture
 def server(tmp_path_factory):
@@ -61,6 +63,7 @@ def _get_json(url):
 
 
 # ── Tests ──
+
 
 class TestAgentCards:
     """Static agent card serving."""

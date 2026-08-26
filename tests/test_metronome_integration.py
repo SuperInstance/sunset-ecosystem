@@ -1,4 +1,5 @@
 """Tests for MetronomeIntegration."""
+
 from __future__ import annotations
 
 import time
@@ -10,6 +11,7 @@ from nerve.metronome_integration import DeviceStatus, MetronomeIntegration
 
 class MockGrid:
     """Mock RoomGrid for testing."""
+
     def __init__(self) -> None:
         self.tick_count = 0
 

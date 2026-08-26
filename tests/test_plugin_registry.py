@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_plugin_registry.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest

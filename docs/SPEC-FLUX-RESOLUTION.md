@@ -98,13 +98,16 @@ If any code imports from `flux-vm` (v2), it needs a redirect:
 Redirect old flux_vm imports to flux_vm_v3.
 Only needed if external consumers reference the old path.
 """
+
 import sys
 import importlib
+
 
 def _redirect(old_name, new_name):
     """Make old module name an alias for new."""
     mod = importlib.import_module(new_name)
     sys.modules[old_name] = mod
+
 
 # Rust FFI: no compat needed — v3 has the same C ABI entry points
 # Python: if flux-sdk-python references old paths, update import paths

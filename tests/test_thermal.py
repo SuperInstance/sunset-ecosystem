@@ -19,6 +19,7 @@ from swarm.thermal import (
 # DeviceBudget
 # ---------------------------------------------------------------------------
 
+
 class TestDeviceBudget:
     def test_init(self):
         db = DeviceBudget(DeviceType.GPU, max_agents=8)
@@ -56,6 +57,7 @@ class TestDeviceBudget:
 # ThermalBudget init
 # ---------------------------------------------------------------------------
 
+
 class TestThermalBudgetInit:
     def test_defaults(self):
         tb = ThermalBudget()
@@ -82,6 +84,7 @@ class TestThermalBudgetInit:
 # ---------------------------------------------------------------------------
 # Allocation
 # ---------------------------------------------------------------------------
+
 
 class TestAllocation:
     def test_allocate_success(self):
@@ -123,6 +126,7 @@ class TestAllocation:
 # Fallback allocation
 # ---------------------------------------------------------------------------
 
+
 class TestFallbackAllocation:
     def test_preferred_first(self):
         tb = ThermalBudget()
@@ -143,9 +147,9 @@ class TestFallbackAllocation:
         assert device is None
 
     def test_explicit_fallbacks(self):
-        tb = ThermalBudget(budgets={
-            DeviceType.GPU: 0, DeviceType.CPU: 1, DeviceType.IGPU: 1
-        })
+        tb = ThermalBudget(
+            budgets={DeviceType.GPU: 0, DeviceType.CPU: 1, DeviceType.IGPU: 1}
+        )
         ok, device = tb.spawn_with_thermal_check(
             "a1", DeviceType.GPU, fallback_devices=[DeviceType.IGPU, DeviceType.CPU]
         )
@@ -163,6 +167,7 @@ class TestFallbackAllocation:
 # ---------------------------------------------------------------------------
 # Parent sacrifice
 # ---------------------------------------------------------------------------
+
 
 class TestParentSacrifice:
     def test_direct_room_no_sacrifice(self):
@@ -194,6 +199,7 @@ class TestParentSacrifice:
 # ---------------------------------------------------------------------------
 # Thermal headroom / can_breed
 # ---------------------------------------------------------------------------
+
 
 class TestThermalHeadroom:
     def test_empty(self):
@@ -234,6 +240,7 @@ class TestThermalHeadroom:
 # ---------------------------------------------------------------------------
 # Thread safety
 # ---------------------------------------------------------------------------
+
 
 class TestThreadSafety:
     def test_concurrent_allocate(self):
@@ -279,6 +286,7 @@ class TestThreadSafety:
 # ---------------------------------------------------------------------------
 # Auction stub
 # ---------------------------------------------------------------------------
+
 
 class TestAuctionStub:
     def test_auction_tick_no_bids(self):

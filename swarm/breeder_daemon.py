@@ -107,7 +107,9 @@ class AutoBreeder:
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._tick_count = 0
-        self._room_allocations: dict[int, str] = {}  # room_id → agent_id for thermal budget
+        self._room_allocations: dict[
+            int, str
+        ] = {}  # room_id → agent_id for thermal budget
 
     # ── public API ──────────────────────────────────────────
 
@@ -263,9 +265,7 @@ class AutoBreeder:
                     child_device=self.device,
                 )
                 if not ok:
-                    logger.warning(
-                        "No thermal headroom for room %d, skipping", room_id
-                    )
+                    logger.warning("No thermal headroom for room %d, skipping", room_id)
                     continue
 
             # Release old thermal allocation for this room before rebirthing
@@ -280,7 +280,9 @@ class AutoBreeder:
             # Clone parent weights for rebirth (instead of random init)
             parent_b_id = child.get("parent_b")
             if parent_b_id is not None:
-                parent_b_room = int(parent_b_id.split("_")[1]) if "_" in parent_b_id else 0
+                parent_b_room = (
+                    int(parent_b_id.split("_")[1]) if "_" in parent_b_id else 0
+                )
                 self._rebirth_with_crossover(room_id, parent_room, parent_b_room)
             else:
                 self._rebirth_with_clone(room_id, parent_room)
@@ -295,6 +297,7 @@ class AutoBreeder:
             # Sync to vector table if available
             if self._vector_table is not None and "vector" in child:
                 from swarm.vector_table import AgentVector
+
                 self._vector_table.add(
                     AgentVector(
                         agent_id=child["numeric_id"],
@@ -395,6 +398,7 @@ class AutoBreeder:
         for single-parent clone.
         """
         import random
+
         pairs: list[tuple[AgentScore, Optional[AgentScore]]] = []
         if len(winners) < 2:
             for _ in range(n_children):
@@ -435,11 +439,15 @@ class AutoBreeder:
             # parent_b: search for dissimilar winner (max diversity)
             # We query with parent_a's vector and look for the *worst* match
             # among remaining winners — i.e. the most genetically distant.
-            vec_a = self._vector_table._meta.get(self._agent_id_to_numeric(parent_a.agent_id))
+            vec_a = self._vector_table._meta.get(
+                self._agent_id_to_numeric(parent_a.agent_id)
+            )
             if vec_a is None:
                 # No vector for this winner — fallback to random
                 if len(winners) >= 2:
-                    b = random.choice([w for w in winners if w.agent_id != parent_a.agent_id])
+                    b = random.choice(
+                        [w for w in winners if w.agent_id != parent_a.agent_id]
+                    )
                 else:
                     b = None
                 pairs.append((parent_a, b))
@@ -473,7 +481,9 @@ class AutoBreeder:
             except (TypeError, AttributeError):
                 # parent_a is an AgentScore, not a vector — fallback
                 if len(winners) >= 2:
-                    b = random.choice([w for w in winners if w.agent_id != parent_a.agent_id])
+                    b = random.choice(
+                        [w for w in winners if w.agent_id != parent_a.agent_id]
+                    )
                 else:
                     b = None
                 pairs.append((parent_a, b))
@@ -487,7 +497,11 @@ class AutoBreeder:
             # turbovec returns best-first)
             worst_id, _, _ = results[-1]
             parent_b = next(
-                (w for w in winners if self._agent_id_to_numeric(w.agent_id) == worst_id),
+                (
+                    w
+                    for w in winners
+                    if self._agent_id_to_numeric(w.agent_id) == worst_id
+                ),
                 None,
             )
             pairs.append((parent_a, parent_b))
@@ -510,8 +524,9 @@ class AutoBreeder:
         except ValueError:
             # Hash to uint64 for arbitrary strings
             import hashlib
+
             digest = hashlib.blake2b(agent_id.encode(), digest_size=8).digest()
-            return int.from_bytes(digest, "big") % (2 ** 64)
+            return int.from_bytes(digest, "big") % (2**64)
 
     @staticmethod
     def _breed_from_pairs(
@@ -567,6 +582,7 @@ class AutoBreeder:
         (uniform crossover) then apply small Gaussian mutation.
         """
         import numpy as np
+
         with self._lock:
             for key in ("w1", "w2", "w3"):
                 a = self.grid.w[key][parent_a_room]
@@ -608,9 +624,9 @@ class AutoBreeder:
                     * 0.005  # small mutation
                 )
             for key in ("b1", "b2", "b3"):
-                self.grid.w[key][0, target_room] = (
-                    self.grid.w[key][0, source_room].copy()
-                )
+                self.grid.w[key][0, target_room] = self.grid.w[key][
+                    0, source_room
+                ].copy()
             self.grid.activity[target_room] = 0
             self.grid.chaos[target_room] = 0.3
             # Clear ring-buffer history for rebirthed room
@@ -631,6 +647,7 @@ class AutoBreeder:
 
 
 # ── helpers ─────────────────────────────────────────────
+
 
 def _crossover(a: float, b: float) -> float:
     """Random crossover between two parent values."""

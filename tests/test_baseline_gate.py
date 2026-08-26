@@ -13,6 +13,7 @@ from distill.baseline_gate import (
 
 # ── Basic threshold tests ──────────────────────────────────────
 
+
 class TestSkipThreshold:
     def test_skip_when_above_085(self):
         """Scores > 0.85 must SKIP teaching entirely."""
@@ -74,6 +75,7 @@ class TestReducedZone:
 
 # ── Edge cases at exact boundaries ─────────────────────────────
 
+
 class TestExactBoundaries:
     def test_exactly_060_is_reduced(self):
         """Score == 0.60 falls in the reduced zone (not full)."""
@@ -105,6 +107,7 @@ class TestExactBoundaries:
 
 # ── Logging behavior ───────────────────────────────────────────
 
+
 class TestLogging:
     def test_skip_logs_baseline_confident(self, caplog):
         """SKIP decisions must log 'baseline_confident: skip'."""
@@ -133,6 +136,7 @@ class TestLogging:
 
 
 # ── History and statistics ─────────────────────────────────────
+
 
 class TestHistory:
     def test_history_records_decisions(self):
@@ -168,6 +172,7 @@ class TestHistory:
 
 
 # ── Custom thresholds ──────────────────────────────────────────
+
 
 class TestCustomThresholds:
     def test_custom_thresholds(self):
@@ -210,6 +215,7 @@ class TestCustomThresholds:
 
 
 # ── GateDecision dataclass ─────────────────────────────────────
+
 
 class TestGateDecision:
     def test_repr(self):

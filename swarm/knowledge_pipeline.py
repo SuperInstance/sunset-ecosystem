@@ -75,7 +75,9 @@ class Chunker:
         self.chunk_size = chunk_size
         self.overlap = overlap
 
-    def chunk(self, text: str, source_meta: dict[str, Any] | None = None) -> list[FleetDocument]:
+    def chunk(
+        self, text: str, source_meta: dict[str, Any] | None = None
+    ) -> list[FleetDocument]:
         """Chunk text into FleetDocument pieces."""
         if not text.strip():
             return []
@@ -269,7 +271,9 @@ class KnowledgePipeline:
         )
         return doc_ids
 
-    def ingest_file(self, path: str | Path, room: str, source: str = "file") -> list[str]:
+    def ingest_file(
+        self, path: str | Path, room: str, source: str = "file"
+    ) -> list[str]:
         """Ingest a single file into a room."""
         path = Path(path)
         text = path.read_text(encoding="utf-8", errors="ignore")

@@ -249,7 +249,10 @@ class TestBatonSunset:
         """The seed onboarding should contain next steps."""
         baton.sunset("lucineer", session_data)
         seeds = baton.seed_bank.select(n=1)
-        assert "Next steps" in seeds[0].letter_to_children or "Continuation" in seeds[0].letter_to_children
+        assert (
+            "Next steps" in seeds[0].letter_to_children
+            or "Continuation" in seeds[0].letter_to_children
+        )
 
     def test_multiple_sunsets_accumulate(self, baton):
         """Multiple sessions should accumulate in archive and seed bank."""

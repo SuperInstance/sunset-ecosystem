@@ -3,8 +3,13 @@
 Tournament Parameter Sweep
 Runs across cap values and strategies for the sunset-ecosystem tournament sim.
 """
-import random, math, csv, time
+
+import random
+import math
+import csv
+import time
 from simulators import tournament_sim as ts
+
 
 def compute_diversity(pop):
     """Aggregate standard deviation across ethos, pathos, logos."""
@@ -14,10 +19,11 @@ def compute_diversity(pop):
     m_e = sum(a.ethos for a in pop) / n
     m_p = sum(a.pathos for a in pop) / n
     m_l = sum(a.logos for a in pop) / n
-    var_e = sum((a.ethos - m_e)**2 for a in pop) / n
-    var_p = sum((a.pathos - m_p)**2 for a in pop) / n
-    var_l = sum((a.logos - m_l)**2 for a in pop) / n
+    var_e = sum((a.ethos - m_e) ** 2 for a in pop) / n
+    var_p = sum((a.pathos - m_p) ** 2 for a in pop) / n
+    var_l = sum((a.logos - m_l) ** 2 for a in pop) / n
     return math.sqrt(var_e) + math.sqrt(var_p) + math.sqrt(var_l)
+
 
 def run_sweep():
     caps = [20, 30, 50, 100, 200]
@@ -67,8 +73,8 @@ def run_sweep():
                     # We need to know len(winners) after tournament step
                     winners = []
                     random.shuffle(pop)
-                    for i in range(0, len(pop)-1, 2):
-                        a, b = pop[i], pop[i+1]
+                    for i in range(0, len(pop) - 1, 2):
+                        a, b = pop[i], pop[i + 1]
                         if a.dominates(b):
                             winners.append(a)
                         elif b.dominates(a):
@@ -81,7 +87,10 @@ def run_sweep():
                         winners.append(pop[-1])
 
                     offspring = []
-                    while len(winners) + len(offspring) < current_cap and len(winners) >= 2:
+                    while (
+                        len(winners) + len(offspring) < current_cap
+                        and len(winners) >= 2
+                    ):
                         p1, p2 = random.sample(winners, 2)
                         child = ts.mutate(ts.crossover(p1, p2), mutation_rate)
                         offspring.append(child)
@@ -108,18 +117,24 @@ def run_sweep():
                     all_reached = False
 
             # Aggregate across seeds
-            avg_gens_to_champion = sum(gens_to_champion_list)/len(gens_to_champion_list) if gens_to_champion_list else None
-            avg_final_mean = sum(final_mean_list)/len(final_mean_list)
-            avg_final_diversity = sum(final_diversity_list)/len(final_diversity_list)
-            avg_breeding = sum(total_breeding_list)/len(total_breeding_list)
-            avg_champion_f = sum(final_champion_f_list)/len(final_champion_f_list)
+            avg_gens_to_champion = (
+                sum(gens_to_champion_list) / len(gens_to_champion_list)
+                if gens_to_champion_list
+                else None
+            )
+            avg_final_mean = sum(final_mean_list) / len(final_mean_list)
+            avg_final_diversity = sum(final_diversity_list) / len(final_diversity_list)
+            avg_breeding = sum(total_breeding_list) / len(total_breeding_list)
+            avg_champion_f = sum(final_champion_f_list) / len(final_champion_f_list)
             all_champion_reached = all(f >= 0.999 for f in final_champion_f_list)
 
             result = {
                 "cap": cap,
                 "strategy": strategy,
                 "all_reached_champion": all_champion_reached,
-                "gens_to_champion": round(avg_gens_to_champion, 1) if avg_gens_to_champion else "N/A",
+                "gens_to_champion": round(avg_gens_to_champion, 1)
+                if avg_gens_to_champion
+                else "N/A",
                 "final_mean": round(avg_final_mean, 4),
                 "final_diversity": round(avg_final_diversity, 4),
                 "total_breeding": round(avg_breeding, 0),
@@ -129,15 +144,18 @@ def run_sweep():
             csv_rows.append(result)
 
             status = "✅" if all_champion_reached else "❌"
-            print(f"{status} cap={cap:3d} strategy={strategy:7s}  "
-                  f"champion_f={avg_champion_f:.4f}  "
-                  f"gens_to_champion={str(result['gens_to_champion']):>6s}  "
-                  f"mean={avg_final_mean:.4f}  "
-                  f"diversity={avg_final_diversity:.4f}  "
-                  f"breeding={avg_breeding:6.0f}")
+            print(
+                f"{status} cap={cap:3d} strategy={strategy:7s}  "
+                f"champion_f={avg_champion_f:.4f}  "
+                f"gens_to_champion={str(result['gens_to_champion']):>6s}  "
+                f"mean={avg_final_mean:.4f}  "
+                f"diversity={avg_final_diversity:.4f}  "
+                f"breeding={avg_breeding:6.0f}"
+            )
 
     print("-" * 70)
     return results, csv_rows
+
 
 def generate_report(results, csv_rows, elapsed):
     # Determine optimal
@@ -146,17 +164,44 @@ def generate_report(results, csv_rows, elapsed):
     if valid:
         # Score: lower gens is better, higher diversity is better, lower breeding is better
         # Normalize and combine
-        min_gens = min(r["gens_to_champion"] for r in valid if isinstance(r["gens_to_champion"], (int, float)))
+        min_gens = min(
+            r["gens_to_champion"]
+            for r in valid
+            if isinstance(r["gens_to_champion"], (int, float))
+        )
         max_div = max(r["final_diversity"] for r in valid)
         max_breed = max(r["total_breeding"] for r in valid)
 
         def score(r):
-            g = r["gens_to_champion"] if isinstance(r["gens_to_champion"], (int, float)) else 999
+            g = (
+                r["gens_to_champion"]
+                if isinstance(r["gens_to_champion"], (int, float))
+                else 999
+            )
             # Lower gens is good (invert), higher diversity is good, lower breeding is good (invert)
             # Weight: gens 0.4, diversity 0.4, breeding 0.2
-            s = 0.4 * (1 - (g - min_gens) / (max(1, max([x["gens_to_champion"] for x in valid if isinstance(x["gens_to_champion"], (int, float))]) - min_gens))) + \
-                0.4 * (r["final_diversity"] / max_div) + \
-                0.2 * (1 - (r["total_breeding"] - 0) / max_breed)
+            s = (
+                0.4
+                * (
+                    1
+                    - (g - min_gens)
+                    / (
+                        max(
+                            1,
+                            max(
+                                [
+                                    x["gens_to_champion"]
+                                    for x in valid
+                                    if isinstance(x["gens_to_champion"], (int, float))
+                                ]
+                            )
+                            - min_gens,
+                        )
+                    )
+                )
+                + 0.4 * (r["final_diversity"] / max_div)
+                + 0.2 * (1 - (r["total_breeding"] - 0) / max_breed)
+            )
             return s
 
         optimal = max(valid, key=score)
@@ -164,8 +209,13 @@ def generate_report(results, csv_rows, elapsed):
         optimal = results[0]
 
     # Higher cap always higher diversity?
-    fixed_caps = sorted([r for r in results if r["strategy"] == "fixed"], key=lambda x: x["cap"])
-    div_trend = all(fixed_caps[i]["final_diversity"] <= fixed_caps[i+1]["final_diversity"] for i in range(len(fixed_caps)-1))
+    fixed_caps = sorted(
+        [r for r in results if r["strategy"] == "fixed"], key=lambda x: x["cap"]
+    )
+    div_trend = all(
+        fixed_caps[i]["final_diversity"] <= fixed_caps[i + 1]["final_diversity"]
+        for i in range(len(fixed_caps) - 1)
+    )
 
     md = f"""# Tournament Parameter Sweep Results
 
@@ -184,16 +234,16 @@ def generate_report(results, csv_rows, elapsed):
     md += f"""
 ## Optimal Setting
 
-- **Cap:** {optimal['cap']}
-- **Strategy:** {optimal['strategy']}
+- **Cap:** {optimal["cap"]}
+- **Strategy:** {optimal["strategy"]}
 - **Rationale:** Fastest convergence to champion fitness (≈1.0) with strong diversity preservation and reasonable breeding cost.
 
 ## Key Findings
 
 1. **Champion fitness:** All conditions reach ≈1.0 within 100 generations.
-2. **Convergence speed:** {'Lower caps converge faster (less noise)' if all(r['gens_to_champion'] != 'N/A' and r['gens_to_champion'] < 50 for r in results if r['cap'] <= 50) else 'Mixed convergence patterns'}.
-3. **Diversity vs Cap:** {'Yes — higher cap correlates with higher diversity' if div_trend else 'No — higher cap does NOT always mean higher diversity'}.
-4. **Dynamic strategy:** {'Dynamic cap (1.5x at gen 20) extends diversity without sacrificing convergence' if any(r['strategy']=='dynamic' and r['final_diversity'] > 0.3 for r in results) else 'Dynamic cap shows modest diversity gains'}.
+2. **Convergence speed:** {"Lower caps converge faster (less noise)" if all(r["gens_to_champion"] != "N/A" and r["gens_to_champion"] < 50 for r in results if r["cap"] <= 50) else "Mixed convergence patterns"}.
+3. **Diversity vs Cap:** {"Yes — higher cap correlates with higher diversity" if div_trend else "No — higher cap does NOT always mean higher diversity"}.
+4. **Dynamic strategy:** {"Dynamic cap (1.5x at gen 20) extends diversity without sacrificing convergence" if any(r["strategy"] == "dynamic" and r["final_diversity"] > 0.3 for r in results) else "Dynamic cap shows modest diversity gains"}.
 5. **Breeding cost:** Higher caps = more breeding events (linear-ish scaling).
 
 ## Diversity Trend (Fixed Strategy)
@@ -212,16 +262,39 @@ Columns: cap, strategy, final_champion_f, gens_to_champion, final_mean, final_di
 
     # Write CSV
     with open("tournament-sweep-data.csv", "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["cap", "strategy", "final_champion_f", "gens_to_champion", "final_mean", "final_diversity", "total_breeding"])
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "cap",
+                "strategy",
+                "final_champion_f",
+                "gens_to_champion",
+                "final_mean",
+                "final_diversity",
+                "total_breeding",
+            ],
+        )
         writer.writeheader()
         for r in csv_rows:
-            row = {k: r[k] for k in ["cap", "strategy", "final_champion_f", "gens_to_champion", "final_mean", "final_diversity", "total_breeding"]}
+            row = {
+                k: r[k]
+                for k in [
+                    "cap",
+                    "strategy",
+                    "final_champion_f",
+                    "gens_to_champion",
+                    "final_mean",
+                    "final_diversity",
+                    "total_breeding",
+                ]
+            }
             writer.writerow(row)
 
     with open("TOURNAMENT-PARAMETER-SWEEP.md", "w") as f:
         f.write(md)
 
     return optimal, div_trend
+
 
 if __name__ == "__main__":
     t0 = time.time()

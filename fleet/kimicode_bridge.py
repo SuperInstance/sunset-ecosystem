@@ -18,6 +18,7 @@ Usage:
         bridge.task("test_gen", {"function": "bar", "signature": "def bar(x):"}),
     ])
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -40,27 +41,32 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class CodingTask:
     """A single coding task specification."""
-    task_type: str          # e.g. "review", "refactor", "test", "docs", "debug"
-    target: str             # file path, function name, or module
+
+    task_type: str  # e.g. "review", "refactor", "test", "docs", "debug"
+    target: str  # file path, function name, or module
     context: dict[str, Any] = field(default_factory=dict)
-    prompt: str = ""        # optional override prompt
+    prompt: str = ""  # optional override prompt
     max_tokens: int = 4096
     temperature: float = 0.2
 
     def cache_key(self) -> str:
         """Content-addressable key for result caching."""
-        data = json.dumps({
-            "type": self.task_type,
-            "target": self.target,
-            "context": self.context,
-            "prompt": self.prompt,
-        }, sort_keys=True)
+        data = json.dumps(
+            {
+                "type": self.task_type,
+                "target": self.target,
+                "context": self.context,
+                "prompt": self.prompt,
+            },
+            sort_keys=True,
+        )
         return hashlib.sha256(data.encode()).hexdigest()[:32]
 
 
 @dataclass
 class CacheEntry:
     """Cached coding task result."""
+
     key: str
     result: str
     tokens_used: int = 0
@@ -69,12 +75,18 @@ class CacheEntry:
 
 # ── Task Templates ────────────────────────────────────────────
 
+
 class TaskTemplate:
     """Pre-built prompt templates for common coding tasks."""
 
     @staticmethod
     def review(source_code: str, focus: list[str] | None = None) -> CodingTask:
-        focus_areas = focus or ["readability", "performance", "type_safety", "error_handling"]
+        focus_areas = focus or [
+            "readability",
+            "performance",
+            "type_safety",
+            "error_handling",
+        ]
         prompt = (
             f"Review the following Python code. Focus on: {', '.join(focus_areas)}.\n\n"
             f"```python\n{source_code}\n```\n\n"
@@ -102,11 +114,20 @@ class TaskTemplate:
         )
 
     @staticmethod
-    def test_gen(function_signature: str, docstring: str = "", edge_cases: list[str] | None = None) -> CodingTask:
-        edges = edge_cases or ["empty input", "max size", "null values", "boundary conditions"]
+    def test_gen(
+        function_signature: str,
+        docstring: str = "",
+        edge_cases: list[str] | None = None,
+    ) -> CodingTask:
+        edges = edge_cases or [
+            "empty input",
+            "max size",
+            "null values",
+            "boundary conditions",
+        ]
         prompt = (
             f"Generate comprehensive pytest tests for:\n\n"
-            f"```python\n{function_signature}\n\"\"\"{docstring}\"\"\"\n```\n\n"
+            f'```python\n{function_signature}\n"""{docstring}"""\n```\n\n'
             f"Include tests for: {', '.join(edges)}. "
             "Use pytest fixtures and parametrize where appropriate."
         )
@@ -149,6 +170,7 @@ class TaskTemplate:
 
 # ── Kimicode Bridge ───────────────────────────────────────────
 
+
 class KimicodeBridge:
     """Fleet interface to k2p6 coding model with caching and metrics."""
 
@@ -174,7 +196,12 @@ class KimicodeBridge:
         task = self._templates.refactor(source_code, goal)
         return self.execute(task)
 
-    def test_gen(self, function_signature: str, docstring: str = "", edge_cases: list[str] | None = None) -> str:
+    def test_gen(
+        self,
+        function_signature: str,
+        docstring: str = "",
+        edge_cases: list[str] | None = None,
+    ) -> str:
         task = self._templates.test_gen(function_signature, docstring, edge_cases)
         return self.execute(task)
 
@@ -239,16 +266,19 @@ class KimicodeBridge:
         """
         # When running in OpenClaw, the bridge integrates with the
         # LLM Task endpoint defined in the Claw Fleet Bridge skill
-        return json.dumps({
-            "status": "dispatched",
-            "task_type": task.task_type,
-            "target": task.target,
-            "prompt_hash": task.cache_key(),
-            "max_tokens": task.max_tokens,
-            "temperature": task.temperature,
-            "model": "k2p6",
-            "note": "Integration point: call LLM Task endpoint or sessions_spawn",
-        }, indent=2)
+        return json.dumps(
+            {
+                "status": "dispatched",
+                "task_type": task.task_type,
+                "target": task.target,
+                "prompt_hash": task.cache_key(),
+                "max_tokens": task.max_tokens,
+                "temperature": task.temperature,
+                "model": "k2p6",
+                "note": "Integration point: call LLM Task endpoint or sessions_spawn",
+            },
+            indent=2,
+        )
 
     def _evict_if_needed(self) -> None:
         if len(self._cache) > self._cache_size:

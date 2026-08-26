@@ -26,6 +26,7 @@ from swarm.worker_pool import BreedingWorker, WorkerConfig, WorkerPool, WorkerSt
 
 # ── fixtures ────────────────────────────────────────────────
 
+
 @pytest.fixture
 def grid():
     """Small grid with some hot and cold rooms."""
@@ -49,6 +50,7 @@ def pool(grid, thermal):
 
 
 # ── tests ───────────────────────────────────────────────────
+
 
 class TestSpawnWorker:
     """WorkerPool.spawn_worker() creates threads and respects limits."""
@@ -112,7 +114,9 @@ class TestSpawnWorker:
 
     def test_spawn_respects_max_workers(self, grid):
         """Pool refuses spawn beyond max_workers."""
-        tiny_pool = WorkerPool(grid, ThermalBudget({DeviceType.GPU: 100}), max_workers=2)
+        tiny_pool = WorkerPool(
+            grid, ThermalBudget({DeviceType.GPU: 100}), max_workers=2
+        )
         tiny_pool.spawn_worker(config={"room_id": 0})
         tiny_pool.spawn_worker(config={"room_id": 1})
         with pytest.raises(RuntimeError, match="capacity"):
@@ -196,9 +200,7 @@ class TestThermalLimits:
             pool.spawn_worker(config={"room_id": 1})
 
         # Third spawn WITH parent_a = first worker succeeds via sacrifice
-        child_id = pool.spawn_worker(
-            config={"room_id": 1, "parent_a": parent_id}
-        )
+        child_id = pool.spawn_worker(config={"room_id": 1, "parent_a": parent_id})
         time.sleep(0.1)
         assert child_id in pool.list_active()
 

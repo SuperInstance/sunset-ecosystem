@@ -215,8 +215,12 @@ class TestTaskAssignment:
 
     def test_assign_best_match(self):
         c = SwarmCoordinator()
-        c.register_agent("a1", AgentRole.BUILDER, capabilities=["code"], trust_score=0.5)
-        c.register_agent("a2", AgentRole.BUILDER, capabilities=["code"], trust_score=0.9)
+        c.register_agent(
+            "a1", AgentRole.BUILDER, capabilities=["code"], trust_score=0.5
+        )
+        c.register_agent(
+            "a2", AgentRole.BUILDER, capabilities=["code"], trust_score=0.9
+        )
         task = TaskNode(id="t1", description="Code")
         assigned = c.assign_task(task, ["code"])
         assert assigned == "a2"

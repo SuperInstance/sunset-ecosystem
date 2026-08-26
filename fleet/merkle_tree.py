@@ -8,6 +8,7 @@ Usage:
     root = tree.root_hash()
     # Compare roots to detect differences, then drill down
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -54,9 +55,7 @@ class MerkleTree:
             left = nodes[i]
             right = nodes[i + 1] if i + 1 < len(nodes) else left
             parent_hash = self._hash_pair(left.hash, right.hash)
-            next_level.append(
-                MerkleNode(hash=parent_hash, left=left, right=right)
-            )
+            next_level.append(MerkleNode(hash=parent_hash, left=left, right=right))
         return self._build_level(next_level)
 
     def _leaf_hash(self, index: int, item: str) -> MerkleNode:
@@ -92,7 +91,9 @@ class MerkleTree:
         self._collect_proof(self._root, index, proof)
         return proof
 
-    def verify_proof(self, index: int, item: str, proof: List[Tuple[str, bool]]) -> bool:
+    def verify_proof(
+        self, index: int, item: str, proof: List[Tuple[str, bool]]
+    ) -> bool:
         """Verify a Merkle proof for an item."""
         current = self._leaf_hash(index, item).hash
         for sibling, is_left in reversed(proof):
@@ -143,7 +144,9 @@ class MerkleTree:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _collect_proof(self, node: MerkleNode, index: int, proof: List[Tuple[str, bool]]) -> None:
+    def _collect_proof(
+        self, node: MerkleNode, index: int, proof: List[Tuple[str, bool]]
+    ) -> None:
         if node.leaf_index >= 0:
             return
         mid = self._count_leaves(node.left) if node.left else 0

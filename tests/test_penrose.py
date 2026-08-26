@@ -22,6 +22,7 @@ from swarm.penrose import (
 # Constants
 # ---------------------------------------------------------------------------
 
+
 class TestConstants:
     def test_phi_value(self):
         assert PHI == pytest.approx((1 + math.sqrt(5)) / 2)
@@ -36,6 +37,7 @@ class TestConstants:
 # ---------------------------------------------------------------------------
 # PenrosePosition
 # ---------------------------------------------------------------------------
+
 
 class TestPenrosePosition:
     def test_init(self):
@@ -65,6 +67,7 @@ class TestPenrosePosition:
 # ---------------------------------------------------------------------------
 # assign_positions
 # ---------------------------------------------------------------------------
+
 
 class TestAssignPositions:
     def test_empty(self):
@@ -102,6 +105,7 @@ class TestAssignPositions:
 # compute_overlap
 # ---------------------------------------------------------------------------
 
+
 class TestComputeOverlap:
     def test_same_position(self):
         p = PenrosePosition(agent_id="a1", x=0.0, y=0.0, ring=0, angle=0.0)
@@ -128,6 +132,7 @@ class TestComputeOverlap:
 # ---------------------------------------------------------------------------
 # minimum_overlap
 # ---------------------------------------------------------------------------
+
 
 class TestMinimumOverlap:
     def test_empty(self):

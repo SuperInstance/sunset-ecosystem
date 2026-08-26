@@ -21,9 +21,15 @@ from logos.generation_memory import (
 # AgentGeneration
 # ---------------------------------------------------------------------------
 
+
 class TestAgentGeneration:
     def test_repr(self):
-        g = AgentGeneration(agent_id="a1", name="Alpha", generation=1, created_at=datetime.now(timezone.utc))
+        g = AgentGeneration(
+            agent_id="a1",
+            name="Alpha",
+            generation=1,
+            created_at=datetime.now(timezone.utc),
+        )
         assert "Alpha" in repr(g)
         assert "gen=1" in repr(g)
 
@@ -86,6 +92,7 @@ class TestAgentGeneration:
 # GenerationHistory
 # ---------------------------------------------------------------------------
 
+
 class TestGenerationHistory:
     def test_repr(self):
         h = GenerationHistory(generations=[], total_generations=0, active_agents=0)
@@ -95,6 +102,7 @@ class TestGenerationHistory:
 # ---------------------------------------------------------------------------
 # GenerationMemory
 # ---------------------------------------------------------------------------
+
 
 class TestGenerationMemory:
     def test_register(self):
@@ -187,6 +195,7 @@ class TestGenerationMemory:
 # ---------------------------------------------------------------------------
 # Persistence
 # ---------------------------------------------------------------------------
+
 
 class TestPersistence:
     def test_save_and_load(self, tmp_path):

@@ -110,9 +110,7 @@ class HardwareProfileIndex:
         self._capability_table = FluxVectorTable(
             dim=self.PROFILE_DIM, bit_width=bit_width
         )
-        self._load_table = FluxVectorTable(
-            dim=self.PROFILE_DIM, bit_width=bit_width
-        )
+        self._load_table = FluxVectorTable(dim=self.PROFILE_DIM, bit_width=bit_width)
         self._profiles: dict[str, DeviceProfile] = {}
 
     def register(self, profile: DeviceProfile) -> None:

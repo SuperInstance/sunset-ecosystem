@@ -12,7 +12,10 @@ class TestFenceBoard:
             title="Map Opcodes",
             brush="16 ops undefined",
             view="Name on every runtime",
-            challengers={"Babel": (3, "Built the concept"), "Oracle1": (7, "Good at specs")},
+            challengers={
+                "Babel": (3, "Built the concept"),
+                "Oracle1": (7, "Good at specs"),
+            },
             reward="0x70-0x7F attributed",
         )
         assert fence.id == "fence-0x42"
@@ -94,11 +97,17 @@ class TestFenceBoard:
 
     def test_best_challenger(self):
         board = FenceBoard(max_active=5)
-        fence = board.post_fence("T", "b", "v", {
-            "Babel": (3, "Built it"),
-            "Oracle1": (7, "Specs"),
-            "JC1": (4, "Hardware"),
-        }, "r")
+        fence = board.post_fence(
+            "T",
+            "b",
+            "v",
+            {
+                "Babel": (3, "Built it"),
+                "Oracle1": (7, "Specs"),
+                "JC1": (4, "Hardware"),
+            },
+            "r",
+        )
         assert board.best_challenger(fence.id) == "Babel"
 
     def test_best_challenger_unknown(self):
@@ -124,7 +133,9 @@ class TestFenceBoard:
 
     def test_serialization(self):
         board = FenceBoard(max_active=5)
-        fence = board.post_fence("T", "b", "v", {"A": (1, "e")}, "r", claim_window_hours=72)
+        fence = board.post_fence(
+            "T", "b", "v", {"A": (1, "e")}, "r", claim_window_hours=72
+        )
         board.claim_fence(fence.id, "X", "approach")
         d = fence.to_dict()
         assert d["status"] == "CLAIMED"
@@ -134,7 +145,9 @@ class TestFenceBoard:
 
     def test_challenger_edge_field(self):
         board = FenceBoard(max_active=5)
-        fence = board.post_fence("T", "b", "v", {"Babel": (3, "Built the concept")}, "r")
+        fence = board.post_fence(
+            "T", "b", "v", {"Babel": (3, "Built the concept")}, "r"
+        )
         c = fence.challengers[0]
         assert c.name == "Babel"
         assert c.difficulty == 3

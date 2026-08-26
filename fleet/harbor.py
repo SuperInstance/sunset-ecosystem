@@ -156,7 +156,7 @@ class DependencyGraph:
 
         def dfs(node: str) -> None:
             if node in path:
-                cycle = path[path.index(node):]
+                cycle = path[path.index(node) :]
                 cycles.append(cycle)
                 return
             if node in visited:
@@ -247,7 +247,9 @@ class Harbor:
 
         # Integration coverage
         mapped = sum(1 for p in self.integrations if p.status != "unmapped")
-        integration_coverage = mapped / len(self.integrations) if self.integrations else 1.0
+        integration_coverage = (
+            mapped / len(self.integrations) if self.integrations else 1.0
+        )
 
         # Ternary consensus: fleet-wide health vote
         health_votes = [m.health_ternary for m in self.modules.values()]
@@ -256,11 +258,17 @@ class Harbor:
         # Recommendations
         recommendations: list[str] = []
         if critical > 0:
-            recommendations.append(f"{critical} critical modules need immediate attention")
+            recommendations.append(
+                f"{critical} critical modules need immediate attention"
+            )
         if degraded > total * 0.3:
-            recommendations.append(f"{degraded}/{total} modules degraded — fleet stability at risk")
+            recommendations.append(
+                f"{degraded}/{total} modules degraded — fleet stability at risk"
+            )
         if integration_coverage < 0.5:
-            recommendations.append(f"Integration coverage only {integration_coverage*100:.0f}% — more tests needed")
+            recommendations.append(
+                f"Integration coverage only {integration_coverage * 100:.0f}% — more tests needed"
+            )
         if total_tests == 0:
             recommendations.append("No tests registered — fleet is flying blind")
 
@@ -283,7 +291,9 @@ class Harbor:
             "critical": report.critical_count,
             "total_tests": report.total_tests,
             "tests_passed": report.tests_passed,
-            "test_coverage": report.tests_passed / report.total_tests if report.total_tests > 0 else 0.0,
+            "test_coverage": report.tests_passed / report.total_tests
+            if report.total_tests > 0
+            else 0.0,
             "integration_coverage": report.integration_coverage,
             "ternary_score": TernaryValue.to_string(report.ternary_score),
             "ternary_emoji": TernaryValue.to_emoji(report.ternary_score),
@@ -306,19 +316,23 @@ class Harbor:
         gaps = []
         for path in self.integrations:
             if path.status == "unmapped":
-                gaps.append({
-                    "source": path.source,
-                    "target": path.target,
-                    "issue": "unmapped",
-                    "description": path.description,
-                })
+                gaps.append(
+                    {
+                        "source": path.source,
+                        "target": path.target,
+                        "issue": "unmapped",
+                        "description": path.description,
+                    }
+                )
             elif path.status == "broken":
-                gaps.append({
-                    "source": path.source,
-                    "target": path.target,
-                    "issue": "broken",
-                    "description": path.description,
-                })
+                gaps.append(
+                    {
+                        "source": path.source,
+                        "target": path.target,
+                        "issue": "broken",
+                        "description": path.description,
+                    }
+                )
         return gaps
 
     def get_integration_matrix(self) -> dict[str, dict[str, str]]:
@@ -344,7 +358,11 @@ class Harbor:
         for path in self.integrations:
             connection_counts[path.source] = connection_counts.get(path.source, 0) + 1
             connection_counts[path.target] = connection_counts.get(path.target, 0) + 1
-        return [name for name, count in connection_counts.items() if count >= min_connections]
+        return [
+            name
+            for name, count in connection_counts.items()
+            if count >= min_connections
+        ]
 
     # ── Dependency Analysis ─────────────────────────────────
 
@@ -393,7 +411,9 @@ class Harbor:
             "modules": len(self.modules),
             "integrations": len(self.integrations),
             "tests": sum(test_counts),
-            "mean_tests_per_module": sum(test_counts) / len(test_counts) if test_counts else 0,
+            "mean_tests_per_module": sum(test_counts) / len(test_counts)
+            if test_counts
+            else 0,
             "status_distribution": {
                 "healthy": statuses.count("healthy"),
                 "degraded": statuses.count("degraded"),
@@ -410,26 +430,166 @@ class Harbor:
     def bootstrap_fleet(self) -> None:
         """Bootstrap Harbor with the known fleet modules."""
         fleet_modules = [
-            ModuleEntry("HNSWMeshTable", "swarm/hnsw_mesh_table.py", "tests/test_hnsw_mesh_table.py", "healthy", 11, 11),
-            ModuleEntry("TieredMeshStorage", "swarm/tiered_mesh_storage.py", "tests/test_tiered_mesh_storage.py", "healthy", 7, 7),
-            ModuleEntry("FleetMemory", "fleet/fleet_memory.py", "tests/test_fleet_memory.py", "healthy", 12, 12),
-            ModuleEntry("MeshWAL", "swarm/mesh_wal.py", "tests/test_mesh_wal.py", "healthy", 13, 13),
-            ModuleEntry("MeshGrouping", "swarm/mesh_grouping.py", "tests/test_mesh_grouping.py", "healthy", 10, 10),
-            ModuleEntry("SceneTracker", "swarm/scene_tracker.py", "tests/test_scene_tracker.py", "healthy", 10, 10),
-            ModuleEntry("VectorSwarm", "swarm/vector_swarm.py", "tests/test_vector_swarm.py", "healthy", 12, 12),
-            ModuleEntry("CognitiveCache", "fleet/cognitive_cache.py", "tests/test_cognitive_cache.py", "healthy", 15, 15),
-            ModuleEntry("FleetAPI", "fleet/fleet_api.py", "tests/test_fleet_api.py", "healthy", 8, 8),
-            ModuleEntry("FleetMonitor", "fleet/fleet_monitor.py", "tests/test_fleet_monitor.py", "healthy", 10, 10),
-            ModuleEntry("QuantaVDBBridge", "fleet/quanta_vdb_bridge.py", "tests/test_quanta_vdb_bridge.py", "healthy", 16, 16),
-            ModuleEntry("CASLangExecutor", "fleet/caslang_executor.py", "tests/test_caslang_executor.py", "healthy", 18, 18),
-            ModuleEntry("LevelRunner", "fleet/level_runner.py", "tests/test_level_runner.py", "healthy", 18, 18),
-            ModuleEntry("Pincher", "fleet/pincher.py", "tests/test_pincher.py", "healthy", 14, 14),
-            ModuleEntry("xLangAgentBridge", "fleet/xlang_agent_bridge.py", "tests/test_xlang_agent_bridge.py", "healthy", 16, 16),
-            ModuleEntry("EcosystemHub", "fleet/ecosystem_hub.py", "tests/test_ecosystem_hub.py", "healthy", 14, 14),
-            ModuleEntry("PatternMine", "fleet/pattern_mine.py", "tests/test_pattern_mine.py", "healthy", 23, 23),
-            ModuleEntry("TMinusBridge", "fleet/t_minus_bridge.py", "tests/test_t_minus_bridge.py", "healthy", 30, 30),
-            ModuleEntry("BreedOptimizer", "fleet/breed_optimizer.py", "tests/test_breed_optimizer.py", "healthy", 39, 39),
-            ModuleEntry("TernaryTypes", "fleet/ternary_types.py", "tests/test_ternary_types.py", "healthy", 60, 60),
+            ModuleEntry(
+                "HNSWMeshTable",
+                "swarm/hnsw_mesh_table.py",
+                "tests/test_hnsw_mesh_table.py",
+                "healthy",
+                11,
+                11,
+            ),
+            ModuleEntry(
+                "TieredMeshStorage",
+                "swarm/tiered_mesh_storage.py",
+                "tests/test_tiered_mesh_storage.py",
+                "healthy",
+                7,
+                7,
+            ),
+            ModuleEntry(
+                "FleetMemory",
+                "fleet/fleet_memory.py",
+                "tests/test_fleet_memory.py",
+                "healthy",
+                12,
+                12,
+            ),
+            ModuleEntry(
+                "MeshWAL",
+                "swarm/mesh_wal.py",
+                "tests/test_mesh_wal.py",
+                "healthy",
+                13,
+                13,
+            ),
+            ModuleEntry(
+                "MeshGrouping",
+                "swarm/mesh_grouping.py",
+                "tests/test_mesh_grouping.py",
+                "healthy",
+                10,
+                10,
+            ),
+            ModuleEntry(
+                "SceneTracker",
+                "swarm/scene_tracker.py",
+                "tests/test_scene_tracker.py",
+                "healthy",
+                10,
+                10,
+            ),
+            ModuleEntry(
+                "VectorSwarm",
+                "swarm/vector_swarm.py",
+                "tests/test_vector_swarm.py",
+                "healthy",
+                12,
+                12,
+            ),
+            ModuleEntry(
+                "CognitiveCache",
+                "fleet/cognitive_cache.py",
+                "tests/test_cognitive_cache.py",
+                "healthy",
+                15,
+                15,
+            ),
+            ModuleEntry(
+                "FleetAPI",
+                "fleet/fleet_api.py",
+                "tests/test_fleet_api.py",
+                "healthy",
+                8,
+                8,
+            ),
+            ModuleEntry(
+                "FleetMonitor",
+                "fleet/fleet_monitor.py",
+                "tests/test_fleet_monitor.py",
+                "healthy",
+                10,
+                10,
+            ),
+            ModuleEntry(
+                "QuantaVDBBridge",
+                "fleet/quanta_vdb_bridge.py",
+                "tests/test_quanta_vdb_bridge.py",
+                "healthy",
+                16,
+                16,
+            ),
+            ModuleEntry(
+                "CASLangExecutor",
+                "fleet/caslang_executor.py",
+                "tests/test_caslang_executor.py",
+                "healthy",
+                18,
+                18,
+            ),
+            ModuleEntry(
+                "LevelRunner",
+                "fleet/level_runner.py",
+                "tests/test_level_runner.py",
+                "healthy",
+                18,
+                18,
+            ),
+            ModuleEntry(
+                "Pincher",
+                "fleet/pincher.py",
+                "tests/test_pincher.py",
+                "healthy",
+                14,
+                14,
+            ),
+            ModuleEntry(
+                "xLangAgentBridge",
+                "fleet/xlang_agent_bridge.py",
+                "tests/test_xlang_agent_bridge.py",
+                "healthy",
+                16,
+                16,
+            ),
+            ModuleEntry(
+                "EcosystemHub",
+                "fleet/ecosystem_hub.py",
+                "tests/test_ecosystem_hub.py",
+                "healthy",
+                14,
+                14,
+            ),
+            ModuleEntry(
+                "PatternMine",
+                "fleet/pattern_mine.py",
+                "tests/test_pattern_mine.py",
+                "healthy",
+                23,
+                23,
+            ),
+            ModuleEntry(
+                "TMinusBridge",
+                "fleet/t_minus_bridge.py",
+                "tests/test_t_minus_bridge.py",
+                "healthy",
+                30,
+                30,
+            ),
+            ModuleEntry(
+                "BreedOptimizer",
+                "fleet/breed_optimizer.py",
+                "tests/test_breed_optimizer.py",
+                "healthy",
+                39,
+                39,
+            ),
+            ModuleEntry(
+                "TernaryTypes",
+                "fleet/ternary_types.py",
+                "tests/test_ternary_types.py",
+                "healthy",
+                60,
+                60,
+            ),
         ]
 
         for mod in fleet_modules:
@@ -437,22 +597,47 @@ class Harbor:
 
         # Register known integration paths
         integration_paths = [
-            IntegrationPath("VectorSwarm", "FleetMemory", "tested", ["test_vector_swarm"]),
-            IntegrationPath("CognitiveCache", "FleetMemory", "tested", ["test_cognitive_cache"]),
-            IntegrationPath("BreedOptimizer", "VectorSwarm", "mapped", ["test_breed_optimizer"]),
-            IntegrationPath("BreedOptimizer", "CognitiveCache", "mapped", ["test_breed_optimizer"]),
-            IntegrationPath("TMinusBridge", "FleetMonitor", "mapped", ["test_t_minus_bridge"]),
-            IntegrationPath("TernaryTypes", "FleetMonitor", "mapped", ["test_ternary_types"]),
-            IntegrationPath("PatternMine", "EcosystemHub", "mapped", ["test_pattern_mine"]),
-            IntegrationPath("QuantaVDBBridge", "FleetMemory", "tested", ["test_quanta_vdb_bridge"]),
-            IntegrationPath("CASLangExecutor", "LevelRunner", "tested", ["test_level_runner"]),
+            IntegrationPath(
+                "VectorSwarm", "FleetMemory", "tested", ["test_vector_swarm"]
+            ),
+            IntegrationPath(
+                "CognitiveCache", "FleetMemory", "tested", ["test_cognitive_cache"]
+            ),
+            IntegrationPath(
+                "BreedOptimizer", "VectorSwarm", "mapped", ["test_breed_optimizer"]
+            ),
+            IntegrationPath(
+                "BreedOptimizer", "CognitiveCache", "mapped", ["test_breed_optimizer"]
+            ),
+            IntegrationPath(
+                "TMinusBridge", "FleetMonitor", "mapped", ["test_t_minus_bridge"]
+            ),
+            IntegrationPath(
+                "TernaryTypes", "FleetMonitor", "mapped", ["test_ternary_types"]
+            ),
+            IntegrationPath(
+                "PatternMine", "EcosystemHub", "mapped", ["test_pattern_mine"]
+            ),
+            IntegrationPath(
+                "QuantaVDBBridge", "FleetMemory", "tested", ["test_quanta_vdb_bridge"]
+            ),
+            IntegrationPath(
+                "CASLangExecutor", "LevelRunner", "tested", ["test_level_runner"]
+            ),
             IntegrationPath("Pincher", "QuantaVDBBridge", "tested", ["test_pincher"]),
-            IntegrationPath("xLangAgentBridge", "LevelRunner", "tested", ["test_level_runner"]),
-            IntegrationPath("EcosystemHub", "PatternMine", "tested", ["test_ecosystem_hub"]),
+            IntegrationPath(
+                "xLangAgentBridge", "LevelRunner", "tested", ["test_level_runner"]
+            ),
+            IntegrationPath(
+                "EcosystemHub", "PatternMine", "tested", ["test_ecosystem_hub"]
+            ),
         ]
 
         for path in integration_paths:
             self.register_integration(path)
 
-        logger.info("Bootstrapped fleet with %d modules and %d integrations",
-                    len(fleet_modules), len(integration_paths))
+        logger.info(
+            "Bootstrapped fleet with %d modules and %d integrations",
+            len(fleet_modules),
+            len(integration_paths),
+        )

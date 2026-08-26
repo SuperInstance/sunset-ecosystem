@@ -43,10 +43,7 @@ class TestPythagoreanQDIndex:
 
 class TestExactQDArchive:
     def test_init(self):
-        archive = ExactQDArchive(
-            dimensions=[(3, 4, 5), (5, 12, 13)],
-            resolution=5
-        )
+        archive = ExactQDArchive(dimensions=[(3, 4, 5), (5, 12, 13)], resolution=5)
         assert archive.resolution == 5
         assert len(archive.dimensions) == 2
 

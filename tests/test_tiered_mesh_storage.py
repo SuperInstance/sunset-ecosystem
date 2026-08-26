@@ -53,9 +53,13 @@ def tiered(base_table: MeshVectorTable) -> TieredMeshStorage:
 class TestHotTier:
     def test_hot_insert(self, tiered: TieredMeshStorage) -> None:
         entry = VectorTableEntry(
-            agent_id="hot_1", vector=np.array([1.0, 0.0], dtype=np.float32),
-            timestamp=time.time(), node_id="test", generation=0,
-            fitness=0.8, signature="test_signature_hot_1",
+            agent_id="hot_1",
+            vector=np.array([1.0, 0.0], dtype=np.float32),
+            timestamp=time.time(),
+            node_id="test",
+            generation=0,
+            fitness=0.8,
+            signature="test_signature_hot_1",
         )
         assert tiered.insert(entry) is True
         assert tiered.base.query("hot_1") is not None
@@ -66,8 +70,11 @@ class TestHotTier:
             entry = VectorTableEntry(
                 agent_id=f"hot_{i}",
                 vector=np.array([float(i), 0.0], dtype=np.float32),
-                timestamp=time.time(), node_id="test", generation=0,
-                fitness=0.8, signature=f"test_signature_{i}",
+                timestamp=time.time(),
+                node_id="test",
+                generation=0,
+                fitness=0.8,
+                signature=f"test_signature_{i}",
             )
             tiered.insert(entry)
         # Hot tier should be at emergency capacity, extras in warm
@@ -78,9 +85,13 @@ class TestHotTier:
 class TestWarmTier:
     def test_warm_insert_low_fitness(self, tiered: TieredMeshStorage) -> None:
         entry = VectorTableEntry(
-            agent_id="warm_1", vector=np.array([1.0, 0.0], dtype=np.float32),
-            timestamp=time.time(), node_id="test", generation=0,
-            fitness=0.2, signature="test_signature_warm_1",  # below hot_min_fitness
+            agent_id="warm_1",
+            vector=np.array([1.0, 0.0], dtype=np.float32),
+            timestamp=time.time(),
+            node_id="test",
+            generation=0,
+            fitness=0.2,
+            signature="test_signature_warm_1",  # below hot_min_fitness
         )
         assert tiered.insert(entry) is True
         # Should be in warm tier, not hot
@@ -96,8 +107,11 @@ class TestWarmTier:
             entry = VectorTableEntry(
                 agent_id=f"warm_{i}",
                 vector=np.array([float(i), 0.0], dtype=np.float32),
-                timestamp=time.time(), node_id="test", generation=0,
-                fitness=0.2 + i * 0.1, signature=f"test_signature_{i}",
+                timestamp=time.time(),
+                node_id="test",
+                generation=0,
+                fitness=0.2 + i * 0.1,
+                signature=f"test_signature_{i}",
             )
             tiered.insert(entry)
 
@@ -109,9 +123,13 @@ class TestWarmTier:
 class TestPromotion:
     def test_promote_on_access(self, tiered: TieredMeshStorage) -> None:
         entry = VectorTableEntry(
-            agent_id="promote_me", vector=np.array([1.0, 0.0], dtype=np.float32),
-            timestamp=time.time(), node_id="test", generation=0,
-            fitness=0.2, signature="test_signature_promote",
+            agent_id="promote_me",
+            vector=np.array([1.0, 0.0], dtype=np.float32),
+            timestamp=time.time(),
+            node_id="test",
+            generation=0,
+            fitness=0.2,
+            signature="test_signature_promote",
         )
         tiered.insert(entry)
         assert tiered.base.query("promote_me") is None  # in warm
@@ -127,9 +145,13 @@ class TestPromotion:
 class TestTierStats:
     def test_stats(self, tiered: TieredMeshStorage) -> None:
         entry = VectorTableEntry(
-            agent_id="stats_test", vector=np.array([1.0, 0.0], dtype=np.float32),
-            timestamp=time.time(), node_id="test", generation=0,
-            fitness=0.8, signature="test_signature_stats",
+            agent_id="stats_test",
+            vector=np.array([1.0, 0.0], dtype=np.float32),
+            timestamp=time.time(),
+            node_id="test",
+            generation=0,
+            fitness=0.8,
+            signature="test_signature_stats",
         )
         tiered.insert(entry)
         stats = tiered.get_tier_stats()

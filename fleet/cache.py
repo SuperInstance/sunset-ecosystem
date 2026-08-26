@@ -13,6 +13,7 @@ Usage:
     value = cache.get("key")
     stats = cache.stats()
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -35,6 +36,7 @@ T = TypeVar("T")
 @dataclass
 class CacheEntry:
     """A cached value with metadata."""
+
     value: Any
     expires_at: float
     created_at: float
@@ -43,6 +45,7 @@ class CacheEntry:
 @dataclass
 class CacheStats:
     """Cache performance statistics."""
+
     hits: int
     misses: int
     evictions: int
@@ -155,7 +158,8 @@ class FleetCache:
         now = time.time()
         with self._lock:
             expired_keys = [
-                k for k, e in self._cache.items()
+                k
+                for k, e in self._cache.items()
                 if e.expires_at is not None and e.expires_at < now
             ]
             for k in expired_keys:

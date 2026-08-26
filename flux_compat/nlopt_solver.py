@@ -122,8 +122,11 @@ class NLoptSolver:
                 self.dim, self.bounds, self.maxeval, self.ftol_rel, self.frac_bits
             ),
             "ESCH": lambda: generate_esch_module(
-                self.dim, self.bounds, pop_size=min(10 * self.dim, 100),
-                maxeval=self.maxeval, frac_bits=self.frac_bits
+                self.dim,
+                self.bounds,
+                pop_size=min(10 * self.dim, 100),
+                maxeval=self.maxeval,
+                frac_bits=self.frac_bits,
             ),
             "CRS2-LM": lambda: generate_crs2lm_module(
                 self.dim, self.bounds, pop_size=2 * self.dim, frac_bits=self.frac_bits
@@ -196,7 +199,10 @@ class NLoptSolver:
                     x_plus[i] += eps
                     x_minus = x.copy()
                     x_minus[i] -= eps
-                    grad[i] = (float(objective(x_plus.tolist())) - float(objective(x_minus.tolist()))) / (2 * eps)
+                    grad[i] = (
+                        float(objective(x_plus.tolist()))
+                        - float(objective(x_minus.tolist()))
+                    ) / (2 * eps)
             return val
 
         opt.set_min_objective(_obj)

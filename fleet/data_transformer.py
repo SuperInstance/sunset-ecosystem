@@ -9,6 +9,7 @@ Usage:
     json = tx.to_json({"x": 1})
     parsed = tx.from_json('{"x": 1}')
 """
+
 from __future__ import annotations
 
 import csv
@@ -80,9 +81,7 @@ class DataTransformer:
         self._dict_to_xml(root, data, item_tag)
         return ET.tostring(root, encoding="unicode")
 
-    def _dict_to_xml(
-        self, parent: ET.Element, data: Any, item_tag: str
-    ) -> None:
+    def _dict_to_xml(self, parent: ET.Element, data: Any, item_tag: str) -> None:
         if isinstance(data, dict):
             for key, value in data.items():
                 child = ET.SubElement(parent, str(key))
@@ -119,9 +118,7 @@ class DataTransformer:
     # Validation hook
     # ------------------------------------------------------------------
 
-    def validate(
-        self, data: Any, schema: Callable[[Any], bool]
-    ) -> bool:
+    def validate(self, data: Any, schema: Callable[[Any], bool]) -> bool:
         """Run a validation function against data."""
         try:
             return schema(data)

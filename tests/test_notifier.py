@@ -29,7 +29,9 @@ class TestBreedingAlert:
         assert "oom" in a.body
 
     def test_proof_generated(self):
-        a = BreedingAlert.proof_generated(candidate_id=10, proof_hash="abc123", cycles=100)
+        a = BreedingAlert.proof_generated(
+            candidate_id=10, proof_hash="abc123", cycles=100
+        )
         assert a.severity == "info"
         assert a.category == "proof"
         assert "10" in a.body

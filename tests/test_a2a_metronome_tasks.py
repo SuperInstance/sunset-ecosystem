@@ -39,6 +39,7 @@ from nexus.fleet_conductor import BeatState, FleetConductor
 # Fixtures
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.fixture
 def small_grid():
     """Return a small RoomGrid for tick execution tests."""
@@ -76,6 +77,7 @@ class _MockScheduler:
 # 1. BeatSyncTask validates
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestBeatSyncTask:
     def test_beat_sync_task_validates(self):
         """BeatSyncTask.validate() must raise on malformed input."""
@@ -109,6 +111,7 @@ class TestBeatSyncTask:
 # ═══════════════════════════════════════════════════════════════
 # 2. BPMNegotiation accept
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestBPMNegotiationAccept:
     def test_bpm_negotiation_accept(self):
@@ -154,6 +157,7 @@ class TestBPMNegotiationAccept:
 # 4. DriftAlert triggers nudge
 # 5. DriftAlert triggers partition
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestDriftAlert:
     def test_drift_alert_triggers_nudge(self):
@@ -213,6 +217,7 @@ class TestDriftAlert:
 # 6. TickAsTask executes on grid
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestTickAsTask:
     def test_tick_as_task_executes_on_grid(self, small_grid):
         """TickAsTask.execute(grid) must tick the grid and return metadata."""
@@ -242,6 +247,7 @@ class TestTickAsTask:
 # ═══════════════════════════════════════════════════════════════
 # 7. Conductor dispatch to peer
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestConductorDispatch:
     def test_conductor_dispatch_sync_task(self, conductor):
@@ -277,6 +283,7 @@ class TestConductorDispatch:
 # 8. Conductor handles unknown task
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestConductorUnknownTask:
     def test_conductor_handles_unknown_task(self, conductor):
         """An unrecognised task type must return a failed result with an
@@ -284,9 +291,7 @@ class TestConductorUnknownTask:
         register_a2a_handlers(conductor)
 
         bad_task = {"type": "unicorn_dance", "input": {}}
-        result = FleetConductorA2AExtension.handle_incoming_task(
-            conductor, bad_task
-        )
+        result = FleetConductorA2AExtension.handle_incoming_task(conductor, bad_task)
         assert result.status == "failed"
         assert "unicorn_dance" in (result.error or "")
 
@@ -300,6 +305,7 @@ class TestConductorUnknownTask:
 # ═══════════════════════════════════════════════════════════════
 # Integration: conductor + handler wiring
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestConductorHandlerWiring:
     def test_register_a2a_handlers_populates_registry(self, conductor):
@@ -317,9 +323,7 @@ class TestConductorHandlerWiring:
         register_a2a_handlers(conductor)
 
         task_dict = BeatSyncTask("peer-c", 150, time.time_ns(), 120.0).to_dict()
-        result = FleetConductorA2AExtension.handle_incoming_task(
-            conductor, task_dict
-        )
+        result = FleetConductorA2AExtension.handle_incoming_task(conductor, task_dict)
         assert isinstance(result, A2AMetronomeResult)
         assert result.status == "completed"
         assert result.task_type == "beat_sync"
@@ -333,9 +337,7 @@ class TestConductorHandlerWiring:
             proposed_bpm=180.0,
             response_action="propose",
         ).to_dict()
-        result = FleetConductorA2AExtension.handle_incoming_task(
-            conductor, task_dict
-        )
+        result = FleetConductorA2AExtension.handle_incoming_task(conductor, task_dict)
         assert result.status == "completed"
         assert result.payload["action"] == "accept"
 
@@ -394,9 +396,7 @@ class TestConductorHandlerWiring:
 
         signal = np.random.randn(64).astype(np.float32)
         task_dict = TickAsTask(beat_number=5, signal=signal).to_dict()
-        result = FleetConductorA2AExtension.handle_incoming_task(
-            conductor, task_dict
-        )
+        result = FleetConductorA2AExtension.handle_incoming_task(conductor, task_dict)
         assert result.status == "completed"
         assert result.task_type == "tick_as_task"
         assert result.beat_number == 5
@@ -409,8 +409,6 @@ class TestConductorHandlerWiring:
         register_a2a_handlers(conductor)
 
         task_dict = TickAsTask(beat_number=1).to_dict()
-        result = FleetConductorA2AExtension.handle_incoming_task(
-            conductor, task_dict
-        )
+        result = FleetConductorA2AExtension.handle_incoming_task(conductor, task_dict)
         assert result.status == "failed"
         assert "No grid available" in (result.error or "")

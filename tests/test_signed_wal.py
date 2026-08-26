@@ -218,7 +218,9 @@ class TestChainVerification:
         # The signature check on forged_se will fail because we signed with wal2,
         # but if we use wal (same key) it would pass. Let's use wal.
         # Re-do with wal's backend.
-        wal3 = SignedWAL(private_key=wal._backend.private_key_bytes, algorithm=wal.algorithm)
+        wal3 = SignedWAL(
+            private_key=wal._backend.private_key_bytes, algorithm=wal.algorithm
+        )
         chain = []
         for i, orig in enumerate(entries):
             chain.append(orig)
@@ -311,8 +313,22 @@ class TestTamperDetect:
 
     def test_generation_regression_detected(self, tmp_wal):
         wal, _ = tmp_wal
-        e1 = WALEntry(timestamp=time.time(), agent_id=1, operation="spawn", vector_hash="0" * 64, parent_ids=[], generation=2)
-        e2 = WALEntry(timestamp=time.time(), agent_id=2, operation="spawn", vector_hash="0" * 64, parent_ids=[], generation=1)
+        e1 = WALEntry(
+            timestamp=time.time(),
+            agent_id=1,
+            operation="spawn",
+            vector_hash="0" * 64,
+            parent_ids=[],
+            generation=2,
+        )
+        e2 = WALEntry(
+            timestamp=time.time(),
+            agent_id=2,
+            operation="spawn",
+            vector_hash="0" * 64,
+            parent_ids=[],
+            generation=1,
+        )
         wal.append(e1)
         wal.append(e2)
         reports = wal.tamper_detect()
@@ -327,20 +343,41 @@ class TestBackends:
     def test_ed25519_default(self, tmp_path):
         wal = SignedWAL(log_path=tmp_path / "ed25519.wal")
         assert wal.algorithm == "ed25519"
-        e = WALEntry(timestamp=time.time(), agent_id=1, operation="spawn", vector_hash="0" * 64, parent_ids=[], generation=0)
+        e = WALEntry(
+            timestamp=time.time(),
+            agent_id=1,
+            operation="spawn",
+            vector_hash="0" * 64,
+            parent_ids=[],
+            generation=0,
+        )
         se = wal.append(e)
         assert wal.verify(se) is True
 
     def test_hmac_fallback(self, tmp_path):
         wal = SignedWAL(algorithm="hmac-sha256", log_path=tmp_path / "hmac.wal")
         assert wal.algorithm in ("hmac-sha256", "hmac")
-        e = WALEntry(timestamp=time.time(), agent_id=1, operation="spawn", vector_hash="0" * 64, parent_ids=[], generation=0)
+        e = WALEntry(
+            timestamp=time.time(),
+            agent_id=1,
+            operation="spawn",
+            vector_hash="0" * 64,
+            parent_ids=[],
+            generation=0,
+        )
         se = wal.append(e)
         assert wal.verify(se) is True
 
     def test_rsa_backend(self, tmp_path):
         wal = SignedWAL(algorithm="rsa-2048", log_path=tmp_path / "rsa.wal")
-        e = WALEntry(timestamp=time.time(), agent_id=1, operation="spawn", vector_hash="0" * 64, parent_ids=[], generation=0)
+        e = WALEntry(
+            timestamp=time.time(),
+            agent_id=1,
+            operation="spawn",
+            vector_hash="0" * 64,
+            parent_ids=[],
+            generation=0,
+        )
         se = wal.append(e)
         assert wal.verify(se) is True
 
@@ -371,6 +408,7 @@ class TestBreederDaemonV2Integration:
 
         # Force a few transitions manually
         from swarm.breeder_daemon_v2 import LifecycleTransition
+
         tr1 = LifecycleTransition(
             agent_id=100,
             from_state=None,
@@ -391,7 +429,9 @@ class TestBreederDaemonV2Integration:
                     generation=tr1.generation,
                 )
             )
-            print("DEBUG after append1:", id(daemon._signed_wal), len(daemon._signed_wal))
+            print(
+                "DEBUG after append1:", id(daemon._signed_wal), len(daemon._signed_wal)
+            )
 
         tr2 = LifecycleTransition(
             agent_id=100,
@@ -413,7 +453,9 @@ class TestBreederDaemonV2Integration:
                     generation=tr2.generation,
                 )
             )
-            print("DEBUG after append2:", id(daemon._signed_wal), len(daemon._signed_wal))
+            print(
+                "DEBUG after append2:", id(daemon._signed_wal), len(daemon._signed_wal)
+            )
 
         daemon.stop()
 
@@ -437,10 +479,24 @@ class TestBreederDaemonV2Integration:
 
         # Pre-create a tampered signed WAL
         pre_wal = SignedWAL(log_path=signed_path)
-        e1 = WALEntry(timestamp=time.time(), agent_id=1, operation="spawn", vector_hash="0" * 64, parent_ids=[], generation=0)
+        e1 = WALEntry(
+            timestamp=time.time(),
+            agent_id=1,
+            operation="spawn",
+            vector_hash="0" * 64,
+            parent_ids=[],
+            generation=0,
+        )
         se1 = pre_wal.append(e1)
         # Write a tampered second line directly
-        tampered = WALEntry(timestamp=time.time(), agent_id=2, operation="spawn", vector_hash="TAMPERED" * 8, parent_ids=[], generation=1)
+        tampered = WALEntry(
+            timestamp=time.time(),
+            agent_id=2,
+            operation="spawn",
+            vector_hash="TAMPERED" * 8,
+            parent_ids=[],
+            generation=1,
+        )
         bad = SignedEntry(
             entry=tampered,
             signature=se1.signature,
@@ -489,6 +545,7 @@ class TestBreederDaemonV2Integration:
             (LifecycleState.SUNSET, "sunset"),
         ]
         from swarm.breeder_daemon_v2 import LifecycleTransition
+
         prev_state = None
         for to_state, op in ops:
             tr = LifecycleTransition(

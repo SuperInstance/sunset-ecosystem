@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_memory_index.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest

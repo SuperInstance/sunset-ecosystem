@@ -30,9 +30,9 @@ class SearchIntent(Enum):
     """Auto-detected query intent."""
 
     KNOWLEDGE = "knowledge"  # Factual, what/why/how
-    HARDWARE = "hardware"    # Device placement, capacity
-    TEMPORAL = "temporal"    # Prediction, trends, forecasting
-    AGENT = "agent"          # Agent DNA, breeding, fitness
+    HARDWARE = "hardware"  # Device placement, capacity
+    TEMPORAL = "temporal"  # Prediction, trends, forecasting
+    AGENT = "agent"  # Agent DNA, breeding, fitness
     UNKNOWN = "unknown"
 
 
@@ -112,17 +112,13 @@ class FleetSearch:
             return []
         return self._search_knowledge(query, k, room=room)
 
-    def hardware_search(
-        self, query: str, k: int = 5
-    ) -> list[SearchResult]:
+    def hardware_search(self, query: str, k: int = 5) -> list[SearchResult]:
         """Explicit hardware placement search."""
         if self.hardware is None:
             return []
         return self._search_hardware(query, k)
 
-    def predict_room(
-        self, room_id: int, ticks_ahead: int = 1
-    ) -> SearchResult | None:
+    def predict_room(self, room_id: int, ticks_ahead: int = 1) -> SearchResult | None:
         """Predict future room state."""
         if self.temporal is None:
             return None
@@ -148,17 +144,45 @@ class FleetSearch:
         q = query.lower()
 
         hardware_keywords = [
-            "gpu", "device", "run on", "schedule", "placement",
-            "which hardware", "rtx", "ryzen", "radeon", "xdna",
-            "thermal", "capacity", "free", "available", "load",
+            "gpu",
+            "device",
+            "run on",
+            "schedule",
+            "placement",
+            "which hardware",
+            "rtx",
+            "ryzen",
+            "radeon",
+            "xdna",
+            "thermal",
+            "capacity",
+            "free",
+            "available",
+            "load",
         ]
         temporal_keywords = [
-            "predict", "will", "future", "next", "tomorrow",
-            "trend", "forecast", "look like", "upcoming",
+            "predict",
+            "will",
+            "future",
+            "next",
+            "tomorrow",
+            "trend",
+            "forecast",
+            "look like",
+            "upcoming",
         ]
         agent_keywords = [
-            "agent", "breed", "fitness", "dna", "parent",
-            "generation", "sunset", "tournament", "ethos", "pathos", "logos",
+            "agent",
+            "breed",
+            "fitness",
+            "dna",
+            "parent",
+            "generation",
+            "sunset",
+            "tournament",
+            "ethos",
+            "pathos",
+            "logos",
         ]
 
         if any(kw in q for kw in hardware_keywords):
@@ -190,9 +214,7 @@ class FleetSearch:
             for room_name, score, doc in raw
         ]
 
-    def _search_hardware(
-        self, query: str, k: int
-    ) -> list[SearchResult]:
+    def _search_hardware(self, query: str, k: int) -> list[SearchResult]:
         """Search hardware index.
 
         Parses query for workload hints (batch size, memory, type)
@@ -239,17 +261,19 @@ class FleetSearch:
                     "device_type": profile.device_type.value,
                     "free_capacity": profile.free_capacity,
                 },
-                context={"capabilities": profile.capabilities, "load": profile.current_load},
+                context={
+                    "capabilities": profile.capabilities,
+                    "load": profile.current_load,
+                },
             )
             for did, score, profile in raw
         ]
 
-    def _search_temporal(
-        self, query: str, k: int
-    ) -> list[SearchResult]:
+    def _search_temporal(self, query: str, k: int) -> list[SearchResult]:
         """Search temporal memory for trajectory similarity."""
         # Extract room_id from query if present
         import re
+
         match = re.search(r"room\s*(\d+)", query.lower())
         if not match:
             return []
@@ -266,9 +290,7 @@ class FleetSearch:
             for rid, score in similar
         ]
 
-    def _search_agents(
-        self, query: str, k: int
-    ) -> list[SearchResult]:
+    def _search_agents(self, query: str, k: int) -> list[SearchResult]:
         """Search agent DNA table."""
         if self.agent_table is None:
             return []

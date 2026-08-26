@@ -20,6 +20,7 @@ class JobStatus(Enum):
 @dataclass
 class Job:
     """A scheduled job."""
+
     job_id: str
     name: str
     func: Callable
@@ -64,9 +65,15 @@ class JobScheduler:
         self._completed: List[str] = []
         self._failed: List[str] = []
 
-    def schedule(self, name: str, func: Callable,
-                 args: tuple = (), kwargs: Optional[dict] = None,
-                 delay_seconds: float = 0.0, priority: int = 0) -> Job:
+    def schedule(
+        self,
+        name: str,
+        func: Callable,
+        args: tuple = (),
+        kwargs: Optional[dict] = None,
+        delay_seconds: float = 0.0,
+        priority: int = 0,
+    ) -> Job:
         """Schedule a job to run after a delay."""
         job_id = f"{name}_{int(time.time() * 1000000)}"
         job = Job(
@@ -83,18 +90,21 @@ class JobScheduler:
         self._sort_queue()
         return job
 
-    def schedule_immediate(self, name: str, func: Callable,
-                           args: tuple = (), kwargs: Optional[dict] = None) -> Any:
+    def schedule_immediate(
+        self, name: str, func: Callable, args: tuple = (), kwargs: Optional[dict] = None
+    ) -> Any:
         """Schedule and immediately execute a job."""
         job = self.schedule(name, func, args, kwargs, delay_seconds=0)
         return self.run_job(job.job_id)
 
     def _sort_queue(self):
         """Sort queue by scheduled time then priority."""
-        self._queue.sort(key=lambda jid: (
-            self.jobs[jid].scheduled_time,
-            -self.jobs[jid].priority,
-        ))
+        self._queue.sort(
+            key=lambda jid: (
+                self.jobs[jid].scheduled_time,
+                -self.jobs[jid].priority,
+            )
+        )
 
     def run_job(self, job_id: str) -> Any:
         """Execute a specific job."""
@@ -124,7 +134,7 @@ class JobScheduler:
                 raise
             else:
                 # Reschedule with backoff
-                job.scheduled_time = time.time() + (2 ** job.retries)
+                job.scheduled_time = time.time() + (2**job.retries)
                 job.status = JobStatus.PENDING
                 self._sort_queue()
                 raise
@@ -133,14 +143,19 @@ class JobScheduler:
         """Run all pending jobs whose scheduled time has passed."""
         now = time.time()
         results = []
-        ready = [jid for jid in self._queue
-                 if self.jobs[jid].status == JobStatus.PENDING
-                 and self.jobs[jid].scheduled_time <= now]
+        ready = [
+            jid
+            for jid in self._queue
+            if self.jobs[jid].status == JobStatus.PENDING
+            and self.jobs[jid].scheduled_time <= now
+        ]
 
         for job_id in ready:
             try:
                 result = self.run_job(job_id)
-                results.append({"job_id": job_id, "status": "completed", "result": result})
+                results.append(
+                    {"job_id": job_id, "status": "completed", "result": result}
+                )
             except Exception as e:
                 results.append({"job_id": job_id, "status": "error", "error": str(e)})
 
@@ -158,8 +173,11 @@ class JobScheduler:
 
     def get_pending(self) -> List[Job]:
         """Get all pending jobs."""
-        return [self.jobs[jid] for jid in self._queue
-                if self.jobs[jid].status == JobStatus.PENDING]
+        return [
+            self.jobs[jid]
+            for jid in self._queue
+            if self.jobs[jid].status == JobStatus.PENDING
+        ]
 
     def get_completed(self) -> List[Job]:
         """Get all completed jobs."""

@@ -11,6 +11,7 @@ Usage:
     assert quota.request("cpu", 50) is True
     assert quota.request("cpu", 60) is False  # Would exceed
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional

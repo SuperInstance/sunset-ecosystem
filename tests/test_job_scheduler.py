@@ -46,7 +46,9 @@ class TestJobScheduler:
 
     def test_run_job_failure(self):
         js = JobScheduler()
-        job = js.schedule("test", lambda: (_ for _ in ()).throw(ValueError("boom")), delay_seconds=0)
+        job = js.schedule(
+            "test", lambda: (_ for _ in ()).throw(ValueError("boom")), delay_seconds=0
+        )
         with pytest.raises(ValueError):
             js.run_job(job.job_id)
         assert job.retries == 1

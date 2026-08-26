@@ -10,6 +10,7 @@ Usage:
     orch.submit_task("job-1", {"cpu": 2, "mem": 4}, priority=5)
     assignment = orch.schedule()
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -152,8 +153,7 @@ class FleetOrchestrator:
         for node_id, node in self._nodes.items():
             if self._satisfies_constraints(task, node_id):
                 if all(
-                    node.available(r) >= amount
-                    for r, amount in task.resources.items()
+                    node.available(r) >= amount for r, amount in task.resources.items()
                 ):
                     candidates.append(node_id)
         if not candidates:
@@ -185,9 +185,7 @@ class FleetOrchestrator:
 
     def node_tasks(self, node_id: str) -> List[str]:
         """Get tasks assigned to a node."""
-        return [
-            tid for tid, nid in self._assignments.items() if nid == node_id
-        ]
+        return [tid for tid, nid in self._assignments.items() if nid == node_id]
 
     def unassigned_tasks(self) -> List[str]:
         """Get tasks not yet assigned to any node."""
@@ -198,10 +196,7 @@ class FleetOrchestrator:
         node = self._nodes.get(node_id)
         if not node:
             return {}
-        return {
-            r: node.used.get(r, 0) / node.total.get(r, 1)
-            for r in node.total
-        }
+        return {r: node.used.get(r, 0) / node.total.get(r, 1) for r in node.total}
 
     # ------------------------------------------------------------------
     # Stats

@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_flux_opt_codegen.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -16,6 +17,7 @@ from flux_compat.v3_module import Instruction, Module
 
 
 # ── helpers ────────────────────────────────────────────────
+
 
 def _collect_opcodes(mod: Module) -> list[str]:
     """Return list of opcode mnemonic strings from a module."""
@@ -34,6 +36,7 @@ def _has_opcode_sequence(mod: Module, *expected: str) -> bool:
 
 
 # ── Module validity ────────────────────────────────────────
+
 
 class TestModuleValidity:
     def test_direct_module_valid(self):
@@ -94,15 +97,14 @@ class TestModuleValidity:
         assert len(bc) >= 8
 
     def test_crs2lm_bytecode_parsable(self):
-        mod = generate_crs2lm_module(
-            dim=3, bounds=[(-1.0, 1.0)] * 3, pop_size=6
-        )
+        mod = generate_crs2lm_module(dim=3, bounds=[(-1.0, 1.0)] * 3, pop_size=6)
         bc = mod.to_bytecode()
         assert bc.startswith(b"FLX3")
         assert len(bc) >= 8
 
 
 # ── Required opcodes ───────────────────────────────────────
+
 
 class TestRequiredOpcodes:
     def test_direct_has_vecload(self):
@@ -161,6 +163,7 @@ class TestRequiredOpcodes:
 
 # ── Proof certificate structure ────────────────────────────
 
+
 class TestProofCertificate:
     def test_direct_has_validate_hashcommit_seal(self):
         mod = generate_direct_module(2, [(0.0, 1.0)] * 2, 100, 1e-3)
@@ -191,6 +194,7 @@ class TestProofCertificate:
 
 # ── Fixed-point scaling ──────────────────────────────────
 
+
 class TestFixedPointScaling:
     def test_direct_has_scale_factor_in_metadata(self):
         mod = generate_direct_module(2, [(0.0, 100.0)] * 2, 100, 1e-3)
@@ -220,6 +224,7 @@ class TestFixedPointScaling:
 
 
 # ── High-level codegen class ───────────────────────────────
+
 
 class TestFLUXOptimizerCodegen:
     def test_init_defaults(self):
@@ -263,14 +268,19 @@ class TestFLUXOptimizerCodegen:
 
 # ── Error handling ─────────────────────────────────────────
 
+
 class TestErrorCases:
     def test_direct_bad_bounds_length(self):
         with pytest.raises(ValueError, match="bounds length"):
-            generate_direct_module(dim=3, bounds=[(0.0, 1.0)] * 2, maxeval=100, ftol=1e-3)
+            generate_direct_module(
+                dim=3, bounds=[(0.0, 1.0)] * 2, maxeval=100, ftol=1e-3
+            )
 
     def test_esch_bad_bounds_length(self):
         with pytest.raises(ValueError, match="bounds length"):
-            generate_esch_module(dim=3, bounds=[(0.0, 1.0)] * 2, pop_size=10, maxeval=500)
+            generate_esch_module(
+                dim=3, bounds=[(0.0, 1.0)] * 2, pop_size=10, maxeval=500
+            )
 
     def test_crs2lm_bad_bounds_length(self):
         with pytest.raises(ValueError, match="bounds length"):
@@ -282,6 +292,7 @@ class TestErrorCases:
 
 
 # ── Constraint metadata ────────────────────────────────────
+
 
 class TestConstraintMetadata:
     def test_direct_constraint_def(self):
@@ -308,6 +319,7 @@ class TestConstraintMetadata:
 
 # ── Disassembly sanity ─────────────────────────────────────
 
+
 class TestDisassembly:
     def test_direct_disasm_contains_algorithm(self):
         mod = generate_direct_module(2, [(0.0, 1.0)] * 2, 100, 1e-3)
@@ -330,6 +342,7 @@ class TestDisassembly:
 
 
 # ── Warnings ───────────────────────────────────────────────
+
 
 class TestWarnings:
     def test_crs2lm_warns_on_large_simplex(self):

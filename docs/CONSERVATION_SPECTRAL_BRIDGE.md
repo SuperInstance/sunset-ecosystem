@@ -29,15 +29,13 @@ sbd = SpectralBreederDiversity()
 sbd.register_agent(
     agent_id="vision_specialist",
     capabilities=["vision", "detection", "tracking"],
-    capability_links=[("vision", "detection", 0.9),
-                      ("detection", "tracking", 0.8)],
+    capability_links=[("vision", "detection", 0.9), ("detection", "tracking", 0.8)],
 )
 
 sbd.register_agent(
     agent_id="language_specialist",
     capabilities=["nlp", "translation", "summarization"],
-    capability_links=[("nlp", "translation", 0.7),
-                      ("nlp", "summarization", 0.9)],
+    capability_links=[("nlp", "translation", 0.7), ("nlp", "summarization", 0.9)],
 )
 
 # Select diverse parents for breeding
@@ -94,10 +92,10 @@ fp = SpectralFingerprint.from_agent(
     capability_links=[("vision", "reasoning", 0.8)],
 )
 
-print(fp.conservation_ratio)       # structural coherence
-print(fp.spectral_gap)             # λ₂ - λ₁
+print(fp.conservation_ratio)  # structural coherence
+print(fp.spectral_gap)  # λ₂ - λ₁
 print(fp.alignment_coefficient)  # α = λ₂ / CR(a)
-print(fp.fiedler_vector)           # routing signal
+print(fp.fiedler_vector)  # routing signal
 
 # Serialize for git/WAL storage
 d = fp.to_dict()

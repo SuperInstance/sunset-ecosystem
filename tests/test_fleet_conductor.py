@@ -13,6 +13,7 @@ from nexus.fleet_conductor import BeatState, FleetConductor
 # Mock scheduler
 # ═══════════════════════════════════════════════════════════════
 
+
 class MockScheduler:
     """Minimal scheduler stand-in for conductor tests."""
 
@@ -32,6 +33,7 @@ class MockScheduler:
 # ═══════════════════════════════════════════════════════════════
 # BeatState CRDT merge
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestBeatStateMergeCRDT:
     """BeatState.merge must satisfy CRDT semantics."""
@@ -66,12 +68,11 @@ class TestBeatStateMergeCRDT:
 # Drift detection
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestDriftDetection:
     def test_drift_detection_exceeds_threshold(self):
         """Drift > max_drift_ms with >=1 beat delta must trigger skip-jump."""
-        conductor = FleetConductor(
-            "node-a", "http://nexus.test:4047", max_drift_ms=5.0
-        )
+        conductor = FleetConductor("node-a", "http://nexus.test:4047", max_drift_ms=5.0)
         scheduler = MockScheduler(beat_number=100, bpm=120)  # 500 ms/beat
         conductor.register_local_scheduler(scheduler)
 
@@ -87,9 +88,7 @@ class TestDriftDetection:
 
     def test_drift_within_threshold_no_correction(self):
         """Zero drift must not trigger any correction."""
-        conductor = FleetConductor(
-            "node-a", "http://nexus.test:4047", max_drift_ms=5.0
-        )
+        conductor = FleetConductor("node-a", "http://nexus.test:4047", max_drift_ms=5.0)
         scheduler = MockScheduler(beat_number=100, bpm=120)
         conductor.register_local_scheduler(scheduler)
 
@@ -98,8 +97,10 @@ class TestDriftDetection:
         )
         peer = BeatState(beat_number=100, wall_time_ns=0, perf_counter_ns=0)
 
-        with patch.object(conductor, "_apply_phase_nudge") as mock_nudge, \
-             patch.object(conductor, "_apply_skip_jump") as mock_jump:
+        with (
+            patch.object(conductor, "_apply_phase_nudge") as mock_nudge,
+            patch.object(conductor, "_apply_skip_jump") as mock_jump,
+        ):
             conductor.correct_drift({"node-b": peer})
             mock_nudge.assert_not_called()
             mock_jump.assert_not_called()
@@ -109,12 +110,11 @@ class TestDriftDetection:
 # Phase nudge
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestPhaseNudge:
     def test_phase_nudge_correction(self):
         """Sub-beat drift > max_drift_ms must trigger phase nudge (not skip-jump)."""
-        conductor = FleetConductor(
-            "node-a", "http://nexus.test:4047", max_drift_ms=5.0
-        )
+        conductor = FleetConductor("node-a", "http://nexus.test:4047", max_drift_ms=5.0)
         scheduler = MockScheduler(beat_number=100, bpm=120)
         conductor.register_local_scheduler(scheduler)
 
@@ -125,17 +125,17 @@ class TestPhaseNudge:
         # but 0 beat delta → phase nudge, not skip-jump
         peer = BeatState(beat_number=100, wall_time_ns=0, perf_counter_ns=0)
 
-        with patch.object(conductor, "_apply_skip_jump") as mock_jump, \
-             patch.object(conductor, "_apply_phase_nudge") as mock_nudge:
+        with (
+            patch.object(conductor, "_apply_skip_jump") as mock_jump,
+            patch.object(conductor, "_apply_phase_nudge") as mock_nudge,
+        ):
             conductor.correct_drift({"node-b": peer})
             mock_jump.assert_not_called()
             mock_nudge.assert_called_once()
 
     def test_nudge_ratio_capped_at_five_percent(self):
         """Phase nudge must never exceed 5 % of beat duration."""
-        conductor = FleetConductor(
-            "node-a", "http://nexus.test:4047", max_drift_ms=5.0
-        )
+        conductor = FleetConductor("node-a", "http://nexus.test:4047", max_drift_ms=5.0)
         scheduler = MockScheduler(beat_number=100, bpm=120)  # 500 ms/beat
         conductor.register_local_scheduler(scheduler)
 
@@ -153,6 +153,7 @@ class TestPhaseNudge:
 # ═══════════════════════════════════════════════════════════════
 # Partition fallback
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestPartitionFallback:
     def test_partition_fallback_no_quorum(self):
@@ -190,6 +191,7 @@ class TestPartitionFallback:
 # Async sync_beat
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestSyncBeat:
     @pytest.mark.asyncio
     async def test_sync_beat_returns_consensus(self):
@@ -211,7 +213,9 @@ class TestSyncBeat:
 
         peer = BeatState(beat_number=20, wall_time_ns=0, perf_counter_ns=0)
 
-        with patch.object(conductor, "_fetch_peer_beats", return_value={"node-b": peer}):
+        with patch.object(
+            conductor, "_fetch_peer_beats", return_value={"node-b": peer}
+        ):
             consensus = await conductor.sync_beat()
 
         # Higher beat number wins

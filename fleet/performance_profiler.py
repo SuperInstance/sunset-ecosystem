@@ -11,6 +11,7 @@ Usage:
     stats = prof.stats()
     assert stats["db_query"]["count"] == 1
 """
+
 from __future__ import annotations
 
 import time
@@ -43,7 +44,12 @@ class PerformanceProfiler:
     def _record(self, name: str, elapsed: float) -> None:
         """Record a timing."""
         if name not in self._timings:
-            self._timings[name] = {"count": 0, "total": 0.0, "min": elapsed, "max": elapsed}
+            self._timings[name] = {
+                "count": 0,
+                "total": 0.0,
+                "min": elapsed,
+                "max": elapsed,
+            }
         t = self._timings[name]
         t["count"] += 1
         t["total"] += elapsed

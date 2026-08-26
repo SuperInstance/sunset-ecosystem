@@ -34,6 +34,7 @@ try:
     import pyarrow as pa
     import pyarrow.parquet as pq
     import pyarrow.csv as pcsv
+
     HAS_PYARROW = True
 except ImportError:
     pa = None  # type: ignore
@@ -55,7 +56,9 @@ class ParquetBridge:
     # Load
     # ------------------------------------------------------------------
 
-    def load_parquet(self, path: Union[str, Path], *, sheet_name: str = "Sheet1") -> Dict[str, Any]:
+    def load_parquet(
+        self, path: Union[str, Path], *, sheet_name: str = "Sheet1"
+    ) -> Dict[str, Any]:
         """Load a Parquet file into the deckboss grid."""
         self._sheet_name = sheet_name
         if not HAS_PYARROW:
@@ -64,7 +67,9 @@ class ParquetBridge:
         table = pq.read_table(str(path))
         return self._load_arrow_table(table)
 
-    def load_csv(self, path: Union[str, Path], *, sheet_name: str = "Sheet1") -> Dict[str, Any]:
+    def load_csv(
+        self, path: Union[str, Path], *, sheet_name: str = "Sheet1"
+    ) -> Dict[str, Any]:
         """Load a CSV file into the deckboss grid."""
         self._sheet_name = sheet_name
         if HAS_PYARROW:

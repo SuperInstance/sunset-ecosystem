@@ -27,6 +27,7 @@ from swarm.flux_compiler import (
 
 # ── helpers ───────────────────────────────────────────────
 
+
 def decode_push(bc: bytes, offset: int) -> Tuple[float, int]:
     """Decode a Push instruction at *offset*.  Returns (value, next_offset)."""
     assert bc[offset] == FluxOpcode.Push
@@ -41,6 +42,7 @@ def decode_u16(bc: bytes, offset: int) -> int:
 # ═══════════════════════════════════════════════════════════
 # 1. BytecodeEmitter basics
 # ═══════════════════════════════════════════════════════════
+
 
 class TestBytecodeEmitter:
     def test_push_sequence(self):
@@ -141,6 +143,7 @@ class TestBytecodeEmitter:
 # 2. FluxCompiler — expression compilation
 # ═══════════════════════════════════════════════════════════
 
+
 class TestFluxCompilerExpressions:
     def test_compile_const(self):
         bc, pool, asm = compile_constraint(Const(42.0), with_validate=False)
@@ -210,6 +213,7 @@ class TestFluxCompilerExpressions:
 # 3. FluxCompiler — range check (high-level vs low-level)
 # ═══════════════════════════════════════════════════════════
 
+
 class TestFluxCompilerRangeCheck:
     def test_range_check_high_level(self):
         expr = RangeCheckNode(Var("weight"), 0.0, 10.0)
@@ -253,6 +257,7 @@ class TestFluxCompilerRangeCheck:
 # ═══════════════════════════════════════════════════════════
 # 4. FluxCompiler — conditional branches
 # ═══════════════════════════════════════════════════════════
+
 
 class TestFluxCompilerBranches:
     def test_if_le_branch(self):
@@ -311,6 +316,7 @@ class TestFluxCompilerBranches:
 # ═══════════════════════════════════════════════════════════
 # 5. Mini VM interpreter — actually *run* the bytecode
 # ═══════════════════════════════════════════════════════════
+
 
 class MiniFluxVM:
     """Tiny Python interpreter for the PYTHON_SAFE FLUX opcode subset.
@@ -565,6 +571,7 @@ class TestMiniVMExecution:
 # 6. Integration — breeding-constraint examples
 # ═══════════════════════════════════════════════════════════
 
+
 def test_compile_weight_bounds_constraint():
     """Realistic constraint: weight must be in [w_min, w_max]."""
     expr = RangeCheckNode(Var("weight"), 0.0, 10.0)
@@ -613,7 +620,9 @@ def test_compile_combined_constraint():
         RangeCheckNode(Var("weight"), 0.0, 10.0),
         Const(0.0),
     )
-    bc, pool, asm = compile_constraint(expr, with_validate=False, prefer_range_check=True)
+    bc, pool, asm = compile_constraint(
+        expr, with_validate=False, prefer_range_check=True
+    )
     vm = MiniFluxVM(pool)
     assert vm.run(bc) == pytest.approx(1.0)
 
@@ -621,6 +630,7 @@ def test_compile_combined_constraint():
 # ═══════════════════════════════════════════════════════════
 # 7. Edge cases
 # ═══════════════════════════════════════════════════════════
+
 
 def test_empty_expr_with_halt():
     bc, pool, asm = compile_constraint(Const(0.0), with_validate=False)

@@ -95,7 +95,11 @@ class FleetRequestHandler(BaseHTTPRequestHandler):
             return
 
         content = file_path.read_bytes()
-        ct = content_type or mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
+        ct = (
+            content_type
+            or mimetypes.guess_type(str(file_path))[0]
+            or "application/octet-stream"
+        )
 
         self.send_response(200)
         self.send_header("Content-Type", ct)
@@ -338,7 +342,9 @@ class FleetWebServer:
         Server configuration.
     """
 
-    def __init__(self, workspace: str = ".", config: ServerConfig | None = None) -> None:
+    def __init__(
+        self, workspace: str = ".", config: ServerConfig | None = None
+    ) -> None:
         self.workspace = Path(workspace)
         self.config = config or ServerConfig()
         self._cli = FleetCLI(workspace=str(self.workspace))
@@ -362,12 +368,18 @@ class FleetWebServer:
         )
 
         if blocking:
-            print(f"FleetWebServer running at http://{self.config.host}:{self.config.port}/")
+            print(
+                f"FleetWebServer running at http://{self.config.host}:{self.config.port}/"
+            )
             self._server.serve_forever()
         else:
-            self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+            self._thread = threading.Thread(
+                target=self._server.serve_forever, daemon=True
+            )
             self._thread.start()
-            print(f"FleetWebServer started at http://{self.config.host}:{self.config.port}/")
+            print(
+                f"FleetWebServer started at http://{self.config.host}:{self.config.port}/"
+            )
 
     def stop(self) -> None:
         """Stop the web server."""
@@ -396,7 +408,13 @@ def main() -> None:
     parser.add_argument("--host", default="0.0.0.0", help="Server host")
     parser.add_argument("--workspace", "-w", default=".", help="Workspace path")
     parser.add_argument("--no-cors", action="store_true", help="Disable CORS")
-    parser.add_argument("--refresh", "-r", type=int, default=30, help="Dashboard refresh interval (seconds)")
+    parser.add_argument(
+        "--refresh",
+        "-r",
+        type=int,
+        default=30,
+        help="Dashboard refresh interval (seconds)",
+    )
     args = parser.parse_args()
 
     config = ServerConfig(

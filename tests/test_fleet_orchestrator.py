@@ -117,7 +117,12 @@ class TestFleetOrchestrator:
 
     def test_execute_sync_task(self) -> None:
         conductor = FleetOrchestrator()
-        task = TaskSpec(task_id="sync-1", task_type="sync", priority=1, payload={"gap": {"source": "A", "target": "B"}})
+        task = TaskSpec(
+            task_id="sync-1",
+            task_type="sync",
+            priority=1,
+            payload={"gap": {"source": "A", "target": "B"}},
+        )
         result = conductor.execute_task(task)
         assert result.success is True
         assert result.output["action"] == "sync_initiated"

@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 # ── data structures ───────────────────────────────────────────
 
+
 class GossipMessageType(Enum):
     BEAT = auto()
     DRIFT_CORRECTION = auto()
@@ -97,6 +98,7 @@ class BridgeConfig:
 
 # ── bridge ────────────────────────────────────────────────────
 
+
 class MetronomeGossipBridge:
     """Bridge between metronome and mesh gossip.
 
@@ -139,7 +141,9 @@ class MetronomeGossipBridge:
 
     # ── forwarding ──────────────────────────────────────────
 
-    def on_metronome_beat(self, bpm: float, beat_number: int, drift_ms: float = 0.0) -> None:
+    def on_metronome_beat(
+        self, bpm: float, beat_number: int, drift_ms: float = 0.0
+    ) -> None:
         """Called by metronome on each beat. Forward to gossip."""
         if not self._running or not self.config.enable_beat_gossip:
             return
@@ -270,7 +274,9 @@ class MetronomeGossipBridge:
 
     def _handle_node_announce(self, payload: SyncPayload) -> None:
         """New node discovered via gossip."""
-        logger.info("Node announced via gossip: %s @ %.1f BPM", payload.node_id, payload.bpm)
+        logger.info(
+            "Node announced via gossip: %s @ %.1f BPM", payload.node_id, payload.bpm
+        )
 
     # ── announcement ────────────────────────────────────────
 

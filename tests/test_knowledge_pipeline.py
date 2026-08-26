@@ -39,6 +39,7 @@ class FakeFluxTable:
 # Chunker
 # ---------------------------------------------------------------------------
 
+
 class TestChunker:
     def test_empty_text(self):
         c = Chunker(chunk_size=64, overlap=8)
@@ -79,6 +80,7 @@ class TestChunker:
 # ---------------------------------------------------------------------------
 # PlaceholderEncoder
 # ---------------------------------------------------------------------------
+
 
 class TestPlaceholderEncoder:
     def test_encode_one(self):
@@ -124,6 +126,7 @@ class TestPlaceholderEncoder:
 # ---------------------------------------------------------------------------
 # KnowledgePipeline
 # ---------------------------------------------------------------------------
+
 
 class TestKnowledgePipeline:
     def test_init(self):

@@ -12,6 +12,7 @@ Usage:
     logs.ingest({"level": "ERROR", "message": "Connection failed", "source": "agent-1"})
     errors = logs.query(level="ERROR", since_minutes=5)
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LogEntry:
     """A structured log entry."""
+
     timestamp: float
     level: str
     message: str
@@ -59,8 +61,8 @@ class LogAggregator:
 
         # Evict oldest if over limit
         if len(self._entries) > self._max_entries:
-            removed = self._entries[:len(self._entries) - self._max_entries]
-            self._entries = self._entries[-self._max_entries:]
+            removed = self._entries[: len(self._entries) - self._max_entries]
+            self._entries = self._entries[-self._max_entries :]
             # Update sources
             for r in removed:
                 if not any(e.source == r.source for e in self._entries):
@@ -111,7 +113,11 @@ class LogAggregator:
 
     def latest(self, source: str | None = None) -> LogEntry | None:
         """Get the most recent entry."""
-        entries = self._entries if source is None else [e for e in self._entries if e.source == source]
+        entries = (
+            self._entries
+            if source is None
+            else [e for e in self._entries if e.source == source]
+        )
         return entries[-1] if entries else None
 
     def clear(self) -> None:
@@ -127,4 +133,6 @@ class LogAggregator:
         }
 
     def __repr__(self) -> str:
-        return f"LogAggregator(entries={len(self._entries)}, sources={len(self._sources)})"
+        return (
+            f"LogAggregator(entries={len(self._entries)}, sources={len(self._sources)})"
+        )

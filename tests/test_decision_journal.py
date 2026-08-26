@@ -25,27 +25,59 @@ from logos.decision_journal import (
 # Decision dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestDecision:
     def test_defaults(self):
-        d = Decision(timestamp=1.0, why="test", what="action", expected="ok", actual="", confidence=0.5, scope="a")
+        d = Decision(
+            timestamp=1.0,
+            why="test",
+            what="action",
+            expected="ok",
+            actual="",
+            confidence=0.5,
+            scope="a",
+        )
         assert d.timestamp == 1.0
         assert d.metadata == {}
 
     def test_to_dict(self):
-        d = Decision(timestamp=1.0, why="test", what="action", expected="ok", actual="done", confidence=0.75, scope="a", metadata={"k": "v"})
+        d = Decision(
+            timestamp=1.0,
+            why="test",
+            what="action",
+            expected="ok",
+            actual="done",
+            confidence=0.75,
+            scope="a",
+            metadata={"k": "v"},
+        )
         data = d.to_dict()
         assert data["confidence"] == 0.75
         assert data["metadata"]["k"] == "v"
 
     def test_from_dict(self):
-        data = {"timestamp": 2.0, "why": "q", "what": "w", "expected": "e", "actual": "r", "confidence": 0.9, "scope": "s"}
+        data = {
+            "timestamp": 2.0,
+            "why": "q",
+            "what": "w",
+            "expected": "e",
+            "actual": "r",
+            "confidence": 0.9,
+            "scope": "s",
+        }
         d = Decision.from_dict(data)
         assert d.why == "q"
         assert d.confidence == 0.9
         assert d.metadata == {}
 
     def test_from_dict_missing_optional(self):
-        data = {"timestamp": 1.0, "why": "q", "what": "w", "expected": "e", "scope": "s"}
+        data = {
+            "timestamp": 1.0,
+            "why": "q",
+            "what": "w",
+            "expected": "e",
+            "scope": "s",
+        }
         d = Decision.from_dict(data)
         assert d.actual == ""
         assert d.confidence == 0.0
@@ -55,6 +87,7 @@ class TestDecision:
 # DecisionJournal in-memory
 # ---------------------------------------------------------------------------
 
+
 class TestDecisionJournalMemory:
     def test_empty(self):
         dj = DecisionJournal()
@@ -63,7 +96,9 @@ class TestDecisionJournalMemory:
 
     def test_record(self):
         dj = DecisionJournal()
-        d = dj.record(why="because", what="do_it", expected="win", confidence=0.9, scope="fleet")
+        d = dj.record(
+            why="because", what="do_it", expected="win", confidence=0.9, scope="fleet"
+        )
         assert len(dj.all_entries()) == 1
         assert d.why == "because"
         assert d.confidence == 0.9
@@ -90,6 +125,7 @@ class TestDecisionJournalMemory:
 # ---------------------------------------------------------------------------
 # DecisionJournal persistence
 # ---------------------------------------------------------------------------
+
 
 class TestDecisionJournalPersistence:
     def test_save_and_load(self, tmp_path):
@@ -123,10 +159,13 @@ class TestDecisionJournalPersistence:
 # Convenience loggers
 # ---------------------------------------------------------------------------
 
+
 class TestLogSpawn:
     def test_writes_record(self, tmp_path):
         p = tmp_path / "day.jsonl"
-        rec = log_spawn(42, parents=(1, 2), generation=3, reason="test", journal_path=str(p))
+        rec = log_spawn(
+            42, parents=(1, 2), generation=3, reason="test", journal_path=str(p)
+        )
         assert rec["operation"] == "spawn"
         assert rec["agent_id"] == 42
         assert rec["parents"] == [1, 2]
@@ -172,8 +211,18 @@ class TestLogBreed:
 class TestLogHumanCommand:
     def test_confirmed(self, tmp_path):
         p = tmp_path / "day.jsonl"
-        intent = type("I", (), {"raw_command": "deploy", "action": "deploy", "is_destructive": lambda self: False})()
-        rec = log_human_command(intent, confirmed=True, scope="all", journal_path=str(p))
+        intent = type(
+            "I",
+            (),
+            {
+                "raw_command": "deploy",
+                "action": "deploy",
+                "is_destructive": lambda self: False,
+            },
+        )()
+        rec = log_human_command(
+            intent, confirmed=True, scope="all", journal_path=str(p)
+        )
         assert rec["operation"] == "human_command"
         assert rec["actual"] == "confirmed"
         assert rec["confidence"] == 1.0
@@ -181,21 +230,34 @@ class TestLogHumanCommand:
 
     def test_pending(self, tmp_path):
         p = tmp_path / "day.jsonl"
-        intent = type("I", (), {"raw_command": "stop", "action": "stop", "is_destructive": lambda self: True})()
-        rec = log_human_command(intent, confirmed=False, scope="node-1", journal_path=str(p))
+        intent = type(
+            "I",
+            (),
+            {
+                "raw_command": "stop",
+                "action": "stop",
+                "is_destructive": lambda self: True,
+            },
+        )()
+        rec = log_human_command(
+            intent, confirmed=False, scope="node-1", journal_path=str(p)
+        )
         assert rec["actual"] == "pending"
         assert rec["confidence"] == 0.5
         assert rec["metadata"]["destructive"] is True
 
     def test_missing_attrs(self, tmp_path):
         p = tmp_path / "day.jsonl"
-        rec = log_human_command(object(), confirmed=True, scope="x", journal_path=str(p))
+        rec = log_human_command(
+            object(), confirmed=True, scope="x", journal_path=str(p)
+        )
         assert rec["what"] == "unknown → x"
 
 
 # ---------------------------------------------------------------------------
 # get_decision_history
 # ---------------------------------------------------------------------------
+
 
 class TestGetDecisionHistory:
     def test_empty_file(self, tmp_path):
@@ -225,7 +287,10 @@ class TestGetDecisionHistory:
 
     def test_default_path_directory(self, tmp_path, monkeypatch):
         from logos import decision_journal as dj
-        monkeypatch.setattr(dj, "_default_journal_path", lambda: tmp_path / "2024-01-01.jsonl")
+
+        monkeypatch.setattr(
+            dj, "_default_journal_path", lambda: tmp_path / "2024-01-01.jsonl"
+        )
         # write then read
         p = tmp_path / "2024-01-01.jsonl"
         log_spawn(99, journal_path=str(p))

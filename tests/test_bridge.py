@@ -1,7 +1,13 @@
 """Tests for fleet.bridge — Bridge interface and registry."""
 
 import pytest
-from fleet.bridge import Bridge, BridgeRegistry, BridgeStatus, BridgeEvent, BridgeCompiler
+from fleet.bridge import (
+    Bridge,
+    BridgeRegistry,
+    BridgeStatus,
+    BridgeEvent,
+    BridgeCompiler,
+)
 
 
 class _FakeBridge(Bridge):
@@ -109,20 +115,30 @@ class TestBridgeRegistry:
         assert events[key].status == BridgeStatus.CONNECTED
 
 
-
 class TestBridgeCompiler:
     def test_compile_schema_generates_class(self):
         reg = BridgeRegistry()
         bc = BridgeCompiler(registry=reg)
-        bridge_cls = bc.compile_from_schema("TestBridge", {"protocol": "ffi", "push_endpoint": "/push", "pull_endpoint": "/pull"})
+        bridge_cls = bc.compile_from_schema(
+            "TestBridge",
+            {"protocol": "ffi", "push_endpoint": "/push", "pull_endpoint": "/pull"},
+        )
         assert issubclass(bridge_cls, Bridge)
         assert "TestBridge" in reg.list_bridges()
 
     def test_compile_returns_bridge_subclass(self):
         reg = BridgeRegistry()
         bc = BridgeCompiler(registry=reg)
-        bridge_cls = bc.compile_from_schema("Dyn", {"protocol": "http", "host": "localhost", "port": 8080, "push_endpoint": "/push", "pull_endpoint": "/pull"})
+        bridge_cls = bc.compile_from_schema(
+            "Dyn",
+            {
+                "protocol": "http",
+                "host": "localhost",
+                "port": 8080,
+                "push_endpoint": "/push",
+                "pull_endpoint": "/pull",
+            },
+        )
         assert issubclass(bridge_cls, Bridge)
         instance = bridge_cls(node_id="node-1")
         assert instance.status == BridgeStatus.DISCONNECTED
-

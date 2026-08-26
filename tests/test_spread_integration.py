@@ -41,7 +41,9 @@ class TestSpreadBridge:
     def test_push_sheet_connected(self, mock_urlopen):
         bridge = SpreadBridge(fleet_node_id="alpha")
         bridge.connect_to_spread()
-        mock_urlopen.return_value.__enter__.return_value.read.return_value = b'{"ok": true}'
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+            b'{"ok": true}'
+        )
         result = bridge.push_sheet("test", [["a", "b"], ["1", "2"]])
         assert result is True
         bridge.disconnect()
@@ -53,7 +55,9 @@ class TestSpreadBridge:
         grid = DeckbossGrid(FleetFormulaEnv())
         grid.set_cell("A1", "hello")
         grid.set_cell("B1", "42")
-        mock_urlopen.return_value.__enter__.return_value.read.return_value = b'{"ok": true}'
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+            b'{"ok": true}'
+        )
         result = bridge.push_grid("sheet1", grid)
         assert result is True
         bridge.disconnect()
@@ -62,7 +66,9 @@ class TestSpreadBridge:
     def test_push_formula(self, mock_urlopen):
         bridge = SpreadBridge(fleet_node_id="alpha")
         bridge.connect_to_spread()
-        mock_urlopen.return_value.__enter__.return_value.read.return_value = b'{"ok": true}'
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+            b'{"ok": true}'
+        )
         result = bridge.push_formula("A1", "=FLEET_HEALTH()")
         assert result is True
         bridge.disconnect()
@@ -71,7 +77,9 @@ class TestSpreadBridge:
     def test_push_fleet_snapshot(self, mock_urlopen):
         bridge = SpreadBridge(fleet_node_id="alpha")
         bridge.connect_to_spread()
-        mock_urlopen.return_value.__enter__.return_value.read.return_value = b'{"ok": true}'
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+            b'{"ok": true}'
+        )
         snapshot = {"agent_count": 50, "thermal_avg": 0.75}
         result = bridge.push_fleet_snapshot(snapshot)
         assert result is True
@@ -81,7 +89,9 @@ class TestSpreadBridge:
     def test_get_spread_status(self, mock_urlopen):
         bridge = SpreadBridge(fleet_node_id="alpha")
         bridge.connect_to_spread()
-        mock_urlopen.return_value.__enter__.return_value.read.return_value = b'{"sheets": 3, "rows": 1000}'
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+            b'{"sheets": 3, "rows": 1000}'
+        )
         status = bridge.get_spread_status()
         assert status == {"sheets": 3, "rows": 1000}
         bridge.disconnect()

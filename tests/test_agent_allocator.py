@@ -7,7 +7,13 @@ from ethos.agent_allocator import (
     AllocationPlan,
     build_allocation_plan,
 )
-from ethos.hardware_survey import CPUInfo, CudaGPU, HardwareProfile, MemoryInfo, ThermalZone
+from ethos.hardware_survey import (
+    CPUInfo,
+    CudaGPU,
+    HardwareProfile,
+    MemoryInfo,
+    ThermalZone,
+)
 from ethos.stress_test import DeviceBenchmark, MatrixBenchmark, StressReport
 
 
@@ -60,7 +66,9 @@ def _make_stress(gpu_gflops=None, cpu_gflops=100.0) -> StressReport:
             ],
         )
     )
-    return StressReport(benchmarks=benchmarks, max_parallel_agents=4, total_duration_s=1.0)
+    return StressReport(
+        benchmarks=benchmarks, max_parallel_agents=4, total_duration_s=1.0
+    )
 
 
 class TestAgentAllocation:
@@ -147,7 +155,9 @@ class TestBuildAllocationPlan:
     def test_unknown_agent_type(self):
         profile = _make_profile(cuda_gpus=[], cpu_cores=8)
         stress = _make_stress(gpu_gflops=None, cpu_gflops=100.0)
-        plan = build_allocation_plan(profile, stress, agent_types=["inference", "unknown_type_xyz"])
+        plan = build_allocation_plan(
+            profile, stress, agent_types=["inference", "unknown_type_xyz"]
+        )
         assert any("Unknown agent type" in n for n in plan.notes)
 
     def test_subset_agent_types(self):

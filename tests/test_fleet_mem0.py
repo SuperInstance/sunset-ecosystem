@@ -10,6 +10,7 @@ Coverage:
 - from_agent_identity integration
 - to_dict serialization
 """
+
 import pytest
 
 from fleet.fleet_mem0 import (
@@ -131,6 +132,7 @@ class TestIntegration:
     def test_from_agent_identity(self):
         class FakeIdentity:
             agent_id = "Oracle1"
+
         m = FleetMem0Memory.from_agent_identity(FakeIdentity())
         assert m.config.agent_id == "Oracle1"
 

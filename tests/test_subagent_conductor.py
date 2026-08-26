@@ -2,6 +2,7 @@
 
 Run: python3 -m pytest tests/test_subagent_conductor.py -v --tb=short
 """
+
 from __future__ import annotations
 
 import pytest
@@ -43,6 +44,7 @@ class TestGatewayHealthMonitor:
 
     def test_circuit_closes_after_cooldown(self):
         import time
+
         monitor = GatewayHealthMonitor()
         for _ in range(3):
             monitor.record(100, False)
@@ -112,11 +114,14 @@ class TestSubagentConductor:
     def test_tick_dispatches_when_healthy(self):
         c = SubagentConductor()
         # Register a fallback so tick doesn't fail
-        c.register_fallback("code", lambda t: TaskResult(
-            task_id=t.task_id,
-            status=TaskStatus.COMPLETED,
-            output="fallback",
-        ))
+        c.register_fallback(
+            "code",
+            lambda t: TaskResult(
+                task_id=t.task_id,
+                status=TaskStatus.COMPLETED,
+                output="fallback",
+            ),
+        )
 
         # Make gateway appear overloaded so it falls back
         for _ in range(5):
@@ -175,10 +180,34 @@ class TestSubagentConductor:
     def test_priority_queue_order(self):
         c = SubagentConductor()
         tasks = [
-            TaskSpec(task_id="low", task_type="x", description="", priority=TaskPriority.LOW, payload={}),
-            TaskSpec(task_id="high", task_type="x", description="", priority=TaskPriority.HIGH, payload={}),
-            TaskSpec(task_id="crit", task_type="x", description="", priority=TaskPriority.CRITICAL, payload={}),
-            TaskSpec(task_id="norm", task_type="x", description="", priority=TaskPriority.NORMAL, payload={}),
+            TaskSpec(
+                task_id="low",
+                task_type="x",
+                description="",
+                priority=TaskPriority.LOW,
+                payload={},
+            ),
+            TaskSpec(
+                task_id="high",
+                task_type="x",
+                description="",
+                priority=TaskPriority.HIGH,
+                payload={},
+            ),
+            TaskSpec(
+                task_id="crit",
+                task_type="x",
+                description="",
+                priority=TaskPriority.CRITICAL,
+                payload={},
+            ),
+            TaskSpec(
+                task_id="norm",
+                task_type="x",
+                description="",
+                priority=TaskPriority.NORMAL,
+                payload={},
+            ),
         ]
         for t in tasks:
             c.submit(t)
@@ -191,21 +220,26 @@ class TestSubagentConductor:
 
     def test_metrics_accumulate(self):
         c = SubagentConductor()
-        c.register_fallback("code", lambda t: TaskResult(
-            task_id=t.task_id,
-            status=TaskStatus.COMPLETED,
-        ))
+        c.register_fallback(
+            "code",
+            lambda t: TaskResult(
+                task_id=t.task_id,
+                status=TaskStatus.COMPLETED,
+            ),
+        )
         for _ in range(5):
             c.record_gateway_attempt(6000, True)
 
         for i in range(3):
-            c.submit(TaskSpec(
-                task_id=f"t{i}",
-                task_type="code",
-                description="",
-                priority=TaskPriority.NORMAL,
-                payload={},
-            ))
+            c.submit(
+                TaskSpec(
+                    task_id=f"t{i}",
+                    task_type="code",
+                    description="",
+                    priority=TaskPriority.NORMAL,
+                    payload={},
+                )
+            )
         c.tick()
         r = c.report()
         assert r["tasks_submitted"] == 3
@@ -216,13 +250,15 @@ class TestSubagentConductor:
         for _ in range(5):
             c.record_gateway_attempt(6000, True)
 
-        c.submit(TaskSpec(
-            task_id="t1",
-            task_type="unknown_type",
-            description="",
-            priority=TaskPriority.NORMAL,
-            payload={},
-        ))
+        c.submit(
+            TaskSpec(
+                task_id="t1",
+                task_type="unknown_type",
+                description="",
+                priority=TaskPriority.NORMAL,
+                payload={},
+            )
+        )
         results = c.tick()
         # No fallback registered — task stays in queue but nothing dispatched
         assert len(results) == 0

@@ -10,6 +10,7 @@ Usage:
     results = idx.search("hello")
     # -> ["doc-1", "doc-2"]
 """
+
 from __future__ import annotations
 
 import re

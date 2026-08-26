@@ -62,7 +62,9 @@ class AgentGeneration:
             name=data["name"],
             generation=data["generation"],
             created_at=datetime.fromisoformat(data["created_at"]),
-            sunset_at=datetime.fromisoformat(data["sunset_at"]) if data.get("sunset_at") else None,
+            sunset_at=datetime.fromisoformat(data["sunset_at"])
+            if data.get("sunset_at")
+            else None,
             purpose=data.get("purpose", ""),
             achievements=data.get("achievements", []),
             sunset_reason=data.get("sunset_reason"),
@@ -175,7 +177,9 @@ class GenerationMemory:
             for p in g.patterns_preserved:
                 all_patterns[p] = all_patterns.get(p, 0) + 1
 
-        surviving = [p for p, c in sorted(all_patterns.items(), key=lambda x: -x[1]) if c > 0]
+        surviving = [
+            p for p, c in sorted(all_patterns.items(), key=lambda x: -x[1]) if c > 0
+        ]
 
         return GenerationHistory(
             generations=gens,
@@ -203,8 +207,7 @@ class GenerationMemory:
         if agent is None:
             return []
         return [
-            self._agents[cid] for cid in agent.children_spawned
-            if cid in self._agents
+            self._agents[cid] for cid in agent.children_spawned if cid in self._agents
         ]
 
     def _save(self) -> None:
